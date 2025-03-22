@@ -68,6 +68,7 @@ Regular meetings with your daily supervisors are essential for staying on track.
 - [final_thesis](final_thesis): Contains the final thesis document.
 - [interim_presentation](interim_presentation): Contains materials for the interim presentation.
 - [interim_thesis](interim_thesis): Contains the interim thesis document.
+- [manuscript](manuscript): Contains the work-in-progress manuscript for the thesis.
 - [meetings](meetings): Contains meeting notes and related materials.
 - [project_description](project_description): Contains the project description.
 
