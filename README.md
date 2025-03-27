@@ -62,7 +62,7 @@ Regular meetings with your daily supervisors are essential for staying on track.
 
 ## Repository Structure
 
-- [code](code): Contains all project-related code.
+- [code](code): Contains all project-related code. It is strongly recommended that you setup different repositories for your code and add them as [Git Submodules](https://git-scm.com/book/en/v2/Git-Tools-Submodules) to this directory. With submodules, you can manage each repository individually (create branches, submit merge requests, etc.).
 - [data](data): Contains datasets and related files.
 - [defense](defense): Contains materials for the defense.
 - [final_thesis](final_thesis): Contains the final thesis document.
