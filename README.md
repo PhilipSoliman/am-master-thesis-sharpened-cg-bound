@@ -37,6 +37,7 @@ Regular meetings with your daily supervisors are essential for staying on track.
 
 ### Research
 - [ ] Perform research based on the formulated research questions.
+    - *Note*: Research questions serve as a guideline. During the research process, it may become necessary to adapt or refine them based on new findings or challenges.
 - [ ] Continuously document your progress, including experiments, results, and challenges.
 - [ ] Regularly discuss your findings with your supervisors to ensure alignment with the project goals.
 
