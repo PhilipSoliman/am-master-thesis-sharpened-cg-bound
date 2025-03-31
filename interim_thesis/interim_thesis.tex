@@ -1,0 +1,64 @@
+\documentclass{../tudelft-report}
+
+\input{../preamble.tex}
+
+% Add bibliography (with clickable URL's)
+\addbibresource[type=file, glob, datatype=bibtex, location=local]{\subfix{../bibliography.bib}}
+\DeclareFieldFormat{url}{\href{#1}{\mkbibacro{URL}}}
+
+% redefine image path
+\graphicspath{{../images}{../figures}{images}}
+
+% custom research question environments
+\newtheorem*{researchq}{Research Question}
+\newtheorem*{subsidiaryq}{Subsidiary Questions}
+
+\begin{document}
+
+%%%%%%%%%%%%%%%%
+% front matter %
+%%%%%%%%%%%%%%%%
+\frontmatter
+\title{Sharpened CG iteration bound for Schwarz-preconditioned high-contrast heterogeneous elliptic PDEs}
+\subtitle{Going beyond condition number} 
+\author{Philip Soliman}
+\subject{WI5005: Thesis Project (Interim Thesis)} % Cover only
+\affiliation{Delft University of Technology} % Cover only
+% \coverimage{cover.jpg} % Aspect ratio of 2:3 (portrait) recommended
+\logoimage{logo-white.pdf} % Aspect ratio of 1:1 recommended
+\makecover
+\input{../frontmatter/title-thesis}
+\tableofcontents
+
+%%%%%%%%%%%%%%%%
+% nomenclature %
+%%%%%%%%%%%%%%%%
+\input{chapters/symbols.tex}
+\newpage
+
+%%%%%%%%%%%%%%%
+% main matter %
+%%%%%%%%%%%%%%%
+\mainmatter
+\pagestyle{fancy}
+\input{chapters/introduction.tex}
+\newpage
+\chapterimage{images/mathematical_background_ch_cover.png}
+\input{chapters/background.tex}
+\nochapterimage
+\newpage
+\input{chapters/literature.tex}
+\newpage
+\input{chapters/questions.tex}
+\newpage
+\input{chapters/preliminary_results.tex}
+\newpage
+\input{chapters/conclusion.tex}
+
+%%%%%%%%%%%%%%%%
+% bibliography %
+%%%%%%%%%%%%%%%%
+\nochapterimage
+\printbibliography
+
+\end{document}

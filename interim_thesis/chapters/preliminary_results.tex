@@ -1,0 +1,23 @@
+\chapter{Preliminary Results}\label{ch:preliminary_results}\newpage
+\todo{Description of the results – What did you compute or observe?}\newline
+The preliminary results are obtained through a numerical implementation of the ideas discussed in \cite[Section 4]{cg_sharpened_convrate_Axelsson1976}. Therein \citeauthor{cg_sharpened_convrate_Axelsson1976} presents a sharpened CG iteration bound for two particular eigenspectra, which are described below.
+
+On the eigenspectrum of $A$, consider two intervals $[a, b]$ and $[c, d]$ with $a < b < c < d$ such that all eigenvalues of $A$ are contained in the union of these two intervals. Additionally, we have $\kappa(A) = \frac{d}{a}$. We distinguish the following two cases:
+\begin{equation}
+    \sigma_1(A) = [a,b] \bigcup [c,d]
+    \label{eq:two_clusters}
+\end{equation}
+\begin{equation}
+    \sigma_2(A) = [c,d] \bigcup_{i, \lambda_i \in [a,b]} \lambda_i
+    \label{eq:one_cluster_with_tail}
+\end{equation}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{effect_of_eigenvalue_distribution_sharpened_bounds.pdf}
+    \caption{Similar to \cref{fig:cg_effect_of_eigenvalue_distribution}, but with the sharpened CG bound $m_s$.}
+    \label{fig:cg_sharpened_bound}
+\end{figure}
+\todo{Methods used – How did you obtain these results?}\newline
+\todo{Comparison with expectations – How do the results align with existing theories?}\newline
+\todo{Limitations of preliminary findings – What needs further refinement?}\newline
+\todo{Implications for research questions – Do the results answer or refine the questions?}\newline

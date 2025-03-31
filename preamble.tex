@@ -1,0 +1,49 @@
+% theorem
+\newtheoremstyle{customthm}
+{}
+{}
+{\upshape}
+{}
+{\bfseries}
+{.}
+{.5em}
+{}
+\theoremstyle{customthm}
+\newtheorem{theorem}{Theorem}[chapter]
+\newtheorem{definition}{Definition}[chapter]
+
+
+% pgf figures
+\usepackage{pgf}
+\usepackage{tikz}
+\usepackage{tikz-cd}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.14}
+% \usepackage{lmodern}
+\usepackage{import}
+\def\mathdefault#1{#1}
+\everymath=\expandafter{\the\everymath\displaystyle}
+
+% comment macros
+\newif\ifshowcomments
+\showcommentstrue
+% \showcommentsfalse
+\ifshowcomments
+    \newcommand{\mynote}[2]{\fbox{\bfseries\sffamily\scriptsize{#1}}
+        {\small$\blacktriangleright$\textsf{\emph{#2}}$\blacktriangleleft$}}
+    \newcommand{\citehere}[0]{\textcolor{red}{\fbox{\bfseries\sffamily\scriptsize{CITATION}}}}
+\else
+    \newcommand{\mynote}[2]{}
+    \newcommand{\citehere}[0]{}
+\fi
+\newcommand{\todo}[1]{\textcolor{blue}{\mynote{To do}{#1}}}
+
+% subfiles (for chapters)
+\usepackage{subfiles}
+
+% subfile macros
+\newcommand{\onlyinsubfile}[1]{#1}
+\newcommand{\notinsubfile}[1]{}
+
+% Bibliography
+\usepackage[backend=biber, style=apa, citestyle=numeric-comp]{biblatex}

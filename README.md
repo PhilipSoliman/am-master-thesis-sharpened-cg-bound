@@ -114,4 +114,3 @@ Regular meetings with your daily supervisors are essential for staying on track.
 - **[project_description](project_description)**: Contains the project description.
 
 *Note*: Use Git submodules to manage external resources or collaborative documents within the same project structure. Refer to the [Git Submodules documentation](https://git-scm.com/book/en/v2/Git-Tools-Submodules) for more information.
-
