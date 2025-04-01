@@ -6,15 +6,12 @@ import numpy as np
 
 from utils.utils import (
     MPL_COLORS,
-    get_root,
     mpl_graph_plot_style,
     set_mpl_cycler,
     set_mpl_style,
 )
 
 # constants
-REPORT_CHAPTER = "theory"
-FIG_FOLDER = get_root() / "report" / "chapters" / REPORT_CHAPTER / "figures"
 FIGWIDTH = 6
 LEGEND_HEIGHT = 0.1
 DOMAIN = (0, 10)

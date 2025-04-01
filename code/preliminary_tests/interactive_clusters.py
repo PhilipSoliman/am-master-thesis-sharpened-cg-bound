@@ -9,15 +9,13 @@ from matplotlib.lines import Line2D
 from matplotlib.text import Text
 from matplotlib.widgets import Slider
 
-from utils.utils import get_root, mpl_graph_plot_style, set_mpl_cycler, set_mpl_style
+from utils.utils import mpl_graph_plot_style, set_mpl_cycler, set_mpl_style
 
 # turn on interactive mode if necessary
 if not plt.isinteractive():
     plt.ion()
 
 # constants
-REPORT_CHAPTER = "theory"
-FIG_FOLDER = get_root() / "report" / "chapters" / REPORT_CHAPTER / "figures"
 FIGWIDTH = 6
 LEGEND_HEIGHT = 0.1
 DOMAIN = (0, 4)
