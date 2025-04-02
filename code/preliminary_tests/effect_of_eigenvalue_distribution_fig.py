@@ -189,7 +189,7 @@ for i, _ in enumerate(As):
     row = i // len(CLUSTER_SPREADS)
     col = i % len(CLUSTER_SPREADS)
     ax = axs[row, col]
-    convergence_info = f"$m = {iterations[i]} < {sharpened_iteration_upperbounds[i]} = m_s$"
+    convergence_info = f"$m = {iterations[i]} < {sharpened_iteration_upperbounds[i]}"+ r" = \bar{m}$"
     color = CustomColors.RED if classical_iteration_upperbound < sharpened_iteration_upperbounds[i] else CustomColors.NAVY
     axs_texts[i].set_text(convergence_info)
 

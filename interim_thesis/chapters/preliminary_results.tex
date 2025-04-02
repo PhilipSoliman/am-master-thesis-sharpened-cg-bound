@@ -1,23 +1,210 @@
 \chapter{Preliminary Results}\label{ch:preliminary_results}\newpage
-\todo{Description of the results – What did you compute or observe?}\newline
-The preliminary results are obtained through a numerical implementation of the ideas discussed in \cite[Section 4]{cg_sharpened_convrate_Axelsson1976}. Therein \citeauthor{cg_sharpened_convrate_Axelsson1976} presents a sharpened CG iteration bound for two particular eigenspectra, which are described below.
+The results described in this chapter are adapted from the ideas discussed in \cite[Section 4]{cg_sharpened_convrate_Axelsson1976}. Therein \citeauthor{cg_sharpened_convrate_Axelsson1976} presents a sharpened CG iteration bound for two particular eigenspectra, which are described below.
 
-On the eigenspectrum of $A$, consider two intervals $[a, b]$ and $[c, d]$ with $a < b < c < d$ such that all eigenvalues of $A$ are contained in the union of these two intervals. Additionally, we have $\kappa(A) = \frac{d}{a}$. We distinguish the following two cases:
+\section{Two cluster case}\label{sec:cg_sharpened_convrate}
+On the eigenspectrum of $A$, consider two intervals $[a, b]$ and $[c, d]$ with $a < b < c < d$ such that all eigenvalues of $A$ are contained in the union of these two intervals. Additionally, we have $\kappa(A) = \frac{d}{a}$. We treat the following two cases simultaneously
 \begin{equation}
     \sigma_1(A) = [a,b] \bigcup [c,d]
     \label{eq:two_clusters}
 \end{equation}
+
 \begin{equation}
-    \sigma_2(A) = [c,d] \bigcup_{i, \lambda_i \in [a,b]} \lambda_i
+    \sigma_2(A) = [c,d] \bigcup_{\substack{i=1 \\ \lambda_i \in [a,b]}}^{N_{\text{tail}}} \lambda_i
     \label{eq:one_cluster_with_tail}
 \end{equation}
-\begin{figure}[H]
+where $N_{\text{tail}}$ is the number of eigenvalues in the tail. The first case is a two-cluster eigenspectrum, while the second case has one cluster and a tail of eigenvalues. 
+
+In order to derive a CG iteration bound for these two cases we proceed as in the classical case laid out in \ref{sec:cg_convergence_rate}. We know CG is optimal in the $A$-norm by \cref{eq:cg_convergence_rate}, from which it follows that the error at the $m^{\text{th}}$ iterate can be bounded as 
+\begin{equation}
+    ||e_m||_A \leq \min_{r\in \mathcal{P}_{m}, r(0) = 1} \max_{\lambda \in \sigma_i(A)} |r(\lambda)| ||\epsilon_0||_A, \ \text{for } i = 1,2,
+    \label{eq:cg_error_bound}
+\end{equation}
+To get an upper bound for $m$ \cref{eq:cg_error_bound} suggests we look for a polynomial $r_{\bar{m}}$ of degree $\bar{m}$ that satisfies
+\[
+    \min_{r \in \mathcal{P}_{\bar{m}}, r(0) = 1} \max_{\lambda \in \sigma_i(A)} |r(\lambda)| \leq \frac{||e_{m}||_A}{||\epsilon_0||_A} = \epsilon \text{, for } i = 1,2, 
+\]
+in which $\epsilon$ is the relative error. 
+
+\citeauthor{cg_sharpened_convrate_Axelsson1976} suggests we use not one, monolithic residual polynomial function, but a multiplication of two residual polynomial functions $\hat{r}^{(i)}_p$ and $\hat{r}_{\bar{m}-p}$ for the two clusters. Note that the superscript $^{(i)}$ corresponds to the two eigenspectra described above. The residual polynomial functions are defined as
+\begin{equation}
+    \hat{r}^{(i)}_p (x)
+    \begin{cases}
+        C_p \left(\frac{b + a - 2x}{b - a}\right) / C_p\left(\frac{b + a}{b - a}\right)&, \text{if } i = 1\\
+        \overset{p}{\underset{i=1}{\prod}} (1 - x/\lambda_i)&, \text{if } i = 2, p = N_{\text{tail}}\\
+    \end{cases}
+    \label{eq:residual_polynomial_rm}
+\end{equation}
+and
+\begin{equation}
+    \hat{r}_{{\bar{m}}-p} (x) = C_{m-p} \left(\frac{d + c - 2x}{d - c}\right) / C_{{\bar{m}}-p}\left(\frac{d + c}{d - c}\right),
+    \label{eq:residual_polynomial_rpm}
+\end{equation}
+Indeed, the product $r_{\bar{m}} = \hat{r}_p \hat{r}_{\bar{m}-p} \in \mathcal{P}_{\bar{m}}$. Hence, we can use the residual polynomial functions to bound the error at the $m^{\text{th}}$ iterate. Now, we obtain the following intermediate bounds
+\begin{subequations}
+    \begin{align}
+        \max_{\lambda \in [a,b]} \|r_{\bar{m}}(\lambda)\| &\leq \max_{\lambda \in [a,b]} \|\hat{r}^{(i)}_p(\lambda)\| \max_{\lambda \in [a,b]} \|\hat{r}_{\bar{m}-p}(\lambda)\| &\leq \max_{\lambda \in [a,b]} \|\hat{r}^{(i)}_p(\lambda)\|, \ \text{and} \label{eq:residual_polynomial_bound_ab}\\
+        \max_{\lambda \in [c,d]} \|r_{\bar{m}}(\lambda)\| &\leq \max_{\lambda \in [c,d]} \|\hat{r}^{(i)}_p(\lambda)\| \max_{\lambda \in [c,d]} \|\hat{r}_{\bar{m}-p}(\lambda)\| &\leq \max_{\lambda \in [c,d]} \|\hat{r}_{p}(\lambda)\|/C_{\bar{m}-p}\left(\frac{d+c}{d-c}\right) \label{eq:residual_polynomial_bound_cd}
+    \end{align}
+\end{subequations}
+where the first result follows from the fact that $\|\hat{r}_{m-p}(x)\| < 1 \ \forall x \in [a,b]$ and the second result from 
+\[
+    \|C_{m-p}\left(\frac{d+c -2x}{d-c}\right)\| < 1 \ \forall x \in [c,d].
+\]
+
+Furthermore, we have, using the well-known inequality 
+\begin{equation}
+    1/C_{k}\left(\frac{z_1 + z_2}{z_1 - z_2}\right) \leq 2 \left(\frac{\sqrt{z_2} - \sqrt{z_1}}{\sqrt{z_2} + \sqrt{z_1}}\right)^k, \text{ for } z_1 > z_2 > 0 \text{ and } k \in \mathbb{N}^+,
+    \label{eq:chebyshev_polynomial_bound}
+\end{equation}
+that
+\begin{equation*}
+    \max_{\lambda \in [a,b]} \|\hat{r}^{(i)}_p(\lambda)\| \leq
+    \begin{cases}
+        2\left(\frac{\sqrt{b}-\sqrt{a}}{\sqrt{b}+\sqrt{a}}\right)^p=\eta_1 &, \text{if } i = 1,\\
+        \left(\frac{b}{a}-1\right)^p=\eta_2 &, \text{if } i = 2, p = N_{\text{tail}},
+    \end{cases}
+\end{equation*}
+Note that if $i=1$ we can determine $p$ by requiring that the maximum of the residual polynomial function $\hat{r}^{(i)}_p$ in $[a,b]$ is equal to $\epsilon$. This gives the following equation
+\begin{equation}
+    p = \left\lceil\frac{1}{2}\sqrt{\frac{b}{a}}\ln{\epsilon} + 1\right\rceil
+    \label{eq:chebyshev_degree_p}
+\end{equation}
+Also note that for $i=2$ $\hat{r}^{(2)}_p(\lambda) = 0$ for all eigenvalues $\lambda \in [a,b]$ and thereby, bounded by $\epsilon$.
+
+Next, $\hat{r}^{(i)}_p$ in $[c,d]$ is bounded by its maximum value within $[a,b]$ multiplied by the polynomial that is the fastest growing polynomial outside- and bounded below 1 within $[a,b]$. This polynomial is again the (transformed) Chebyshev polynomial $C_{p}\left(\frac{2x - b - a}{b - a}\right)$. Therefore,
+\begin{equation*}
+    \max_{\lambda \in [c,d]} \|\hat{r}^{(i)}_p(\lambda)\| \leq \eta_i C_{p}\left(\frac{2d - b - a}{b + a}\right)
+\end{equation*}
+
+At this point we have ensured \cref{eq:residual_polynomial_bound_ab} is bounded by $\epsilon$. So it remains to bound \cref{eq:residual_polynomial_bound_cd}. Using above results we can write 
+\begin{equation*}
+    \max_{\lambda \in [c,d]} \|r_{\bar{m}}(\lambda)\| < \epsilon,
+\end{equation*}
+if we require that
+\begin{equation}
+    \eta_i C_{p}\left(\frac{2d - b - a}{b - a}\right) /C_{\bar{m}-p}\left(\frac{d+c}{d-c}\right) < \epsilon.
+    \label{eq:relative_error_bound_mp}
+\end{equation}
+Using that for $x_1, x_2, x_3 \in \mathbb{R}^+$ with $x_1 > x_3$ and $z = \frac{x_1 - x_2}{x_3}$
+\begin{align*}
+    C_p(z) & \leq \left(z + \sqrt{z^2 - 1}\right)^p \\
+    & = \left( \frac{x_1 - x_2}{x_3} + \sqrt{ \left[\frac{x_1 - x_2}{x_3}\right]^2 -1}\right)^p \\
+    & \leq \left( \frac{x_1}{x_3} + \sqrt{ \left[\frac{x_1}{x_3}\right]^2 - 1}\right)^p \\
+    & \leq \left( \frac{2x_1}{x_3}\right)^p,
+\end{align*}
+and substituting $x_1 = 2d$, $x_2 = b + a$ and $x_3 = b - a$ we obtain the following inequality
+\begin{equation*}
+    \eta_i \left(\frac{4d}{b-a} \right)^p /C_{\bar{m}-p}\left(\frac{d+c}{d-c}\right) < \epsilon. 
+\end{equation*}
+Rewriting gives
+\[
+    1/C_{\bar{m}-p}\left(\frac{d+c}{d-c}\right) \leq \frac{\epsilon}{\eta_i \left(\frac{4d}{b-a} \right)^p} \leq \frac{\epsilon}{2\left( \frac{4d}{e_i}\right)^p},
+\]
+where 
+\[
+    e_i = \begin{cases}
+        \sqrt{a} + \sqrt{b} &, \text{if } i = 1\\
+        a &, \text{if } i = 2.\\
+    \end{cases}
+\]
+Again using \cref{eq:chebyshev_polynomial_bound} and solving for the degree $\bar{m} - p$ we obtain
+\[
+    \bar{m} - p \geq \frac{1}{2}\sqrt{\frac{d}{c}}\left(\ln{\epsilon} + p \ln{\frac{4d}{e_i}}\right),
+\]
+which leads to the following bound for the number of iterations
+\begin{equation}
+    \bar{m}=\left\lceil\frac{1}{2} \sqrt{\frac{d}{c}} \ln (2 / \epsilon)+\left(1+\frac{1}{2} \sqrt{\frac{d}{c}} \ln (4 d / e_i)\right) p\right\rceil,
+    \label{eq:cg_iteration_bound_2_clusters}
+\end{equation}
+where 
+\[
+    1 \leq p \leq \min\left\{\left\lceil\frac{1}{2}\sqrt{\frac{b}{a}}\ln{\epsilon} + 1\right\rceil, N_{\text{tail}}\right\}.
+\]
+
+\section{Generalization to multiple clusters}\label{sec:multiple_clusters}
+At this point we assume that we are dealing with an eigenspectrum of the form $\sigma_1(A)$, i.e. we are only treating case 1. In \cref{sec:cg_sharpened_convrate_numerical_experiments} it is shown that this is indeed a very applicable case for a discretized Darcy problem.
+
+In this case, the technique outlined in \cref{sec:cg_sharpened_convrate} starts at the left most cluster $[a,b]$, finds the Chebyshev degree $p$ satisfying inequality \ref{eq:chebyshev_degree_p}, moves to the neighboring cluster $[c,d]$ and finds the Chebyshev degree $p' = \bar{m} - p$ satisfying inequality \ref{eq:relative_error_bound_mp}. Rewriting inequality \ref{eq:relative_error_bound_mp} gives the following equation for $p'$:
+\begin{equation}
+    \frac{1}{C_{p'}\left(\frac{d+c}{d-c}\right)} \leq \frac{\epsilon}{{C}^{(1)}_p(d)} = \epsilon',
+    \label{eq:chebyshev_degree_p_prime}
+\end{equation}
+where
+\[
+    C^{(1)}_p(x) = C_p\left(\frac{b + a - 2x}{b - a}\right) /C_{p}\left(\frac{b+a}{b-a}\right),
+\]
+is the Chebyshev polynomial corresponding to the first cluster.
+
+Suppose there is a third cluster next to $[c,d]$, i.e. $[e,f]$. We can repeat the process and find the Chebyshev degree $p''$ satisfying a similar inequality as \ref{eq:chebyshev_degree_p_prime} for the third cluster. 
+\[
+    \frac{1}{C_{p''}\left(\frac{f+e}{f-e}\right)} \leq \frac{\epsilon}{C^{(1)}_p(f)C^{(2)}_{p'}(f)} = \epsilon'',
+\]
+This leads to the general equation for the Chebyshev degree $p_i$ of the $i^{\text{th}}$ cluster $[a_i, b_i]$
+\begin{equation}
+    \frac{1}{C_{p_i}\left(\frac{b_i + a_i}{b_i - a_i}\right)} \leq \frac{\epsilon}{\prod_{j=1}^{i-1} C^{(j)}_{p_j}(b_i)} = \epsilon^{(i)}.
+    \label{eq:chebyshev_degree_p_i}
+\end{equation}
+
+Due to the large range of the Chebyshev polynomials $\tilde{C}_p$ a computer is likely to result in floating point number overflow during calculation of the denominator of \cref{eq:chebyshev_degree_p_i}. Instead, we first apply inequality \ref{eq:chebyshev_polynomial_bound} and introduce the cluster condition numbers $\kappa_i = \frac{b_i}{a_i}$, where $i$ is the index of the cluster. We can then rewrite \cref{eq:chebyshev_degree_p_i} as follows
+\begin{equation*}
+    p_i  =  \left\lceil\ln{\frac{\epsilon^{(i)}}{2}} / \ln{\frac{\sqrt{\kappa_i} - 1}{\sqrt{\kappa_i} + 1}}\right\rceil, \\
+\end{equation*}
+and
+\begin{align*}
+    \ln{\frac{\epsilon^{(i)}}{2}} & = \ln{\frac{\epsilon}{2}} - \sum_{j=1}^{i-1} \ln{C^{(j)}_{p_j}(b_i)}. \\
+\end{align*}
+Let $z^{(i,j)}_1 = \frac{b_j + a_j - 2b_i}{b_j - a_j}$ and $z^{(j)}_2 = \frac{b_j + a_j}{b_j - a_j}$ then
+\begin{equation*}
+    \ln{C^{(j)}_{p_j}(b_i)} = \ln{C_{p_j}(z_1)} - \ln{C_{p_j}(z_2)}.
+\end{equation*}
+We have, using the definition of the Chebyshev polynomial
+\begin{equation}
+    \ln{C_{p_j}(z^{(i,j)}_1)} \lessapprox p_j \ln{\left[z^{(i,j)}_1 - \sqrt{\left(z^{(i,j)}_1\right)^2 - 1}\right]} - \ln{2},
+    \label{eq:chebyshev_polynomial_bound_z1}
+\end{equation}
+and
+\begin{equation}
+    \ln{C_{p_j}(z^{(j)}_2)} \gtrapprox p_j \ln{\left[z^{(j)}_2 + \sqrt{\left(z^{(j)}_2\right)^2 - 1}\right]} - \ln{2},
+    \label{eq:chebyshev_polynomial_bound_z2}
+\end{equation}
+both of which become more accurate equalities as $z,m\rightarrow\infty$. Introducing $\zeta^{(i,j)}_1 = z^{(i,j)}_1 - \sqrt{\left(z^{(i,j)}_1\right)^2 - 1}$, $\zeta^{(j)}_2 = z^{(j)}_2 + \sqrt{\left(z^{(j)}_2\right)^2 - 1}$ and $f_i = \frac{\sqrt{\kappa_i} - 1}{\sqrt{\kappa_i} + 1}$ with $\kappa_i$ the $i^{\text{th}}$ cluster condition number, and substituting the inequalities \ref{eq:chebyshev_polynomial_bound_z1} and \ref{eq:chebyshev_polynomial_bound_z2} back into the equation for $p_i$ gives
+\begin{align*}
+    p_i &\leq \left\lceil\frac{\ln{\frac{\epsilon}{2}} - \sum_{j=1}^{i-1} p_j\left\{\ln{\zeta^{(i,j)}_1} - \ln{\zeta^{(j)}_2} \right\}}{\ln{f_i}}\right\rceil \\
+    &= \left\lceil\log_{f_i}{\frac{\epsilon}{2}} - \sum_{j=1}^{i-1} p_j\left\{\log_{f_i}{\zeta^{(i,j)}_1} - \log_{f_i}{\zeta^{(j)}_2} \right\}\right\rceil\\
+    &= \left\lceil\log_{f_i}{\frac{\epsilon}{2}} - \sum_{j=1}^{i-1} p_j\log_{f_i}{\frac{\zeta^{(i,j)}_1}{\zeta^{(j)}_2}} \right\rceil
+\end{align*}
+Note that in general $\zeta^{(i,j)}_1 < \zeta^{(j)}_2$ and hence $\log_{f_i}{\frac{\zeta^{(j)}_2}{\zeta^{(i,j)}_1}} > 0$. This prompts us to write
+\begin{equation}
+    p_i \leq \left\lceil\log_{f_i}{\frac{\epsilon}{2}} + \sum_{j=1}^{i-1} p_j\log_{f_i}{\frac{\zeta^{(j)}_2}{\zeta^{(i,j)}_1}} \right\rceil
+    \label{eq:chebyshev_degree_p_i_explicit}
+\end{equation}
+Evidently, adding more clusters to the left of the interval $[a_i,b_i]$ increases the degree $p_i$ of the Chebyshev polynomial. Next to this, \cref{eq:chebyshev_degree_p_i_explicit} reduces to the classical CG iteration bound \cref{eq:cg_convergence_rate_bound} for a single cluster when $i = N_{\text{clusters}} = 1$.
+
+Equation \ref{eq:chebyshev_degree_p_i_explicit} gives us a way to calculate the Chebyshev degree $p_i$ of the $i^{\text{th}}$ cluster $[a_i,b_i]$ in terms of the Chebyshev degrees of the previous clusters. To obtain a bound on the number of iterations for the CG method we sum the Chebyshev degrees of all the clusters
+\begin{equation}
+    \bar{m} = \sum_{i=1}^{N_{\text{clusters}}} p_i
+    \label{eq:cg_iteration_bound_multiple_clusters}
+\end{equation}
+
+\section{Numerical experiments}\label{sec:cg_sharpened_convrate_numerical_experiments}
+Equations \ref{eq:chebyshev_degree_p_i_explicit} and \ref{eq:cg_iteration_bound_multiple_clusters} give a sequential algorithm for determining an upper bound on the number of iterations for the CG method. Figure \ref{fig:cg_sharpened_bound} compares this bound with the classical CG iteration bound \cref{eq:cg_convergence_rate_bound}. As is the case for \cref{fig:cg_effect_of_eigenvalue_distribution}, $m_{\text{classical}} = 26$
+\begin{figure}[H] 
     \centering
     \includegraphics[width=\textwidth]{effect_of_eigenvalue_distribution_sharpened_bounds.pdf}
-    \caption{Similar to \cref{fig:cg_effect_of_eigenvalue_distribution}, but with the sharpened CG bound $m_s$.}
+    \caption{Similar to \cref{fig:cg_effect_of_eigenvalue_distribution}, but with the $\bar{m}$ as determined by \cref{eq:chebyshev_degree_p_i_explicit,eq:cg_iteration_bound_multiple_clusters}.}
     \label{fig:cg_sharpened_bound}
 \end{figure}
-\todo{Methods used – How did you obtain these results?}\newline
-\todo{Comparison with expectations – How do the results align with existing theories?}\newline
-\todo{Limitations of preliminary findings – What needs further refinement?}\newline
-\todo{Implications for research questions – Do the results answer or refine the questions?}\newline
+Figure \ref{fig:cg_sharpened_bound} shows that the sharpened CG iteration bound is significantly lower than the classical CG iteration bound for the two cluster case. The performance of the sharpened bound does decrease as the number of clusters increases, as is evident from \cref{eq:chebyshev_degree_p_i_explicit,eq:cg_iteration_bound_multiple_clusters}. Performance also decreases as clusters become wider. So much so, that the sharpened bound is worse than the classical bound for the three cluster case with spread $\sigma = 0.04$ and for the four cluster case.
+
+Worsening performance for the sharpened bound with increased cluster width is expected. Focussing on the two cluster case, we rediscover the ratios $\frac{d}{c}$ in \cref{eq:cg_iteration_bound_2_clusters} as well as $\frac{a}{b}$ in the corresponding equation for $p$. These ratios grow with increasing cluster width.
+
+\section{Implications for research}\label{sec:cg_sharpened_convrate_implications}
+The preliminary results discussed in this chapter show that we can find both a priori analytic two-cluster (\cref{eq:cg_iteration_bound_2_clusters}) and numerical multiple-cluster (\cref{eq:cg_iteration_bound_multiple_clusters}) sharpened iteration bounds for the CG method. The sharpened bound appears to perform best in the two-cluster case, which corresponds to the eigenspectrum of a typical (preconditioned) Darcy problem. Hence, \ref{rq:subsidiary:heuristic} is answered positively. 
+
+With regard to \ref{rq:subsidiary:measures}, the cluster condition number $\kappa_i$ is introduced as a measure of the cluster width. The sharper the clusters, the smaller the cluster condition number. This is a promising result, as it suggests that we can use the cluster condition number to distinguish between different preconditioners which is a promising result for \ref{rq:subsidiary:preconditioners}. However, this is not yet fully explored in this work.
+
+A logical next step is to more rigorously investigate how the sharpened bound depends on $k_i$ as well as the spectral gap (\ref{rq:subsidiary:dependance}). Subsequently, we can simulate the eigenspectrum of a Darcy problem and compare the sharpened bound with the classical bound (\ref{rq:subsidiary:performance}). This will lead to a clear understanding of the performance of the sharpened bound in the main problem context of this thesis: high-contrast, heterogeneous elliptic problems.
+
+Furthermore, we can construct, discretize, and precondition a model Darcy problem with the methods outlined in \cref{sec:tailored_coarse_spaces}. Then, we both apply the sharpened bound and the CG method on the resulting systems, and investigate how sharp the new bound is (\ref{rq:subsidiary:preconditioners}).
+
+The main challenge described in \cref{sec:challenges} still stands. More work is needed to be able to use the sharpened bound for spectra that are not known or artificially constructed beforehand. The results in this chapter suggest that the cluster condition number is a good candidate for a measure of the eigenspectrum. However, it is not yet clear how to estimate the cluster condition number for a general eigenspectrum. This is an important step towards answering \ref{rq:subsidiary:estimation}.

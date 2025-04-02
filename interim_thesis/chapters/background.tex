@@ -222,11 +222,14 @@ which implies
   \label{fig:cg_convergence_behaviour}
 \end{figure}
 
-The behavior of the residual polynomials is crucial for understanding the convergence properties of the CG method. In particular, the distribution of the eigenvalues of $A$ significantly affects the convergence rate, as illustrated in \cref{fig:cg_effect_of_eigenvalue_distribution}.
+The behavior of the residual polynomials is crucial for understanding the convergence properties of the CG method. In particular, the distribution of the eigenvalues of $A$ significantly affects the convergence rate, as illustrated in \cref{fig:cg_effect_of_eigenvalue_distribution}. For all plots the lowest and highest eigenvalue in \cref{fig:cg_effect_of_eigenvalue_distribution} are $\lambda_{\text{min}} = 0.1$, $\lambda_{\text{max}} = 0.9$ such that $f = \frac{\sqrt{\frac{\lambda_{\text{min}}}{\lambda_{\text{max}}}} - 1}{\sqrt{\frac{\lambda_{\text{min}}}{\lambda_{\text{max}}}} + 1}$ and the ratio $\frac{\|\mathbf{e}_m\|_A}{\|\mathbf{e}_0\|_A}$ is set to $\frac{10^{-6}}{\|\mathbf{u}_{\text{test}} - \mathbf{u}_0\|}$. The system size $N=360$ is kept small and the system matrix $A$ is diagonal so that it is numerically trivial to determine the exact solution $\mathbf{u}_{\text{test}}$. This results in an overall iteration bound 
+\[
+    m_{\text{classical}} = \left\lceil\log_f\left(\frac{10^{-6}}{2\|\mathbf{u}_{\text{test}} - \mathbf{u}_0\|}\right)\right\rceil = 26
+\]
 \begin{figure}[H]
   \centering
   \includegraphics[width=\textwidth]{effect_of_eigenvalue_distribution.pdf}
-  \caption{Plots of the last three CG residual polynomials for different eigenvalue distributions. $n_c$ indicates  the number of clusters and $\sigma$ is the width of the cluster. The size of the system $n$ and the condition number $\kappa(A)$ are kept constant.}
+  \caption{Plots of the last three CG residual polynomials for different eigenvalue distributions. $n_c$ indicates the number of clusters and $\sigma$ is the width of the cluster. The size of the system $N$ and the condition number $\kappa(A)$ are kept constant. $m$ indicates the number of iterations required for convergence.}
   \label{fig:cg_effect_of_eigenvalue_distribution}
 \end{figure}
 Hence, the number of iterations required for convergence depends on the specific clustering of the eigenvalues, as pointed out for example in \citeauthor[Section 2.3]{nonlinear_cg_Kelley_1995}.
