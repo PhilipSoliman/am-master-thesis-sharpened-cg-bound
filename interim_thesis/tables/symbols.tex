@@ -1,14 +1,16 @@
-
 \pagestyle{empty}
+
+\section*{Symbols}
+% Table 1: Symbols for the Heterogeneous Elliptic Problem
 \begin{longtable}{c p{10cm}}
-    \caption{List of symbols and their descriptions from the background section.}\label{tab:symbols}                                                \\
+    \caption{Symbols related to the heterogeneous elliptic problem.}\label{tab:elliptic_symbols}            \\
     \hline
-    \textbf{Symbol}                 & \textbf{Description}                                                                                          \\
+    \textbf{Symbol}        & \textbf{Description}                                                           \\
     \hline
     \endfirsthead
 
     \hline
-    \textbf{Symbol}                 & \textbf{Description}                                                                                          \\
+    \textbf{Symbol}        & \textbf{Description}                                                           \\
     \hline
     \endhead
 
@@ -18,89 +20,167 @@
     \hline
     \endlastfoot
 
-    $\Omega$                        & Bounded domain in $\mathbb{R}^d$ with Lipschitz boundary.                                                     \\
-    $\partial\Omega$                & Boundary of $\Omega$.                                                                                         \\
-    $\mathbb{R}^d$                  & $d$-dimensional Euclidean space.                                                                              \\
-    $\mathcal{C}$                        & Scalar coefficient in the Darcy problem equation in $L^\infty(\Omega)$                                   \\
-    $u$                             & Exact solution of the elliptic problem.                                                                       \\
-    $f$                             & Source term in $L^2(\Omega)$.                                                                                 \\
-    $u_D$                           & Dirichlet boundary data.                                                                                      \\
-    $\kappa_{\min}$                 & Lower bound of $\kappa$.                                                                                      \\
-    $\kappa_{\max}$                 & Upper bound of $\kappa$.                                                                                      \\
-    $u_h$                           & Finite element approximation of $u$.                                                                          \\
-    $V_h$                           & Finite-dimensional subspace of $H^1_0(\Omega)$.                                                               \\
-    $\{\varphi_i\}_{i=1}^n$         & Basis functions spanning $V_h$.                                                                               \\
-    $A$                             & Stiffness matrix from the Galerkin method.                                                                    \\
-    $\mathbf{u}$                    & Discrete solution vector.                                                                                     \\
-    $\mathbf{b}$                    & Load vector in the linear system.                                                                             \\
-    $v_h$                           & Test function in $V_h$.                                                                                       \\
-    $\mathbf{u}_0$                  & Initial guess for the solution.                                                                               \\
-    $\mathbf{r}_0$                  & Initial residual, defined as $\mathbf{b} - A\mathbf{u}_0$.                                                    \\
-    $\mathbf{r}_j$                  & Residual vector at iteration $j$.                                                                             \\
-    $c_i$                           & Coefficients in the solution polynomial.                                                                      \\
-    $q_{m-1}(A)$                    & Polynomial of degree $m-1$ used in the CG approximation.                                                      \\
-    $\{\mathbf{v}_i\}$              & Orthonormal Lanczos vectors.                                                                                  \\
-    $\mathcal{K}_m(A,\mathbf{r}_0)$ & Krylov subspace spanned by $\{\mathbf{r}_0, A\mathbf{r}_0, \dots, A^{m-1}\mathbf{r}_0\}$.                     \\
-    $\mathcal{L}_m$                 & Constraint subspace in variants of CG.                                                                        \\
-    $A^T$                           & Transpose of $A$.                                                                                             \\
-    $\mu$                           & Grade of a vector with respect to $A$.                                                                        \\
-    $\alpha_j$                      & CG step size, computed as $(\mathbf{r}_j, \mathbf{r}_j)/(A p_j, p_j)$.                                        \\
-    $p_j$                           & CG search direction at iteration $j$.                                                                         \\
-    $\beta_j$                       & CG coefficient, computed as $(\mathbf{r}_{j+1}, \mathbf{r}_{j+1})/(\mathbf{r}_j, \mathbf{r}_j)$.              \\
-    $T_m$                           & Tridiagonal Hessenberg matrix from the Lanczos process.                                                       \\
-    $\delta_j$                      & Diagonal entries of $T_m$.                                                                                    \\
-    $\eta_j$                        & Off-diagonal entries of $T_m$.                                                                                \\
-    $\epsilon_m$                    & Error at iteration $m$, defined as $x^* - \mathbf{u}_m$.                                                      \\
-    $\mathcal{P}_{m-1}$             & Space of polynomials of degree at most $m-1$.                                                                 \\
-    $\lambda_i$                     & Eigenvalues of $A$.                                                                                           \\
-    $\xi_i$                         & Components of $\epsilon_0$ in the eigenvector basis of $A$.                                                   \\
-    $\sigma(A)$                     & Spectrum of $A$.                                                                                              \\
-    $C_m$                           & Chebyshev polynomial of degree $m$.                                                                           \\
-    $\eta$                          & $\displaystyle\frac{\lambda_{\min}}{\lambda_{\max}-\lambda_{\min}}$ (in error bound).                         \\
-    $\lambda_{\min}$                & Minimum eigenvalue of $A$.                                                                                    \\
-    $\lambda_{\max}$                & Maximum eigenvalue of $A$.                                                                                    \\
-    $\kappa$                        & Condition number of $A$, given by $\lambda_{\max}/\lambda_{\min}$.                                            \\
-    $x^*$                           & Exact solution of the linear system.                                                                          \\
-    $\mathbf{r}_{\textrm{test}}(t)$ & Test polynomial, $\prod_{i=1}^m \frac{\lambda_i - t}{\lambda_i}$.                                             \\
-    $N$                             & Number of iterations for convergence in exact arithmetic.                                                     \\
-    $k$                             & Number of distinct eigenvalues of $A$.                                                                        \\
-    $V$                             & Matrix of eigenvectors from the eigendecomposition $A = VDV^T$.                                               \\
-    $D$                             & Diagonal matrix of eigenvalues from the eigendecomposition of $A$.                                            \\
-    $r(A)$                          & Residual polynomial defined as $I - Aq(A)$.                                                                   \\
-    $r_m(A)$                        & Residual polynomial at iteration $m$.                                                                         \\
-    $I$                             & Identity matrix.                                                                                              \\
-    $\rho_0$                        & Initial residual in the eigenvector basis, $V^T\mathbf{r}_0$.                                                 \\
-    $p_j(A)$                        & Lanczos polynomial at iteration $j$.                                                                          \\
-    $r_j(A)$                        & Residual polynomial at iteration $j$.                                                                         \\
-    $p_j(0)$                        & Value of the Lanczos polynomial at $0$.                                                                       \\
-    $\text{coeff}(p;i)$             & Function that extracts the $i^{\text{th}}$ coefficient of polynomial $p$.                                     \\
-    $z_j$                           & Preconditioned residual, defined as $M^{-1}\mathbf{r}_j$.                                                     \\
-    $M$                             & Symmetric positive definite (SPD) preconditioner.                                                             \\
-    $L$                             & Lower triangular matrix from the Cholesky factorization of $M$ ($M=LL^T$).                                    \\
-    $L^T$                           & Transpose of $L$.                                                                                             \\
-    $(\cdot,\cdot)_M$               & Inner product induced by $M$.                                                                                 \\
-    $\mathcal{T}_h$                 & Fine triangulation.                                                                                           \\
-    $\mathcal{T}_H$                 & Coarse triangulation.                                                                                         \\
-    $u_c$                           & Coarse solution, split into two components: $u_I$ (inner) and $u_{\Gamma}$ (interface).                       \\
-    $u_I$                           & Inner part of the coarse solution.                                                                            \\
-    $u_{\Gamma}$                    & Interface part of the coarse solution.                                                                        \\
-    $\Gamma$                        & Interface set, where boundary conditions are applied.                                                         \\
-    $e$                             & Edge in the triangulation.                                                                                    \\
-    $T$                             & Coarse element.                                                                                               \\
-    $e_{ij}$                        & Shared edge between subdomains $\Omega_i$ and $\Omega_j$.                                                     \\
-    $\Omega_i, \Omega_j$            & Subdomains in the domain decomposition.                                                                       \\
-    $\eta^{kh}_{ij}$                & Eigenmode corresponding to the generalized eigenvalue problem on a slab of width $kh$ between edges $e_{ij}$. \\
-    $R_0$                           & Restriction operator derived from coarse grid basis functions.                                                \\
-    $\pi(\alpha)$                   & Robustness indicator related to the scalar coefficient $\alpha$.                                              \\
-    $\gamma(\alpha)$                & Another robustness indicator related to the scalar coefficient $\alpha$.                                      \\
-    $G$                             & Coarse space matrix whose columns span the rigid body modes of the subdomains.                                \\
-    $R_{\Gamma}$                    & Restriction operator to the interface degrees of freedom (DOFs).                                              \\
-    $R_I$                           & Restriction operator to the interior DOFs.                                                                    \\
-    $R_{\Gamma_j}$                  & Subdomain-specific version of the restriction operator to the interface DOFs.                                 \\
-    $\Phi_{\Gamma}$                 & Coarse solution on the interface set.                                                                         \\
-    $q_j$                           & Coarse space coefficients corresponding to subdomains.                                                        \\
-    $u_{0,\Gamma}$                  & Coarse solution on the interface set, expressed in terms of coarse space coefficients.                        \\
-    $\Phi_I$                        & Energy-minimized solution on the interior.                                                                    \\
-    \hline
+    $\Omega$               & Bounded domain in $\mathbb{R}^d$ with Lipschitz boundary.                      \\
+    $\partial \Omega$      & Boundary of $\Omega$.                                                          \\
+    $\mathbb{R}^d$         & $d$-dimensional Euclidean space.                                               \\
+    $C$                    & Scalar coefficient in the Darcy problem, assumed to lie in $L^\infty(\Omega)$. \\
+    $u$                    & Exact solution of the elliptic problem.                                        \\
+    $f$                    & Source term belonging to $L^2(\Omega)$.                                        \\
+    $u_D$                  & Dirichlet boundary data.                                                       \\
+    $\kappa_{\min}$        & Lower bound of the scalar coefficient $\kappa$.                                \\
+    $\kappa_{\max}$        & Upper bound of $\kappa$.                                                       \\
+    $u_h$                  & Finite element approximation of $u$.                                           \\
+    $V_h$                  & Finite-dimensional subspace of $H_0^1(\Omega)$.                                \\
+    $\{\phi_i\}_{i=1}^{n}$ & Basis functions spanning $V_h$.                                                \\
+    $A$                    & Stiffness matrix derived from the Galerkin method.                             \\
+    $b$                    & Load vector in the resulting linear system.                                    \\
+    $v_h$                  & Test function in $V_h$.                                                        \\
 \end{longtable}
+
+% Table 2: Symbols for the Conjugate Gradient Method
+\begin{longtable}{c p{10cm}}
+    \caption{Symbols related to the Conjugate Gradient (CG) method.}\label{tab:cg_symbols}                                               \\
+    \hline
+    \textbf{Symbol}        & \textbf{Description}                                                                                        \\
+    \hline
+    \endfirsthead
+
+    \hline
+    \textbf{Symbol}        & \textbf{Description}                                                                                        \\
+    \hline
+    \endhead
+
+    \hline
+    \endfoot
+
+    \hline
+    \endlastfoot
+
+    $\mathbf{u}_0$         & Initial guess for the solution.                                                                             \\
+    $\mathbf{r}_0$         & Initial residual defined as $\mathbf{b}-A\mathbf{u}_0$.                                                     \\
+    $\mathbf{r}_j$         & Residual vector at the $j^{\text{th}}$ iteration.                                                           \\
+    $\mathbf{p}_j$         & Search direction at iteration $j$.                                                                          \\
+    $\alpha_j$             & Step size computed at iteration $j$.                                                                        \\
+    $\beta_j$              & Coefficient used to update the search direction in iteration $j$.                                           \\
+    $K_m(A, \mathbf{r}_0)$ & Krylov subspace spanned by $\{\mathbf{r}_0, A\mathbf{r}_0, A^2\mathbf{r}_0, \ldots, A^{m-1}\mathbf{r}_0\}$. \\
+    $T_m$                  & Tridiagonal Hessenberg matrix arising from the Lanczos process.                                             \\
+    $\delta_j$             & Diagonal entries of $T_m$.                                                                                  \\
+    $\eta_j$               & Off-diagonal entries of $T_m$.                                                                              \\
+    $\mathbf{e}_m$         & Error at iteration $m$, defined as $\mathbf{u}^* - \mathbf{u}_m$.                                           \\
+    $P_{m-1}$              & Space of polynomials of degree at most $m-1$.                                                               \\
+    $\lambda_i$            & Eigenvalues of $A$.                                                                                         \\
+    $\xi_i$                & Components of the initial error in the eigenvector basis of $A$.                                            \\
+    $\sigma(A)$            & Spectrum (set of eigenvalues) of $A$.                                                                       \\
+    $C_m$                  & Chebyshev polynomial of degree $m$.                                                                         \\
+    $r_{\text{test}}(t)$   & Test polynomial defined by $\prod_{i=1}^m \frac{\lambda_i - t}{\lambda_i}$.                                 \\
+\end{longtable}
+
+% Table 3: Symbols for the Schwarz Preconditioners
+\begin{longtable}{c p{10cm}}
+    \caption{Symbols related to Schwarz preconditioners.}\label{tab:schwarz_symbols}                                                                    \\
+    \hline
+    \textbf{Symbol}  & \textbf{Description}                                                                                                             \\
+    \hline
+    \endfirsthead
+
+    \hline
+    \textbf{Symbol}  & \textbf{Description}                                                                                                             \\
+    \hline
+    \endhead
+
+    \hline
+    \endfoot
+
+    \hline
+    \endlastfoot
+
+    $\Omega_i$       & Subdomains obtained from partitioning $\Omega$.                                                                                  \\
+    $R_i$            & Restriction operator for subdomain $\Omega_i$.                                                                                   \\
+    $D_i$            & Diagonal matrix representing the partition of unity (weights) for $\Omega_i$.                                                    \\
+    $N_{sub}$        & Number of subdomains.                                                                                                            \\
+    $M_{\text{ASM}}$ & Additive Schwarz preconditioner defined by $M_{\text{ASM}} = \sum_{i=1}^{N_{sub}} R_i^T (R_i A R_i^T)^{-1} R_i$.                 \\
+    $M_{\text{RAS}}$ & Restrictive Additive Schwarz preconditioner defined by $M_{\text{RAS}} = \sum_{i=1}^{N_{sub}} R_i^T D_i (R_i A R_i^T)^{-1} R_i$. \\
+    $R_0$            & Restriction operator associated with the coarse space.                                                                           \\
+    $P_j$            & Local projection operator associated with subdomain $\Omega_j$.                                                                  \\
+    $P_0$            & Projection operator for the coarse space.                                                                                        \\
+    $P_{ad}$         & Sum of the projection operators, $P_{ad} = \sum_{j=1}^{N_{sub}} P_j$, used in the two-level method.                              \\
+    $\kappa(P_{ad})$ & Condition number of the preconditioned system, given by $\frac{\lambda_{\max}}{\lambda_{\min}}$ of $P_{ad}$.                     \\
+\end{longtable}
+
+% Table 4: Symbols related to eigenspectra and CG convergence bounds
+\begin{longtable}{c p{10cm}}
+    \caption{Symbols related to eigenspectra and CG convergence bounds (Chapter 5: Preliminary Results).}\label{tab:eigenspectra_symbols}                                                         \\
+    \hline
+    \textbf{Symbol}          & \textbf{Description}                                                                                                                                               \\
+    \hline
+    \endfirsthead
+
+    \hline
+    \textbf{Symbol}          & \textbf{Description}                                                                                                                                               \\
+    \hline
+    \endhead
+
+    \hline
+    \endfoot
+
+    \hline
+    \endlastfoot
+
+    $\sigma_1(A)$            & Two-cluster eigenspectrum of $A$, defined as the union of two intervals $[a,b] \cup [c,d]$.                                                                        \\
+    $\sigma_2(A)$            & Eigenspectrum comprising a main cluster and a tail of eigenvalues, with the tail denoted by $N_{\text{tail}}$.                                                     \\
+    $[a,b]$                  & Interval containing the first cluster of eigenvalues.                                                                                                              \\
+    $[c,d]$                  & Interval containing the second cluster of eigenvalues.                                                                                                             \\
+    $N_{\text{tail}}$        & Number of eigenvalues in the tail cluster (when the spectrum has one cluster plus a tail).                                                                         \\
+    $\hat{r}^{(i)}_p(x)$     & Residual polynomial function for the $i^\text{th}$ cluster, defined piecewise (for $i=1$, via a scaled expression; for $i=2$, as a product over tail eigenvalues). \\
+    $\hat{r}_{\bar{m}-p}(x)$ & Residual polynomial function based on Chebyshev polynomials, corresponding to the complementary polynomial degree $\bar{m}-p$.                                     \\
+    $C^{(i)}_{p}$            & Cluster-specific Chebyshev polynomial of degree $p$, adapted to the eigenvalue distribution of the $i^\text{th}$ cluster.                                          \\
+    $\eta_1$                 & Upper bound for $\max_{x \in [a,b]} |\hat{r}^{(1)}_p(x)|$, given by $2\left(\frac{\sqrt{b}-\sqrt{a}}{\sqrt{b}+\sqrt{a}}\right)^p$.                                 \\
+    $\eta_2$                 & Upper bound for $\max_{x \in [a,b]} |\hat{r}^{(2)}_p(x)|$, expressed as $\left(\frac{b}{a}-1\right)^p$ when $p=N_{\text{tail}}$.                                   \\
+    $\bar{m}$                & Total degree of the composite residual polynomial $r_{\bar{m}}$, formed as the product $\hat{r}^{(i)}_p(x)\hat{r}_{\bar{m}-p}(x)$.                                 \\
+    $\epsilon$               & Relative error, defined as $\|e_m\|_A/\|e_0\|_A$ at the $m^{\text{th}}$ iteration.                                                                                 \\
+    $z^{(i,j)}_1, z^{(j)}_2$ & Chebyshev coordinates in the frame of reference of the $i^{\text{th}}$ cluster                                                                                     \\
+    $k$                      & Positive integer parameter in the Chebyshev inequality, corresponding to the degree in the bound estimate.                                                         \\
+    $p_i$                    & Chebyshev degree associated with the $i^\text{th}$ eigenvalue cluster, determining the contraction factor of that cluster's contribution to the residual.          \\
+    $\kappa_i$               & Condition number of the $i^\text{th}$ eigenvalue cluster, defined as the ratio of the largest to smallest eigenvalue within the cluster.                           \\
+    $f_i$                    & Convergence factor (or spectral measure) for the $i^\text{th}$ cluster.                                                                                            \\
+\end{longtable}
+
+\section*{Abbreviations}
+% Table 5: Abbreviations
+\begin{longtable}{c p{10cm}}
+    \caption{List of abbreviations and their full meanings.}\label{tab:abbreviations} \\
+    \hline
+    \textbf{Abbreviation} & \textbf{Full Meaning}                                     \\
+    \hline
+    \endfirsthead
+
+    \hline
+    \textbf{Abbreviation} & \textbf{Full Meaning}                                     \\
+    \hline
+    \endhead
+
+    \hline
+    \endfoot
+
+    \hline
+    \endlastfoot
+
+    CG                    & Conjugate Gradient                                        \\
+    PCG                   & Preconditioned Conjugate Gradient                         \\
+    SPD                   & Symmetric Positive Definite                               \\
+    FEM                   & Finite Element Method                                     \\
+    ASM                   & Additive Schwarz Method                                   \\
+    RAS                   & Restrictive Additive Schwarz                              \\
+    ORAS                  & Optimized Restrictive Additive Schwarz                    \\
+    MsFEM                 & Multiscale Finite Element Method                          \\
+    ACMS                  & Approximate Component Mode Synthesis                      \\
+    GDSW                  & Generalized Dryja-Smith-Widlund                           \\
+    AMS                   & Algebraic Multiscale                                      \\
+    DtN                   & Dirichlet-to-Neumann                                      \\
+    DBC                   & Dirichlet Boundary Condition                              \\
+    NBC                   & Neumann Boundary Condition                                \\
+    DOF(s)                & Degree(s) of Freedom                                      \\
+    PDE                   & Partial Differential Equation                             \\
+\end{longtable}
+
 \pagestyle{fancy}
