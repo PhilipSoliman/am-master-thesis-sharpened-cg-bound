@@ -12,6 +12,8 @@
 \newtheorem{theorem}{Theorem}[chapter]
 \newtheorem{definition}{Definition}[chapter]
 
+%tikz pictures
+\usetikzlibrary{intersections}
 
 % pgf figures
 \usepackage{pgf}
@@ -46,4 +48,7 @@
 \newcommand{\notinsubfile}[1]{}
 
 % Bibliography
-\usepackage[backend=biber, style=apa, citestyle=numeric-comp]{biblatex}
+% \usepackage[backend=biber, style=apa, citestyle=ieee]{biblatex}
+\usepackage[backend=biber,style=numeric,sortcites,sorting=nty,backref,natbib,hyperref]{biblatex}
+
+
