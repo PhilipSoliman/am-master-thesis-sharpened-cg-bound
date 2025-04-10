@@ -271,44 +271,44 @@ Suppose $M$ is some SPD preconditioner, then variants of CG can be derived by ap
 \begin{enumerate}[label=\textbf{PCG-\arabic*},ref=\textbf{PCG-type \arabic*},leftmargin=1.25cm]
   \item\label{pcg_type:left} left
   \begin{align*}
-    M^{-1}Ax & = M^{-1}b
+    M^{-1}A\mathbf{u} & = M^{-1}\mathbf{b}  \\
   \end{align*}
   \item\label{pcg_type:right} right
   \begin{align*}
-    AM^{-1}u & = M^{-1}b  \\
-    x        & = M^{-1}u;
+    AM^{-1}\mathbf{x} & = M^{-1}\mathbf{b}  \\
+    \mathbf{u}        & = M^{-1}\mathbf{x};
   \end{align*}
   \item\label{pcg_type:symmetric} symmetric or split
   \begin{align*}
     M              & = LL^T     \\
-    x              & = L^{-T}u  \\
-    L^{-1}AL^{-T}u & = L^{-1}b.
+    L^{-1}AL^{-T}\mathbf{x} & = L^{-1}\mathbf{b} \\
+    \mathbf{u}     & = L^{-T}\mathbf{x}.  \\
   \end{align*}
 \end{enumerate}
 
-Furthermore, all these variants are mathematically equivalent. Indeed, for the cases \ref{pcg_type:left} and \ref{pcg_type:right}, we can rewrite the CG algorithm using the $M-$ or $M^{-1}-$inner products, respectively. In either case the iterates are the same. For instance for the left preconditioned CG, we define $z_j = M^{-1}\mathbf{r}_j$. Note that $M^{-1}A$ is self-adjoint with respect to the $M-$inner product, that is
+Furthermore, all these variants are mathematically equivalent. Indeed, for the cases \ref{pcg_type:left} and \ref{pcg_type:right}, we can rewrite the CG algorithm using the $M-$ or $M^{-1}-$inner products, respectively. In either case the iterates are the same. For instance for the left preconditioned CG, we define $\mathbf{z}_j = M^{-1}\mathbf{r}_j$. Note that $M^{-1}A$ is self-adjoint with respect to the $M-$inner product, that is for $\mathbf{x},\mathbf{y}\in\mathbb{R}^n$ we have
 \[
-  (M^{-1}Ax, y)_M = (Ax, y) = (x, Ay) = (x, M^{-1}Ay)_M.
+  (M^{-1}A\mathbf{x}, \mathbf{y})_M = (A\mathbf{x}, \mathbf{y}) = (\mathbf{x}, A\mathbf{y}) = (\mathbf{x}, M^{-1}A\mathbf{y})_M.
 \]
 We use this to get a new expression for $\alpha_j$. To that end, we write
 \begin{align*}
   0 & = (\mathbf{r}_{j+1}, \mathbf{r}_j)_M                                        \\
-    & = (z_{j+1}, \mathbf{r}_j)                                                   \\
-    & = (z_j - \alpha_j M^{-1}Ap_j, M^{-1}\mathbf{r}_j)_M                         \\
-    & = (z_j, M^{-1}\mathbf{r}_j)_M - \alpha_j (M^{-1}Ap_j, M^{-1}\mathbf{r}_j)_M \\
-    & = (z_j, z_j)_M - \alpha_j (M^{-1}Ap_j, z_j)_M                               \\
+    & = (\mathbf{z}_{j+1}, \mathbf{r}_j)                                                   \\
+    & = (\mathbf{z}_j - \alpha_j M^{-1}A\mathbf{p}_j, M^{-1}\mathbf{r}_j)_M                         \\
+    & = (\mathbf{z}_j, M^{-1}\mathbf{r}_j)_M - \alpha_j (M^{-1}A\mathbf{p}_j, M^{-1}\mathbf{r}_j)_M \\
+    & = (\mathbf{z}_j, \mathbf{z}_j)_M - \alpha_j (M^{-1}A\mathbf{p}_j, \mathbf{z}_j)_M                               \\
 \end{align*}
 and therefore
 \[
-  \alpha_j = \frac{(z_j, z_j)_M}{(M^{-1}Ap_j, z_j)_M}.
+  \alpha_j = \frac{(\mathbf{z}_j, \mathbf{z}_j)_M}{(M^{-1}A\mathbf{p}_j, \mathbf{z}_j)_M}.
 \]
-Using $p_{j+1} = z_{j+1} + \beta_j p_j$ and A-orthogonality of the search directions $p_j$ with respect to $M-$norm $(Ap_j, p_k)_M = 0$, we can write
+Using $\mathbf{p}_{j+1} = \mathbf{z}_{j+1} + \beta_j \mathbf{p}_j$ and A-orthogonality of the search directions $\mathbf{p}_j$ with respect to $M-$norm $(A\mathbf{p}_j, \mathbf{p}_k)_M = 0$, we can write
 \[
-  \alpha_j = \frac{(z_j, z_j)_M}{(M^{-1}Ap_j, p_j)_M}.
+  \alpha_j = \frac{(\mathbf{z}_j, \mathbf{z}_j)_M}{(M^{-1}A\mathbf{p}_j, \mathbf{p}_j)_M}.
 \]
 Similarly, we can derive the equivalent expression for $\beta_j$ as
 \[
-  \beta_j = \frac{(z_{j+1}, z_{j+1})_M}{(z_j, z_j)_M}.
+  \beta_j = \frac{(\mathbf{z}_{j+1}, \mathbf{z}_{j+1})_M}{(\mathbf{z}_j, \mathbf{z}_j)_M}.
 \]
 This gives the left preconditioned CG algorithm in \ref{alg:pcg_left}.
 \begin{algorithm}[H]
@@ -317,12 +317,12 @@ This gives the left preconditioned CG algorithm in \ref{alg:pcg_left}.
   \begin{algorithmic}
     \State $\mathbf{r}_0 = b - A\mathbf{u}_0$, $z_0 = M^{-1}\mathbf{r}_0$, $p_0 = z_0$, $\beta_0 = 0$
     \For{$j = 0, 1, 2, \dots, m$}
-    \State $\alpha_j = (z_j, z_j)_M / (M^{-1}Ap_j, p_j)_M = (\mathbf{r}_j, z_j) / (Ap_j, p_j)$
-    \State $\mathbf{u}_{j+1} = \mathbf{u}_j + \alpha_j p_j$
-    \State $\mathbf{r}_{j+1} = \mathbf{r}_j - \alpha_j A p_j$
-    \State $z_{j+1} = M^{-1}\mathbf{r}_{j+1}$
-    \State $\beta_j = (z_{j+1}, z_{j+1})_M / (z_j, z_j)_M = (\mathbf{r}_{j+1}, z_{j+1}) / (\mathbf{r}_j, z_j)$
-    \State $p_{j+1} = z_{j+1} + \beta_j p_j$
+    \State $\alpha_j = (\mathbf{z}_j, \mathbf{z}_j)_M / (M^{-1}A\mathbf{p}_j, \mathbf{p}_j)_M = (\mathbf{r}_j, \mathbf{z}_j) / (A\mathbf{p}_j, \mathbf{p}_j)$
+    \State $\mathbf{u}_{j+1} = \mathbf{u}_j + \alpha_j \mathbf{p}_j$
+    \State $\mathbf{r}_{j+1} = \mathbf{r}_j - \alpha_j A \mathbf{p}_j$
+    \State $\mathbf{z}_{j+1} = M^{-1}\mathbf{r}_{j+1}$
+    \State $\beta_j = \frac{(\mathbf{z}_{j+1}, \mathbf{z}_{j+1})_M}{(\mathbf{z}_j, \mathbf{z}_j)_M} = \frac{(\mathbf{r}_{j+1}, \mathbf{z}_{j+1})}{(\mathbf{r}_j, \mathbf{z}_j)}$
+    \State $\mathbf{p}_{j+1} = \mathbf{z}_{j+1} + \beta_j \mathbf{p}_j$
     \EndFor
   \end{algorithmic}
 \end{algorithm}
@@ -512,13 +512,13 @@ which indicates that the convergence is quicker as the overlap increases as befo
 \subsection{Need for a coarse space}
 Following upon the results in the previous \cref{sec:schwarz_convergence} it is clear that the convergence of the Schwarz method not only depends on the extent of the overlap between various subdomains, but on the frequency components of the solution as well. In a general sense this means that low frequency modes need for instance at least $N_{\text{sub}}$ steps to travel from one end of a square domain to the other. This in turns causes plateaus in the convergence of the Schwarz method. To overcome this, we can perform a Galerkin projection of the error onto a coarse space. By solving
 \[
-    \min_{\beta} ||A(x + R_0^T\beta) - f||^2,
+    \min_{\beta} ||A(\mathbf{u} + R_0^T\beta) - f||^2,
 \]
 where $R_0$ is a matrix representing the coarse space. The solution to this problem is
 \[
     \beta = (R_0 A R_0^T)^{-1} R_0 r,
 \]
-where $r = f - A x$ is the residual.
+where $r = f - A \mathbf{u}$ is the residual.
 
 The coarse space $R_0$ can be constructed in various ways. The classical way is called the Nicolaides space \cite[Section 4.2]{schwarz_methods_Dolean_2015}, which uses the discrete partition of unity operators $D_i$ as examplified in \cref{eq:schwarz_partition_of_unity_FEM} to get
 \begin{equation}
