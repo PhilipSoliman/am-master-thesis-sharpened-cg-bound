@@ -25,7 +25,7 @@ To get an upper bound for $m$ \cref{eq:cg_error_bound} suggests we look for a po
 \]
 in which $\epsilon$ is the relative error. 
 
-\citeauthor{cg_sharpened_convrate_Axelsson1976} suggests we use not one, monolithic residual polynomial function, but a multiplication of two residual polynomial functions $\hat{r}^{(i)}_p$ and $\hat{r}_{\bar{m}-p}$ for the two clusters. Note that the superscript $^{(i)}$ corresponds to the two eigenspectra described above. The residual polynomial functions are defined as
+\citeauthor{cg_sharpened_convrate_Axelsson1976} suggests we use not one monolithic residual polynomial function, but a multiplication of two residual polynomial functions $\hat{r}^{(i)}_p$ and $\hat{r}_{\bar{m}-p}$ for the two clusters. The superscript $^{(i)}$ corresponds to the two eigenspectra described above. The residual polynomial functions are defined as
 \begin{equation}
     \hat{r}^{(i)}_p (x)
     \begin{cases}
@@ -51,12 +51,12 @@ where the first result follows from the fact that $|\hat{r}_{m-p}(x)| < 1 \ \for
     \left|C_{m-p}\left(\frac{d+c -2x}{d-c}\right)\right| < 1 \ \forall x \in [c,d].
 \]
 
-Furthermore, we have, using the well-known inequality 
+Furthermore, using the well-known inequality, we have
 \begin{equation}
     1/C_{k}\left(\frac{z_1 + z_2}{z_1 - z_2}\right) \leq 2 \left(\frac{\sqrt{z_2} - \sqrt{z_1}}{\sqrt{z_2} + \sqrt{z_1}}\right)^k, \text{ for } z_1 > z_2 > 0 \text{ and } k \in \mathbb{N}^+,
     \label{eq:chebyshev_polynomial_bound}
 \end{equation}
-that
+and
 \begin{equation*}
     \max_{\lambda \in [a,b]} |\hat{r}^{(i)}_p(\lambda)| \leq
     \begin{cases}
@@ -96,7 +96,7 @@ and substituting $x_1 = 2d$, $x_2 = b + a$ and $x_3 = b - a$ we obtain the follo
 \begin{equation*}
     \eta_i \left(\frac{4d}{b-a} \right)^p /C_{\bar{m}-p}\left(\frac{d+c}{d-c}\right) < \epsilon. 
 \end{equation*}
-Note that
+Moreover,
 \begin{align*}
     \eta_i \left(\frac{4d}{b-a}\right)^p &= 
     \begin{cases}
@@ -140,7 +140,7 @@ where
 \]
 
 \section{Generalization to multiple clusters}\label{sec:multiple_clusters}
-At this point we assume that we are dealing with an eigenspectrum of the form $\sigma_1(A)$, i.e. we are only treating case 1. In \cref{sec:cg_sharpened_convrate_implications} it is reasoned that this is indeed a very applicable case for a discretized Darcy problem.
+At this point we assume that we are dealing with an eigenspectrum of the form $\sigma_1(A)$, i.e. we are only treating case 1. In \cref{sec:cg_sharpened_convrate_implications}, it is reasoned that this is indeed a very applicable case for a discretized Darcy problem.
 
 In this case, the technique outlined in \cref{sec:cg_sharpened_convrate} starts at the left most cluster $[a,b]$, finds the Chebyshev degree $p_1=p$ satisfying inequality \ref{eq:chebyshev_degree_p}, moves to the neighboring cluster $[c,d]$ and finds the Chebyshev degree $p_2 = \bar{m} - p$ satisfying inequality \ref{eq:relative_error_bound_mp}. Rewriting inequality \ref{eq:relative_error_bound_mp} gives the following equation for $p_2$:
 \begin{equation}
@@ -215,7 +215,7 @@ Equations \ref{eq:chebyshev_degree_p_i_explicit} and \ref{eq:cg_iteration_bound_
 \begin{figure}[H] 
     \centering
     \includegraphics[width=\textwidth]{effect_of_eigenvalue_distribution_sharpened_bounds.pdf}
-    \caption{Similar to \cref{fig:cg_effect_of_eigenvalue_distribution}, but with the $\bar{m}$ as determined by \cref{eq:chebyshev_degree_p_i_explicit,eq:cg_iteration_bound_multiple_clusters}.}
+    \caption{As in \cref{fig:cg_effect_of_eigenvalue_distribution}, plots of the last three CG residual polynomials for different eigenvalue distributions. $n_c$ indicates the number of clusters and $\sigma$ is the width of the cluster. The size of the system $N$ and the condition number $\kappa(A)$ are kept constant. $m$ indicates the number of iterations required for convergence. However, here $\bar{m}$ is determined by \cref{eq:chebyshev_degree_p_i_explicit,eq:cg_iteration_bound_multiple_clusters}.}
     \label{fig:cg_sharpened_bound}
 \end{figure}
 Figure \ref{fig:cg_sharpened_bound} shows that the sharpened CG iteration bound is significantly lower than the classical CG iteration bound for the two cluster case. The performance of the sharpened bound does decrease as the number of clusters increases, as is evident from \cref{eq:chebyshev_degree_p_i_explicit,eq:cg_iteration_bound_multiple_clusters}. Performance also decreases as clusters become wider. So much so, that the sharpened bound is worse than the classical bound for the three cluster case with spread $\sigma = 0.04$ and for the four cluster case.
@@ -227,7 +227,7 @@ The preliminary results discussed in this chapter show that we can find both an 
 
 With regard to \ref{rq:subsidiary:measures}, the cluster condition number $\kappa_i$ is introduced as a measure of the cluster width. This suggests that we can use the cluster condition number to distinguish between different preconditioners which is a promising result for \ref{rq:subsidiary:preconditioners}. Moreover, inspecting \cref{eq:cg_iteration_bound_2_clusters} more closely for the eigenspectrum in \cref{eq:two_clusters} (case $i=1$) reveals the presence of a sort of spectral gap $\frac{d}{b}$. This serves as yet another candidate for a potential set of spectral characteristics to estimate the distribution of eigenvalues in the eigenspectrum.
 
-A logical next step is to more rigorously investigate how the sharpened bound depends on $\kappa_i$ as well as the spectral gap (\ref{rq:subsidiary:dependance}). Subsequently, we can simulate the eigenspectrum of a Darcy problem and compare the sharpened bound with the classical bound (\ref{rq:subsidiary:performance}). This will lead to a clear understanding of the performance of the sharpened bound in the main problem context of this thesis: high-contrast, heterogeneous elliptic problems.
+A logical next step is to more rigorously investigate how the sharpened bound depends on $\kappa_i$ as well as the spectral gap (\ref{rq:subsidiary:dependance}). Subsequently, we can simulate the eigenspectrum of a Darcy problem and compare the sharpened bound with the classical bound (\ref{rq:subsidiary:performance}). This will lead to a clear understanding of the performance of the sharpened bound in the main problem context of this thesis: heterogeneous scalar elliptic problems with high-contrast coefficient.
 
 Furthermore, we can construct, discretize, and precondition a model Darcy problem with the methods outlined in \cref{sec:tailored_coarse_spaces}. Then, we apply both the sharpened bound and the CG method to the resulting systems, and investigate how sharp the new bound is (\ref{rq:subsidiary:preconditioners}).
 
