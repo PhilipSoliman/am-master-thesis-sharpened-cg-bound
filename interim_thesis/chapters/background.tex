@@ -7,12 +7,32 @@ In this chapter we focus on a simple Darcy problem like the one posed in \cite{a
     u                                       & = u_D \quad \text{on } \partial\Omega,
   \end{aligned}
 \end{equation}
-where $\Omega\subset\mathbb{R}^d$ is a bounded domain with Lipschitz boundary $\partial\Omega$, $\mathcal{C}\in L^\infty(\Omega)$ is a positive coefficient, $f\in L^2(\Omega)$ is a source term, and $u\in H^1_0(\Omega)$ is the solution. The coefficient $\mathcal{C}$ is assumed to be bounded from above and below by positive constants, i.e., $0 < \mathcal{C}_{\min} \leq \mathcal{C}(x) \leq \mathcal{C}_{\max} < \infty$ for all $x\in\Omega$. The solution $u$ is assumed to be sufficiently smooth, i.e., $u\in H^2(\Omega)\cap H^1_0(\Omega)$, so that the problem is well-posed. The goal is to compute an approximation $u_h\in V_h$ to the solution $u$ using a finite-dimensional subspace $V_h\subset H^1_0(\Omega)$, where $V_h$ is spanned by a set of basis functions $\{\varphi_i\}_{i=1}^n$. The Galerkin method seeks $u_h\in V_h$ such that
+where $\Omega\subset\mathbb{R}^d$ is a bounded domain with Lipschitz boundary $\partial\Omega$, $\mathcal{C}\in L^\infty(\Omega)$ is a positive coefficient, $f\in L^2(\Omega)$ is a source term, and $u\in H^1_0(\Omega)$ is the solution. The coefficient $\mathcal{C}$ is assumed to be bounded from above and below by positive constants, i.e., $0 < \mathcal{C}_{\min} \leq \mathcal{C}(x) \leq \mathcal{C}_{\max} < \infty$ for all $x\in\Omega$. The solution $u$ is assumed to be sufficiently smooth, i.e., $u\in H^2(\Omega)\cap H^1_0(\Omega)$, so that the problem is well-posed. The goal is to compute an approximation $u_h\in V_h$ to the solution $u$ using a finite-dimensional subspace $V_h\subset H^1_0(\Omega)$, where $V_h$ is spanned by a set of basis functions $\{\phi_i\}_{i=1}^n$. The Galerkin method seeks $u_h\in V_h$ such that
 \begin{equation}
   \label{eq:galerkin}
   \int_\Omega \mathcal{C}\nabla u_h\cdot\nabla v_h\,dx = \int_\Omega f v_h\,dx \quad \text{for all } v_h\in V_h.
 \end{equation}
-The Galerkin method leads to a linear system of equations $A \mathbf{u} = \mathbf{b}$, where $A$ is the stiffness matrix and $\mathbf{b}$ is the load vector. The stiffness matrix $A$ is symmetric and positive definite, and the load vector $\mathbf{b}$ is determined by the source term $f$ and the boundary conditions. The solution $\mathbf{u}$ can be computed using iterative methods like the conjugate gradient method, which is guaranteed to converge in a finite number of iterations for symmetric positive definite matrices in infinite precision arithmetic.
+
+The discretisation is done in the context of the finite element method. To that end we consider a triangulation $\mathcal{T}$ of the domain $\Omega$ and a partition of unity $\chi_j$. Denote by $V_{h,0} = V_h \cap H^1_0(\Omega)$ the space of piecewise continuous functions $v_h\in H^1_0(\Omega)$ with respect to $\mathcal{T}$. Let the basis of $V_{h,0}$ be given by $\{\phi_k\}_{\in\mathcal{N}}$. The FE formulation of the Poisson problem \cref{eq:poisson_problem} follows from the variational form
+\[
+    a(u_h, v_h) = (f, v_h), \quad \forall u_h, v_h \in V_{h,0},
+\]
+and is given by
+\begin{equation}
+    A\mathbf{u} = b, \quad A_{ij} = a(\phi_j, \phi_i), \ b_i = (f, \phi_i) \quad \forall i,j\in\mathcal{N},
+\end{equation}
+where $A$ is the stiffness matrix, $\mathbf{b}$ is the load vector and $\mathcal{N}$ is the set of indices corresponding to the degrees of freedom. The stiffness matrix $A$ is symmetric and positive definite, and the load vector $\mathbf{b}$ is determined by the source term $f$ and the boundary conditions.
+
+Next to this we need a way of interpolating functions in $C(\Omega)$ to $V_{h}$. This is done by the interpolation operator $I_h: C(\Omega) \mapsto V_{h,0}$, which is defined by
+\[
+    \mathcal{I}_h v = \sum_{i\in\mathcal{N}} v(x_i) \phi_i,
+\]
+where $x_i$ are the nodes of the triangulation $\mathcal{T}$. $\mathcal{I}_h$ is stable with respect to the $a$-norm, that is
+\[
+    \| I_h(v) \|_a \leq C_{I_h} \| v \|_{a}.
+\]
+
+The solution $\mathbf{u}$ can be computed using iterative methods like the conjugate gradient method, which is guaranteed to converge in a finite number of iterations for symmetric positive definite matrices in infinite precision arithmetic.
 
 \section{Conjugate Gradient Method}\label{sec:cg_method}
 The CG method is a special instance of the class of Krylov subspace methods. It is derived from the Direct Lanczos (D-Lanczos) algorithm applied to the residual of linear systems \cite[Algorithm 6.17]{iter_method_saad}. The D-Lanczos algorithm generates a sequence of orthonormal Lanczos vectors $\{\mathbf{v}_1, \mathbf{v}_2, \dots, \mathbf{v}_m\}$ that span the Krylov subspace $\mathcal{K}_m(A, \mathbf{r}_0)$, where $\mathbf{r}_0 = \mathbf{b} - A\mathbf{u}_0$ is the initial residual such that
@@ -28,7 +48,7 @@ or $\mathcal{K}_m$ as a shorthand. The approximate answer is then given by
 where $q_{m-1}(A)$ is a polynomial of degree $m-1$ in $A$. It is shown later in this section how the coefficients $c_i$ are obtained (\cref{eq:cg_solution_coefficients}).
 
 \subsection{Variants of the CG method} \label{sec:cg_variants}
-Variants of the CG method differ in the way A is preconditioned (see section \cref{sec:cg_preconditioning}) and the choices for the constraint subspace $\mathcal{L}_m$. The former type of variations result in the preconditioned CG method PCG and these are described in \cref{sec:cg_preconditioning}. The latter type of variations further separate into two major categories:
+Variants of the CG method differ in the way A is preconditioned (see section \cref{sec:cg_preconditioning}) and the choices for the constraint subspace $\mathcal{L}_m$. The former type of variations result in the preconditioned CG method (PCG) and these are described in \cref{sec:cg_preconditioning}. The latter type of variations further separate into two major categories:
 \begin{enumerate}[label=\roman*,ref=CG-type \roman*]
   \item\label{cg_type:direct} $\mathcal{L}_m = \mathcal{K}_m$ and $\mathcal{L}_m = A\mathcal{K}_m$;
   \item\label{cg_type:transpose}$\mathcal{L}_m = \mathcal{K}_m(A^T,\mathbf{r}_0)$.
@@ -108,6 +128,17 @@ and
 Here we have used the definition of $T_m$ and the fact that the residuals are multiples of the Lanczos vectors $\mathbf{r}_j = \text{scalar} \times \mathbf{v}_j$ \cite[Equation 6.103]{iter_method_saad}.
 
 \subsection{CG convergence rate}\label{sec:cg_convergence_rate}
+We have the following theorem for the convergence rate of the CG algorithm
+\begin{theorem}
+  The error of the $m^{\text{th}}$ iterate of the CG algorithm is bounded by
+  \begin{equation}
+    ||\mathbf{e}_m|| \leq 2 \left(\frac{\sqrt{\kappa}-1}{\sqrt{\kappa} + 1}\right)^m ||\mathbf{e}_0||_A,
+    \label{eq:cg_convergence_rate_bound}
+  \end{equation}
+  where $\kappa = \lambda_{\text{max}}/\lambda_{\text{min}}$ is the condition number of (symmetric matrix) $A$.
+  \label{th:cg_convergence_rate_bound}
+\end{theorem}
+\begin{proof}
 It can be shown \cite[lemma 6.28 and theorem 6.29]{iter_method_saad} that the error of the $m^{\text{th}}$ iterate of the CG algorithm $\mathbf{e}_m = x^* - \mathbf{u}_m$ minimizes the $A$-norm of the error in the affine Krylov subspace $\mathcal{K}_m(A, \mathbf{r}_0)$, that is
 \begin{equation}
   ||(I - Aq_{m-1}(A))\mathbf{e}_0||_A = \min_{q \in \mathcal{P}_{m-1}} ||(I - Aq(A))\mathbf{e}_0||_A = \min_{r \in \mathcal{P}_{m}, r(0) = 1} ||r(A)\mathbf{e}_0||_A,
@@ -126,32 +157,24 @@ where $\sigma(A)$ is the spectrum of $A$. Given the eigenvalues are uniformly di
                                                                                                                                      & = \frac{2||\mathbf{e}_0||_A}{\left(\sqrt{\eta} + \sqrt{\eta + 1}\right)^{2m}}    \\
                                                                                                                                      & = 2 \left(\frac{\sqrt{\kappa}-1}{\sqrt{\kappa} + 1}\right)^m ||\mathbf{e}_0||_A,
 \end{align*}
-where $\kappa = \lambda_{\text{max}}/\lambda_{\text{min}}$ is the condition number of (the symmetric matrix) $A$. To sum up
-\begin{theorem}
-  The error of the $m^{\text{th}}$ iterate of the CG algorithm is bounded by
-  \begin{equation}
-    ||\mathbf{e}_m|| \leq 2 \left(\frac{\sqrt{\kappa}-1}{\sqrt{\kappa} + 1}\right)^m ||\mathbf{e}_0||_A,
-    \label{eq:cg_convergence_rate_bound}
-  \end{equation}
-  where $\kappa = \lambda_{\text{max}}/\lambda_{\text{min}}$ is the condition number of (symmetric matrix) $A$.
-  \label{th:cg_convergence_rate_bound}
-\end{theorem}
+\end{proof}
+where $\kappa = \lambda_{\text{max}}/\lambda_{\text{min}}$ is the condition number of (the symmetric matrix) $A$. 
 During the derivation of \cref{th:cg_convergence_rate_bound}, we obtain the general expression for the error of the $m^{\text{th}}$ iterate of the CG algorithm
 \[
   || \mathbf{e}_m|| \leq \min_{r \in \mathcal{P}_{m}, r(0) = 1} \max_{\lambda \in \sigma(A)} |r(\lambda)| ||\mathbf{e}_0||_A \\
 \]
 Now define,
 \[
-  \mathbf{r}_{\textrm{test}}(t) = \prod_{i=1}^m \frac{\lambda_i - t}{\lambda_i}.
+  r_{\textrm{test}}(t) = \prod_{i=1}^m \frac{\lambda_i - t}{\lambda_i}.
 \]
-Note that $\mathbf{r}_{\textrm{test}}\in\mathcal{P}_m$, since it has degree $m$. Also, $\mathbf{r}_{\textrm{test}}(0) = 1$ and $\mathbf{r}_{\textrm{test}}(\lambda_i) = 0$ for $i = 1, 2, \dots, m$. Hence, $\mathbf{r}_{\textrm{test}}$ is a polynomial that satisfies the constraints of the minimization problem. We obtain for $m = N$ that
+Note that $r_{\textrm{test}}\in\mathcal{P}_m$, since it has degree $m$. Also, $r_{\textrm{test}}(0) = 1$ and $r_{\textrm{test}}(\lambda_i) = 0$ for $i = 1, 2, \dots, m$. Hence, $r_{\textrm{test}}$ is a polynomial that satisfies the constraints of the minimization problem. We obtain for $m = N$ that
 \[
-  ||e_N||_A = ||\mathbf{e}_0||_A \max_{\lambda \in \sigma(A)} |\mathbf{r}_{\textrm{test}}(\lambda)| = 0,
+  ||e_N||_A = ||\mathbf{e}_0||_A \max_{\lambda \in \sigma(A)} |r_{\textrm{test}}(\lambda)| = 0,
 \]
 which implies that CG converges in $N$ iterations in exact arithmetic. Furthermore, if there are only $k$ distinct eigenvalues, then the CG iteration terminates in at most $k$ iterations.
 
 \subsection{Influence of eigenvalue distribution on CG convergence}\label{sec:cg_eigenvalue_distribution}
-In the derivation of the convergence rate of the CG algorithm, we used the Chebyshev polynomial to bound the error. However, we can find an expression of the error provided the eigendecomposition of $A$ is available. Suppose $A = VDV^T$, then $r(A) = I - Aq(A) = V(I - Dq(D))V^T = Vr(D)V^T$. Also note that $\mathbf{e}_0 = x^* - \mathbf{u}_0 = A^{-1}b - \mathbf{u}_0 = A^{-1}\mathbf{r}_0$. As seen in \cref{eq:cg_convergence_rate}, the error of the $m^{\text{th}}$ iterate of the CG algorithm is given by
+In the derivation of the convergence rate of the CG algorithm, we used the Chebyshev polynomial to bound the error. However, we can find an expression of the error provided the eigendecomposition of $A$ is available. Supposing $A$ is full rank and by its symmetry we can write its diagonalization as $A = VDV^T$, where $V$ is the orthonormal eigenvector matrix and $D$ is the diagonal eigenvalue matrix. Then $r(A) = I - Aq(A) = V(I - Dq(D))V^T = Vr(D)V^T$. Also note that $\mathbf{e}_0 = x^* - \mathbf{u}_0 = A^{-1}b - \mathbf{u}_0 = A^{-1}\mathbf{r}_0$. As seen in \cref{eq:cg_convergence_rate}, the error of the $m^{\text{th}}$ iterate of the CG algorithm is given by
 \begin{equation*}
   ||\mathbf{e}_m||_A^2 = ||r_m(A)\mathbf{e}_0||_A^2,
 \end{equation*}
@@ -234,17 +257,20 @@ The behavior of the residual polynomials is crucial for understanding the conver
 \end{figure}
 Hence, the number of iterations required for convergence depends on the specific clustering of the eigenvalues, as pointed out for example in \citeauthor[Section 2.3]{nonlinear_cg_Kelley_1995}.
 
-From the behavior exhibited in figure \cref{fig:cg_effect_of_eigenvalue_distribution} as well as from \cref{th:cg_krylov_dimension} we can reason what the best and worst possible spectra for CG convergence are. That is, the best possible spectrum is one where eigenvalues are tightly clustered around distinct values, while the worst possible spectrum is one where the eigenvalues are evenly distributed across the whole range of the spectrum. This is illustrated in \cref{fig:cg_best_worst_spectra}.
+Based behavior exhibited in \cref{fig:cg_effect_of_eigenvalue_distribution} and from \cref{th:cg_krylov_dimension}, we can reason what the best and worst possible spectra for CG convergence are. That is, the best possible spectrum is one where eigenvalues are tightly clustered around distinct values, while the worst possible spectrum is one where the eigenvalues are evenly distributed across the whole range of the spectrum. This is illustrated in \cref{fig:cg_best_worst_spectra}.
 \begin{figure}[H]
   \centering
   \includegraphics[width=\textwidth]{cg_convergence_extreme_spectra.pdf}
-  \caption{Best and worst possible spectra for CG convergence}
+  \caption{Best and worst possible spectra for CG convergence. The top row shows the best possible spectrum, where the eigenvalues are tightly clustered on two distinct values. The bottom row shows the worst possible spectrum, where the eigenvalues are evenly distributed across the whole range of the spectrum. The left column shows the eigenvalue distribution with the residual polynomials corresponding to the iteration. The right column shows the norm of the residual versus the iteration number. Convergence is achieved at a tolerance of $10^{-6}$.}
   \label{fig:cg_best_worst_spectra}
 \end{figure}
+The first row in \cref{fig:cg_best_worst_spectra} shows an instance of the super-linear convergence that CG can exhibit, particularly when the eigenvalues are closely clustered. This is characteristic of CG is further touched upon in \cref{ch:literature,ch:preliminary_results}.
 
 \subsection{Preconditioned CG} \label{sec:cg_preconditioning}
 Suppose $M$ is some SPD preconditioner, then variants of CG can be derived by applying $M$ to the system of equations. The three main approaches are
-\begin{enumerate}[label=\roman*,ref=preconditioner-type \roman*]
+{
+\setlength\itemindent{2in}
+\begin{enumerate}[label=\textbf{PCG-\arabic*},ref=\textbf{PCG-type \arabic*}]
   \item\label{pcg_type:left} left
   \begin{align*}
     M^{-1}Ax & = M^{-1}b
@@ -261,7 +287,8 @@ Suppose $M$ is some SPD preconditioner, then variants of CG can be derived by ap
     L^{-1}AL^{-T}u & = L^{-1}b.
   \end{align*}
 \end{enumerate}
-Furthermore, all these variants are mathematically equivalent in some sense. Indeed, for the cases \cref{pcg_type:left} and \cref{pcg_type:right}, we can rewrite the CG algorithm using the $M-$ or $M^{-1}-$inner products, respectively. In either case the iterates are the same. For instance for the left preconditioned CG, we define $z_j = M^{-1}\mathbf{r}_j$. Note that $M^{-1}A$ is self-adjoint with respect to the $M-$inner product, that is
+}
+Furthermore, all these variants are mathematically equivalent. Indeed, for the cases \ref{pcg_type:left} and \ref{pcg_type:right}, we can rewrite the CG algorithm using the $M-$ or $M^{-1}-$inner products, respectively. In either case the iterates are the same. For instance for the left preconditioned CG, we define $z_j = M^{-1}\mathbf{r}_j$. Note that $M^{-1}A$ is self-adjoint with respect to the $M-$inner product, that is
 \[
   (M^{-1}Ax, y)_M = (Ax, y) = (x, Ay) = (x, M^{-1}Ay)_M.
 \]
@@ -277,15 +304,15 @@ and therefore
 \[
   \alpha_j = \frac{(z_j, z_j)_M}{(M^{-1}Ap_j, z_j)_M}.
 \]
-Using $p_{j+1} = z_{j+1} + \beta_j p_j$ and A-orthogonality of the search directions with respect to $M-$norm $(Ap_j, p_k)_M = 0$ (), we can write
+Using $p_{j+1} = z_{j+1} + \beta_j p_j$ and A-orthogonality of the search directions $p_j$ with respect to $M-$norm $(Ap_j, p_k)_M = 0$, we can write
 \[
   \alpha_j = \frac{(z_j, z_j)_M}{(M^{-1}Ap_j, p_j)_M}.
 \]
-Similarly, we can derive the equivalent expression of \cref{eq:cg_beta} as
+Similarly, we can derive the equivalent expression for $\beta_j$ as
 \[
   \beta_j = \frac{(z_{j+1}, z_{j+1})_M}{(z_j, z_j)_M}.
 \]
-This gives the left preconditioned CG algorithm in \cref{alg:pcg_left}.
+This gives the left preconditioned CG algorithm in \ref{alg:pcg_left}.
 \begin{algorithm}[H]
   \caption{Left preconditioned CG \cite[Algorithm 9.1]{iter_method_saad}}
   \label{alg:pcg_left}
@@ -301,12 +328,17 @@ This gives the left preconditioned CG algorithm in \cref{alg:pcg_left}.
     \EndFor
   \end{algorithmic}
 \end{algorithm}
-Furthermore it can be shown that the iterates of CG applied to the system with \cref{pcg_type:symmetric} results in identical iterates \cite[Algorithm 9.2]{iter_method_saad}.
+Furthermore it can be shown that the iterates of CG applied to the system with \ref{pcg_type:symmetric} results in identical iterates \cite[Algorithm 9.2]{iter_method_saad}.
 
 \section{Schwarz Methods}\label{sec:schwarz_methods}
-The content of this section is largely based on chapters 1,2, 4 and 5 of \citeauthor{schwarz_methods_Dolean_2015} about Schwarz methods.
-
-The original Schwarz method was a way of proving that a Poisson problem on some complex domain $\Omega$ still has a solution.
+The content of this section is largely based on chapters 1, 2, 4 and 5 of \citeauthor{schwarz_methods_Dolean_2015} about Schwarz methods.
+\begin{figure}[H]
+  \centering
+  \input{tikz/keyhole.tex}
+  \caption{Keyhole domain $\Omega$ with two overlapping subdomains $\Omega_1$ and $\Omega_2$. The boundary of the keyhole domain is denoted by $\partial\Omega$ and the boundaries of the subdomains are denoted by $\partial\Omega_1$ and $\partial\Omega_2$. The overlapping region is denoted by $\Omega_1 \cap \Omega_2$.}
+  \label{fig:keyhole_domain}
+\end{figure}
+The original Schwarz method was a way of proving that a Poisson problem on some complex domain $\Omega$ as in \cref{fig:keyhole_domain} has a solution.
 \begin{equation}
     \begin{array}{c}
         -\Delta u = f \text{ in } \Omega, \\
@@ -314,10 +346,9 @@ The original Schwarz method was a way of proving that a Poisson problem on some 
     \end{array}
     \label{eq:poisson_problem}
 \end{equation}
-Existence is proved by splitting up the original complex domain in two (or more) simpler, possibly overlapping domains and solving the Poisson problem on each of these domains. The solution on the original domain is then the sum of the solutions on the subdomains. The method is named after Hermann Schwarz, who first introduced the method in 1869. The method has since been extended to more general problems and is now a popular method for solving partial differential equations.
-
+Existence of a solution is proved by splitting up the original complex domain in two (or more) simpler, possibly overlapping subdomains and solving the Poisson problem on each of these subdomains. The solution on the original domain is then the sum of the solutions on the subdomains. The method is named after Hermann Schwarz, who first introduced the method in 1869 \cite{og_schwarz_method_Schwarz}. The method has since been extended to more general problems and is now a popular method for solving partial differential equations. Let the alternating Schwarz method be characterised as in \cref{def:schwarz_algorithm}.
 \begin{definition}
-    The Schwarz algorithm is an iterative method based on solving subproblems alternatively in domains $\Omega_1$ and $\Omega_2$. It updates $\left(u_1^n, u_2^n\right) \rightarrow\left(u_1^{n+1}, u_2^{n+1}\right)$ by
+    The Alternating Schwarz algorithm is an iterative method based on alternately solving subproblems in domains $\Omega_1$ and $\Omega_2$. It updates $\left(u_1^n, u_2^n\right) \rightarrow\left(u_1^{n+1}, u_2^{n+1}\right)$ by
     \[
         \begin{array}{cc}
             \begin{aligned}
@@ -353,7 +384,7 @@ Instead of solving for local solutions directly, one can also solve for local co
     \end{algorithmic}
 \end{algorithm}
 
-The restrictive additive Schwarz method (RAS) is similar to ASM, but differs in the way local corrections are combined to form a global one. In the overlapping region of the domains it employs a weighted average of the local corrections. In particular, a partition of unity $\chi_i$ is used. It is defined as
+The restricted additive Schwarz method (RAS) is similar to ASM, but differs in the way local corrections are combined to form a global one. In the overlapping region of the domains it employs a weighted average of the local corrections. In particular, a partition of unity $\chi_i$ is used. It is defined as
 \[
     \chi_i(x)=
     \begin{cases}
@@ -388,9 +419,9 @@ Let $\mathcal{N}$ be set containing all indices of degrees of freedom in the dom
 \]
 $\mathcal{N}_i$ is the set of indices of degrees of freedom in the subdomain $\Omega_i$.
 
-Furthermore, let $R_i\in\mathcal{R}^{\#\mathcal{N}_i \times \#\mathcal{N}}$, $R_i^T$ and $D_i$ be the discrete versions of the restriction, extension and partition of unity operators such that
+Furthermore, let $R_i\in\mathcal{R}^{|\mathcal{N}_i| \times |\mathcal{N}}|$, $R_i^T$ and $D_i$ be the discrete versions of the restriction, extension and partition of unity operators such that
 \[
-    \mathcal{R}^{\#\mathcal{N}}\ni U = \sum_{i=1}^{\mathcal{N}_{\text{sub}}} R_i^T D_i R_i U.
+    \mathcal{R}^{|\mathcal{N}|}\ni U = \sum_{i=1}^{\mathcal{N}_{\text{sub}}} R_i^T D_i R_i U.
 \]
 Note that $D_i$ is a diagonal matrix where the entries are the values of the partition of unity function $\chi_i$ evaluated for each degree of freedom. Consider for instance, a multidimensional FEM problem, in which $\mathcal{T}$ is the triangulation of the domain $\Omega$ and $\mathcal{T}_i$ is the triangulation of the subdomain $\Omega_i$ such that \cite[Equation 1.27]{schwarz_methods_Dolean_2015}
 \[
@@ -402,7 +433,7 @@ In this case \cite[Equation 1.28]{schwarz_methods_Dolean_2015}
 \]
 and we can define
 \[
-    \mu_k = \#\{j| 1\leq j \leq N_{\text{sub}} \text{ and } k\in\mathcal{N}_j\}.
+    \mu_k = |\{j| 1\leq j \leq N_{\text{sub}} \text{ and } k\in\mathcal{N}_j\}|.
 \]
 Finally, this leads to
 \begin{equation}
@@ -410,22 +441,22 @@ Finally, this leads to
     \label{eq:schwarz_partition_of_unity_FEM}
 \end{equation}
 
-Although the original Schwarz method is not a preconditioner, the ASM and RAS methods can be used as such. Originally the Schwarz method is a fixed point one \cite[Definitions 1.12 and 1.13]{schwarz_methods_Dolean_2015}
+Although the original Schwarz method is not a preconditioner, the ASM and RAS methods can be used as such. Originally the Schwarz method is a fixed point iteration \cite[Definitions 1.12 and 1.13]{schwarz_methods_Dolean_2015}
 \[
     u^{n+1} = u^n + M^{-1}r^n, \ r^n = f - A u^n,
 \]
 where $M$ equals, but is not limited to, one of the following matrices;
 \begin{subequations}
     \begin{align}
-        M_{\text{ASM}} & = \sum_{i=1}^{N_{\text{sub}}} R_i^T (R_i A R_i^T)^{-1} R_i, \label{eq:ASM_preconditioner}     \\
-        M_{\text{RAS}} & = \sum_{i=1}^{N_{\text{sub}}} R_i^T D_i (R_i A R_i^T)^{-1} R_i \label{eq:RAS_preconditioner}.
+        M^{-1}_{\text{ASM}} & = \sum_{i=1}^{N_{\text{sub}}} R_i^T (R_i A R_i^T)^{-1} R_i, \label{eq:ASM_preconditioner}     \\
+        M^{-1}_{\text{RAS}} & = \sum_{i=1}^{N_{\text{sub}}} R_i^T D_i (R_i A R_i^T)^{-1} R_i \label{eq:RAS_preconditioner}.
     \end{align}
 \end{subequations}
-Both $M_{\text{ASM}}$ and $M_{\text{RAS}}$ are symmetric and positive definite and can be used as preconditioners.
+Both $M^{-1}_{\text{ASM}}$ and $M^{-1}_{\text{RAS}}$ are SPD and can be used as preconditioners for CG.
 
 Optimized Schwarz methods and corresponding preconditioners can also be constructed by including more interface conditions (Robin or Neumann) in the subproblems. One such example is the Optimized Restrictive Additive Schwarz method (ORAS) discussed in \cite[Chapter 2]{schwarz_methods_Dolean_2015}.
 
-\subsection{Convergence original Schwarz method} \label{sec:schwarz_convergence}
+\subsection{Convergence of the original Schwarz method} \label{sec:schwarz_convergence}
 In this section the Schwarz problem stated in definition \ref{def:schwarz_algorithm} is solved in the one- and two-dimensional case. The convergence of the original Schwarz method is then discussed.
 
 \subsubsection{1D case}
@@ -448,7 +479,7 @@ The solution to the error problem is
 \[
     e_1^{n+1}(x) = \frac{x}{L_1}e_2^n(L_1), \quad e_2^{n+1}(x) = \frac{L-x}{L - l_2}e_1^{n+1}(l_2).
 \]
-These functions increase linearly from the boundary of the domain to the boundary of the overlapping region. The error at for instance $x = L_1$ is updated as
+These functions increase linearly from the boundary of the domain to the boundary of the overlapping region. The error at $x = L_1$ is updated as
 \[
     e_2^{n+1}(L_1) = \frac{1 - \delta/(L-l_2)}{1 + \delta/l_2} e_2^n(L_1),
 \]
@@ -463,9 +494,9 @@ which indicates the convergence becomes quicker as the overlap increases \cite[S
 In the 2D case two half planes are considered $\Omega_1 = (-\infty, \delta)\times \mathbb{R}$ and $\Omega_2 = (\delta, \infty)\times \mathbb{R}$. Following the example of \citeauthor{schwarz_methods_Dolean_2015} the problem is
 \begin{align*}
     -(\eta - \Delta) u & = f \text{ in } \mathbb{R}^2, \\
-    u                  & \text{ bounded at infinity}.
+    u                  & \text{ bounded at infinity},
 \end{align*}
-Proceeding in similar fashion as the one-dimensional case, the error $e^{n+1}_{1,2}$ can be solved for in the two subdomains. This is done via a partial Fourier transform of the problem in the y-direction yielding an ODE for the transformed error $\hat{e}^{n+1}_{1,2}$, which can be solved explicitly with the ansatz
+where $\eta > 0$ is a constant. Proceeding in similar fashion as the one-dimensional case, the error $e^{n+1}_{1,2}$ can be solved for in the two subdomains. This is done via a partial Fourier transform of the problem in the y-direction yielding an ODE for the transformed error $\hat{e}^{n+1}_{1,2}$ with the added Fourier constant $k$, which can be solved explicitly with the ansatz
 \[
     \hat{e}^{n+1}_{1,2}(x, k) = \gamma_1(k) e^{\lambda_{+}(k) x} + \gamma_2(k) e^{\lambda_{-}(k) x},
 \]
@@ -478,10 +509,10 @@ such that the convergence factor is \cite[Equation 1.36]{schwarz_methods_Dolean_
     \rho_{\text{2D}}(k;\eta,\delta) = e^{-\delta\sqrt{\eta + k^2}}
     \label{eq:2D_Schwarz_convergence}
 \end{equation}
-which indicates that the convergence is quicker as the overlap increases as before. Next to this, it also shows that the convergence is quicker for higher frequencies $k$.
+which indicates that the convergence is quicker as the overlap increases as before. Next to this, it also shows that the convergence is quicker for higher $k$.
 
 \subsection{Need for a coarse space}
-Following upon the results in the previous \cref{sec:schwarz_convergence} it is clear that the convergence of the Schwarz method not only depends on the extent of the overlap between various subdomains, but on the frequency components of the solution as well. In a general sense this means that low frequency modes need for instance at least $N_{\text{sub}}$ steps to travel from one end of a square domain to the other. This in turns causes plateaus in the convergence of the Schwarz method. To overcome this, we can perform a Galerkin projection of the error onto a coarse space. That is we solve
+Following upon the results in the previous \cref{sec:schwarz_convergence} it is clear that the convergence of the Schwarz method not only depends on the extent of the overlap between various subdomains, but on the frequency components of the solution as well. In a general sense this means that low frequency modes need for instance at least $N_{\text{sub}}$ steps to travel from one end of a square domain to the other. This in turns causes plateaus in the convergence of the Schwarz method. To overcome this, we can perform a Galerkin projection of the error onto a coarse space. By solving
 \[
     \min_{\beta} ||A(x + R_0^T\beta) - f||^2,
 \]
@@ -512,7 +543,7 @@ In this section the we will construct a coarse space for a Poisson problem with 
 This coarse space is subsequently used to construct the two level additive Schwarz preconditioner, and bounds for its condition number are provided as well.
 
 \subsubsection{Slowly convergent modes of the Dirichlet-to-Neumann map}
-As seen in \cref{sec:schwarz_convergence} the local error in any subdomain in the Schwarz method satisfies the original problem without forcing, i.e. right hand side $f = 0$. At the interface the local error has a Dirichlet boundary condition that equals the error of the neighbouring subdomain. Additionally, the convergence factor, e.g. $\rho_{\text{2D}}$, depends on the frequency of the modes present in the local error. In particular, small frequencies appear to have slow convergence. The question thus becomes how to get rid of these small frequency modes in the local errors of all subdomains.
+As seen in \cref{sec:schwarz_convergence} the local error in any subdomain in the Schwarz method satisfies the homogeneous version of the original problem, i.e. right hand side $f = 0$. At the interface the local error has a Dirichlet boundary condition that equals the error of the neighbouring subdomain. Additionally, the convergence factor, e.g. $\rho_{\text{2D}}$, depends on the frequency of the modes in the local error. In particular, small frequencies appear to have slow convergence. The question thus becomes how to get rid of these small frequency modes in the local errors of all subdomains.
 
 One possible answer is the so-called Dirichlet-to-Neumann map \cite[Definition 5.1]{schwarz_methods_Dolean_2015}
 \begin{definition}
@@ -548,36 +579,19 @@ Then, use the eigen property of $v$ and fact that $w$ is zero on $\Gamma_j$ to g
     \label{eq:dirichlet_to_neumann_map_eigenproblem}
 \end{equation}
 
-\subsubsection{FEM discretization}
-The discretisation is done in the context of the finite element method. To that end we consider a triangulation $\mathcal{T}$ of the domain $\Omega$ and a partition of unity $\chi_j$. Denote by $V_{h,0} = V_h \cap H^1_0(\Omega)$ the space of piecewise continuous functions $v_h\in H^1_0(\Omega)$ with respect to $\mathcal{T}$. Let the basis of $V_{h,0}$ be given by $\{\phi_k\}_{\in\mathcal{N}}$. The FE formulation of the Poisson problem \cref{eq:poisson_problem} follows from the variational form
-\[
-    a(u_h, v_h) = (f, v_h), \quad \forall u_h, v_h \in V_{h,0},
-\]
-and is given by
-\begin{equation}
-    A\mathbf{u} = b, \quad A_{ij} = a(\phi_j, \phi_i), \ b_i = (f, \phi_i) \quad \forall i,j\in\mathcal{N}.
-\end{equation}
-Next to this we need a way of interpolating functions in $C(\Omega)$ to $V_{h}$. This is done by the interpolation operator $I_h: C(\Omega) \mapsto V_{h,0}$, which is defined by
-\[
-    \mathcal{I}_h v = \sum_{i\in\mathcal{N}} v(x_i) \phi_i,
-\]
-where $x_i$ are the nodes of the triangulation $\mathcal{T}$. $\mathcal{I}_h$ is stable with respect to the $a$-norm, that is
-\[
-    \| I_h(v) \|_a \leq C_{I_h} \| v \|_{a}.
-\]
-
+\subsubsection{Construction of Two-level additive Schwarz preconditioner}
 As before we partition $\Omega$ into $N_{\text{sub}}$ subdomains $\Omega_j$, which overlap each other by one or several layers of elements in the triangulation $\mathcal{T}$. We make the the following observations
 \begin{enumerate}[label=\textbf{D\arabic*}, ref=\textbf{D\arabic*}]
     \item\label{ASM_observation:basis_inclusion} For every degree of freedom $k\in\mathcal{N}$, there is a subdomain $\Omega_j$ such that $\phi_k$ has support in $\Omega_j$ \cite[Lemma 5.3]{schwarz_methods_Dolean_2015}.
     \item\label{ASM_observation:multiplicity_of_intersections} The maximum number of subdomains a mesh element can belong to is given by
     \[
-        k_0 = \max_{\tau\in\mathcal{T}} \left (\#\{j|1\leq j\leq N_{\text{sub}} \text{ and } \tau \subset \Omega_j\} \right).
+        k_0 = \max_{\tau\in\mathcal{T}} \left (|\{j|1\leq j\leq N_{\text{sub}} \text{ and } \tau \subset \Omega_j\}| \right).
     \]
     \item\label{ASM_observation:number_of_colors} The minimum number of colors needed to color all subdomains so that no two adjacent subdomains have the same color is given by
     \[
         N_c \geq k_0
     \]
-    \item\label{ASM_observation:overlapping_parameter} The minimum overlap for any subdomain $\Omega_j$ with any of its neihbouring subdomains is given by
+    \item\label{ASM_observation:overlapping_parameter} The minimum overlap for any subdomain $\Omega_j$ with any of its neighboring subdomains is given by
     \[
         \delta_j = \inf_{x\in\Omega_j\setminus\cup_{i\neq j} \bar{\Omega}_i} \text{dist}(x, \partial \Omega_j\setminus\partial \Omega).
     \]
@@ -643,7 +657,7 @@ and correspondingly,
 
 In the context of this thesis the two-level additive Schwarz method is used in combination with a Krylov subspace method, in which case convergence rate depends on the entire spectrum of eigenvalues (\cref{sec:cg_eigenvalue_distribution}). However, an upperbound for the convergence rate (\cref{sec:cg_convergence_rate}) can be derived from the condition number of $P_{\text{ad}}$ via \cref{eq:cg_convergence_rate}. 
 
-Using the fact that $P_{\text{ad}}$ is symmetric with respect to the $a$-norm, we can write
+Using the fact that $P_{\text{ad}}$ is symmetric (see \cite[Lemma 5.8]{schwarz_methods_Dolean_2015}) with respect to the $a$-norm, we can write
 \[
     \kappa(P_{\text{ad}}) = \frac{\lambda_{\text{max}}}{\lambda_{\text{min}}},
 \]
@@ -679,7 +693,7 @@ Finally, we can write the condition number of the two-level additive Schwarz pre
     \label{eq:two_level_ASM_condition_number}
 \end{equation}
 
-The value of $C_0$ depends on the projection operator $\Pi_j$ to the chosen coarse space $V_0$ for each subdomain.
+The value of $C_0$ depends on the projection operator $\Pi_j$ onto the chosen coarse space $V_0$ for each subdomain.
 \begin{enumerate}[label=\Roman*., ref=\textbf{ASM type \Roman* coarse space}]
     \item\label{ASM_coarse_space:nicolaides} \textbf{Nicolaides coarse space} The projection operator is defined as
     \begin{equation}
