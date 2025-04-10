@@ -2,38 +2,54 @@
 \section{The spectral gap arising in Darcy problems}\label{sec:spectral_gap_darcy}
 In a Darcy problem, high-contrast $ \mathcal{C}(x) $ (e.g., $ 10^6 $ in conductive channels vs.\ $ 10^{-6} $ in barriers) means flow concentrates in high-permeability regions, while low-permeability zones resist flow. This heterogeneity introduces modes (eigenvectors) that are nearly constant or slowly varying over low-$ \mathcal{C}(x) $ regions, contributing small eigenvalues to $ A $. These modes represent ``trapped'' or ``isolated'' behaviors disconnected by the contrast.
 
-Small eigenvalues arise when the bilinear form $ a(u, v) = \int_{\Omega} \mathcal{C}(x) \nabla u \cdot \nabla v \, dx $ yields low energy for certain test functions $ v $. In high-contrast cases, if $ \mathcal{C}(x) $ is tiny in a subdomain, $ \nabla u $ must be large there to balance the equation, but FEM basis functions often cannot resolve this without fine meshes. Instead, coarse bases produce modes where energy is minimized, leading to eigenvalues close to zero. This is exacerbated as contrast grows, adding more such modes.
+Small eigenvalues arise when the bilinear form $ a(u, v) = \int_{\Omega} \mathcal{C}(x) \nabla u \cdot \nabla v \, dx $ yields low energy for certain test functions $ v $. In high-contrast cases, if $ \mathcal{C}(x) $ is extremely low in a subdomain, $ \nabla u $ must be large there to balance the equation, but FEM basis functions often cannot resolve this without fine meshes. Instead, coarse bases produce modes where energy is minimized, leading to eigenvalues close to zero. This is exacerbated as contrast grows, adding more such modes.
 
-High-contrast $ \mathcal{C}(x) $ can split the spectrum into clusters: large eigenvalues tied to high-$ \mathcal{C}(x) $ regions (where gradients dominate) and small eigenvalues tied to low-$ \mathcal{C}(x) $ regions (where flow stagnates). In \cite{msfem_for_darcy_Efendiev2011} note that standard FEM misses these small eigenvalues unless enriched bases capture fine-scale features.
+High-contrast $ \mathcal{C}(x) $ can split the spectrum into clusters: large eigenvalues tied to high-$ \mathcal{C}(x) $ regions (where gradients dominate) and small eigenvalues tied to low-$ \mathcal{C}(x) $ regions (where flow stagnates). In \cite{msfem_for_darcy_Efendiev2011}, the authors note that standard FEM misses these small eigenvalues unless enriched bases capture fine-scale features.
 
 \section{Tailored coarse spaces for high-contrast problems}\label{sec:tailored_coarse_spaces}
 Various methods for constructing a coarse space that are both scalable and robust to high contrast in a problem coefficient.
 
 \subsection{MsFEM} 
-The Multiscale Finite Element Method (MsFEM), as presented in \cite{msfem_coarse_space_Graham_2007}, constructs a coarse space based on five key assumptions (C1-C5). These assumptions ensure stability and accuracy by defining how the coarse space interacts with the fine-scale problem. Local coarse grid basis functions are obtained by solving the homogeneous version of the system equation, meaning they do not include external forcing terms. The construction of these basis functions requires specific boundary conditions, categorized as M1-M4, which control their behavior at interfaces. The method distinguishes between linear and oscillatory boundary conditions for local problems, affecting the resulting coarse space. Coarse grid basis functions are computed as harmonic extensions of basis functions restricted to edges or faces, ensuring continuity across subdomains. The restriction operator $R_0$ is then derived from these basis functions, as given in Equation 2.12 of \cite{msfem_coarse_space_Graham_2007}. Additionally, the method introduces robustness indicators, $\pi(\alpha)$ and $\gamma(\alpha)$, which quantify the stability of the coarse space and its effectiveness in capturing fine-scale features.
+The Multiscale Finite Element Method (MsFEM), as presented in \cite{og_msfem_Hou1997,msfem_coarse_space_Graham_2007,msfem_for_darcy_Efendiev2011}, constructs a coarse space based on five key assumptions (C1-C5). These assumptions ensure stability and accuracy by defining how the coarse space interacts with the fine-scale problem. Local coarse grid basis functions are obtained by solving the homogeneous version of the system equation, meaning they do not include external forcing terms. The construction of these basis functions requires specific boundary conditions, categorized as M1-M4, which control their behavior at interfaces. The method distinguishes between linear and oscillatory boundary conditions for local problems, affecting the resulting coarse space. Coarse grid basis functions are computed as harmonic extensions of basis functions restricted to edges or faces, ensuring continuity across subdomains. The restriction operator $R_0$ is then derived from these basis functions, as given in Equation 2.12 of \cite{msfem_coarse_space_Graham_2007}. Additionally, the method introduces robustness indicators, $\pi(\alpha)$ and $\gamma(\alpha)$, to quantify the stability of the coarse space and its effectiveness in capturing fine-scale features.
  
 \subsection{ACMS}
-The Approximate Component Mode Synthesis (ACMS) method, detailed in \cite{acms_coarse_space_Heinlein2018}, introduces a separation of scales with fine and coarse triangulations, denoted as $\mathcal{T}_h$ and $\mathcal{T}_H$. The coarse problem is decomposed into two components: $u_c = u_I + u_{\Gamma}$, where $u_I$ represents the inner part and $u_{\Gamma}$ the interface contribution. This extends MsFEM by incorporating vertex-specific, edge-specific, and fixed-interface basis functions, where MsFEM corresponds solely to the vertex-specific functions. The vertex-specific basis functions are defined as harmonic extensions of trace values on the interface set $\Gamma$. Edge-specific basis functions, on the other hand, arise from an eigenvalue problem defined on an edge $e$, while fixed-interface basis functions correspond to eigenmodes of an eigenvalue problem within a coarse element $T$.
+The Approximate Component Mode Synthesis (ACMS) method, detailed in \cite{acms_coarse_space_Heinlein2018}, introduces a separation of scales with fine and coarse triangulations, denoted as $\mathcal{T}_h$ and $\mathcal{T}_H$. The coarse problem is decomposed into two components: $u_c = u_I + u_{\Gamma}$, where $u_I$ and $u_{\Gamma}$ represent the interior and interface contribution, respectively. This extends MsFEM by incorporating vertex-specific, edge-specific, and fixed-interface basis functions, where MsFEM corresponds solely to the vertex-specific functions. The vertex-specific basis functions are defined as harmonic extensions of trace values on the interface set $\Gamma$. Edge-specific basis functions, on the other hand, arise from an eigenvalue problem defined on an edge $e$, while fixed-interface basis functions correspond to eigenmodes of an eigenvalue problem within a coarse element $T$.
     
 ACMS supports two types of coarse spaces, depending on whether Dirichlet (DBC) or Neumann (NBC) boundary conditions are applied. Under DBCs, MsFEM basis functions are combined with edge-specific basis functions that match on a shared edge $e_{ij}$ between subdomains $\Omega_i$ and $\Omega_j$. These functions are constructed from the harmonic extension of eigenmodes defined on the edge $e_{ij}$, with a scaled bilinear form on the right-hand side. Only eigenmodes corresponding to eigenfrequencies below a set tolerance are retained. With NBCs, both MsFEM and edge-specific basis functions are modified. MsFEM functions remain defined on an edge $e_{ij}$ and satisfy a Kronecker-delta vertex condition but are now obtained via a generalized eigenvalue problem on a slab of width $kh$, denoted $\eta^{kh}_{ij}$. The edge-specific functions are similarly defined through a generalized eigenvalue problem on the slab but without enforcing DBCs. Solving these eigenvalue problems can be computationally efficient by employing mass matrix lumping techniques.
  
-\subsection{(R)GDSW}
-The Generalized Dryja-Smith-Widlund (GDSW) method, introduced by \cite{gdsw_coarse_space_Dohrmann2008}, partitions the computational domain into non-overlapping subdomains and further divides degrees of freedom (DOFs) into interior and interface nodes. The only required input for the method is a coarse space $G$, whose columns span the rigid body modes of the subdomains. The restriction operators $R_{\Gamma}$ and $R_I$ project onto interface and interior DOFs, respectively, with subdomain-specific versions such as $R_{\Gamma_j}$.
+\subsection{GDSW}
+The Generalized Dryja-Smith-Widlund (GDSW) method, introduced by \cite{gdsw_coarse_space_Dohrmann2008}, partitions the computational domain into non-overlapping subdomains and further divides degrees of freedom (DOFs) into interior and interface nodes. The only required input for the method is a coarse space $G$. $G$ corresponds to the null space of the problem. In the case of linear elasticity, $G$ spans the rigid body modes, while for the diffusion problem the null space is a constant function. The restriction operators $R_{\Gamma}$ and $R_I$ project onto interface and interior DOFs, respectively, with subdomain-specific versions such as $R_{\Gamma_j}$.
 
-The coarse solution on the interface set is given by 
+The coarse problem matrix is \cite[Equation 2]{ams_coarse_space_comp_study_Alves2024}
+\[
+    A_0 = \Phi^T A \Phi,
+\]
+where, by ordering the DOFs of into interface $\Gamma$ and interior $I$ nodes we can get \cite[Equation 4,5]{ams_coarse_space_comp_study_Alves2024}
+\[
+    \Phi = 
+    \begin{pmatrix}
+        -A_{II}^{-1} A_{I\Gamma} \\
+        I_{\Gamma\Gamma} \\
+    \end{pmatrix} \Phi_{\Gamma},
+\]
+in which $\Phi_{\Gamma}$ is the prolongation operator of the interface nodes. The coarse solution on the interface set is subsequently defined as
 \[
     u_{0,\Gamma} = \sum_{j}^{N_{\text{sub}}} R^T_{\Gamma_j} G_{\Gamma_j} q_j = \Phi_{\Gamma} q,
 \]
 where $q$ represents the coarse space coefficients. The complete coarse solution is then given by 
 \[
-    u_0 = R^T_{\Gamma} u_{0,\Gamma} + R^T_{I} u_{0,I},
+    u_0 = \Phi^T_{\Gamma} u_{0,\Gamma} + \Phi^T_I u_{0,I},
 \]
-where $R_I$ is derived from energy-minimizing extensions of $u_{0,\Gamma}$ into the subdomain interiors. Applying the energy minimization principle to the potential $u_0 A u_0$ leads to the definition of $\Phi_I$, which governs the interior contributions.
+where $\Phi_I = -A_{II}^{-1} A_{I\Gamma} \Phi_{\Gamma}$ is computed by discrete harmonic extension. 
+
+\subsubsection{RGDSW}
+The RGDSW method alters the GDSW preconditioner by reducing the coarse space dimension through a partitioning strategy based on nodal equivalence classes that associates each coarse mesh vertex with interface components formed by adjacent edges and faces, distributed among nearby vertices \cite{rgdsw_coarse_space_Dohrmann2017}. This reduction in the dimension of the coarse space is achieved without compromising the robustness of the condition number estimate, ensuring that the preconditioner's convergence properties are maintained \cite{argdsw_coarse_space_Heinlein2022}.
+
 \subsection{AMS}
-The Algebraic Multiscale (AMS) method, introduced in ... studied in \cite{ams_coarse_space_comp_study_Alves2024}, also relies on domain decomposition into non-overlapping subdomains, followed by a further subdivision of interface nodes into edge, vertex, and face nodes (in 3D). The method eliminates lower diagonal blocks in the system matrix to facilitate efficient computation. Like (R)GDSW, AMS employs the energy minimization principle to obtain $\Phi_I$, ensuring an optimal coarse space representation.
+The Algebraic Multiscale Solver (AMS) method, introduced in \cite{msfvm_ams_Lunati2009,ams_framework_Wang2014} and further studied in \cite{ams_coarse_space_comp_study_Alves2024}, also relies on domain decomposition into non-overlapping subdomains, followed by a further subdivision of interface nodes into edge, vertex, and face nodes (in 3D). The method eliminates lower diagonal blocks in the system matrix to facilitate efficient computation. Like (R)GDSW, AMS employs the energy minimization principle to obtain $\Phi_I$, ensuring an optimal coarse space representation.
 
 \section{CG convergence in case of non-uniform spectra}\label{sec:cg_nonuniform_spectra}
-A lot of work has been done on the convergence rate of the CG method, especially in the context of non-uniform spectra. The following papers provide valuable insights into this topic.
+Excessive work has been done on the convergence rate of the CG method, especially in the context of non-uniform spectra. The following papers provide valuable insights into this topic.
 
 First, in \cite{cg_sharpened_convrate_Axelsson1976} a clever use of Chebyshev polynomials is demonstrated to obtain a sharpened CG iteration bound for two kinds of eigenspectra. This technique is further developed in \cref{sec:cg_sharpened_convrate}, providing additional insights into the convergence behavior of CG.
 
