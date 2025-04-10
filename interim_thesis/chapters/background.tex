@@ -161,7 +161,7 @@ where $\sigma(A)$ is the spectrum of $A$. Given the eigenvalues are uniformly di
 where $\kappa = \lambda_{\text{max}}/\lambda_{\text{min}}$ is the condition number of (the symmetric matrix) $A$. 
 During the derivation of \cref{th:cg_convergence_rate_bound}, we obtain the general expression for the error of the $m^{\text{th}}$ iterate of the CG algorithm
 \[
-  || \mathbf{e}_m|| \leq \min_{r \in \mathcal{P}_{m}, r(0) = 1} \max_{\lambda \in \sigma(A)} |r(\lambda)| ||\mathbf{e}_0||_A \\
+  ||\mathbf{e}_m|| \leq \min_{r \in \mathcal{P}_{m}, r(0) = 1} \max_{\lambda \in \sigma(A)} |r(\lambda)| ||\mathbf{e}_0||_A \\
 \]
 Now define,
 \[
@@ -169,7 +169,7 @@ Now define,
 \]
 Note that $r_{\textrm{test}}\in\mathcal{P}_m$, since it has degree $m$. Also, $r_{\textrm{test}}(0) = 1$ and $r_{\textrm{test}}(\lambda_i) = 0$ for $i = 1, 2, \dots, m$. Hence, $r_{\textrm{test}}$ is a polynomial that satisfies the constraints of the minimization problem. We obtain for $m = N$ that
 \[
-  ||e_N||_A = ||\mathbf{e}_0||_A \max_{\lambda \in \sigma(A)} |r_{\textrm{test}}(\lambda)| = 0,
+  ||\mathbf{e}_N||_A = ||\mathbf{e}_0||_A \max_{\lambda \in \sigma(A)} |r_{\textrm{test}}(\lambda)| = 0,
 \]
 which implies that CG converges in $N$ iterations in exact arithmetic. Furthermore, if there are only $k$ distinct eigenvalues, then the CG iteration terminates in at most $k$ iterations.
 
@@ -188,17 +188,17 @@ We also have
 \begin{align*}
   V^T\mathbf{e}_0 & = V^T A^{-1} \mathbf{r}_0       \\
                 & = V^T V D^{-1} V^T \mathbf{r}_0 \\
-                & = D^{-1} \rho_0,
+                & = D^{-1} \mathbf{\rho}_0,
 \end{align*}
-where $\rho_0 = V^T \mathbf{r}_0$ is the initial residual in the eigenvector basis of $A$. Therefore,
+where $\mathbf{\rho}_0 = V^T \mathbf{r}_0$ is the initial residual in the eigenvector basis of $A$. Therefore,
 \begin{align*}
-  ||r_m(A)\mathbf{e}_0||_A^2 & = \rho_0^T D^{-1} r_m(D) D r_m(D) D^{-1} \rho_0                 \\
-                           & = \rho_0^T r_m(D) D^{-1} r_m(D)  \rho_0                         \\
-                           & = \sum_{i=1}^n \frac{r_m(\lambda_i)^2}{\lambda_i} \rho_{0,i}^2,
+  ||r_m(A)\mathbf{e}_0||_A^2 & = \mathbf{\rho}_0^T D^{-1} r_m(D) D r_m(D) D^{-1} \mathbf{\rho}_0                 \\
+                           & = \mathbf{\rho}_0^T r_m(D) D^{-1} r_m(D)  \mathbf{\rho}_0                         \\
+                           & = \sum_{i=1}^n \frac{r_m(\lambda_i)^2}{\lambda_i} \mathbf{\rho}_{0,i}^2,
 \end{align*}
 which gives
 \begin{equation}
-  ||\mathbf{e}_m||_A^2 = \sum_{i=1}^n \frac{r_m(\lambda_i)^2}{\lambda_i} \rho_{0,i}^2.
+  ||\mathbf{e}_m||_A^2 = \sum_{i=1}^n \frac{r_m(\lambda_i)^2}{\lambda_i} \mathbf{\rho}_{0,i}^2.
   \label{eq:cg_error_eigenvalue}
 \end{equation}
 
@@ -268,9 +268,7 @@ The first row in \cref{fig:cg_best_worst_spectra} shows an instance of the super
 
 \subsection{Preconditioned CG} \label{sec:cg_preconditioning}
 Suppose $M$ is some SPD preconditioner, then variants of CG can be derived by applying $M$ to the system of equations. The three main approaches are
-{
-\setlength\itemindent{2in}
-\begin{enumerate}[label=\textbf{PCG-\arabic*},ref=\textbf{PCG-type \arabic*}]
+\begin{enumerate}[label=\textbf{PCG-\arabic*},ref=\textbf{PCG-type \arabic*},leftmargin=1.25cm]
   \item\label{pcg_type:left} left
   \begin{align*}
     M^{-1}Ax & = M^{-1}b
@@ -287,7 +285,7 @@ Suppose $M$ is some SPD preconditioner, then variants of CG can be derived by ap
     L^{-1}AL^{-T}u & = L^{-1}b.
   \end{align*}
 \end{enumerate}
-}
+
 Furthermore, all these variants are mathematically equivalent. Indeed, for the cases \ref{pcg_type:left} and \ref{pcg_type:right}, we can rewrite the CG algorithm using the $M-$ or $M^{-1}-$inner products, respectively. In either case the iterates are the same. For instance for the left preconditioned CG, we define $z_j = M^{-1}\mathbf{r}_j$. Note that $M^{-1}A$ is self-adjoint with respect to the $M-$inner product, that is
 \[
   (M^{-1}Ax, y)_M = (Ax, y) = (x, Ay) = (x, M^{-1}Ay)_M.
