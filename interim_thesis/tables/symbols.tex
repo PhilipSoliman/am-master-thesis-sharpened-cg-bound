@@ -1,7 +1,7 @@
 \pagestyle{empty}
 
 \section*{Symbols}
-% Table 1: Symbols for the Heterogeneous Elliptic Problem
+% Symbols for the Heterogeneous Elliptic Problem
 \begin{longtable}{c p{10cm}}
     \caption{Symbols related to the heterogeneous elliptic problem.}\label{tab:elliptic_symbols}            \\
     \hline
@@ -37,7 +37,7 @@
     $v_h$                  & Test function in $V_h$.                                                        \\
 \end{longtable}
 
-% Table 2: Symbols for the Conjugate Gradient Method
+% Symbols for the Conjugate Gradient Method
 \begin{longtable}{c p{10cm}}
     \caption{Symbols related to the Conjugate Gradient (CG) method.}\label{tab:cg_symbols}                                               \\
     \hline
@@ -75,16 +75,16 @@
     $r_{\text{test}}(t)$   & Test polynomial defined by $\prod_{i=1}^m \frac{\lambda_i - t}{\lambda_i}$.                                 \\
 \end{longtable}
 
-% Table 3: Symbols for the Schwarz Preconditioners
+% Symbols for the Schwarz Preconditioners
 \begin{longtable}{c p{10cm}}
-    \caption{Symbols related to Schwarz preconditioners.}\label{tab:schwarz_symbols}                                                                    \\
+    \caption{Symbols related to Schwarz preconditioners.}\label{tab:schwarz_symbols}                                                                         \\
     \hline
-    \textbf{Symbol}  & \textbf{Description}                                                                                                             \\
+    \textbf{Symbol}       & \textbf{Description}                                                                                                             \\
     \hline
     \endfirsthead
 
     \hline
-    \textbf{Symbol}  & \textbf{Description}                                                                                                             \\
+    \textbf{Symbol}       & \textbf{Description}                                                                                                             \\
     \hline
     \endhead
 
@@ -94,22 +94,22 @@
     \hline
     \endlastfoot
 
-    $\Omega_i$       & Subdomains obtained from partitioning $\Omega$.                                                                                  \\
-    $R_i$            & Restriction operator for subdomain $\Omega_i$.                                                                                   \\
-    $D_i$            & Diagonal matrix representing the partition of unity (weights) for $\Omega_i$.                                                    \\
-    $N_{sub}$        & Number of subdomains.                                                                                                            \\
-    $M_{\text{ASM}}$ & Additive Schwarz preconditioner defined by $M_{\text{ASM}} = \sum_{i=1}^{N_{sub}} R_i^T (R_i A R_i^T)^{-1} R_i$.                 \\
-    $M_{\text{RAS}}$ & Restrictive Additive Schwarz preconditioner defined by $M_{\text{RAS}} = \sum_{i=1}^{N_{sub}} R_i^T D_i (R_i A R_i^T)^{-1} R_i$. \\
-    $R_0$            & Restriction operator associated with the coarse space.                                                                           \\
-    $P_j$            & Local projection operator associated with subdomain $\Omega_j$.                                                                  \\
-    $P_0$            & Projection operator for the coarse space.                                                                                        \\
-    $P_{ad}$         & Sum of the projection operators, $P_{ad} = \sum_{j=1}^{N_{sub}} P_j$, used in the two-level method.                              \\
-    $\kappa(P_{ad})$ & Condition number of the preconditioned system, given by $\frac{\lambda_{\max}}{\lambda_{\min}}$ of $P_{ad}$.                     \\
+    $\Omega_i$            & Subdomains obtained from partitioning $\Omega$.                                                                                  \\
+    $R_i$                 & Restriction operator for subdomain $\Omega_i$.                                                                                   \\
+    $D_i$                 & Diagonal matrix representing the partition of unity (weights) for $\Omega_i$.                                                    \\
+    $N_{sub}$             & Number of subdomains.                                                                                                            \\
+    $M^{-1}_{\text{ASM}}$ & Additive Schwarz preconditioner defined by $M_{\text{ASM}} = \sum_{i=1}^{N_{sub}} R_i^T (R_i A R_i^T)^{-1} R_i$.                 \\
+    $M^{-1}_{\text{RAS}}$ & Restrictive Additive Schwarz preconditioner defined by $M_{\text{RAS}} = \sum_{i=1}^{N_{sub}} R_i^T D_i (R_i A R_i^T)^{-1} R_i$. \\
+    $R_0$                 & Restriction operator associated with the coarse space.                                                                           \\
+    $P_j$                 & Local projection operator associated with subdomain $\Omega_j$.                                                                  \\
+    $P_0$                 & Projection operator for the coarse space.                                                                                        \\
+    $P_{ad}$              & Sum of the projection operators, $P_{ad} = \sum_{j=1}^{N_{sub}} P_j$, used in the two-level method.                              \\
+    $\kappa(P_{ad})$      & Condition number of the preconditioned system, given by $\frac{\lambda_{\max}}{\lambda_{\min}}$ of $P_{ad}$.                     \\
 \end{longtable}
 
-% Table 4: Symbols related to eigenspectra and CG convergence bounds
+% Symbols related to eigenspectra and CG convergence bounds
 \begin{longtable}{c p{10cm}}
-    \caption{Symbols related to eigenspectra and CG convergence bounds (Chapter 5: Preliminary Results).}\label{tab:eigenspectra_symbols}                                                         \\
+    \caption{Symbols related to eigenspectra and CG convergence bounds (\cref{ch:preliminary_results}: Preliminary Results).}\label{tab:eigenspectra_symbols}                                     \\
     \hline
     \textbf{Symbol}          & \textbf{Description}                                                                                                                                               \\
     \hline
@@ -146,7 +146,7 @@
 \end{longtable}
 
 \section*{Abbreviations}
-% Table 5: Abbreviations
+% Abbreviations
 \begin{longtable}{c p{10cm}}
     \caption{List of abbreviations and their full meanings.}\label{tab:abbreviations} \\
     \hline
@@ -175,7 +175,7 @@
     MsFEM                 & Multiscale Finite Element Method                          \\
     ACMS                  & Approximate Component Mode Synthesis                      \\
     GDSW                  & Generalized Dryja-Smith-Widlund                           \\
-    AMS                   & Algebraic Multiscale                                      \\
+    AMS                   & Algebraic Multiscale Solver                               \\
     DtN                   & Dirichlet-to-Neumann                                      \\
     DBC                   & Dirichlet Boundary Condition                              \\
     NBC                   & Neumann Boundary Condition                                \\
