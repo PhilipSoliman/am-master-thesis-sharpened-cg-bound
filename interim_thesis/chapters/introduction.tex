@@ -1,4 +1,28 @@
 \chapter{Introduction}\label{ch:introduction}\newpage
-This thesis investigates the challenge of sharpening the Conjugate Gradient (CG) iteration bound for Schwarz-preconditioned high-contrast heterogeneous elliptic partial differential equations. In standard practice, the performance of iterative solvers is often assessed through the condition number of the system matrix. However, this approach fails to account for the detailed spectral properties—such as eigenvalue clusters and gaps—that play a critical role in the convergence behavior, especially in the context of high-contrast problems like those arising in Darcy flow simulations. The primary research question driving this work is: How can the CG iteration bound for Schwarz-preconditioned high-contrast heterogeneous elliptic problems be refined beyond the classical condition number-based bound? To address this, the study also explores several subsidiary questions: What spectral characteristics can be defined to more accurately capture the eigenvalue distribution in these problems? How can these characteristics be quantitatively estimated for a model Darcy problem? In what way can the refined spectral insights be used to derive a sharper CG iteration bound, and how does this new bound compare with classical estimates in both preconditioned and unpreconditioned settings? Moreover, the aim of this thesis is to eventually investigate how these refined bounds can differentiate the performance of various Schwarz-like preconditioners. The significance of this work lies in its potential to improve the selection and design of preconditioners, thereby enhancing the efficiency of iterative solvers for complex, high-contrast systems.
+Reliable numerical simulation often requires solving large systems of equations. In many applications, most of the computational effort is spent on this task. Iterative solvers like Conjugate Gradient (CG) are widely used, but their efficiency heavily depends on the number of iterations required to reach convergence.
 
-The paper is organized as follows. In Section 2, the mathematical background of the CG method and Schwarz methods is introduced. Section 3 reviews related work, providing context for the current study and highlighting differences between existing approaches. Section 4 details the research questions, motivation, and challenges associated with refining the CG iteration bound. Section 5 presents preliminary results that illustrate the potential benefits of the proposed approach. Finally, the concluding section summarizes the key insights and discusses directions for future research.
+Preconditioners help reduce the iteration count. Choosing a good preconditioner is key to speeding up simulations. A common way to assess their performance is by looking at the condition number of the preconditioned system matrix. A smaller condition number usually means faster convergence.
+
+But this measure is too general. In high-contrast heterogeneous problems, like those arising from the scalar Laplace equation with varying coefficient, the condition number does not capture important spectral features. For example, clusters of eigenvalues or large gaps in the spectrum often control the actual behavior of CG. This means that two systems with the same condition number can behave very differently in practice.
+
+To improve preconditioner selection, we need better tools to predict performance. This leads to the central question of this thesis:
+
+\vspace{0.5em}
+\begin{center}
+\textit{\textbf{How can we refine the CG iteration bound for Schwarz-preconditioned high-contrast heterogeneous elliptic problems beyond the classical condition number-based bound?}}
+\end{center}
+\vspace{0.5em}
+
+To answer this central question, the thesis explores several sub-questions:
+\begin{enumerate}
+    \item What spectral characteristics can be defined to better capture the eigenvalue distribution in these problems?
+    \item How can these characteristics be quantitatively estimated for a model heterogeneous coefficient Laplace problem?
+    \item What insights can be derived from the refined spectral characteristics to improve preconditioner selection?
+    \item How does the new bound compare with classical estimates, both with and without preconditioning?
+    \item Can the refined bounds help differentiate the performance of various Schwarz-like preconditioners?
+    \item How can these insights be used to derive a sharper CG iteration bound?
+\end{enumerate}
+
+By addressing these questions, the thesis aims to improve the understanding of solver performance in challenging high-contrast settings. The results can guide better design and selection of preconditioners for faster, more reliable simulations.
+
+This thesis is organized as follows. In \cref{ch:background} 2, the mathematical background of the CG method and Schwarz methods is introduced. \cref{ch:literature} 3 reviews related work, providing context for the current study and highlighting differences between existing approaches. Chapter \ref{ch:questions} details the research questions, motivation, and challenges associated with refining the CG iteration bound. Chapter \ref{ch:preliminary_results} presents preliminary results that illustrate the potential benefits of the proposed approach. Finally, \cref{ch:conclusion} summarizes the key insights and discusses directions for future research.
