@@ -147,12 +147,15 @@ for i, A in enumerate(As):
         ax, DOMAIN, CODOMAIN, origin=True, xtick_locs=[DOMAIN[1]], ytick_locs=CODOMAIN
     )
 
-    # TODO: add semilogy plot of residuals to second column of figure
     # calculate resiudals
     ax = axs[i, 1]
     residuals = custom_cg.calculate_residuals()
     residuals_norm = np.linalg.norm(residuals, axis=1)
     ax.semilogy(residuals_norm, label="residual norm")
+    ax.set_xlabel(r"$\mathbf{m}$")
+    ax.set_ylabel(r"$\mathbf{||r_m||_2}$")
+    ax.set_ylim(bottom=1e-16, top=1e2)
+
 
 # plot legend last
 pos_x = 0
