@@ -13,13 +13,13 @@ where $\Omega\subset\mathbb{R}^d$ is a bounded domain with Lipschitz boundary $\
   \int_\Omega \mathcal{C}\nabla u_h\cdot\nabla v_h\,dx = \int_\Omega f v_h\,dx \quad \text{for all } v_h\in V_h.
 \end{equation}
 
-The discretisation is done in the context of the finite element method. To that end we consider a triangulation $\mathcal{T}$ of the domain $\Omega$ and a partition of unity $\chi_j$. Denote by $V_{h,0} = V_h \cap H^1_0(\Omega)$ the space of piecewise continuous functions $v_h\in H^1_0(\Omega)$ with respect to $\mathcal{T}$. Let the basis of $V_{h,0}$ be given by $\{\phi_k\}_{\in\mathcal{N}}$. The FE formulation of the Poisson problem \cref{eq:poisson_problem} follows from the variational form
+The discretisation is done in the context of the finite element method. To that end we consider a triangulation $\mathcal{T}$ of the domain $\Omega$ and a partition of unity $\chi_j$. Denote by $V_{h,0} = V_h \cap H^1_0(\Omega)$ the space of piecewise continuous functions $v_h\in H^1_0(\Omega)$ with respect to $\mathcal{T}$. Let the basis of $V_{h,0}$ be given by $\{\phi_k\}_{\in\mathcal{N}}$. The FE formulation of the Poisson problem \cref{eq:elliptic_problem} follows from the variational form
 \[
     a(u_h, v_h) = (f, v_h), \quad \forall u_h, v_h \in V_{h,0},
 \]
 and is given by
 \begin{equation}
-    A\mathbf{u} = b, \quad A_{ij} = a(\phi_j, \phi_i), \ b_i = (f, \phi_i) \quad \forall i,j\in\mathcal{N},
+    A\mathbf{u} = \mathbf{b}, \quad A_{ij} = a(\phi_j, \phi_i), \ b_i = (f, \phi_i) \quad \forall i,j\in\mathcal{N},
 \end{equation}
 where $A$ is the stiffness matrix, $\mathbf{b}$ is the load vector and $\mathcal{N}$ is the set of indices corresponding to the degrees of freedom. The stiffness matrix $A$ is symmetric and positive definite, and the load vector $\mathbf{b}$ is determined by the source term $f$ and the boundary conditions.
 
