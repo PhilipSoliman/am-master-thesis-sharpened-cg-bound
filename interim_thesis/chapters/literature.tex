@@ -57,7 +57,7 @@ Second, in \cite{cg_convrate_Strakos1991} the convergence rate of CG is investig
 
 Third, in \cite{cg_superlinear_Beckermann2001} the authors provide a proof of CG's superlinear convergence. They explain why the conjugate gradient method exhibits faster (superlinear) convergence than the classical bound suggests. In particular, they derive a new asymptotic error bound that is sharper than the standard estimate. This new bound is expressed via the integral \cite[Equation 1.8]{cg_superlinear_Beckermann2001}:
 \begin{equation}
-    \frac{1}{n} \log \left(\min_{r\in\mathcal(P)_m, r(0)=1}\max_{\lambda \sigma(A)}|r(\lambda)|\right) \lesssim-\frac{1}{t} \int_0^t g_{S(\tau)}(0) d \tau,
+    \frac{1}{m} \log \left(\min_{r\in\mathcal{P}_m, \ r(0)=1}\max_{\lambda \in \sigma(A)}|r(\lambda)|\right) \lesssim-\frac{1}{t} \int_0^t g_{S(\tau)}(0) d \tau,
     \label{eq:cg_superlinear_Beckermann2001}
 \end{equation}
 where $t = \frac{m}{N}$, $S(\tau)$ is a family of sets determined by the eigenvalue distribution and $g_S$ is the Green function for the complement of $S$ with pole at $\infty$. As shown by \cref{eq:cg_superlinear_Beckermann2001} and theorem 2.1 in \cite{cg_sharp_bound_Beckermann2001}, the error is bounded by a term that decreases more quickly as the number of iterations increases. Under additional separation conditions among eigenvalues (see Theorem 2.2), the bound is proven to be asymptotically sharp. Moreover, for matrices with equidistant eigenvalues, an explicit formula \cite[Corollary 3.2 and Equation 3.11]{cg_superlinear_Beckermann2001} confirms the improved rate and aligns with observed CG error curves. These findings help to explain why, in practice, CG converges faster than predicted by traditional condition number bounds.
