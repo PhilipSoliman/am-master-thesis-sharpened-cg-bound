@@ -1,5 +1,5 @@
 \NeedsTeXFormat{LaTeX2e}
-\ProvidesClass{_style/tudelft-beamer}[2023/11/17 v2022.0 TU Delft presentation class]
+\ProvidesClass{style/tudelft-beamer}[2023/11/17 v2022.0 TU Delft presentation class]
 
 \DeclareOption*{\PassOptionsToClass{\CurrentOption}{beamer}}
 \ProcessOptions*
