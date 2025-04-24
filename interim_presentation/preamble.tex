@@ -1,7 +1,20 @@
 \usepackage{datetime2}
 
+% change the date format to "Month Year"
 \makeatletter
 \newcommand{\monthyeardate}{%
   \DTMenglishmonthname{\@dtm@month}, \@dtm@year
 }
 \makeatother
+
+% section specific compilation
+\includeonlyframes{%
+  title,%
+  opening,%
+  toc,%
+  questions,%
+  background,%
+  literature,%
+  results,%
+  outlook%
+}

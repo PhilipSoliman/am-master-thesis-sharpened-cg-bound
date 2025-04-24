@@ -41,7 +41,7 @@
   \textblock{1}[0.5, 0.5](0.5, 0.5)%
     \tikzpicture[x=\paperwidth, y=\paperheight, #1]
       \path[use as bounding box]
-        (0, 0) rectangle (1, 1);
+      (0, 0) rectangle (1, 1);
 }{
     \endtikzpicture%
   \endtextblock
@@ -54,7 +54,7 @@
         \clip (0, 0) rectangle ++(\splitpos, 1);
       \else
         \clip (1, 0) rectangle ++(\splitpos, 1);
-      \fi;
+      \fi
 }{%
     \end{abstikz}%
   \end{textcolumn}%
@@ -138,7 +138,7 @@
 %  \global\footerprintedtrue%
 %}{}
 \renewcommand{\footnoterule}{%
-  \tikz[overlay, x=\paperwidth]{\draw (0, 1ex) -- ++(0.1, 0);}
+  \tikz[overlay, x=\paperwidth]{\draw (0, 1ex) -- ++(0.1, 0)}
   \iffooterinfootnotes
   \rlap{\smash{\raisebox{3ex}{%
     \rlap{\normalsize\leftfooter}%
@@ -182,7 +182,7 @@
   \setlength{\splitpos}{\titlesplitpos}
   \setbeamercolor{background canvas}{bg=white,fg=primary}
   \leftfooterwhitetrue
-  \begin{frame}
+  \begin{frame}[label=title]
     \leftfooterwhitetrue
     \def\titlepageformat{\color{white}}
     \begin{columns}
@@ -224,7 +224,7 @@
   \ifx\beamer@author\@empty\else\usebeamertemplate*{author}\fi\par
   \ifx\insertdate\@empty\else\usebeamertemplate*{date}\fi\par\medskip
   \ifx\insertinstitute\@empty\else\usebeamertemplate*{institute}\fi\par
-  \tikz{\draw[thick] (0,0) -- (8em,0);}\par\medskip
+  \tikz{\draw[thick] (0,0) -- (8em,0)}\par\medskip
 }
 
 \newcommand{\sectionsubtitle}{}
