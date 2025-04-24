@@ -52,11 +52,11 @@
 \newcommand{\tudlogo}[1][]{\begin{tikzpicture}[even odd rule, x=1ex, y=1ex, baseline=0.088ex]
 	\begin{scope}
 	  \clip (0, -.04) rectangle (7.356, 2.9) (1.4, -0.01) rectangle (3, 1.6);
-	  \includegraphics[height=2.939ex]{tud-logo};
+	  \includegraphics[height=2.939ex]{logo-black.pdf};
 	\end{scope}
 	\begin{scope}[fill=#1]
 	  \clip (1.4, -0.01) rectangle (3, 1.6);
-	  \includegraphics[height=2.939ex]{tud-logo};
+	  \includegraphics[height=2.939ex]{logo-black.pdf};
 	\end{scope}
   \end{tikzpicture}}
   
