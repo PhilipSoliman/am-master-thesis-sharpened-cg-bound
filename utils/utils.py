@@ -11,6 +11,7 @@ import matplotlib.colors as mpl_colors
 import numpy as np
 from matplotlib.axes import Axes
 from matplotlib.pyplot import savefig
+from matplotlib.figure import Figure
 from enum import Enum
 
 LARGE_FILE_THRESHOLD = 10 * 1024 * 1024  # 10 MB
@@ -211,13 +212,16 @@ def scientific_fmt(s: float, prec: int = 2) -> str:
     return out
 
 
-def save_latex_figure(fn: str) -> None:
+def save_latex_figure(fn: str, fig: Figure | None = None) -> None:
     # ensure figure directory exists
     FIG_FOLDER.mkdir(parents=True, exist_ok=True)
 
-    # save figure as pgf using matplotlib
+    # save currently active or provided figure as pgf using matplotlib
     pgf_p = FIG_FOLDER / (fn + ".pgf")
-    savefig(pgf_p, backend="pgf")
+    if fig is None:
+        savefig(pgf_p, backend="pgf")
+    else:
+        fig.savefig(pgf_p, backend="pgf")
 
     # create tex file
     tex_p = pgf_p.with_suffix(".tex")
