@@ -71,12 +71,26 @@ fig, axs = plt.subplots(
     squeeze=False,
     figsize=(FIGWIDTH, FIGWIDTH * figratio),
 )
+figs_seperate = []
+axs_seperate = []
+for _ in range(len(CLUSTER_COUNTS)):
+    _fig, _axs = plt.subplots(
+        nrows=1,
+        ncols=2,
+        sharex=False,
+        sharey=False,
+        squeeze=False,
+        figsize=(FIGWIDTH, FIGWIDTH * figratio / len(CLUSTER_COUNTS)),
+    )
+    figs_seperate.append(_fig)
+    axs_seperate.append(_axs)
 domain_range = DOMAIN[1] - DOMAIN[0]
 codomain_range = CODOMAIN[1] - CODOMAIN[0]
 iteration_upperbound = 0
 for i, A in enumerate(As):
     # select axis
     ax = axs[i, 0]
+    ax_sep = axs_seperate[i][0, 0]
 
     # solve exact solution (use diagonality of A)
     x_exact = b / eigs[i]
@@ -100,12 +114,16 @@ for i, A in enumerate(As):
     # plot final residual polynomial(s)
     label = r"$r_m$"
     ax.plot(cg_poly_x, cg_poly_r[-1], label=label)
+    ax_sep.plot(cg_poly_x, cg_poly_r[-1], label=label, color=ax.lines[-1].get_color())
     for j in range(1, NUM_RESPOLY):
         index = -(j + 1)
         if abs(index) > len(cg_poly_r):
             continue
         label = r"$r_{m-" + f"{j}" + r"}$"
         ax.plot(cg_poly_x, cg_poly_r[index], label=label, zorder=9)
+        ax_sep.plot(
+            cg_poly_x, cg_poly_r[index], label=label, zorder=9, color=ax.lines[-1].get_color()
+        )
 
     # condition number of A
     cond = np.linalg.cond(A)
@@ -119,13 +137,30 @@ for i, A in enumerate(As):
         zorder=10,
         s=20,
     )
+    ax_sep.scatter(
+        np.real(eigs[i]),
+        np.imag(eigs[i]),
+        marker=".",
+        color="black",
+        zorder=10,
+        s=20,
+    )
 
     # axis properties
     ax.set_ylim(CODOMAIN)
+    ax_sep.set_ylim(CODOMAIN)
     convergence_info = f"$m$ = {iterations}"
     n_c_text = r"$\mathbf{n_c = " + f"{CLUSTER_COUNTS[i]}" + "}$"
 
     ax.text(
+        DOMAIN[0] + 0.5 * domain_range,
+        CODOMAIN[0] + 0.9 * codomain_range,
+        convergence_info,
+        horizontalalignment="center",
+        verticalalignment="top",
+        zorder=11,
+    )
+    ax_sep.text(
         DOMAIN[0] + 0.5 * domain_range,
         CODOMAIN[0] + 0.9 * codomain_range,
         convergence_info,
@@ -141,20 +176,41 @@ for i, A in enumerate(As):
         verticalalignment="center",
         horizontalalignment="right",
     )
+    ax_sep.text(
+        DOMAIN[0] - 0.1 * domain_range,
+        0,
+        n_c_text,
+        # rotation=270,
+        verticalalignment="center",
+        horizontalalignment="right",
+    )
 
     # set classic axis style
     ax = mpl_graph_plot_style(
         ax, DOMAIN, CODOMAIN, origin=True, xtick_locs=[DOMAIN[1]], ytick_locs=CODOMAIN
     )
+    ax_sep = mpl_graph_plot_style(
+        ax_sep,
+        DOMAIN,
+        CODOMAIN,
+        origin=True,
+        xtick_locs=[DOMAIN[1]],
+        ytick_locs=CODOMAIN,
+    )
 
     # calculate resiudals
     ax = axs[i, 1]
+    ax_sep = axs_seperate[i][0, 1]
     residuals = custom_cg.calculate_residuals()
     residuals_norm = np.linalg.norm(residuals, axis=1)
     ax.semilogy(residuals_norm, label="residual norm")
+    ax_sep.semilogy(residuals_norm, label="residual norm")
     ax.set_xlabel(r"$\mathbf{m}$")
+    ax_sep.set_xlabel(r"$\mathbf{m}$")
     ax.set_ylabel(r"$\mathbf{||r_m||_2}$")
+    ax_sep.set_ylabel(r"$\mathbf{||r_m||_2}$")
     ax.set_ylim(bottom=1e-16, top=1e2)
+    ax_sep.set_ylim(bottom=1e-16, top=1e2)
 
 
 # plot legend last
@@ -170,8 +226,20 @@ axs[0, 0].legend(
     bbox_to_anchor=(pos_x, pos_y, width, height),
 ).set_zorder(11)
 
+# tight layout
 fig.tight_layout()
+for _fig in figs_seperate:
+    _fig.tight_layout()
+
 if ARGS.generate_output:
-    save_latex_figure("cg_convergence_extreme_spectra")
+    save_latex_figure("cg_convergence_extreme_spectra", fig=fig)
+    for i, _fig in enumerate(figs_seperate):
+        save_latex_figure(f"cg_convergence_extreme_spectra_cluster{i}", fig=_fig)
 if ARGS.show_output:
-    plt.show()
+    fig.show()
+    input()
+    plt.close(fig)
+    for _fig in figs_seperate:
+        _fig.show()
+        input()
+        plt.close(_fig)
