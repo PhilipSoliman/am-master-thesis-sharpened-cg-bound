@@ -3,6 +3,7 @@ import sys
 import subprocess
 import venv
 VENV_NAME = ".venv"
+DYNAMIC_LIBRARY_FOLDER = "clibs"
 
 def create_virtual_environment():
     if not os.path.exists(VENV_NAME):
@@ -28,6 +29,27 @@ def install_requirements():
     subprocess.check_call([python_exec, "-m", "pip", "install", "-r", "requirements.txt"])
     print("Installed required packages")
 
+def make_c_library(root_path):
+    lib_path = os.path.join(root_path, DYNAMIC_LIBRARY_FOLDER)
+    print(f"Building C library in {lib_path}...")
+
+    result = subprocess.run(
+        ["make"],
+        cwd=lib_path,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        shell=True  # Needed for Windows compatibility with make
+    )
+
+    print(result.stdout)
+
+    if result.returncode != 0:
+        print("Failed to build the C library. Exiting.")
+        sys.exit(1)
+
+    print("C library built successfully.")
+
 def activate_environment():
     if os.name == "nt":
         activation_script = os.path.join(VENV_NAME, "Scripts", "activate.bat")
@@ -43,6 +65,7 @@ def main():
     create_virtual_environment()
     add_root_to_sys_path(root_path)
     install_requirements()
+    make_c_library(root_path)
     activate_environment()
     sys.exit(0)
 
