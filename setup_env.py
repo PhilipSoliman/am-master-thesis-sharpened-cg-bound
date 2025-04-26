@@ -2,7 +2,7 @@ import os
 import sys
 import subprocess
 import venv
-VENV_NAME = ".venv2"
+VENV_NAME = ".venv"
 
 def create_virtual_environment():
     if not os.path.exists(VENV_NAME):
