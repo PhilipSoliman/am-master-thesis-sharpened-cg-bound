@@ -26,7 +26,7 @@ def add_root_to_sys_path(root_path):
     print("Configured sys.path to include the repo root")
 
 
-def install_requirements():
+def install_requirements(root_path):
     python_exec = (
         os.path.join(VENV_NAME, "Scripts", "python.exe")
         if os.name == "nt"
@@ -37,7 +37,14 @@ def install_requirements():
     print("Upgraded pip to latest version")
 
     subprocess.check_call(
-        [python_exec, "-m", "pip", "install", "-r", "requirements.txt"]
+        [
+            python_exec,
+            "-m",
+            "pip",
+            "install",
+            "-r",
+            os.path.join(root_path, "requirements.txt"),
+        ]
     )
     print("Installed required packages")
 
@@ -79,7 +86,7 @@ def main():
     root_path = os.path.abspath(os.path.dirname(__file__))
     create_virtual_environment()
     add_root_to_sys_path(root_path)
-    install_requirements()
+    install_requirements(root_path)
     make_c_library(root_path)
     activate_environment()
     sys.exit(0)

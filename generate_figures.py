@@ -10,7 +10,7 @@ from utils.utils import get_root
 PROJECT_ROOT = get_root()
 
 # get the path to the python executable
-PYTHON_PATH = sys.executable
+PYTHON_PATH = PROJECT_ROOT / ".venv" / "Scripts" / "python.exe"
 
 # get all figure generating python files in src and its subdirectories
 file_list = []
