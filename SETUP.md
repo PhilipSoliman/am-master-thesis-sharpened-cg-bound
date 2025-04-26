@@ -1,7 +1,20 @@
 # Setup instructions for the project
 This document provides setup instructions for this thesis repository. It includes information on how to set up the python environment, compile latex and C files, and run the code. In general, this repository is set up to be used with Visual Studio Code (VSCode). It is recommended to use VSCode for the project, as it provides a lot of useful features and extensions that can help with the development process.
 
-## Running Python files 
+## Easy setup 
+The easiest way to set up the project is to use the provided [setup_env.py](setup_env.py) script. This script will automatically set up a virtual environment, install all the required packages, and activate the environment for both Windows and Linux. To use the script, simply open a command terminal or shell in the root of the project and run the following command:
+```bash
+py setup_env.py
+```
+This will create a virtual environment in the `venv` folder and install all the required packages in the `requirements.txt` file. The script will also activate the environment for you.
+
+Latex file compilation can be done using the provided [compile_latex.py](compile_latex.py) script. This script will check if all figures are generated (generating them if not) and allow you to choose which tex files you want to compile. It will also create a `build` folder in the respective folders, where all the output files will be stored. The script can be run using the following command:
+    
+```bash
+py compile_latex.py
+```
+## Manual setup
+### 1. Running Python files 
 In order to run the Python files, one needs to have set up a (virtual) environment with the required packages. The requirements are listed in [requirements.txt](requirements.txt). To install the packages, run the following command in the terminal (after the environment is activated):
 ```bash
 pip install -r requirements.txt
@@ -51,7 +64,15 @@ Some Python files can accept command line arguments. To make it easier to work w
 }
 ```
 Once setup, simply press the white reload button in the bottom left corner of the VSCode window to load the buttons. The buttons will then appear next to the reload button. The first button will run the Python file with the `--show-output` argument, while the second button will run the file with the `--generate-output` argument. This allows for easy testing and debugging of the Python files.
-## Compiling Latex files
+
+### 2. Generating figures
+In this repository, figures are custom-generated using a function in [python utils](utils/utils.py) called ```save_latex_figure```. There is also a convience script [generate_figures.py](generate_figures.py) that can be used to generate all the figures in the project. It simply calls the function for each python file ending in "_fig.py" in [code](code). 
+
+The generated figures are always saved as PDFs in a folder called `figures` in the root of the project. 
+
+**IMPORTANT**: the figures need to be generated before compiling the latex documents, as they are included in the documents using the `\includegraphics` command.
+
+### 3. Compiling Latex files
 In order to compile the Latex files, one needs to have a working Latex installation. For example, [MikTeX](https://miktex.org/download) or [TeXLive](https://www.tug.org/texlive/windows.html) (I use the latter). Then, it is recommended to use the VSCode extension [LaTeX Workshop](https://marketplace.visualstudio.com/items?itemName=James-Yu.latex-workshop) to compile the files. This extension allows for easy compilation and previewing of the Latex documents. The following settings are necessary to compile the documents with the `lualatexmk` and `biber` tools:
 ```json
 {
@@ -100,13 +121,6 @@ In order to compile the Latex files, one needs to have a working Latex installat
 These settings should compile allow for compilation of all the main tex files in [final_thesis](final_thesis), [interim_thesis](interim_thesis) and [manuscript](manuscript) folders (with the same name) by using the dedicated button from the Latex Workshop extension. The `build` folder will be created in the respective folders, where all the output files will be stored. Where and if subfiles are configured for the separate chapters, compilation will be possible for these files in the same way. See for instance the [theory](manuscript/chapters/theory/theory.tex) chapter of the manuscript.
 
 Alternatively, one can use the recipe and subsidiary commands outlined above to compile the documents manually in a terminal (with a working Latex installation).
-
-### Generating figures for the thesis
-In this repository, figures are custom-generated using a function in [python utils](utils/utils.py) called ```save_latex_figure```. There is also a convience script [generate_figures.py](generate_figures.py) that can be used to generate all the figures in the project. It simply calls the function for each python file ending in "_fig.py" in [code](code). 
-
-The generated figures are always saved as PDFs in a folder called `figures` in the root of the project. 
-
-**IMPORTANT**: the figures need to be generated before compiling the latex documents, as they are included in the documents using the `\includegraphics` command.
 
 ## C file compilation
 For this, one can either use gcc or clang directly in combination with the provided [Makefile](clibs/Makefile). To compile the C files, run the following command in the terminal:
