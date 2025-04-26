@@ -1,4 +1,9 @@
-\documentclass[t, aspectratio=169, english, table]{style/tudelft-beamer}
+% add style folder to path
+\makeatletter
+\def\input@path{{../style/}}
+\makeatother
+
+\documentclass[t, aspectratio=169, english, table]{tudelft-beamer}
 
 \input{preamble.tex}
 \addbibresource[type=file, glob, datatype=bibtex, location=local]{../bibliography.bib}

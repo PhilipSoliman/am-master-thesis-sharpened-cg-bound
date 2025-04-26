@@ -1,11 +1,11 @@
 \NeedsTeXFormat{LaTeX2e}
-\ProvidesClass{style/tudelft-beamer}[2023/11/17 v2022.0 TU Delft presentation class]
+\ProvidesClass{tudelft-beamer}[2023/11/17 v2022.0 TU Delft presentation class]
 
 \DeclareOption*{\PassOptionsToClass{\CurrentOption}{beamer}}
 \ProcessOptions*
 \LoadClass{beamer}
 
-\usepackage[absolute,overlay]{textpos}
+\RequirePackage[absolute,overlay]{textpos}
 \setlength{\TPHorizModule}{\paperwidth}
 \setlength{\TPVertModule}{\paperheight}
 \usepackage{tikz}
@@ -32,9 +32,9 @@
 \renewcommand{\bibfont}{\normalfont\scriptsize}
 \renewcommand{\cite}[1]{\footnote<.->[frame]{\fullcite{#1}}}
 
-\usepackage{style/tudelft-fonts}
-\usepackage{style/tudelft-colors}
-\usepackage{style/tudelft-frame}
+\usepackage{tudelft-fonts}
+\usepackage{tudelft-colors}
+\usepackage{tudelft-frame}
 
 \colorlet{primary}{tud primary}
 \setbeamercolor{background canvas}{bg=primary,fg=white}
