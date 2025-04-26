@@ -28,25 +28,22 @@ def install_requirements():
     subprocess.check_call([python_exec, "-m", "pip", "install", "-r", "requirements.txt"])
     print("Installed required packages")
 
-def create_activation_command() -> list[str]:
-    activation_command = []    
+def activate_environment():
     if os.name == "nt":
         activation_script = os.path.join(VENV_NAME, "Scripts", "activate.bat")
-        activation_command = ["cmd.exe", "/k", activation_script]
+        input("Press enter to activate the environment.")    
+        subprocess.run(["cmd.exe", "/k", activation_script])
     else:
-        bash_command = f"source {VENV_NAME}/bin/activate && exec $SHELL"
-        activation_command = ["bash", "-c", bash_command]
-    return activation_command
+        activation_script = f"{VENV_NAME}/bin/activate"
+        print("To activate the environment, run:")
+        print(f"source {activation_script}")
 
 def main():
     root_path = os.path.abspath(os.path.dirname(__file__))
     create_virtual_environment()
     add_root_to_sys_path(root_path)
     install_requirements()
-    activation_command = create_activation_command()
-    input("Virtual environment setup complete. Press Enter to finish and activate environment.")
-    subprocess.run(activation_command, shell=True)
-    
+    activate_environment()
     sys.exit(0)
 
 if __name__ == "__main__":
