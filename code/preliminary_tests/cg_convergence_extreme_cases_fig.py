@@ -122,7 +122,11 @@ for i, A in enumerate(As):
         label = r"$r_{m-" + f"{j}" + r"}$"
         ax.plot(cg_poly_x, cg_poly_r[index], label=label, zorder=9)
         ax_sep.plot(
-            cg_poly_x, cg_poly_r[index], label=label, zorder=9, color=ax.lines[-1].get_color()
+            cg_poly_x,
+            cg_poly_r[index],
+            label=label,
+            zorder=9,
+            color=ax.lines[-1].get_color(),
         )
 
     # condition number of A
@@ -149,7 +153,11 @@ for i, A in enumerate(As):
     # axis properties
     ax.set_ylim(CODOMAIN)
     ax_sep.set_ylim(CODOMAIN)
+
+    # number of iterations
     convergence_info = f"$m$ = {iterations}"
+
+    # number of clusters
     n_c_text = r"$\mathbf{n_c = " + f"{CLUSTER_COUNTS[i]}" + "}$"
 
     ax.text(
@@ -211,6 +219,14 @@ for i, A in enumerate(As):
     ax_sep.set_ylabel(r"$\mathbf{||r_m||_2}$")
     ax.set_ylim(bottom=1e-16, top=1e2)
     ax_sep.set_ylim(bottom=1e-16, top=1e2)
+    ax.set_xlim(left=0, right=iteration_upperbound + 1)
+    ax_sep.set_xlim(left=0, right=iteration_upperbound + 1)
+
+    # plot convergence line
+    ax.axhline(y=custom_cg.tol, linestyle="--", zorder=8)
+    ax_sep.axhline(
+        y=custom_cg.tol, color=ax.lines[-1].get_color(), linestyle="--", zorder=8
+    )
 
 
 # plot legend last
