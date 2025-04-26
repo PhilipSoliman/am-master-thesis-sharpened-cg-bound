@@ -9,12 +9,32 @@
     \end{itemize}
 \end{frame}
 
+\footerinfootnotestrue
+\begin{frame}[label=literature,fragile]{Literature: CG Convergence for Non-uniform Spectra}
+    \frametitle{Related Work}
+    \framesubtitle{CG convergence in case of non-uniform spectra}
+    \begin{columns}[T,onlytextwidth]
+        \begin{column}{.5\textwidth}
+            \begin{itemize}
+                \item<1-> Clusterpoint distribution ($0 < \rho \leq 1$)\cite{cg_convrate_Strakos1991}
+                \begin{equation*}
+                    \lambda_i = \lambda_1 + \frac{i-1}{N-1}(\lambda_N - \lambda_1)\rho_i, \quad i = 1, \dots, N
+                \end{equation*}
+            \end{itemize}
+        \end{column}
+        \begin{column}{.55\textwidth}
+            \only<1>{%
+                \begin{figure}
+                    \centering
+                    \includegraphics[width=0.5\textwidth]{clusterpoint_distribution_Strakos.png}
+                \end{figure}
+            }
+        \end{column}
+    \end{columns}
+\end{frame}
+
+\footerinfootnotesfalse
 \begin{frame}[label=literature]{Literature: Coarse Spaces}
     \frametitle{Related Work}
     \framesubtitle{Tailored Coarse Spaces for High-Contrast Problems}
-\end{frame}
-
-\begin{frame}[label=literature]{Literature: CG Convergence for Non-uniform Spectra}
-    \frametitle{Related Work}
-    \framesubtitle{CG convergence in case of non-uniform spectra}
 \end{frame}
