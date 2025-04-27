@@ -2,8 +2,7 @@
     \frametitle{Structure}
     \begin{itemize}
         \item Research Questions
-        \item {\color{tud grapefruit}Mathematical Background}
-        \item Related Work
+        \item {\color{tud grapefruit}Background \& Literature}
         \item Preliminary Results
         \item Outlook
     \end{itemize}
@@ -11,7 +10,7 @@
 
 \footerinfootnotestrue
 \begin{frame}[label=background,fragile]{Background: CG method}
-    \frametitle{Mathematical Background}
+    \frametitle{Background \& Literature}
     \framesubtitle{Conjugate gradient method}
     \begin{algorithm}[H]
         \begin{algorithmic}
@@ -30,8 +29,8 @@
 
 \footerinfootnotesfalse
 \begin{frame}[label=background,fragile]{Background: CG explained}
-    \frametitle{Mathematical Background}
-    \framesubtitle{Conjugate gradient method}
+    \frametitle{Background \& Literature}
+    \framesubtitle{Conjugate gradient method: residual polynomial}
     \begin{columns}[T,onlytextwidth]
         \begin{column}{.5\textwidth}
             \begin{itemize}
@@ -59,8 +58,8 @@
 \end{frame}
 
 \begin{frame}[label=background,fragile]{CG convergence}
-    \frametitle{Mathematical Background}
-    \framesubtitle{Conjugate gradient method}
+    \frametitle{Background \& Literature}
+    \framesubtitle{Conjugate gradient method: convergence}
     \begin{itemize}
         \item<1-> Classical (condition number) convergence bound:
         \begin{theorem}
@@ -78,8 +77,8 @@
 \end{frame}
 
 \begin{frame}[label=background,fragile]{CG spectra}
-    \frametitle{Mathematical Background}
-    \framesubtitle{Conjugate gradient method}
+    \frametitle{Background \& Literature}
+    \framesubtitle{Conjugate gradient method: spectral distribution}
     Setting $\lambda_{\text{min}} = 0.1$ and $\lambda_{\text{max}} = 0.9$ gives $m_{\text{classical}} = 26$. \only<1>{\textcolor{tud grapefruit}{Worst case}}\only<2>{\textcolor{tud green}{Best case}} distribution:
     \only<1>{%
         \begin{figure}
@@ -99,7 +98,7 @@
 
 \footerinfootnotestrue
 \begin{frame}[label=background,fragile]{Background: Schwarz}
-    \frametitle{Mathematical Background}
+    \frametitle{Background \& Literature}
     \framesubtitle{Schwarz preconditioners}
     \begin{columns}[T,onlytextwidth]
         \begin{column}{.5\textwidth}
@@ -146,4 +145,10 @@
             }
         \end{column}
     \end{columns}
+\end{frame}
+
+\footerinfootnotesfalse
+\begin{frame}[label=background]{Literature: Coarse Spaces}
+    \frametitle{Related Work}
+    \framesubtitle{Tailored Coarse Spaces for High-Contrast Problems}
 \end{frame}
