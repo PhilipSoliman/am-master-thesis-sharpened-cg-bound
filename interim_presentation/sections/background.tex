@@ -97,6 +97,34 @@
 \end{frame}
 
 \footerinfootnotestrue
+\begin{frame}[label=background,fragile]{Literature: CG Convergence for Non-uniform Spectra}
+    \frametitle{Background \& Literature}
+    \framesubtitle{Conjugate gradient method: non-uniform spectra}
+    \begin{columns}[T,onlytextwidth]
+        \begin{column}{.5\textwidth}
+            \begin{itemize}
+                \item<1-> Clusterpoint distribution ($0 < \rho \leq 1$)\cite{cg_convrate_Strakos1991}
+                \begin{align*}
+                    &\lambda_i = \lambda_1 + \frac{i-1}{N-1}(\lambda_N - \lambda_1)\rho_i^{N-i}, \\ 
+                    &\text{For }i = 1, \dots, N
+                \end{align*}
+                \item<2-> $\rho = 1$ gives uniform distribution
+                \item<3-> $\rho = 0$ gives two distinct eigenvalues
+            \end{itemize}
+        \end{column}
+        \begin{column}{.45\textwidth}
+            \only<4>{%
+                \begin{figure}
+                    \centering
+                    \includegraphics[width=\textwidth]{clusterpoint_distribution_Strakos.png}
+                    \caption{CG iterations versus $\rho$}
+                \end{figure}
+            }
+        \end{column}
+    \end{columns}
+\end{frame}
+
+\footerinfootnotestrue
 \begin{frame}[label=background,fragile]{Background: Schwarz}
     \frametitle{Background \& Literature}
     \framesubtitle{Schwarz preconditioners}
