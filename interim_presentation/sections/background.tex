@@ -97,7 +97,7 @@
 \end{frame}
 
 \footerinfootnotestrue
-\begin{frame}[label=background,fragile]{Literature: CG Convergence for Non-uniform Spectra}
+\begin{frame}[label=background,fragile]{Literature: non-uniform spectra}
     \frametitle{Background \& Literature}
     \framesubtitle{Conjugate gradient method: non-uniform spectra}
     \begin{columns}[T,onlytextwidth]
@@ -122,6 +122,65 @@
             }
         \end{column}
     \end{columns}
+\end{frame}
+
+\footerinfootnotestrue
+\begin{frame}[label=background,fragile]{Literature: CG Convergence for Non-uniform Spectra}
+    \frametitle{Background \& Literature}
+    \framesubtitle{Conjugate gradient method: non-uniform spectra}
+    \begin{columns}[T,onlytextwidth]
+        \begin{column}{.5\textwidth}
+            \only<1-2>{%
+                \begin{itemize}
+                    \item<1-2> Let $0<a<b<c<d<1$ and consider
+                    \begin{itemize}
+                        \item<2> Two disjoint clusters
+                        \begin{equation*}
+                            \sigma_1(A) = [a,b] \bigcup [c,d]
+                        \end{equation*}
+                        \item<2> Cluster with tail
+                        \begin{equation*}
+                            \sigma_2(A) = [c,d] \bigcup_{\substack{i=1 \\ \lambda_i \in [a,b]}}^{N_{\text{tail}}} \lambda_i
+                        \end{equation*}
+                    \end{itemize}
+                \end{itemize}
+            }
+            \only<3-8>{%
+            \begin{itemize}
+                \item<3-> $A$-norm optimality of CG
+                \begin{equation*}
+                    \|\mathbf{e}_m\|_A = \min_{r \in \mathcal{P}_{m-1}, r(0) = 1} \sum_{i=1}^{m}\frac{r(\lambda_i)^2}{\lambda_i}\rho_{0,i}^2
+                \end{equation*}
+                \item<4-> We look for $r_{\bar{m}} = \hat{r}_p \hat{r}_{\bar{m}-p} \in \mathcal{P}_{\bar{m}}$\cite{cg_sharpened_convrate_Axelsson1976}
+            \end{itemize}
+            }
+        \end{column}
+        \begin{column}{.5\textwidth}
+            \only<2-4>{%
+                \begin{figure}[H]
+                    \centering
+                    \resizebox{\textwidth}{!}{
+                        \input{../tikz/eigenvalue_clusters.tex}
+                    }
+                \end{figure}
+            }
+            \only<5-8>{%
+                Let $\epsilon = \frac{\|\mathbf{e}_m\|_A}{\|\mathbf{e}_0\|_A}$ relative error
+                \begin{equation*}
+                    1 \leq p = \min\left\{\left\lceil\frac{1}{2}\sqrt{\frac{b}{a}}\ln{\epsilon} + 1\right\rceil, N_{\text{tail}}\right\}
+                \end{equation*}
+            }
+        \end{column}
+    \end{columns}
+    \only<6-8>{%
+        CG iteration bound for relative error 
+        \begin{equation*}
+            \bar{m}=\left\lceil\frac{1}{2} \sqrt{\alert<7>{\frac{d}{c}}} \ln \frac{2}{\epsilon}+\left(1+\frac{1}{2} \sqrt{\alert<7>{\frac{d}{c}}} \ln \frac{4 \alert<8>{d}}{\alert<8>{e}}\right) p\right\rceil, \text{ where } e = \begin{cases}
+                b, \text{ two clusters}\\
+                a, \text{ cluster with tail}\\
+            \end{cases}
+        \end{equation*}
+    }
 \end{frame}
 
 \footerinfootnotestrue
@@ -175,8 +234,28 @@
     \end{columns}
 \end{frame}
 
-\footerinfootnotesfalse
-\begin{frame}[label=background]{Literature: Coarse Spaces}
-    \frametitle{Related Work}
+\footerinfootnotestrue
+\begin{frame}[label=background, fragile]{Background: Coarse Spaces}
+    \frametitle{Background \& Literature}
     \framesubtitle{Tailored Coarse Spaces for High-Contrast Problems}
+    \begin{columns}[T,onlytextwidth]
+        \begin{column}{.5\textwidth}
+            \begin{itemize}
+                \item<1-> MsFEM-based: robust for high-contrast, but computationally expensive\footnote[frame]{\citeauthor{acms_coarse_space_Heinlein2018} (\citeyear{acms_coarse_space_Heinlein2018})}
+                \item<2-> Generalized framework: GDSW\footnote[frame]{\citeauthor{gdsw_coarse_space_Dohrmann2008} (\citeyear{gdsw_coarse_space_Dohrmann2008})}, RGDSW\footnote[frame]{\citeauthor{rgdsw_coarse_space_Dohrmann2017} (\citeyear{rgdsw_coarse_space_Dohrmann2017})} \& AMS\footnote[frame]{\citeauthor{ams_coarse_space_comp_study_Alves2024} (\citeyear{ams_coarse_space_comp_study_Alves2024})}
+            \end{itemize}
+        \end{column}
+        \begin{column}{.5\textwidth}
+            \only<2>{%
+                \begin{figure}
+                    \centering
+                    \input{../tikz/node_types.tex}
+                \end{figure}
+            }
+            \only<2>{%
+
+            }
+        \end{column}
+    \end{columns}
+
 \end{frame}
