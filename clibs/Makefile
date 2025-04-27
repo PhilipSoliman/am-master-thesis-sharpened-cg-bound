@@ -11,7 +11,7 @@ LDFLAGS=-shared #$(PYTHONLDFLAGS)
 LAPACKFLAGS=-lm -llapacke -llapack -lblas -ltmglib -I/../../mingw64/include -L/../../mingw64/lib
 
 # compiler
-CC=C:\msys64\mingw64\bin\g++.exe
+CC=gcc
 
 lib: $(LIBTARGETS) 
 
