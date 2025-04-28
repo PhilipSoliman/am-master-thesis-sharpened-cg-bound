@@ -110,6 +110,7 @@
                 \end{align*}
                 \item<2-> $\rho = 1$ gives uniform distribution
                 \item<3-> $\rho = 0$ gives two distinct eigenvalues
+                \item<4-> $0<\rho<1$ gives a spectrum with a clusterpoint at $\lambda_1$.
             \end{itemize}
         \end{column}
         \begin{column}{.45\textwidth}
@@ -149,7 +150,7 @@
             \begin{itemize}
                 \item<3-> $A$-norm optimality of CG
                 \begin{equation*}
-                    \|\mathbf{e}_m\|_A = \min_{r \in \mathcal{P}_{m-1}, r(0) = 1} \sum_{i=1}^{m}\frac{r(\lambda_i)^2}{\lambda_i}\rho_{0,i}^2
+                    \|\mathbf{e}_m\|_A = \min_{r \in \mathcal{P}_{m}, r(0) = 1} \sum_{i=1}^{m}\frac{r(\lambda_i)^2}{\lambda_i}\rho_{0,i}^2
                 \end{equation*}
                 \item<4-> We look for $r_{\bar{m}} = \hat{r}_p \hat{r}_{\bar{m}-p} \in \mathcal{P}_{\bar{m}}$\cite{cg_sharpened_convrate_Axelsson1976}
             \end{itemize}
@@ -173,7 +174,6 @@
         \end{column}
     \end{columns}
     \only<6-8>{%
-        CG iteration bound for relative error 
         \begin{equation*}
             \bar{m}=\left\lceil\frac{1}{2} \sqrt{\alert<7>{\frac{d}{c}}} \ln \frac{2}{\epsilon}+\left(1+\frac{1}{2} \sqrt{\alert<7>{\frac{d}{c}}} \ln \frac{4 \alert<8>{d}}{\alert<8>{e}}\right) p\right\rceil, \text{ where } e = \begin{cases}
                 b, \text{ two clusters}\\
