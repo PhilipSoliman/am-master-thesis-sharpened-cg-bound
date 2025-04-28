@@ -132,7 +132,7 @@
         \begin{column}{.5\textwidth}
             \only<1-2>{%
                 \begin{itemize}
-                    \item<1-2> Let $0<a<b<c<d<1$ and consider
+                    \item<1-2> Let $0<a<b<c<d<1$ and consider\cite{cg_sharpened_convrate_Axelsson1976}
                     \begin{itemize}
                         \item<2> Two disjoint clusters
                         \begin{equation*}
@@ -238,24 +238,52 @@
 \begin{frame}[label=background, fragile]{Background: Coarse Spaces}
     \frametitle{Background \& Literature}
     \framesubtitle{Tailored Coarse Spaces for High-Contrast Problems}
+    \only<4-6>{Figures obtained from \cite{ams_coarse_space_comp_study_Alves2024}} 
+    \only<4-5>{\absimage{.73, .25}{.4}{method_legend_Alves.png}}
     \begin{columns}[T,onlytextwidth]
         \begin{column}{.5\textwidth}
-            \begin{itemize}
-                \item<1-> MsFEM-based: robust for high-contrast, but computationally expensive\footnote[frame]{\citeauthor{acms_coarse_space_Heinlein2018} (\citeyear{acms_coarse_space_Heinlein2018})}
-                \item<2-> Generalized framework: GDSW\footnote[frame]{\citeauthor{gdsw_coarse_space_Dohrmann2008} (\citeyear{gdsw_coarse_space_Dohrmann2008})}, RGDSW\footnote[frame]{\citeauthor{rgdsw_coarse_space_Dohrmann2017} (\citeyear{rgdsw_coarse_space_Dohrmann2017})} \& AMS\footnote[frame]{\citeauthor{ams_coarse_space_comp_study_Alves2024} (\citeyear{ams_coarse_space_comp_study_Alves2024})}
-            \end{itemize}
+            \only<1-3>{%
+                \begin{itemize}
+                    \item<1-> MsFEM-based: robust for high-contrast, but computationally expensive\footnote[frame]{\citeauthor{acms_coarse_space_Heinlein2018} (\citeyear{acms_coarse_space_Heinlein2018})}
+                    \item<2-> Generalized framework: GDSW\footnote[frame]{\citeauthor{gdsw_coarse_space_Dohrmann2008} (\citeyear{gdsw_coarse_space_Dohrmann2008})}, RGDSW\footnote[frame]{\citeauthor{rgdsw_coarse_space_Dohrmann2017} (\citeyear{rgdsw_coarse_space_Dohrmann2017})}
+                    \item<3-> Hybrid: AMS\footnote[frame]{\citeauthor{ams_coarse_space_comp_study_Alves2024} (\citeyear{ams_coarse_space_comp_study_Alves2024})}
+                \end{itemize}
+            }
+            \only<4>{%
+                \begin{figure}[H]
+                    \centering
+                    \includegraphics[width=0.8\textwidth]{coefficient_function_vertex_Alves.png}
+                \end{figure}
+            }
+            \only<5>{%
+                \begin{figure}[H]
+                    \centering
+                    \includegraphics[width=0.8\textwidth]{coefficient_function_edges_Alves.png}
+                \end{figure}
+            }
         \end{column}
         \begin{column}{.5\textwidth}
-            \only<2>{%
-                \begin{figure}
+            \only<2-3>{%
+                \begin{figure}[H]
                     \centering
                     \input{../tikz/node_types.tex}
                 \end{figure}
             }
-            \only<2>{%
-
+            \only<4>{%
+                \begin{figure}[H]
+                    \centering
+                    \includegraphics[width=\textwidth]{cg_iterations_coefficient_vertex_Alves.png}
+                \end{figure}
+            }
+            \only<5>{%
+                \begin{figure}[H]
+                    \centering
+                    \includegraphics[width=\textwidth]{cg_iterations_coefficient_edges_Alves.png}
+                \end{figure}
             }
         \end{column}
     \end{columns}
-
+    \only<6>{%
+        \absimage{.5, .52}{.65}{precond_eigvals_8_and_64_subdomains_Alves.png}
+    }
 \end{frame}
