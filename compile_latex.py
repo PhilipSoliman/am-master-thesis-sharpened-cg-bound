@@ -88,7 +88,7 @@ def find_tex_files():
     return tex_files
 
 
-def compile_tex_file(tex_file):
+def compile_tex_file(tex_file, progress_bar):
     tex_dir = tex_file.parent
     tex_name = tex_file.stem
 
@@ -108,22 +108,28 @@ def compile_tex_file(tex_file):
 
     wds = [REPO_ROOT, REPO_ROOT / tex_dir, REPO_ROOT, REPO_ROOT]
 
-    for cmd, wd in zip(cmds, wds):
+    num_cmds = len(cmds)
+    line = ""
+    for step, (cmd, wd) in enumerate(zip(cmds, wds), start=1):
+        line = f"\r{progress_bar} (step: {step}/{num_cmds})"
+        print(f"{line}", end="", flush=True)
         run_command(cmd, cwd=wd, log_file=log_file)
 
     # Cleanup
     clean_cmd = f"latexmk -outdir={build_dir} -c {tex_file}"
     run_command(clean_cmd, cwd=REPO_ROOT, log_file=log_file)
 
+    # Flush the progress bar
+    line_length = len(line)
+    print("\r" + " " * line_length + "\r", end="", flush=True)
 
-def print_progress(current, total, filename) -> int:
+
+def progress_bar(current, total, filename) -> str:
     bar_length = 40
     filled_length = int(bar_length * current // total)
     bar = "█" * filled_length + "-" * (bar_length - filled_length)
     line = f"\rCompiling [{bar}] {current}/{total} files | {filename}"
-    # print(line, end="", flush=True)
-    print(f"\r{line}", end="", flush=True)
-    return len(line)
+    return line
 
 
 def choose_files(tex_files):
@@ -156,11 +162,9 @@ def main():
 
     total = len(selected_files)
     print()
-    for idx, tex_file in enumerate(selected_files, start=1):
-        line_length = print_progress(idx, total, tex_file.stem)
-        compile_tex_file(tex_file)
-        # Clear the progress line after completion
-        print("\r" + " " * line_length + "\r", end="", flush=True)
+    for idx, tex_file in enumerate(selected_files):
+        pbar = progress_bar(idx, total, tex_file.stem)
+        compile_tex_file(tex_file, pbar)
 
     print("All requested .tex files compiled successfully.")
 
