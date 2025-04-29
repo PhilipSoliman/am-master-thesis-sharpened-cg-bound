@@ -66,6 +66,7 @@
 \newcommand*{\logoimage}[1]{\def\@logoimage{#1}}
 \newcommand*{\defenseDate}[1]{\def\@defenseDate{#1}}
 \newcommand*{\defenseTime}[1]{\def\@defenseTime{#1}}
+\newcommand*{\publishDate}[1]{\def\@publishDate{#1}}
 
 
 %% Scale the margins to be slightly smaller than default (.7)
