@@ -64,7 +64,7 @@
         %     % Cover: & High-Speed Photography of Water Splash \\
         %     % Style: & TU Delft Report Style, with modifications by Daan Zwaneveld
         % \end{tabular}
-        Published on {\makeatletter\@publishDate\makeatother}
+        Published on {\makeatletter\ifdefvoid{\@publishDate}{\today}{\@publishDate}\makeatother}
 
         \bigskip
         \bigskip
