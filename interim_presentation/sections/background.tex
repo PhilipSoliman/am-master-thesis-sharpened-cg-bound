@@ -65,7 +65,7 @@
         \begin{theorem}
             The error of the $m^{\text{th}}$ iterate of the CG algorithm is bounded by
             \begin{equation*}
-            ||\mathbf{e}_m|| \leq 2 \left(\frac{\sqrt{\kappa}-1}{\sqrt{\kappa} + 1}\right)^m ||\mathbf{e}_0||_A,
+            ||\mathbf{e}_m||_A \leq 2 \left(\frac{\sqrt{\kappa}-1}{\sqrt{\kappa} + 1}\right)^m ||\mathbf{e}_0||_A,
             \end{equation*}
             where $\kappa = \lambda_{\text{max}}/\lambda_{\text{min}}$ is the condition number of (symmetric matrix) $A$.
         \end{theorem}
@@ -192,7 +192,7 @@
             \begin{itemize}
                 \item<1-> Derived from the Alternating Schwarz method\cite{schwarz_methods_Dolean_2015}
                 \item<2-> Convergence rate depends on the overlap $\alert<2>{\delta}$ and the wave number of eigenmodes $\alert<3>{k}$
-                \item<4-> As a preconditioner $M_{\text{ASM}} = \sum_{i=1}^{N_{\text{sub}}} R_i^T A_i^{-1} R_i$
+                \item<4-> As a preconditioner $M_{\text{OAS-1}} = \sum_{i=1}^{N_{\text{sub}}} R_i^T A_i^{-1} R_i$
                 \item<5-> Need a coarse space $\alert<6>{R_0}$ to counter slowly converging modes
             \end{itemize}
         \end{column}
@@ -226,7 +226,7 @@
             \only<6>{%
             \begin{block}{2-level Additive Schwarz Preconditioner}
                 \begin{equation*}
-                    M_{\text{ASM,2}} = \alert<6>{R_0}^T A_0^{-1} \alert<6>{R_0} + M_{\text{ASM}}
+                    M_{\text{OAS-2}} = \alert<6>{R_0}^T A_0^{-1} \alert<6>{R_0} + M_{\text{OAS-1}}
                 \end{equation*}
             \end{block} 
             }
