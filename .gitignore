@@ -21,6 +21,7 @@ docs/
 **.venv
 **/__pycache__
 **/indent.log
+**/*.egg-info
 
 # c
 clibs/build/
