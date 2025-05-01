@@ -4,7 +4,6 @@ import sys
 import venv
 
 VENV_NAME = ".venv"
-DYNAMIC_LIBRARY_FOLDER = "clibs"
 
 
 def create_virtual_environment():
@@ -24,6 +23,7 @@ def add_root_to_sys_path(root_path):
     with open(sitecustomize_path, "w") as f:
         f.write(f"import sys\nsys.path.insert(0, r'{root_path}')\n")
     print("Configured sys.path to include the repo root")
+
 
 
 def install_requirements(root_path):
@@ -48,9 +48,21 @@ def install_requirements(root_path):
     )
     print("Installed required packages")
 
+    subprocess.check_call(
+        [
+            python_exec,
+            "-m",
+            "pip",
+            "install",
+            "-e",
+            "."
+        ]
+    )
+    print("Installed local packages")
+
 
 def make_c_library(root_path):
-    lib_path = os.path.join(root_path, DYNAMIC_LIBRARY_FOLDER)
+    lib_path = os.path.join(root_path, "lib")
     print(f"Building C library in {lib_path}...")
 
     result = subprocess.run(
@@ -85,7 +97,6 @@ def activate_environment():
 def main():
     root_path = os.path.abspath(os.path.dirname(__file__))
     create_virtual_environment()
-    add_root_to_sys_path(root_path)
     install_requirements(root_path)
     make_c_library(root_path)
     activate_environment()
