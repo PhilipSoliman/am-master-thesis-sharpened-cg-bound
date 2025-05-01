@@ -2,10 +2,10 @@ from ctypes import CDLL, POINTER, byref, c_bool, c_double, c_int
 
 import numpy as np
 
-from utils.utils import get_root
+from lib.utils import get_root
 
 # constants
-DLL_FOLDER = "clibs"
+DLL_FOLDER = "lib"
 DLL_NAME = "custom_cg.so"
 
 # path to root directory
