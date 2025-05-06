@@ -5,7 +5,7 @@ import numpy as np
 from lib.utils import get_root
 
 # constants
-DLL_FOLDER = "lib"
+DLL_FOLDER = "lib/clib"
 DLL_NAME = "custom_cg.so"
 
 # path to root directory

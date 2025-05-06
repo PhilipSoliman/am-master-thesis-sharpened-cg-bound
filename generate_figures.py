@@ -1,6 +1,5 @@
 import os
 import subprocess
-import sys
 from pathlib import Path
 
 from tqdm import tqdm
@@ -9,6 +8,9 @@ from lib.utils import get_root
 
 PROJECT_ROOT = get_root()
 
+PYTHON_EXEC = os.path.join(PROJECT_ROOT, ".venv", "bin", "python")
+if os.name == "nt":
+    PYTHON_EXEC = os.path.join(PROJECT_ROOT, ".venv", "Scripts", "python.exe")
 
 # get all figure generating python files in src and its subdirectories
 file_list = []
@@ -26,6 +28,6 @@ progress_bar = tqdm(
 )
 for file in progress_bar:
     result = subprocess.run(
-        ["py", file, "--generate-output"], check=True, capture_output=True
+        [PYTHON_EXEC, file, "--generate-output"], check=True, capture_output=True
     )
     progress_bar.set_postfix_str(f"Finished running {file.name}")
