@@ -11,34 +11,35 @@ Check that you have the following
 - `gcc` (again, consider using [MSYS2](https://www.msys2.org/) on Windows)
 - Full [TeXLive](https://www.tug.org/texlive/windows.html) installation. On Linux this can be done using the following command:
 ```bash
-sudo apt-get install texlive-full
+apt-get install texlive-full
 ```
 If you are on Windows, the above should be made available in your PATH
 
 ---
 
-### Easy setup
-The easiest way to set up the project is to use the provided [setup_env.py](setup_env.py) script. On Linux, you might need to give it rights by running the following command:
+### Easy Setup
+The easiest way to set up the project is to use the provided [setup_env.py](setup_env.py) script. On Linux, you might need to give it rights by running the following command (in a bash shell):
 ```bash
 chmod +x setup_env.py
 ```
-The script will automatically set up a virtual environment, install all the required (local) python packages and the Arial font for LaTeX compilation (latter only on Linux). Simply use your python installation to run the script:
+The script automatically sets up a virtual environment, installs all the required python packages specified in the `requirements.txt` file as well as the local `lib` module. Finally, on Linux it also adds the `ttf-mscorefonts-installer` that installs -- among other MS fonts -- the Arial font necessary for LaTeX compilation. Simply use your python installation to run the script:
 ```bash
-python setup_env.py
+<python-executable> setup_env.py
 ```
-This will create a virtual environment in the `.venv` folder and install all the required packages specified in the `requirements.txt` file. On Windows the script will also activate the environment for you, while on Linux you will need to explicitly do so by running the following command:
+Note, Linux `<python-executable> = python3`, while on Windows can be `python` or `py`.
+
+On Windows the script will also activate the environment for you, while on Linux you will need to explicitly do so by running the following command (in a bash shell):
 ```bash
 source .venv/bin/activate
 ```
-Latex file compilation can be done using the provided [compile_latex.py](compile_latex.py) script. This script will check if a `figure` directory is present in the root of the project (generating it if not) and, subsequently allow you to choose which LaTeX files you want to compile. It will also create a `build` folder in the respective folders, where all the output files will be stored. The script can be run using the following command:
-    
+Latex file compilation can be done using the provided [compile_latex.py](compile_latex.py) script. This script will check if a `figure` directory is present in the root of the project (generating it if not) and, subsequently allow you to choose which LaTeX files you want to compile. It will also create a `build` folder in the respective folders, where all the output files will be stored. The script can be run using the following command in the terminal (after the environment is activated):
 ```bash
 python compile_latex.py
 ```
 
 ---
-### Manual setup (VSCode)
-#### 1. Running Python files 
+### Manual Setup (VSCode)
+#### 1. Running Python Files 
 In order to run the Python files, one needs to have set up a (virtual) environment with the required packages. The requirements are listed in [requirements.txt](requirements.txt). To install the packages, run the following command in the terminal (after the environment is activated):
 ```bash
 pip install -r requirements.txt
@@ -89,14 +90,14 @@ Some Python files can accept command line arguments. To make it easier to work w
 ```
 Once setup, simply press the white reload button in the bottom left corner of the VSCode window to load the buttons. The buttons will then appear next to the reload button. The first button will run the Python file with the `--show-output` argument, while the second button will run the file with the `--generate-output` argument. This allows for easy testing and debugging of the Python files.
 
-#### 2. Generating figures
+#### 2. Generating Figures
 In this repository, figures are custom-generated using a function in [python utils](utils/utils.py) called ```save_latex_figure```. There is also a convenience script [generate_figures.py](generate_figures.py) that can be used to generate all the figures in the project. It simply calls the function for each python file ending in "_fig.py" in [code](code). 
 
 The generated figures are always saved as PDFs in a folder called `figures` in the root of the project. 
 
 **IMPORTANT**: the figures need to be generated before compiling the latex documents, as they are included in the documents using the `\includegraphics` command.
 
-#### 3. Compiling Latex files
+#### 3. Compiling LaTeX Files
 It is recommended to use the VSCode extension [LaTeX Workshop](https://marketplace.visualstudio.com/items?itemName=James-Yu.latex-workshop) to compile LaTeX files. This extension allows for easy compilation and previewing of the Latex documents. The following settings are necessary to compile the documents with the `lualatexmk` and `biber` tools:
 ```json
 {
@@ -146,7 +147,7 @@ These settings should compile allow for compilation of all the main LaTeX files 
 
 Alternatively, one can use the recipe and subsidiary commands outlined above to compile the documents manually in a terminal (with a working Latex installation).
 
-#### C file compilation
+#### C File Compilation
 For this, one can either use gcc or clang directly in combination with the provided [Makefile](clibs/Makefile). To compile the C files, run the following command in the terminal:
 ```bash
 make
