@@ -26,7 +26,7 @@ The script automatically sets up a virtual environment, installs all the require
 ```bash
 <python-executable> setup_env.py
 ```
-Note, Linux `<python-executable> = python3`, while on Windows can be `python` or `py`.
+Note, Linux `<python-executable> = python3`, while on Windows one can use either `python` or `py`.
 
 On Windows the script will also activate the environment for you, while on Linux you will need to explicitly do so by running the following command (in a bash shell):
 ```bash
