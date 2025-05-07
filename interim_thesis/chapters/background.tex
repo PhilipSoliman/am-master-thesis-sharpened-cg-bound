@@ -34,7 +34,7 @@ where $x_i$ are the nodes of the triangulation $\mathcal{T}$. $\mathcal{I}_h$ is
 
 The solution $\mathbf{u}$ can be computed using iterative methods like the conjugate gradient method, which is guaranteed to converge in a finite number of iterations for symmetric positive definite matrices in infinite precision arithmetic.
 
-\section{Conjugate Gradient Method}\label{sec:cg_method}
+\section{Conjugate gradient method}\label{sec:cg_method}
 The CG method is a special instance of the class of Krylov subspace methods. It is derived from the Direct Lanczos (D-Lanczos) algorithm applied to the residual of linear systems \cite[Algorithm 6.17]{iter_method_saad}. The D-Lanczos algorithm generates a sequence of orthonormal Lanczos vectors $\{\mathbf{v}_1, \mathbf{v}_2, \dots, \mathbf{v}_m\}$ that span the Krylov subspace $\mathcal{K}_m(A, \mathbf{r}_0)$, where $\mathbf{r}_0 = \mathbf{b} - A\mathbf{u}_0$ is the initial residual such that
 \begin{equation}
   \mathcal{K}_m(A_0, \mathbf{r}_0) = \text{span}\{\mathbf{r}_0, A\mathbf{r}_0, A^2\mathbf{r}_0, \dots, A^{m-1}\mathbf{r}_0\},
@@ -328,7 +328,7 @@ This gives the left preconditioned CG algorithm in \ref{alg:pcg_left}.
 \end{algorithm}
 Furthermore it can be shown that the iterates of CG applied to the system with \ref{pcg_type:symmetric} results in identical iterates \cite[Algorithm 9.2]{iter_method_saad}.
 
-\section{Schwarz Methods}\label{sec:schwarz_methods}
+\section{Schwarz methods}\label{sec:schwarz_methods}
 The content of this section is largely based on chapters 1, 2, 4 and 5 of \citeauthor{schwarz_methods_Dolean_2015} about Schwarz methods.
 \begin{figure}[H]
   \centering
