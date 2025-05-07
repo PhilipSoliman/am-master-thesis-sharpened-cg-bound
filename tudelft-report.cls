@@ -46,6 +46,7 @@
 \RequirePackage{etoolbox}   % Toolbox of programming facilities
 \RequirePackage{iftex}      % Adds if-else statements to support multiple compilers
 \RequirePackage{datetime}   % Change format of \today
+\usepackage{pgfcalendar}
 
 \RequirePackage{algorithm}
 \RequirePackage{algpseudocode}
@@ -64,10 +65,50 @@
 \newcommand*{\coverimage}[1]{\def\@coverimage{#1}}
 \newcommand*{\covertable}[1]{\def\@covertable{#1}}
 \newcommand*{\logoimage}[1]{\def\@logoimage{#1}}
-\newcommand*{\defenseDate}[1]{\def\@defenseDate{#1}}
-\newcommand*{\defenseTime}[1]{\def\@defenseTime{#1}}
-\newcommand*{\publishDate}[1]{\def\@publishDate{#1}}
 
+% Defense date & time
+\newcommand*{\defenseDateTime}[4]{
+    \def\@defenseDay{#1}%
+    \def\@defenseMonth{#2}%
+    \def\@defenseYear{#3}%
+    \def\@defenseTime{#4}%
+}
+\newcommand{\theDefenseDateTime}{
+    \makeatletter
+    \ifcsundef{@defenseDay}{%
+    T.B.A.}{%
+    \formatdate{\@defenseDay}{\@defenseMonth}{\@defenseYear} at \@defenseTime}
+    \makeatother
+}
+
+% Publish date
+\def\@publishDay{\the\day}
+\def\@publishMonth{\the\month}
+\def\@publishYear{\the\year}
+\newcommand*{\publishDate}[3]{
+    \def\@publishDay{#1}%
+    \def\@publishMonth{#2}%
+    \def\@publishYear{#3}
+}
+\newcommand{\thePublishDate}{
+    \makeatletter
+    \formatdate{\@publishDay}{\@publishMonth}{\@publishYear}
+    \makeatother
+}
+
+% Public date
+\newcount\tempcount
+\newcommand{\nextYearDate}[3]{%
+  \pgfcalendardatetojulian{#3-#2-#1+365}{\tempcount}%
+  \pgfcalendarjuliantodate{\tempcount}{\ny@year}{\ny@month}{\ny@day}%
+  \formatdate{\ny@day}{\ny@month}{\ny@year}%
+}
+
+\newcommand{\thePublicDate}{
+    \makeatletter
+    \nextYearDate{\@publishDay}{\@publishMonth}{\@publishYear}
+    \makeatother
+}
 
 %% Scale the margins to be slightly smaller than default (.7)
 \geometry{a4paper,hscale=0.75,vscale=0.8}
@@ -154,7 +195,6 @@
 %% ----------------------------------------------------------------------
 %%    Formatting the titles and table of contents
 %% ----------------------------------------------------------------------
-\makeatletter
 \let\@chapterimage\relax
 \newcommand\chapterimage[1]{%
   \if\relax\detokenize{#1}\relax
