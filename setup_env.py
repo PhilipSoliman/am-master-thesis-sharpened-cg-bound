@@ -82,17 +82,6 @@ def make_c_library(root_path):
 
     print("C library built successfully.")
 
-def install_arial_font():
-    if os.name == "posix": # install windows fonts on Linux
-        try:
-            subprocess.run(['apt-get', 'update'], check=True)
-            subprocess.run(['apt-get', 'install', '-y', 'ttf-mscorefonts-installer'], check=True)
-            subprocess.run(['fc-cache', '-fv'], check=True)
-            print("Arial font installation completed for Linux.")
-        except subprocess.CalledProcessError as e:
-            print(f"Error occurred: {e}")
-            print("Failed to install Arial font on Linux.")
-
 def activate_environment():
     if os.name == "nt":
         activation_script = os.path.join(VENV_NAME, "Scripts", "activate.bat")
@@ -109,7 +98,6 @@ def main():
     create_virtual_environment()
     install_requirements(root_path)
     make_c_library(root_path)
-    install_arial_font()
     activate_environment()
     sys.exit(0)
 

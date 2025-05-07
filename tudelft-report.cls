@@ -127,12 +127,12 @@
     \RequirePackage[no-math]{fontspec} % Advanced font selection
 
     %% Use Arial as the main font
-    \setmainfont{Arial}
-    \setmathsf{Arial}
-    \setmathtt{Arial}
-    \setmathrm{Arial}
+    \setmainfont{Tex Gyre Heros}
+    \setmathsf{Tex Gyre Heros}
+    \setmathtt{Tex Gyre Heros}
+    \setmathrm{Tex Gyre Heros}
 
-    %% Use  Nimbus Sans L as the cover font
+    %% Use Nimbus Sans L as the cover font
     \newfontfamily\largecoverstyle{Nimbus Sans L}
     \newfontfamily\coverstyle{Nimbus Sans L}[Weight=Light]
 

@@ -133,10 +133,10 @@ LATEX_STANDALONE_PGF_PRE = r"""\documentclass{standalone}
 \usepackage{pgf}
 \usepackage{lmodern}
 \usepackage[no-math]{fontspec}
-\setmainfont{Arial}
-\setmathsf{Arial}
-\setmathtt{Arial}
-\setmathrm{Arial}
+\setmainfont{Tex Gyre Heros}
+\setmathsf{Tex Gyre Heros}
+\setmathtt{Tex Gyre Heros}
+\setmathrm{Tex Gyre Heros}
 \makeatletter\@ifpackageloaded{underscore}{}{\usepackage[strings]{underscore}}\makeatother
 \begin{document} 
 """
