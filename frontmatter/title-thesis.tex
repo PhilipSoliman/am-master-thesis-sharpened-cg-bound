@@ -29,16 +29,10 @@
         \bigskip
 
         To obtain the degree of Master of Science
-        %ter verkrijging van de graad van Master of Science
 
         at the Delft University of Technology,
-        %aan de Technische Universiteit Delft,
 
-
-        to be defended publicly on {\makeatletter
-                \ifdefvoid{\@defenseDate}{T.B.A.}{\@defenseDate at \ifdefvoid{\@defenseTime}{\dots}{\@defenseTime}}
-                \makeatother}
-        %in het openbaar de verdedigen op maandag 1 januari om 10:00 uur.
+        to be defended publicly on \theDefenseDateTime
 
         \vfill
 
@@ -50,21 +44,16 @@
                               & F.\ Cumaru,                                         & TU Delft, daily co-supervisor    \\
             Faculty:          & Faculty of Electrical Engineering,                                                     \\
                               & Mathematics and Computer Science                                                       \\
-            Department:       & Numerical Analysis                                                                     \\
+            Department:       & Delft Institute of Applied Mathematics (DIAM)                                          \\
         \end{tabular}
 
-        %% Only include the following 3 lines if confidentiality is applicable.
         \bigskip
         \bigskip
-        \emph{This thesis is confidential and cannot be made public until December 31, 2025.}
+        \emph{This thesis is confidential and cannot be made public until \thePublicDate.}
 
         \bigskip
         \bigskip
-        % \begin{tabular}{p{15mm}p{10cm}}
-        %     % Cover: & High-Speed Photography of Water Splash \\
-        %     % Style: & TU Delft Report Style, with modifications by Daan Zwaneveld
-        % \end{tabular}
-        Published on {\makeatletter\ifdefvoid{\@publishDate}{\today}{\@publishDate}\makeatother}
+        Published on \thePublishDate.
 
         \bigskip
         \bigskip
