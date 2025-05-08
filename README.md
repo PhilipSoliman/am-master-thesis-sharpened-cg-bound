@@ -13,7 +13,7 @@ Check that you have the following
 ```bash
 apt-get install texlive-full
 ```
-If you are on Windows, the above should be made available in your PATH
+possibly using `sudo`. If you are on Windows, the above should be made available in your PATH. Lastly for the LaTeX compilation it is necessary that the path to this repository's root does not contain any spaces. This is a [known issue](https://github.com/James-Yu/LaTeX-Workshop/issues/2910) with the `latexmk` tool, which is used for compiling the LaTeX files.
 
 ---
 
@@ -22,7 +22,7 @@ The easiest way to set up the project is to use the provided [setup_env.py](setu
 ```bash
 chmod +x setup_env.py
 ```
-The script automatically sets up a virtual environment, installs all the required python packages specified in the `requirements.txt` file as well as the local `lib` module. Finally, on Linux it also adds the `ttf-mscorefonts-installer` that installs -- among other MS fonts -- the Arial font necessary for LaTeX compilation. Simply use your python installation to run the script:
+The script automatically sets up a virtual environment, installs all the required python packages specified in the `requirements.txt` file as well as the local `lib` module. Simply use your python installation to run the script:
 ```bash
 <python-executable> setup_env.py
 ```
