@@ -1,38 +1,14 @@
 \chapter{Mathematical background}\label{ch:background}
-In this chapter we focus on a simple Darcy problem like the one posed in \cite{acms_coarse_space_Heinlein2018,ams_coarse_space_comp_study_Alves2024}. This problem is of the form
-\begin{equation}
-  \label{eq:elliptic_problem}
-  \begin{aligned}
-    -\nabla\cdot\left(\mathcal{C}\nabla u\right) & = f \quad \text{in } \Omega,           \\
-    u                                       & = u_D \quad \text{on } \partial\Omega,
-  \end{aligned}
-\end{equation}
-where $\Omega\subset\mathbb{R}^d$ is a bounded domain with Lipschitz boundary $\partial\Omega$, $\mathcal{C}\in L^\infty(\Omega)$ is a positive coefficient, $f\in L^2(\Omega)$ is a source term, and $u\in H^1_0(\Omega)$ is the solution. The coefficient $\mathcal{C}$ is assumed to be bounded from above and below by positive constants, i.e., $0 < \mathcal{C}_{\min} \leq \mathcal{C}(x) \leq \mathcal{C}_{\max} < \infty$ for all $x\in\Omega$. The solution $u$ is assumed to be sufficiently smooth, i.e., $u\in H^2(\Omega)\cap H^1_0(\Omega)$, so that the problem is well-posed. The goal is to compute an approximation $u_h\in V_h$ to the solution $u$ using a finite-dimensional subspace $V_h\subset H^1_0(\Omega)$, where $V_h$ is spanned by a set of basis functions $\{\phi_i\}_{i=1}^n$. The Galerkin method seeks $u_h\in V_h$ such that
-\begin{equation}
-  \label{eq:galerkin}
-  \int_\Omega \mathcal{C}\nabla u_h\cdot\nabla v_h\,dx = \int_\Omega f v_h\,dx \quad \text{for all } v_h\in V_h.
-\end{equation}
+The first part of this chapter \cref{sec:cg_method} discusses the convergence rate of CG in \cref{sec:cg_convergence_rate} and how it is influenced by the distribution of the eigenvalues of the system matrix $A$ in \cref{sec:cg_eigenvalue_distribution}. The latter is important, since it shows that the condition number $\kappa(A)$ is not the only factor influencing the convergence rate of CG. Then we briefly review the PCG method in \cref{sec:cg_preconditioning} and how it can be used to improve the convergence rate of CG. Then, the second part of this chapter \cref{sec:schwarz_methods} concerns the Schwarz methods, which are a class of domain decomposition methods. These methods are used to solve PDEs on complex domains and can be used as preconditioners in PCG. In \cref{sec:schwarz_convergence}, we also see some conditioner number estimates that are classically used to estimate the convergence rate of PCG 
 
-The discretisation is done in the context of the finite element method. To that end we consider a triangulation $\mathcal{T}$ of the domain $\Omega$ and a partition of unity $\chi_j$. Denote by $V_{h,0} = V_h \cap H^1_0(\Omega)$ the space of piecewise continuous functions $v_h\in H^1_0(\Omega)$ with respect to $\mathcal{T}$. Let the basis of $V_{h,0}$ be given by $\{\phi_k\}_{\in\mathcal{N}}$. The FE formulation of the Poisson problem \cref{eq:elliptic_problem} follows from the variational form
-\[
-    a(u_h, v_h) = (f, v_h), \quad \forall u_h, v_h \in V_{h,0},
-\]
-and is given by
-\begin{equation}
-    A\mathbf{u} = \mathbf{b}, \quad A_{ij} = a(\phi_j, \phi_i), \ b_i = (f, \phi_i) \quad \forall i,j\in\mathcal{N},
-\end{equation}
-where $A$ is the stiffness matrix, $\mathbf{b}$ is the load vector and $\mathcal{N}$ is the set of indices corresponding to the degrees of freedom. The stiffness matrix $A$ is symmetric and positive definite, and the load vector $\mathbf{b}$ is determined by the source term $f$ and the boundary conditions.
-
-Next to this we need a way of interpolating functions in $C(\Omega)$ to $V_{h}$. This is done by the interpolation operator $I_h: C(\Omega) \mapsto V_{h,0}$, which is defined by
-\[
-    \mathcal{I}_h v = \sum_{i\in\mathcal{N}} v(x_i) \phi_i,
-\]
-where $x_i$ are the nodes of the triangulation $\mathcal{T}$. $\mathcal{I}_h$ is stable with respect to the $a$-norm, that is
-\[
-    \| I_h(v) \|_a \leq C_{I_h} \| v \|_{a}.
-\]
-
-The solution $\mathbf{u}$ can be computed using iterative methods like the conjugate gradient method, which is guaranteed to converge in a finite number of iterations for symmetric positive definite matrices in infinite precision arithmetic.
+% Next to this we need a way of interpolating functions in $C(\Omega)$ to $V_{h}$. This is done by the interpolation operator $I_h: C(\Omega) \mapsto V_{h,0}$, which is defined by
+% \[
+%     \mathcal{I}_h v = \sum_{i\in\mathcal{N}} v(x_i) \phi_i,
+% \]
+% where $x_i$ are the nodes of the triangulation $\mathcal{T}$. $\mathcal{I}_h$ is stable with respect to the $a$-norm, that is
+% \[
+%     \| I_h(v) \|_a \leq C_{I_h} \| v \|_{a}.
+% \]
 
 \section{Conjugate gradient method}\label{sec:cg_method}
 The CG method is a special instance of the class of Krylov subspace methods. It is derived from the Direct Lanczos (D-Lanczos) algorithm applied to the residual of linear systems \cite[Algorithm 6.17]{iter_method_saad}. The D-Lanczos algorithm generates a sequence of orthonormal Lanczos vectors $\{\mathbf{v}_1, \mathbf{v}_2, \dots, \mathbf{v}_m\}$ that span the Krylov subspace $\mathcal{K}_m(A, \mathbf{r}_0)$, where $\mathbf{r}_0 = \mathbf{b} - A\mathbf{u}_0$ is the initial residual such that

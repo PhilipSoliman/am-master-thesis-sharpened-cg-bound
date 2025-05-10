@@ -1,3 +1,17 @@
+% problem
+\newtheoremstyle{boldnewline}
+  {\topsep}         % Space above
+  {\topsep}         % Space below
+  {}                % Body font
+  {}                % Indent amount
+  {\bfseries}       % Theorem head font
+  {\newline}        % Punctuation after theorem head
+  {1em}             % Space after theorem head
+  {}                % Theorem head spec
+
+\theoremstyle{boldnewline}
+\newtheorem{problem}{Problem}
+
 % theorem
 \newtheoremstyle{customthm}
 {}
@@ -11,6 +25,10 @@
 \theoremstyle{customthm}
 \newtheorem{theorem}{Theorem}[chapter]
 \newtheorem{definition}{Definition}[chapter]
+
+% research question environments
+\newtheorem*{researchq}{Research Question}
+\newtheorem*{subsidiaryq}{Subsidiary Questions}
 
 %tikz pictures
 \usetikzlibrary{intersections}
