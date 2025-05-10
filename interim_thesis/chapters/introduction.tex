@@ -66,31 +66,29 @@ Hence, the number of iterations $m$ required for convergence is a crucial factor
 \end{equation}
 where $\kappa(A)$ is the condition number of $A$. Comparing \cref{eq:cg_complexity} with the complexity of direct methods, we see that CG is much more efficient for large sparse SPD systems like $A$. 
 
-However, the difficulty of allowing for complex domains and a high-contrast coefficient $\mathcal{C}$ means that the condition number $\kappa(A)$ can be very large. Handling complex domains can be solved using \textit{domain decomposition methods} and this is the topic of \cref{sec:schwarz_methods}. On the other hand, accounting for the high-contrast coefficient $\mathcal{C}$ is the topic of recent literature and concerns the construction of \textit{coarse spaces}, some examples of which are given in \cref{ch:literature}.
+However, the difficulty of allowing for complex domains and a high-contrast coefficient $\mathcal{C}$ resides in that the condition number $\kappa(A)$ can be very large. Handling of complex domains can be done using \textit{domain decomposition methods} and this is the topic of \cref{sec:schwarz_methods}. On the other hand, accounting for the high-contrast coefficient $\mathcal{C}$ is the topic of recent literature and concerns the construction of \textit{coarse spaces}, some examples of which are given in \cref{ch:literature}.
 
-The particular choice of domain decomposition method in combination with the particular coarse space results in a preconditioner matrix $M\in\mathbb{R}^{n \times n}$, which is used to transform the system $A\mathbf{u} = \mathbf{b}$ into a new system $M^{-1}A\mathbf{u} = M^{-1}\mathbf{b}$ with a (hopefully) smaller condition number. The preconditioned CG method (PCG), described in \cref{sec:cg_preconditioning}, is then used to solve the transformed system. Consequently, using the equivalent of the CG complexity bound \cref{eq:cg_complexity} for PCG, we can determine the performance of PCG with the preconditioner $M$ as
+The particular implementation of domain decomposition method and coarse space results in a preconditioner matrix $M\in\mathbb{R}^{n \times n}$, which is used to transform the system $A\mathbf{u} = \mathbf{b}$ into a new system $M^{-1}A\mathbf{u} = M^{-1}\mathbf{b}$ with a (hopefully) smaller condition number. The preconditioned CG method (PCG), described in \cref{sec:cg_preconditioning}, is then used to solve the transformed system. Consequently, using the equivalent of the CG complexity bound \cref{eq:cg_complexity} for PCG, we can determine the performance of PCG with the preconditioner $M$ as
 \begin{equation}
   \mathcal{O}\left(\sqrt{\kappa(M^{-1}A)}\log\left(\frac{1}{\epsilon}\right)n\right).
   \label{eq:pcg_complexity}
 \end{equation}
 
-This thesis seeks to challenge the applicability of the bound in \cref{eq:pcg_complexity} to problems like \cref{pr:elliptic_problem}. The bound relies on an overestimation of the actual number of iterations $m$ required for convergence and overstates the role of the condition number $\kappa(M^{-1}A)$ in determining the convergence rate of CG. We will see in \cref{sec:cg_eigenvalue_distribution} that the actual number of iterations $m$ is much smaller than the bound in \cref{eq:pcg_complexity} suggests and that the condition number $\kappa(M^{-1}A)$ is not the only factor influencing the convergence rate of CG. 
+This thesis seeks to challenge the applicability of the bound in \cref{eq:pcg_complexity} to problems like \cref{pr:elliptic_problem}. The bound relies on an overestimation of the actual number of iterations $m$ required for convergence and overstates the role of the condition number $\kappa(M^{-1}A)$ in determining the convergence rate of CG. We will see in \cref{sec:cg_eigenvalue_distribution} that the actual number of iterations $m$ is much smaller than the classical bound that \cref{eq:pcg_complexity} relies on and that the condition number $\kappa(M^{-1}A)$ is not the only factor influencing the convergence rate of CG. 
 
 This thesis answers the following central question:
 \vspace{0.5em}
 \begin{center}
-\textit{\textbf{How Can we refine the CG iteration bound for high-contrast heterogeneous elliptic problems beyond the classical condition number-based bound?}}
+\textit{\textbf{Can we derive more precise bounds for the convergence rate of Conjugate Gradient (CG) in high-contrast scalar elliptic problems, improving upon the classical bounds based on the condition number?}}
 \end{center}
 \vspace{0.5em}
 
 To answer this central question, the thesis explores several sub-questions:
 \begin{enumerate}
-    \item What spectral characteristics can be defined to better capture the eigenvalue distribution in these problems?
-    \item How can these characteristics be quantitatively estimated for a model heterogeneous coefficient Laplace problem?
-    \item What insights can be derived from the refined spectral characteristics to improve preconditioner selection?
-    \item How does the new bound compare with classical estimates, both with and without preconditioning?
-    \item Can the refined bounds help differentiate the performance of various Schwarz-like preconditioners?
-    \item How can these insights be used to derive a sharper CG iteration bound?
+    \item How does the distribution of eigenvalues of the stiffness matrix \( A \) affect the number of iterations required for CG convergence in high-contrast scalar elliptic problems?
+    \item What is the impact of preconditioning on the number of CG iterations in high-contrast scalar elliptic problems, and how does it compare to the classical bound based on the condition number?
+    \item How does the contrast in the coefficient \( \mathcal{C} \) influence the condition number of the preconditioned system and the number of CG iterations required for convergence?
+    \item Can we derive an improved bound for the CG convergence rate in high-contrast scalar elliptic problems that does not rely solely on the condition number of the system?
 \end{enumerate}
 
 The hope is that addressing these questions leads to a richer understanding of the convergence rate of the (P)CG method in the specific case of high-contrast problems and aid in the selection of a suitable preconditioners $M$ for problems like \cref{pr:elliptic_problem}.
