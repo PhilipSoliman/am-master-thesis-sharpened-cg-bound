@@ -1,0 +1,266 @@
+\chapter*{Appendix}
+\addcontentsline{toc}{chapter}{Appendix}\label{ch:appendix}
+\section{Derivation of the CG Method}\label{sec:cg_derivation}
+
+\subsection{Arnoldi's method for linear systems}\label{sec:arnoldi_linear_systems}
+Arnoldi's method for linear systems $A\mathbf{u} = \mathbf{b}$, where $A$ is a general (possibly non-symmetric) stiffness matrix, is just an instantiation of \cref{alg:error_projection_method}. It uses a Gramm-Schmidt orthogonalization procedure to simultaneously obtain the basis $V$ of $\mathcal{K}$ and the Hessenberg matrix, see \cref{def:hessenberg_matrix}. Assuming without loss of generality that $V$ has dimension $m$, we set $V=V_m$ and let $\mathbf{v}_1 = \mathbf{r}_0/||\mathbf{r}_0||_2$ and $\beta = ||\mathbf{r}_0||_2$, then by \cref{def:error_projection_method} we have
+\[
+  V^T_mAV_m = H_m \text{ and } V^T_m\mathbf{r}_0 = V^T_m\beta \mathbf{v}_1 = \beta e_1 \implies
+  \begin{array}{c}
+    \mathbf{u}_m = \mathbf{u}_0 + V_m \mathbf{c}, \\
+    H_m \mathbf{c} = \beta e_1.
+  \end{array}
+\]
+Substituting this into the template for the error projection methods given in \cref{alg:error_projection_method} gives \cref{alg:arnoldi_linear_systems}.
+\begin{algorithm}[H]
+  \caption{Arnoldi's method for linear systems (FOM) \cite[Algorithm 6.4]{iter_method_saad}}
+  \label{alg:arnoldi_linear_systems}
+  \begin{algorithmic}
+    \State Compute $\mathbf{r}_0 = \mathbf{b} - A\mathbf{u}_0$, $\beta = ||\mathbf{r}_0||_2$ and $\mathbf{v}_1 = \mathbf{r}_0 / \beta$
+    \State Define $H_m = \{0\}$
+    \State Define $V_1 = \{\mathbf{v}_1\}$
+    \For{$j = 1, 2, \dots, m$}
+    \State $\mathbf{w}_j = A\mathbf{v}_j$
+    \For{$i = 1, 2, \dots, j$}
+    \State $h_{ij} = (\mathbf{w}_j, \mathbf{v}_i)$ and store $h_{ij}$ in $H_m$
+    \State $\mathbf{w}_j = \mathbf{w}_j - h_{ij}\mathbf{v}_i$
+    \EndFor
+    \State $h_{j+1,j} = ||\mathbf{w}_j||_2$
+    \If{$h_{j+1,j} = 0$}
+    \State $m = j$
+    \State break
+    \EndIf
+    \State $\mathbf{v}_{j+1} = \mathbf{w}_j / h_{j+1,j}$ and store $\mathbf{v}_{j+1}$ into $V_{j+1}$
+    \EndFor
+    \State Solve $H_m \mathbf{c} = \beta e_1$ for $\mathbf{c}$
+    \State $\mathbf{u}_m = \mathbf{u}_0 + V_m \mathbf{c}$
+  \end{algorithmic}
+\end{algorithm}
+
+Note that a stopping criterion can be derived from the residual vector $\mathbf{r}_m = \mathbf{b} - A\mathbf{u}_m$. Theorem \ref{th:arnoldi_residual} gives a way of calculating the size of the residual vector.
+\begin{APPfancyth}{Arnoldi residual \cite[Proposition 6.7]{iter_method_saad}}{arnoldi_residual}
+  The residual vector $\mathbf{r}_m = \mathbf{b} - A\mathbf{u}_m$ satisfies
+  \begin{equation}
+    \|r_m\|_2 = h_{m+1,m}|\mathbf{e}^T_m \mathbf{c}|,
+  \end{equation}
+\end{APPfancyth}
+\begin{proof}
+  We have
+  \begin{align*}
+    \mathbf{r}_m & = \mathbf{b} - A\mathbf{u}_m                                                   \\
+                  & = \mathbf{r}_0 - AV_m \mathbf{c}                                               \\
+                  & = \beta v_1 - V_m H_m \mathbf{c} - h_{m+1,m} \mathbf{e}_m^T \mathbf{c} \mathbf{v}_{m+1} \\
+                  & = - h_{m+1,m} \mathbf{e}_m^T \mathbf{c} \mathbf{v}_{m+1}.
+  \end{align*}
+  The result follows by taking the $2$-norm of both sides of the equality and using the fact that $||\mathbf{v}_{m+1}||_2 = 1$.
+\end{proof}
+
+\subsection{Lanczos' Algorithm}
+In the special case where $A$ is symmetric, the Arnoldi method can be simplified to the Lanczos algorithm. In particular, for symmetric $A$, the Hessenberg matrix $H_m$ is tridiagonal
+\begin{equation}
+  H_m = T_m =
+  \begin{pmatrix}
+    \delta_1 & \eta_2   & 0        & \dots  & 0        \\
+    \eta_2   & \delta_3 & \eta_3   & \dots  & 0        \\
+    0        & \eta_3   & \delta_4 & \dots  & 0        \\
+    \vdots   & \vdots   & \vdots   & \ddots & \eta_m   \\
+    0        & 0        & 0        & \eta_m & \delta_m
+  \end{pmatrix},
+  \label{eq:lanczos_tridiagonal}
+\end{equation}
+where we redefined $H_m$ to be the tridiagonal matrix $T_m$. The tridiagonality of $T_m$ allows us to reduce the Gramm-Schmidt orthogonalization procedure in the inner for-loop in \cref{alg:arnoldi_linear_systems} to just two vector subtractions and an inner product, resulting in \cref{alg:arnoldi_linear_systems}
+\begin{algorithm}
+  \caption{Lanczos algorithm for linear systems \cite[Algorithm 6.16]{iter_method_saad}}
+  \begin{algorithmic}
+    \State Compute $\mathbf{r}_0 = b - A\mathbf{u}_0$, $\beta = ||\mathbf{r}_0||_2$, $\mathbf{v}_0 = 0$ and $\mathbf{v}_1 = \mathbf{r}_0 / \beta$
+    \State $V_{1} = \{\mathbf{v}_1\}$
+    \For{$j = 1, 2, \dots, m$}
+    \State $\mathbf{w}_j = A\mathbf{v}_j - \eta_j \mathbf{v}_{j-1}$
+    \State $\delta_j = (\mathbf{w}_j, \mathbf{v}_j)$
+    \State $\mathbf{w}_j = \mathbf{w}_j - \delta_j \mathbf{v}_j$
+    \State $\eta_{j+1} = ||\mathbf{w}_j||_2$
+    \If{$\eta_{j+1} = 0$}
+    \State $m = j$
+    \State Break
+    \EndIf
+    \State $\mathbf{v}_{j+1} = \mathbf{w}_j / \eta_{j+1}$ and store $\mathbf{v}_{j+1}$ into $V_{j+1}$
+    \EndFor
+    \State Solve the tridiagonal system $T_m \mathbf{c} = \beta \mathbf{e}_1$ for $\mathbf{c}$
+    \State $\mathbf{u}_m = \mathbf{u}_0 + V_m \mathbf{c}$
+  \end{algorithmic}
+  \label{alg:lanczos_linear_systems}
+\end{algorithm}
+
+\subsection{D-Lanczos} 
+A downside of \cref{alg:lanczos_linear_systems} in particular and projections methods like \cref{alg:error_projection_method} in general is their reliance on an arbitrary choice of dimension $m$. The methods run until the basis $V_m$ is constructed and subsequently construct $H_m$ to determine the correction $\mathbf{c}$. This is not ideal, since the resulting solution $\mathbf{u}_m$ may not be close enough to the true solution $\mathbf{u}$. That is, it is not guaranteed that the residual vector $\mathbf{r}_m$ is `small enough'. Alternately, it might happen $m$ is chosen too large, and the method is unnecessarily expensive. In the specific case of the Arnoldi method \cref{th:arnoldi_residual} may be used to determine the residual before calculating $\mathbf{c}$. Though this saves some computational time, it still requires the construction of the basis $V_m$ and the tridiagonal matrix $T_m$, as well as a restart of the algorithm. This is not ideal, since the construction of $V_m$ and $T_m$ is expensive.
+
+To address the issue of arbitrary $m$, we construct a version of \cref{alg:lanczos_linear_systems} that allows us to incrementally update the solution $\mathbf{u}_m$ and the residual vector $\mathbf{r}_m$. This way, we can stop the algorithm when the residual vector is smaller than some predefined threshold, like $\mathbf{r}_m < \epsilon$. 
+
+To that end, we start by performing a LU-factorisation of $T_m$ given by
+\begin{equation}
+  T_m = L_m U_m =
+  \begin{pmatrix}
+    1              & 0              & 0      & \dots          & 0      \\
+    \tilde{\eta}_2 & 1              & 0      & \dots          & 0      \\
+    0              & \tilde{\eta}_3 & 1      & \dots          & 0      \\
+    \vdots         & \vdots         & \vdots & \ddots         & \vdots \\
+    0              & 0              & \dots  & \tilde{\eta}_m & 1
+  \end{pmatrix}
+  \times
+  \begin{pmatrix}
+    \tilde{\delta}_1 & \eta_2           & 0                & \dots  & 0                \\
+    0                & \tilde{\delta}_2 & \eta_3           & \dots  & 0                \\
+    0                & 0                & \tilde{\delta}_3 & \dots  & 0                \\
+    \vdots           & \vdots           & \vdots           & \ddots & \eta_m           \\
+    0                & 0                & 0                & \dots  & \tilde{\delta}_m
+  \end{pmatrix}
+  \label{eq:lanczos_lu}
+\end{equation}
+Then, the approximate solution is given by
+\begin{align*}
+  \mathbf{u}_m & = \mathbf{u}_0 + V_m \mathbf{c}                           \\
+      & = \mathbf{u}_0 + V_m U_m^{-1} L_m^{-1} \beta \mathbf{e}_1   \\
+      & = \mathbf{u}_0 + V_m U_m^{-1} (L_m^{-1} \beta \mathbf{e}_1) \\
+      & = \mathbf{u}_0 + P_m \mathbf{z}_m,
+\end{align*}
+where $P_m = V_m U_m^{-1}$ and $\mathbf{z}_m = L_m^{-1} \beta \mathbf{e}_1$. Considering the definition of $U_m$ in \cref{eq:lanczos_lu}, we have that the $m^{\text{th}}$ column of $P_m$ is given by
+\begin{equation}
+  \mathbf{p}_m = \frac{1}{\tilde{\delta}_m}\left[\mathbf{v}_m - \eta_m \mathbf{p}_{m-1}\right].
+  \label{eq:lanczos_p}
+\end{equation}
+Furthermore, from the LU factorization of $T_m$ we have that
+\begin{align*}
+  \tilde{\eta}_m   & = \frac{\eta_m}{\tilde{\delta}_{m-1}},       \\
+  \tilde{\delta}_m & = \delta_m - \tilde{\eta}_m \eta_m, \ m > 1.
+\end{align*}
+Now the solution can be incrementally updated by realizing that
+\[
+  \mathbf{z}_m =
+  \begin{pmatrix}
+    \mathbf{z}_{m-1} \\
+    \zeta_m
+  \end{pmatrix} =
+  \begin{pmatrix}
+    \mathbf{z}_{m-2}     \\
+    \zeta_{m-1} \\
+    \zeta_m
+  \end{pmatrix},
+\]
+and
+\[
+  L_m =
+  \begin{pmatrix}
+    L_{m-1}            & \multicolumn{2}{c}{\mathbf{0}_{m-1}}     \\
+    \mathbf{0}_{m-2}^T & \tilde{\eta}_m                       & 1
+  \end{pmatrix}.
+\]
+Then,
+\[
+  L_m \mathbf{z}_m =
+  \begin{pmatrix}
+    L_{m-1} \mathbf{z}_{m-1} \\
+    \tilde{\eta}_m \zeta_{m-1} + \zeta_m
+  \end{pmatrix} =
+  \begin{pmatrix}
+    \beta \mathbf{e}_1 \\
+    0
+  \end{pmatrix},
+\]
+where the last equality follows from definition of $\mathbf{z}_m$. Consequently, we have that
+\[
+  \zeta_m = -\tilde{\eta}_m \zeta_{m-1}.
+\]
+Finally, we obtain
+\begin{align*}
+  u_m & = \mathbf{u}_0 + P_m \mathbf{z}_m                                   \\
+      & = \mathbf{u}_0 + \left[P_{m-1} \mathbf{p}_m\right] 
+      \begin{pmatrix}
+                                             \mathbf{z}_{m-1} \\
+                                            \zeta_m
+                                           \end{pmatrix} \\
+      & = \mathbf{u}_0 + P_{m-1} \mathbf{z}_{m-1} + \mathbf{p}_m \zeta_m \\
+      & = \mathbf{u}_{m-1} + \mathbf{p}_m \zeta_m.
+\end{align*}
+Putting it all together, we obtain \cref{alg:dlanczos}.
+\begin{algorithm}[H]
+  \caption{D-Lanczos \cite[Algorithm 6.17]{iter_method_saad}}
+  \begin{algorithmic}
+    \State $\mathbf{r}_0 = b - A\mathbf{u}_0$, $\beta = ||\mathbf{r}_0||_2$, $\mathbf{v}_1 = \mathbf{r}_0 / \beta$
+    \State $\tilde{\eta}_1 = \beta_1 = 0$, $\mathbf{p}_0 = 0$
+    \For{$m = 1, 2, \dots, m$ until convergence}
+    \State $w = A\mathbf{v}_m - \beta_m \mathbf{v}_{m-1}$
+    \State $\delta_m = (w, \mathbf{v}_m)$
+    \If{$m > 1$}
+    \State $\tilde{\eta}_m = \frac{\beta_m}{\tilde{\delta}_{m-1}}$
+    \State $\zeta_m = -\tilde{\eta}_m \zeta_{m-1}$
+    \EndIf
+    \State $\tilde{\delta}_m = \delta_m - \tilde{\eta}_m \beta_m$
+    \State $\mathbf{p}_m = \frac{1}{\tilde{\delta}_m}\left[\mathbf{v}_m - \beta_m \mathbf{p}_{m-1}\right]$
+    \State $\mathbf{u}_m = \mathbf{u}_{m-1} + \mathbf{p}_m \zeta_m$
+    \If{$\|\mathbf{r}_{m+1}\|_2 < \epsilon$}
+    \State break
+    \EndIf
+    \State $\mathbf{w} = \mathbf{w} - \delta_m \mathbf{v}_m$
+    \State $\beta_{m+1} = ||\mathbf{w}||_2$
+    \State $\mathbf{v}_{m+1} = \mathbf{w} / \beta_{m+1}$
+    \EndFor
+  \end{algorithmic}
+  \label{alg:dlanczos}
+\end{algorithm}
+A core aspect of \cref{alg:dlanczos} is described in 
+\begin{APPfancyth}{$A$-orthogonality of $p_m$}{dlanczos_orthogonality}
+  The vectors $p_m$ produced in algorithm \cref{alg:dlanczos} are $A$-orthogonal to each other.
+\end{APPfancyth}
+\begin{proof}
+  We have
+  \begin{align*}
+    P^T_m A P_m & = U_m^{-T} V_m^T A V_m U_m^{-1} \\
+                & = U_m^{-T} T_m U_m^{-1}         \\
+                & = U_m^{-T} L_m,
+  \end{align*}
+  where $U_m^{-T}$ and $L_m$ are both lower diagonal matrices. Their product must be symmetric, since $P^T_m A P_m$ is symmetric (due to the symmetry of $A$). The result follows from the fact that $U_m^{-T} L_m$ must be a diagonal matrix
+\end{proof}
+
+\subsection{Derivation of CG}
+From general properties of error projection methods and observations made in the in \cref{alg:dlanczos}, we can derive the CG method. We start by constraining subsequent residuals $r_j$ to be orthogonal. This follows from choosing subspaces $\mathcal{K} = \mathcal{L}$, as in the Arnoldi process. Again, the space $\mathcal{K}$ is spanned by the vectors $\mathbf{v}_m$. Thus setting $\mathbf{v}_1 = \mathbf{r}_0/\|\mathbf{r}_0\|_2$, automatically means subsequent residuals will be orthogonal to each other. Then, as suggested by \cref{th:dlanczos_orthogonality}, we also require that the vectors $p_j$ are $A$-orthogonal to each other. From this point on, we use the term \textit{search direction} to refer to the vectors $p_j$. Next to this we also introduce the CG variables $\alpha_j$ and $\beta_j$, which are the step size and the search direction update, respectively. This results in the following update equations
+\begin{equation}
+  \mathbf{u}_{j+1} = \mathbf{u}_j + \alpha_j \mathbf{p}_j,
+  \label{eq:cg_solution_update}
+\end{equation}
+and, thereby,
+\begin{equation}
+  \mathbf{r}_{j+1} = \mathbf{r}_j - \alpha_j A \mathbf{p}_j.
+  \label{eq:cg_residual_update}
+\end{equation}
+If the residuals are to be orthogonal, then
+\[
+  (\mathbf{r}_{j+1}, \mathbf{r}_j) = 0 \implies (\mathbf{r}_j - \alpha_j A \mathbf{p}_j, \mathbf{r}_j) = 0 \implies \alpha_j = \frac{(\mathbf{r}_j, \mathbf{r}_j)}{(A \mathbf{p}_j, \mathbf{r}_j)}.
+\]
+Now, using the relation between $\mathbf{r}_m$ and $\mathbf{v}_{m+1}$ found in the proof of \cref{th:arnoldi_residual} and \cref{eq:lanczos_p}, we can write the next search direction as a linear combination of the previous search direction and the next residual
+\begin{equation}
+  \mathbf{p}_{j+1} = \mathbf{r}_{j+1} + \beta_j \mathbf{p}_j.
+  \label{eq:cg_search_direction_update}
+\end{equation}
+Substituting \cref{eq:cg_search_direction_update}, we obtain
+\[
+  (A\mathbf{p}_{j+1}, \mathbf{r}_j) = (A\mathbf{p}_j, \mathbf{p}_j -\beta_{j-1}\mathbf{p}_{j-1}) = (A\mathbf{p}_j, \mathbf{p}_j),
+\]
+since $p_j$ is $A$-orthogonal to $p_{j-1}$. This allows us to write
+\begin{equation}
+  \alpha_j = \frac{(\mathbf{r}_j, \mathbf{r}_j)}{(A \mathbf{p}_j, \mathbf{p}_j)}.
+  \label{eq:cg_alpha}
+\end{equation}
+Additionally, taking the inner product with $A \mathbf{p}_j$ on both sides of \cref{eq:cg_search_direction_update} gives
+\[
+  \beta_j = \frac{(\mathbf{r}_{j+1}, A \mathbf{p}_j)}{(\mathbf{p}_j, A \mathbf{p}_j)}.
+\]
+Now, rewriting \cref{eq:cg_residual_update} gives
+\[
+  A \mathbf{p}_j = \frac{1}{\alpha_j} (\mathbf{r}_j - \mathbf{r}_{j+1}),
+\]
+which we substitute into the equation for $\beta_j$ to obtain
+\begin{equation}
+  \beta_j = \frac{1}{\alpha_j}\frac{(\mathbf{r}_{j+1}, (\mathbf{r}_{j+1}-\mathbf{r}_j))}{(A \mathbf{p}_j, \mathbf{r}_j)} = \frac{(\mathbf{r}_{j+1},\mathbf{r}_{j+1})}{((\mathbf{r}_j - \mathbf{r}_{j-1}), \mathbf{r}_j)} = \frac{(\mathbf{r}_{j+1},\mathbf{r}_{j+1})}{(\mathbf{r}_j, \mathbf{r}_j)}.
+  \label{eq:cg_beta}
+\end{equation}
+Finally, \cref{eq:cg_alpha,eq:cg_solution_update,eq:cg_residual_update,eq:cg_beta,eq:cg_search_direction_update} comprise one iteration of the CG method, as shown in \cref{alg:cg}.

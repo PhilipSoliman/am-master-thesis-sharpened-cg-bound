@@ -50,6 +50,26 @@
 \newpage
 \input{chapters/conclusion.tex}
 
+%%%%%%%%%%%%
+% Appendix %
+%%%%%%%%%%%% 
+\begin{appendices}
+    % Redefinitions for appendix counters
+    \setcounter{section}{0}
+    \renewcommand{\thesection}{\Alph{section}}
+    \renewcommand{\thesubsection}{\thesection.\arabic{subsection}}
+    \renewcommand{\thesubsubsection}{\thesection.\arabic{subsubsection}}
+    \numberwithin{equation}{section}
+    \renewcommand{\theequation}{\thesection.\arabic{equation}}
+    \numberwithin{figure}{section}
+    \renewcommand{\thefigure}{\thesection.\arabic{figure}}
+    \numberwithin{table}{section}
+    \renewcommand{\thetable}{\thesection.\arabic{table}}
+    \numberwithin{algorithm}{section}
+    \renewcommand{\thealgorithm}{\thesection.\arabic{algorithm}}
+    \input{chapters/appendix.tex}
+\end{appendices}
+
 %%%%%%%%%%%%%%%%
 % bibliography %
 %%%%%%%%%%%%%%%%
