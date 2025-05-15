@@ -30,6 +30,7 @@
 \RequirePackage[labelfont=bf,justification=centering,footnotesize]{caption} % Captions
 \RequirePackage{subcaption} % Support for sub-captions
 \RequirePackage{pdfpages}   % Include PDF documents
+\RequirePackage{appendix}   % Support for appendices
 
 \RequirePackage[pdfusetitle,hidelinks]{hyperref} % Extensive support for hypertext
 \RequirePackage[noabbrev]{cleveref} % Intelligent cross-referencing
@@ -57,6 +58,8 @@
 \RequirePackage[framemethod=TikZ]{mdframed}
 \RequirePackage{listings}
 \RequirePackage{afterpage}
+\RequirePackage[most]{tcolorbox}
+\tcbuselibrary{listings,theorems}
 
 %% Establish commands for the subtitle, subject, affiliation, cover image and table of authors
 \newcommand*{\subtitle}[1]{\def\@subtitle{#1}}
