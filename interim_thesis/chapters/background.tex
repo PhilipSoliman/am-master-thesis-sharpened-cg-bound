@@ -1,92 +1,146 @@
 \chapter{Mathematical background}\label{ch:background}
-The first part of this chapter \cref{sec:cg_method} discusses the convergence rate of CG in \cref{sec:cg_convergence_rate} and how it is influenced by the distribution of the eigenvalues of the system matrix $A$ in \cref{sec:cg_eigenvalue_distribution}. The latter is important, since it shows that the condition number $\kappa(A)$ is not the only factor influencing the convergence rate of CG. Then we briefly review the PCG method in \cref{sec:cg_preconditioning} and how it can be used to improve the convergence rate of CG. Then, the second part of this chapter \cref{sec:schwarz_methods} concerns the Schwarz methods, which are a class of domain decomposition methods. These methods are used to solve PDEs on complex domains and can be used as preconditioners in PCG. In \cref{sec:schwarz_convergence}, we also see some conditioner number estimates that are classically used to estimate the convergence rate of PCG 
-
-% Next to this we need a way of interpolating functions in $C(\Omega)$ to $V_{h}$. This is done by the interpolation operator $I_h: C(\Omega) \mapsto V_{h,0}$, which is defined by
-% \[
-%     \mathcal{I}_h v = \sum_{i\in\mathcal{N}} v(x_i) \phi_i,
-% \]
-% where $x_i$ are the nodes of the triangulation $\mathcal{T}$. $\mathcal{I}_h$ is stable with respect to the $a$-norm, that is
-% \[
-%     \| I_h(v) \|_a \leq C_{I_h} \| v \|_{a}.
-% \]
+The first part of this chapter \cref{sec:cg_method} discusses the convergence rate of CG in \cref{sec:cg_convergence_rate} and how it is influenced by the distribution of the eigenvalues of the system matrix $A$ in \cref{sec:cg_eigenvalue_distribution}. The latter is important, since it shows that the condition number $\kappa(A)$ is not the only factor influencing the convergence rate of CG. The first part ends with a brief review of the PCG method in \cref{sec:cg_preconditioning}. Then, the second part of this chapter \cref{sec:schwarz_methods} concerns the Schwarz methods, which are a class of domain decomposition methods. Schwarz methods can be used to construct preconditioners for use in PCG, even though these were originally devised as fixed point iteration methods for solving PDEs on complex domains. In \cref{sec:schwarz_convergence}, we also see some conditioner number estimates that are classically used to estimate the convergence rate of PCG.
 
 \section{Conjugate gradient method}\label{sec:cg_method}
-The CG method is a special instance of the class of Krylov subspace methods. It is derived from the Direct Lanczos (D-Lanczos) algorithm applied to the residual of linear systems \cite[Algorithm 6.17]{iter_method_saad}. The D-Lanczos algorithm generates a sequence of orthonormal Lanczos vectors $\{\mathbf{v}_1, \mathbf{v}_2, \dots, \mathbf{v}_m\}$ that span the Krylov subspace $\mathcal{K}_m(A, \mathbf{r}_0)$, where $\mathbf{r}_0 = \mathbf{b} - A\mathbf{u}_0$ is the initial residual such that
+We seek to solve the linear system of equations $A\mathbf{u} = \mathbf{b}$, where $A$ is a symmetric positive definite (SPD) matrix. These properties of $A$ make the CG method particularly suitable for solving the system, as motivated in the \cref{ch:introduction}.
+
+\subsection{Projection methods}
+To further understand the CG method, we need to introduce the class of \textit{projection methods}, which given some initial guess $\mathbf{u}_0$ find an approximation $\mathbf{u}_{\text{new}}$ to the solution of the linear system $A\mathbf{u} = \mathbf{b}$ in a \textit{constrained subspace} $\mathcal{L}\subset\mathbb{R}^n$ using a \textit{correction vector} $\mathbf{c}$ in another subspace $\mathcal{K}\subset\mathbb{R}^n$. That is, projection methods solve the following problem \cite[Equation 5.3]{iter_method_saad}
+\[
+  \text{Find } \mathbf{u}_{\text{new}} = \mathbf{u}_0 + \mathbf{c} \in \mathbf{u}_0 + \mathcal{K} \text{ such that } \mathbf{r}_{\text{new}} =  A\mathbf{u}_{\text{new}} - \mathbf{b} = \mathbf{r}_0 - A\mathbf{c} \perp \mathcal{L}.
+\]
+In doing so, projection methods perform a \textit{projection step}, visualized in \cref{fig:projection_method}.
+\begin{figure}[H]
+  \centering
+  \input{tikz/projection_method.tex}
+  \caption{Visualization of projection method, based on \cite[Figure 5.1]{iter_method_saad}. The projection method finds the solution $\mathbf{u}_{\text{new}}$ in the affine subspace $\mathbf{u}_0 + \mathcal{K}$, such that the new residual $\mathbf{r}_{\text{new}}$ is orthogonal to the constraint subspace $\mathcal{L}$.}
+  \label{fig:projection_method}
+\end{figure}
+
+\subsubsection{Error projection methods}
+The subclass of \textit{error projection methods} defined by \cref{def:error_projection_method} sets $\mathcal{K} = \mathcal{L}$.
+\begin{fancydef}{Error projection method}{error_projection_method}
+  To perform an error projection step, find $\mathbf{u}_{\text{new}} = \mathbf{u}_0 + \mathbf{c} \in \mathbf{u}_0 + \mathcal{K}$ such that
+  \begin{equation}
+    (\mathbf{r}_0 - A\mathbf{c}, w) = 0 \quad \forall w \in \mathcal{K},
+    \label{eq:orthogonality_condition}
+  \end{equation}
+  where $(\cdot,\cdot)$ is an inner product on $\mathcal{K}$. Let $V = [\mathbf{v}_1, \mathbf{v}_2, \dots, \mathbf{v}_m]$ be a matrix whose columns span $\mathcal{K}$, then one error projection step is given by
+  \begin{align*}
+    \mathbf{u}_{\text{new}} & = \mathbf{u}_0 + V \mathbf{c} \\
+    V^TAV\mathbf{c} & = V^T\mathbf{r}_0,
+  \end{align*}
+  \label{def:error_projection_method}
+\end{fancydef}
+Error projection methods owe their name to the following central \cref{th:error_projection_method}.
+\begin{fancyth}{Error minimization in $A$-norm}{error_projection_method}
+  Given a linear system $A\mathbf{u} = \mathbf{b}$ with solution $\mathbf{u}^{*}$. Define the errors $\mathbf{e}_0 = \mathbf{u}^{*} - \mathbf{u}_0$ and $\mathbf{e}_{\text{new}} = \mathbf{u}^{*} - \mathbf{u}_{\text{new}}$. Then, an error projection step minimizes the $A$-norm of the error in the affine subspace $\mathbf{u}_0 + \mathcal{K}$.
+\end{fancyth}
+\begin{proof}
+We have
+\begin{align*}
+    A\mathbf{e}_{\text{new}} & = A(\mathbf{u}^{*} - \mathbf{u}_0 - \mathbf{c}) \\
+               & = A(\mathbf{e}_0 - \mathbf{c})       \\
+               & = \mathbf{r}_0 - A\mathbf{c} \\
+\end{align*}
+Hence, the orthogonality condition \cref{eq:orthogonality_condition} can be written as
+\[
+    (A\mathbf{e}_{\text{new}}, w) = (\mathbf{e}_0 - \mathbf{c}, w)_{A} = 0, \quad \forall w \in \mathcal{K}.
+\]
+In other words, the correction vector $\mathbf{c}$ is the $A$-orthogonal projection of the error $\mathbf{e}_0$ onto $\mathcal{K}$. Therefore, there exists a projection operator $P_{\mathcal{K}}^{A}$ such that
+\[
+  \mathbf{e}_{\text{new}} = (I - P_{\mathcal{K}}^{A}) \mathbf{e}_0.
+\]
+Moreover, we have
+\begin{align*}
+  \|\mathbf{e}_{\text{new}}\|_A^2 &= \|\mathbf{e}_0\|_A^2  + \|P_{\mathcal{K}}^{A}\mathbf{c}\|_A^2 - 2(P_{\mathcal{K}}^{A}\mathbf{e}_0, \mathbf{e}_0)_A,\\
+  A-\text{orthogonality of } P_{\mathcal{K}}^{A}\mathbf{c} \rightarrow &= \|\mathbf{e}_0\|_A^2 - 2(P_{\mathcal{K}}^{A}\mathbf{e}_0, \mathbf{e}_0)_A\\
+  \text{Set } (P_{\mathcal{K}}^{A}\mathbf{e}_0, \mathbf{e}_0)_A = s \|\mathbf{e}_0\|_A^2 \geq 0 \rightarrow  &= (1-2s)\|\mathbf{e}_0\|_A^2\\
+  &\leq \|\mathbf{e}_0\|_A^2.
+\end{align*}
+\end{proof}
+
+\subsubsection{General algorithm for error projection methods}
+By performing multiple (error) projection steps we obtain a sequence of approximations $\{\mathbf{u}_0, \mathbf{u}_1, \dots, \mathbf{u}_m\}$ to exact the solution $\mathbf{u}^*$ of the linear system $A\mathbf{u} = \mathbf{b}$. \cref{th:error_projection_method} ensures that each approximate solution $\mathbf{u}_j$ is closer to the exact solution $\mathbf{u}^*$ than the previous one $\mathbf{u}_{j-1}$. This idea forms the basis for a general error projection method and results in \cref{alg:error_projection_method}
+\begin{algorithm}[H]
+    \caption{Prototype error projection method \cite[Algorithm 5.1]{iter_method_saad}}
+    \begin{algorithmic}
+      \State Set $\mathbf{u} = \mathbf{u}_0$
+      \While{$\mathbf{u}$ is not converged}
+      \State Choose basis $V$ of $\mathcal{K}=\mathcal{L}$
+      \State $\mathbf{r} = \mathbf{b} - A \mathbf{u}$
+      \State $\mathbf{c} = (V^TAV)^{-1}V^T\mathbf{r}$
+      \State $\mathbf{u} = \mathbf{u} + V\mathbf{c}$
+      \EndWhile
+    \end{algorithmic}
+    \label{alg:error_projection_method}
+\end{algorithm}
+Projection methods differ in their choice of the spaces $\mathcal{K}$ and $\mathcal{L}$ as well as in how they obtain the basis $V$ of $\mathcal{K}$, as well as the so-called \textit{Hessenberg matrix} defined in \cref{def:hessenberg_matrix}
+\begin{fancydef}{Hessenberg matrix}{hessenberg_matrix}
+  The Hessenberg matrix $H$ is defined as the matrix $H = V^TAV$, where $V$ is a matrix whose columns span the subspace $\mathcal{K}$.
+  \label{def:hessenberg_matrix}
+\end{fancydef}
+
+\subsubsection{Krylov subspace methods}
+Krylov subspace methods form yet another subclass of projection methods and are defined by their choice of the space $\mathcal{K}$. Namely,
 \begin{equation}
   \mathcal{K}_m(A_0, \mathbf{r}_0) = \text{span}\{\mathbf{r}_0, A\mathbf{r}_0, A^2\mathbf{r}_0, \dots, A^{m-1}\mathbf{r}_0\},
   \label{eq:cg_krylov_space}
 \end{equation}
-or $\mathcal{K}_m$ as a shorthand. The approximate answer is then given by
-\begin{equation}
-  \mathbf{u}_m = \mathbf{u}_0 + \sum_{i=0}^{m-1} c_i A^i \mathbf{r}_0 = \mathbf{u}_0 + q_{m-1}(A)\mathbf{r}_0,
-  \label{eq:cg_approximate_solution}
-\end{equation}
-where $q_{m-1}(A)$ is a polynomial of degree $m-1$ in $A$. It is shown later in this section how the coefficients $c_i$ are obtained (\cref{eq:cg_solution_coefficients}).
-
-\subsection{Variants of the CG method} \label{sec:cg_variants}
-Variants of the CG method differ in the way A is preconditioned (see section \cref{sec:cg_preconditioning}) and the choices for the constraint subspace $\mathcal{L}_m$. The former type of variations result in the preconditioned CG method (PCG) and these are described in \cref{sec:cg_preconditioning}. The latter type of variations further separate into two major categories:
-\begin{enumerate}[label=\roman*,ref=CG-type \roman*]
-  \item\label{cg_type:direct} $\mathcal{L}_m = \mathcal{K}_m$ and $\mathcal{L}_m = A\mathcal{K}_m$;
-  \item\label{cg_type:transpose}$\mathcal{L}_m = \mathcal{K}_m(A^T,\mathbf{r}_0)$.
-\end{enumerate}
-Note that \cref{cg_type:direct} correspond to the residual and error projection methods. The former results in Arnoldi's method, as well as variants thereof like Full Orthogonalization Method (FOM), Incomplete Orthogonalization Method (IOM) and Direct Incomplete Orthogonalization Method (DIOM). The latter on the other hand results in the Generalized Minimum Residual Method (GMRES).
-
-\subsection{Krylov subspaces}
+or $\mathcal{K}_m$ as a shorthand. 
 \begin{definition}
-  The grade of a vector $v$ with respect to a matrix $A$ is the lowest degree of the polynomial $q$ such that $q(A)v = 0$.
+  The grade of a vector $\mathbf{v}$ with respect to a matrix $A$ is the lowest degree of the polynomial $q$ such that $q(A)\mathbf{v} = 0$.
   \label{def:cg_grade}
 \end{definition}
 Consequently,
 \begin{theorem}
-  The Krylov subspace $\mathcal{K}_m$ is of dimension $m$ if and only if the grade $\mu$ of $v$ with respect to $A$ is not less than $m$ \cite[proposition 6.2]{iter_method_saad},
+  The Krylov subspace $\mathcal{K}_m$ is of dimension $m$ if and only if the grade $\mu$ of $\mathbf{v}$ with respect to $A$ is not less than $m$ \cite[proposition 6.2]{iter_method_saad},
   \begin{equation*}
     \dim(\mathcal{K}_m) = m \iff \mu \geq m,
   \end{equation*}
   such that
   \begin{equation}
-    \dim(\mathcal{K}_m) = \min \{m, \textrm{grade}(v)\}.
+    \dim(\mathcal{K}_m) = \min \{m, \textrm{grade}(\mathbf{v})\}.
     \label{eq:cg_krylov_dimension}
   \end{equation}
   \label{th:cg_krylov_dimension}
 \end{theorem}
 
 \subsection{CG algorithm}
-We can write the conjugate gradient method as \cref{alg:cg}.
+The CG method exists in the intersection of error projection methods and Krylov subspace methods, as it is a projection method with the choice $\mathcal{L} = \mathcal{K} = \mathcal{K}_m$. We can derive the CG method starting from Arnoldi's method, see \cref{alg:arnoldi_linear_systems}. Arnoldi's method is much like \cref{alg:error_projection_method} in that it uses a Gramm-Schmidt orthogonalization step to obtain the basis $V$ of the Krylov subspace $\mathcal{K}_m$ and a projection step to update the solution. Where Arnoldi's method is applicable to non-symmetric matrices by performing a full orthogonalization step, CG leverages the symmetry of $A$ by doing a partial orthogonalization step. The latter is possible, since the CG method only needs to maintain the orthogonality of the residuals $\mathbf{r}_j$ with respect to the previous residuals $\mathbf{r}_{j-1}$ and not with respect to all previous residuals $\mathbf{r}_{j-2}, \dots, \mathbf{r}_0$. The full derivation is discussed in \cref{sec:cg_derivation} and results in \cref{alg:cg}.
 \begin{algorithm}[H]
-  \caption{Conjugate Gradient Method \cite[Algorithm 6.18]{iter_method_saad}}
+  \caption{Conjugate Gradient Method}
   \begin{algorithmic}
-    \State $\mathbf{r}_0 = b - A\mathbf{u}_0$, $p_0 = \mathbf{r}_0$, $\beta_0 = 0$
+    \State $\mathbf{r}_0 = \mathbf{b} - A\mathbf{u}_0$, $\mathbf{p}_0 = \mathbf{r}_0$, $\beta_0 = 0$
     \For{$j = 0, 1, 2, \dots, m$}
-    \State $\alpha_j = (\mathbf{r}_j, \mathbf{r}_j) / (A p_j, p_j)$
-    \State $\mathbf{u}_{j+1} = \mathbf{u}_j + \alpha_j p_j$
-    \State $\mathbf{r}_{j+1} = \mathbf{r}_j - \alpha_j A p_j$
+    \State $\alpha_j = (\mathbf{r}_j, \mathbf{r}_j) / (A \mathbf{p}_j, \mathbf{p}_j)$
+    \State $\mathbf{u}_{j+1} = \mathbf{u}_j + \alpha_j \mathbf{p}_j$
+    \State $\mathbf{r}_{j+1} = \mathbf{r}_j - \alpha_j A \mathbf{p}_j$
     \State $\beta_j = (\mathbf{r}_{j+1}, \mathbf{r}_{j+1}) / (\mathbf{r}_j, \mathbf{r}_j)$
-    \State $p_{j+1} = \mathbf{r}_{j+1} + \beta_j p_j$
+    \State $\mathbf{p}_{j+1} = \mathbf{r}_{j+1} + \beta_j \mathbf{p}_j$
     \EndFor
   \end{algorithmic}
   \label{alg:cg}
 \end{algorithm}
+A crucial property of the approximate solution that \cref{alg:cg} produces is given in \cref{th:cg_approximate_solution}
+\begin{fancyth}{CG approximate solution}{cg_approximate_solution}
+  The approximate solution at the $m^{\text{th}}$ iteration is given by
+  \begin{equation}
+    \mathbf{u}_m = \mathbf{u}_0 + \sum_{i=0}^{m-1} c_i A^i \mathbf{r}_0 = \mathbf{u}_0 + q_{m-1}(A)\mathbf{r}_0,
+    \label{eq:cg_approximate_solution}
+  \end{equation}
+where $q_{m-1}(A)$ is the solution polynomial of degree $m-1$ in $A$.
+\end{fancyth}
+\begin{proof}
+  The CG method is a projection method with the choice $\mathcal{L} = \mathcal{K} = \mathcal{K}_m$. Hence, the approximate solution $\mathbf{u}_m$ is an element of the affine Krylov subspace $\mathbf{u}_0 + \mathcal{K}_m(A, \mathbf{r}_0)$, see \cref{def:error_projection_method}. The result follows from the fact that the Krylov subspace $\mathcal{K}_m(A, \mathbf{r}_0)$ is spanned by the vectors $\{\mathbf{r}_0, A\mathbf{r}_0, A^2\mathbf{r}_0, \dots, A^{m-1}\mathbf{r}_0\}$ and that the approximate solution $\mathbf{u}_m$ is a linear combination of these vectors. The coefficients of this linear combination are given by the \textit{CG solution coefficients} $c_i$.
+\end{proof}
+
 The Lanczos vectors are related through the Lanczos recurrence relation
 \begin{equation}
   \label{eq:lanczos_recurrence}
-  \eta_{j+1}(A)\mathbf{v}_{j+1} = A \mathbf{v}_j - \delta_j \mathbf{v}_j - \eta_j \mathbf{v}_{j-1},
+  \eta_{j+1}(A)\mathbf{v}_{j+1} = A \mathbf{v}_j - \delta_j \mathbf{v}_j - \eta_j \mathbf{v}_{j-1}.
 \end{equation}
-such that
-\[
-  T_m = \mathbf{v}_m^T A \mathbf{v}_m,
-\]
-where $T_m$ is the tridiagonal Hessenberg matrix given by
-\begin{equation}
-  T_m =
-  \begin{pmatrix}
-    \delta_1 & \eta_2   & 0        & \dots  & 0        \\
-    \eta_2   & \delta_3 & \eta_3   & \dots  & 0        \\
-    0        & \eta_3   & \delta_4 & \dots  & 0        \\
-    \vdots   & \vdots   & \vdots   & \ddots & \eta_m   \\
-    0        & 0        & 0        & \eta_m & \delta_m
-  \end{pmatrix}.
-  \label{eq:lanczos_tridiagonal}
-\end{equation}
+
 The following relations exist between the entries of $T_m$ and the CG coefficients $\alpha_j, \beta_j$
 \begin{equation}
   \delta_{j+1} =
