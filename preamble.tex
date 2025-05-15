@@ -26,17 +26,31 @@
 \newtheorem{theorem}{Theorem}[chapter]
 \newtheorem{definition}{Definition}[chapter]
 
+%custom problem environment
+\newtcbtheorem[number within=chapter,crefname={Problem}{Problems}]{fancyprob}{Problem}%
+{colback=white,colframe=chapter,fonttitle=\bfseries}{prob}
+\newtcbtheorem[number within=section,crefname={Problem}{Problems}]{APPfancyprob}{Problem}%
+{colback=white,colframe=chapter,fonttitle=\bfseries}{prob}
+
+% custom theorem environment
+\newtcbtheorem[number within=chapter,crefname={Theorem}{Theorems}]{fancyth}{Theorem}%
+{colback=white,colframe=subsection,fonttitle=\bfseries}{th}
+\newtcbtheorem[number within=section,crefname={Theorem}{Theorems}]{APPfancyth}{Theorem}%
+{colback=white,colframe=subsection,fonttitle=\bfseries}{th}
+
+% custom definition environment
+\newtcbtheorem[number within=section,crefname={Definition}{Definitions}]{fancydef}{Definition}%
+{colback=white,colframe=subsubsection,fonttitle=\bfseries}{def}
+
 % research question environments
 \newtheorem*{researchq}{Research Question}
 \newtheorem*{subsidiaryq}{Subsidiary Questions}
 
 %tikz pictures
-\usetikzlibrary{intersections}
+\usetikzlibrary{intersections, arrows.meta, calc}
 
 % pgf figures
 \usepackage{pgf}
-\usepackage{tikz}
-\usepackage{tikz-cd}
 \usepackage{pgfplots}
 \pgfplotsset{compat=1.14}
 % \usepackage{lmodern}
