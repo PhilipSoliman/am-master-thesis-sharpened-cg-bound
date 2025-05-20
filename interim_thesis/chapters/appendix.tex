@@ -1,5 +1,6 @@
 \chapter*{Appendix}
 \addcontentsline{toc}{chapter}{Appendix}\label{ch:appendix}
+
 \section{Derivation of the CG Method}\label{sec:cg_derivation}
 
 \subsection{Arnoldi's method for linear systems}\label{sec:arnoldi_linear_systems}
@@ -264,3 +265,137 @@ which we substitute into the equation for $\beta_j$ to obtain
   \label{eq:cg_beta}
 \end{equation}
 Finally, \cref{eq:cg_alpha,eq:cg_solution_update,eq:cg_residual_update,eq:cg_beta,eq:cg_search_direction_update} comprise one iteration of the CG method, as shown in \cref{alg:cg}.
+
+\subsection{CG relation to Lanczos}
+\todo{Describe relation between CG and Lanczos coefficients.}
+
+\section{Chebyshev approximation}\label{sec:chebyshev_approximation}
+
+\subsection{Chebyshev polynomials}
+This section introduces Chebyshev polynomials and some of their properties. First, their definition in \cref{def:chebyshev_polynomial}.
+\begin{APPfancydef}{Chebyshev polynomial}{chebyshev_polynomial}
+  The $m^{\text{th}}$ degree Chebyshev polynomial of the first kind is denoted as $C_m$, for $z\in\mathbb{C}$
+  \[
+    C_m(z) = \begin{cases}
+      \cos(m \cos^{-1}(z)), & |z| \leq 1, \\
+      \cosh(m \cosh^{-1}(z)), & |z| > 1,
+    \end{cases},
+  \]
+  as well as through the recurrence relation
+  \[
+    C_m(z) = 2z C_{m-1}(z) - C_{m-2}(z), \quad m \geq 2,
+  \]
+  with initial conditions
+  \[
+    C_0(z) = 1, \quad C_1(z) = z.
+  \]
+\end{APPfancydef}
+
+For $|z|>1$ we can also write
+\begin{equation}
+  C_m(z) = \frac{1}{2}\left(\left(z + \sqrt{z^2 - 1}\right)^m + \left(z - \sqrt{z^2 - 1}\right)^m\right),
+  \label{eq:chebyshev_polynomial_explicit}
+\end{equation}
+which for large $k$ may be approximated as
+\begin{equation}
+  C_m(z) \gtrapprox \frac{1}{2}\left(z + \sqrt{z^2 - 1}\right)^m.
+  \label{eq:chebyshev_polynomial_approximation}
+\end{equation}
+The extreme points of $C_m$ are given by
+\begin{equation}
+  z_k = \cos\left(\frac{k \pi}{m}\right), \quad k = 0, 1, \dots, m.
+  \label{eq:chebyshev_polynomial_extreme_points}
+\end{equation}
+Indeed, substituting $z_k$ into $C_m$ gives 
+\begin{equation}
+  C_m(z_k) = \cos(k \pi) = \cos(k \pi) = (-1)^k, \quad k = 0, 1, \dots, m.
+  \label{eq:chebyshev_polynomial_extrema}
+\end{equation}
+ 
+For the optimality proof we need to introduce the real-valued, transformed Chebyshev polynomial in \cref{def:scaled_chebyshev_polynomial.}
+\begin{APPfancydef}{Real Transformed Chebyshev polynomial}{scaled_chebyshev_polynomial}
+  The transformed Chebyshev polynomial of the first kind is denoted as $\hat{C}_m$, for $x\in\mathbb{R}$ is obtained through an affine change of variables $T$ from the $[a, b] \subset \mathbb{R}$ to the interval $[-1, 1]$ as
+  \[
+    t \in [a,b] \implies z = T(t) = \frac{2t - (a + b)}{b - a} \in [-1, 1],
+  \]
+  and a subsequent scaling with the factor $C_m(T(\gamma))$ for $\gamma\in\mathbb{R}$ outside the interval $[a, b]$ as
+  \[
+    \hat{C}_m(t) = \frac{C_m(T(t))}{C_m(T(\gamma))} = \frac{C_m\left(\frac{2t - (a + b)}{b - a}\right)}{C_m\left(\frac{2\gamma - (a + b)}{b - a}\right)}
+  \]
+\end{APPfancydef}
+
+Lastly, by \cref{eq:chebyshev_polynomial_extrema} we get for $t_k = T^{-1}(z_k)$
+\begin{equation}
+    \hat{C}_m(t_k) = \frac{(-1)^k}{C_m(T(\gamma))} = \frac{(-1)^k}{d_m(\gamma)},
+    \label{eq:chebyshev_polynomial_extrema_scaled}
+\end{equation}
+where $d_m(\gamma) = C_m(T(\gamma))$. 
+
+\subsection{Chebyshev optimality}
+We now show that $\hat{C}_m$ from \cref{def:scaled_chebyshev_polynomial} is the solution of the following minimization problem
+\begin{APPfancyth}{Min-max polynomial}{minmax_polynomial}
+  The real-valued polynomial $p_m(t)$ of degree $m$ such that for $\gamma\in\mathbb{R}$ outside the interval $[a, b]$ the following holds
+  \[
+    \min_{p\in\mathcal{P}_m,p(\gamma)=1} \max_{t\in[a,b]} |p(t)|,
+  \]
+  is given by the Chebyshev polynomial $\hat{C}_m$. Furthermore, we have
+  \[
+    \min_{p\in\mathcal{P}_m,p(\gamma)=1} \max_{t\in[a,b]} |p_m(t)| = \frac{1}{d_m(\gamma)},
+  \]
+  where $d_m(\gamma)$ is as in \cref{eq:chebyshev_polynomial_extrema_scaled}.
+\end{APPfancyth}
+\begin{proof}
+  We proof this by contradiction. First, note that by \cref{eq:chebyshev_polynomial_extrema_scaled} we have
+  \[
+    \max_{t\in[a,b]} |\hat{C}_m(t)| = \max_{k=0,1,\dots,m} |\hat{C}_m(t_k)| = \frac{1}{d_m},
+  \]
+  Assume that there exists a polynomial $w_m(t)$ of degree $m$ such that
+  \[
+    \max_{t\in[a,b]} |w_m(t)| < \frac{1}{d_m}.
+  \]
+  Without loss of generality we can assume $w_m$, just like $\hat{C}_m$, is a monic polynomial, i.e. $w_m(t) = t^m + \dots$. We now define the difference polynomial
+  \[
+    f_m(t) = \hat{C}_m(t) - w_m(t) \in \mathcal{P}_{m-1},
+  \]
+  where the inclusion in the $m-1$ degree polynomials follows from the fact that $f_m$ is the difference of two monic polynomials of degree $m$. 
+
+  Consider the values of $f_m$ at the extreme points $t_k = T^{-1}(z_k)$ of $\hat{C}_m$ with $z_k$ as in \cref{eq:chebyshev_polynomial_extreme_points} and $T$ as in \cref{def:scaled_chebyshev_polynomial}. We distinguish between even and odd $k$. By \cref{eq:chebyshev_polynomial_extrema_scaled} and the assumption on $w_m$ we then obtain
+  \begin{enumerate}[leftmargin=1.3cm]
+    \item[\textbf{even} $k$:] $f_m(t_k) = \frac{1}{d_m} - w_m(t_k) > 0$.
+    \item[\textbf{odd} $k$:] $f_m(t_k) =  -\frac{1}{d_m} - w_m(t_k) < 0$. 
+  \end{enumerate}
+  From this we gather that $f_m(t_k)$ has alternating signs at the extreme points $t_k$ of $\hat{C}_m$. 
+
+  Now, the sequence $(z_k)_{k=0}^m$ is decreasing, and thus the sequence $(t_k)_{k=0}^m$ is also decreasing. This means that we can construct $m$ distinct intervals $I_k = [t_{k+1}, t_k]$ such that $f_m$ switches sign in each interval. By the intermediate value theorem, we know that $f_m$ must have at least one root in each interval $I_k$. This leads to the conclusion that $f_m$ has at least $m$ roots in the interval $[a, b]$. 
+
+  However, by the fundamental theorem of algebra $f_m$, a polynomial of degree $m-1$, can have at most $m-1$ distinct roots. The only possibility is for $f_m \equiv 0$, but then we have
+  \[
+    \max_{t\in[a,b]} |w_m(t)| = \max_{t\in[a,b]} |\hat{C}_m(t)| = \frac{1}{d_m},
+  \]
+  which contradicts our main assumption that $w_m$ is a polynomial such that $\max_{t\in[a,b]} |w_m(t)| < \frac{1}{d_m}$. Thus, we conclude that the Chebyshev polynomial $\hat{C}_m$ is indeed the solution to the minimization problem.
+\end{proof}
+
+\section{Rayleigh quotient} \label{sec:rayleigh_quotient}
+\begin{APPfancydef}
+  The Rayleigh quotient of a matrix $A$ and a vector $\mathbf{u}$ is defined as
+  \begin{equation}
+    R(A, \mathbf{u}) = \frac{\mathbf{u}^T A \mathbf{u}}{\mathbf{u}^T \mathbf{u}}.
+    \label{eq:rayleigh_quotient}
+  \end{equation}
+\end{APPfancydef}
+\begin{APPfancyth}{Rayleigh quotient bound}{rayleigh_quotient_bound}
+  Suppose $A$ is symmetric. Then the Rayleigh quotient $R(A, \mathbf{u})$ is bounded by the smallest and largest eigenvalue of $A$, i.e.
+  \[
+    \lambda_{\min} \leq R(A, \mathbf{u}) \leq \lambda_{\max}.
+  \]
+\end{APPfancyth}
+\begin{proof}
+  $A$ has diagonalization $A = Q \Lambda Q^T$, where $Q$ is an orthonormal eigenbasis and $\Lambda$ is the diagonal with real and positive eigenvalues $\lambda_i$ of $A$. The Rayleigh quotient satisfies with $\mathbf{v} = Q \mathbf{u}$
+  \[
+    R(A, \mathbf{u}) = \frac{\mathbf{u}^T A \mathbf{u}}{\mathbf{u}^T \mathbf{u}} = \frac{\mathbf{v}^T \Lambda \mathbf{v}}{\mathbf{v}^T \mathbf{v}} = \sum_{i=1}^n \frac{\lambda_i v_i^2}{\|v\|_2},
+  \]
+  which is a convex combination of the eigenvalues $\lambda_i$ of $A$. Thus, we have
+  \[
+    \lambda_{\min} \leq R(A, \mathbf{u}) \leq \lambda_{\max}.
+  \]
+\end{proof}
