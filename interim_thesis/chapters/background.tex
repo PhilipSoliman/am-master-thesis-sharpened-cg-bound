@@ -27,8 +27,8 @@ The subclass of \textit{error projection methods} defined by \cref{def:error_pro
   \end{equation}
   where $(\cdot,\cdot)$ is an inner product on $\mathcal{K}$. Let $V = [\mathbf{v}_1, \mathbf{v}_2, \dots, \mathbf{v}_m]$ be a matrix whose columns span $\mathcal{K}$, then one error projection step is given by
   \begin{align*}
-    \mathbf{u}_{\text{new}} & = \mathbf{u}_0 + V \mathbf{c} \\
-    V^TAV\mathbf{c} & = V^T\mathbf{r}_0,
+    \mathbf{u}_{\text{new}} & = \mathbf{u}_0 + V \mathbf{v} \\
+    V^TAV\mathbf{v} & = V^T\mathbf{r}_0,
   \end{align*}
 \end{fancydef}
 Error projection methods owe their name to the following central \cref{th:error_projection_method}.
@@ -38,11 +38,11 @@ Error projection methods owe their name to the following central \cref{th:error_
 \begin{proof}
 We have
 \begin{align*}
-    A\mathbf{e}_{\text{new}} & = A(\mathbf{u}^{*} - \mathbf{u}_0 - \mathbf{c}) \\
-               & = A(\mathbf{e}_0 - \mathbf{c})       \\
-               & = \mathbf{r}_0 - A\mathbf{c} \\
+    A\mathbf{e}_{\text{new}} & = A(\mathbf{e}_0 - \mathbf{c}) \\
+               & = A(\mathbf{u}^{*} - \mathbf{u}_0 - \mathbf{c}) \\
+               & = \mathbf{r}_0 - A\mathbf{c} 
 \end{align*}
-Hence, the orthogonality condition \cref{eq:orthogonality_condition} can be written as
+Hence, the orthogonality condition in \cref{eq:orthogonality_condition} can be written as
 \[
     (A\mathbf{e}_{\text{new}}, w) = (\mathbf{e}_0 - \mathbf{c}, w)_{A} = 0, \quad \forall w \in \mathcal{K}.
 \]
@@ -50,12 +50,12 @@ In other words, the correction vector $\mathbf{c}$ is the $A$-orthogonal project
 \[
   \mathbf{e}_{\text{new}} = (I - P_{\mathcal{K}}^{A}) \mathbf{e}_0.
 \]
-Moreover, we have using symmetry and positive definiteness of $A$ that we can define the $A$-norm $\|\cdot\|_A$. Then, using the $A$-orthogonality of the error $\mathbf{e}_{\text{new}}$ and the correction $P_{\mathcal{K}}^{A}\mathbf{e}_0$, we get
+Moreover, we have using symmetry and positive definiteness of $A$ that we can define the $A$-norm $\|\cdot\|_A$. Then, using the $A$-orthogonality between the error $\mathbf{e}_{\text{new}}$ and the correction $P_{\mathcal{K}}^{A}\mathbf{e}_0$, we get
 \begin{align*}
   \|\mathbf{e}_{0}\|_A^2 &= \|\mathbf{e}_{\text{new}}\|_A^2 + \|P_{\mathcal{K}}^{A}\mathbf{e}_0\|_A^2\\
   &\geq \|\mathbf{e}_{\text{new}}\|_A^2,
 \end{align*}
-which shows that the new error is smaller than the previous error in the $A$-norm. To show that the error projection step minimizes the $A$-norm of the error in the affine subspace $\mathbf{u}_0 + \mathcal{K}$, we let $\mathbf{x}\in\mathbb{C}^n$ and $\mathbf{y} \in \mathbf{u}_0 + \mathcal{K}$ be arbitrary, then using that $P_{\mathcal{K}}^{A}\mathbf{x} - \mathbf{y} \in \mathbf{u}_0 + \mathcal{K}$ we get
+which shows that the new error is smaller than the previous error in the $A$-norm. To show that the error projection step minimizes the $A$-norm of the error in the affine subspace $\mathbf{u}_0 + \mathcal{K}$, we let $\mathbf{x}\in\mathbb{R}^n$ and $\mathbf{y} \in \mathbf{u}_0 + \mathcal{K}$ be arbitrary, then using that $P_{\mathcal{K}}^{A}\mathbf{x} - \mathbf{y} \in \mathbf{u}_0 + \mathcal{K}$ we get
 \begin{align*}
   \|\mathbf{x} - \mathbf{y}\|_A^2 &= \|\mathbf{x} - P_{\mathcal{K}}^{A}\mathbf{x} + P_{\mathcal{K}}^{A}\mathbf{x} - \mathbf{y} \|_A^2 \\
   &= \|\mathbf{x} - P_{\mathcal{K}}^{A}\mathbf{x}\|_A^2 + \|P_{\mathcal{K}}^{A}\mathbf{x} - \mathbf{y}\|_A^2 \\
@@ -192,13 +192,13 @@ and
 \end{equation}
 Here we have used the definition of $T_m$ and the fact that the residuals are multiples of the Lanczos vectors $\mathbf{r}_j = \text{scalar} \times \mathbf{v}_j$ \cite[Equation 6.103]{iter_method_saad}.
 
-\subsection{CG convergence rate}\label{sec:cg_convergence_rate}
-We derive a general expression for the error of the CG method in 
-\begin{fancyth}{CG general error expression}{cg_error_expression}
-  Suppose we apply the CG method to the linear system $A\mathbf{u} = \mathbf{b}$ with $A$ SPD and the exact solution $\mathbf{u}^*$. The error of the $m^{\text{th}}$ iterate $\mathbf{e}_m = \mathbf{u}^* - \mathbf{u}_m$ satisfies
+\subsection{CG convergence}\label{sec:cg_convergence_rate}
+We derive a general bound for the error of the CG method in 
+\begin{fancyth}{CG general error bound}{cg_error_bound}
+  Suppose we apply the CG method to the linear system $A\mathbf{u} = \mathbf{b}$ with $A$ SPD and the exact solution $\mathbf{u}^*$. Then, the error of the $m^{\text{th}}$ iterate $\mathbf{e}_m = \mathbf{u}^* - \mathbf{u}_m$ is bounded as
   \begin{equation}
     ||\mathbf{e}_m||_A < \min_{r \in \mathcal{P}_{m-1}, r(0) = 1} \max_{\lambda \in \sigma(A)} |r(\lambda)| ||\mathbf{e}_0||_A.
-    \label{eq:cg_error_expression}
+    \label{eq:cg_error_bound}
   \end{equation}
 \end{fancyth}
 \begin{proof}
@@ -207,35 +207,38 @@ We derive a general expression for the error of the CG method in
     \|\mathbf{e}_m\|_A = \|(I - Aq_{m-1}(A))\mathbf{e}_0\|_A = \min_{q \in \mathcal{P}_{m-1}}\|(I - Aq(A))\mathbf{e}_0\|_A = \min_{r \in \mathcal{P}_{m}, r(0) = 1}\|r(A)\mathbf{e}_0\|_A,
     \label{eq:cg_convergence_rate}
   \end{equation}
-  The right-hand side can be further bounded by letting $\lambda_i, \xi_i$ be the eigenvalues of $A$ and the components of $\mathbf{e}_0$ in the eigenvector basis of $A$, respectively. Then
+  The right-hand side can be further bounded by letting $\lambda_i, \xi_i$ be the eigenvalues of $A$ and the components of $\mathbf{e}_0$ in the eigenbasis of $A$, respectively. Then
   \[
     ||r(A)\mathbf{e}_0||_A = \sqrt{\sum_{i=1}^n |r(\lambda_i)|^2 |\xi_i|^2} \leq \max_{\lambda \in \sigma(A)} |r(\lambda)| ||\mathbf{e}_0||_A,
   \]
   which gives the desired result.
 \end{proof}
+
+\subsubsection{Convergence criteria}
 We say that the CG method \textit{converges} to a user-defined, absolute tolerance $\tilde{\epsilon}$ if the error of the $m^{\text{th}}$ iterate $\mathbf{e}_m$ satisfies
 \[
   \|\mathbf{e}_m\|_A \leq \tilde{\epsilon}.
 \]
-Now, \cref{th:cg_error_expression} allows us to define a criterion based on a \textit{relative tolerance} $\epsilon$, see \cref{def:cg_convergence_criterion}
+Now, \cref{th:cg_error_bound} allows us to define a criterion based on a \textit{relative tolerance} $\epsilon$, see \cref{def:cg_convergence_criterion}
 \begin{fancydef}{Convergence criterion}{cg_convergence_criterion}
   The CG method is said to have \textit{converged} to a user-defined, relative tolerance $\epsilon$ if
   \begin{equation*}
     \frac{\|\mathbf{e}_m\|_A}{\|\mathbf{e}_0\|_A} \leq \epsilon,
   \end{equation*}
-  which according to \cref{th:cg_error_expression} is satisfied when
+  which according to \cref{th:cg_error_bound} is satisfied when
   \begin{equation}
     \min_{r \in \mathcal{P}_{m-1}, r(0) = 1} \max_{\lambda \in \sigma(A)} |r(\lambda)| \leq \epsilon.
     \label{eq:cg_convergence_criterion}
   \end{equation}
 \end{fancydef}
-However, the criterion from \cref{def:cg_convergence_criterion} is not usable a stopping criterion during CG iterations, since it involves the usually unknown error $\mathbf{e}$. Luckily, \cref{th:residual_convergence_criterion} shows how we can relate the ratio of $A$-norms of the error to similar ratio of the 2-norms of the residuals.
+However, the criterion from \cref{def:cg_convergence_criterion} is not usable a stopping criterion during CG iterations, since it involves the usually unknown error $\mathbf{e}$. Luckily, \cref{th:residual_convergence_criterion} shows how we can relate the ratio of $A$-norms of the error to a similar ratio of the 2-norms of the residuals.
 \begin{fancyth}{Residual convergence criterion}{residual_convergence_criterion}
   The CG method has converged to a user-defined, relative tolerance $\epsilon$ in the sense of \cref{def:cg_convergence_criterion} if
   \begin{equation}
-    \frac{\|\mathbf{r}_m\|_2}{\|\mathbf{r}_0\|_2} \leq \frac{\epsilon}{\sqrt{\kappa(A)}},
+    \frac{\|\mathbf{r}_m\|_2}{\|\mathbf{r}_0\|_2} \leq \frac{\epsilon}{\sqrt{\kappa}},
     \label{eq:residual_convergence_criterion}
   \end{equation}
+  where $\kappa = \frac{\lambda_{\text{max}}}{\lambda_{\text{min}}}$ is the condition number of $A$.
 \end{fancyth}
 \begin{proof}
   We have for $i=0,m$ that
@@ -264,26 +267,60 @@ However, the criterion from \cref{def:cg_convergence_criterion} is not usable a 
   \]
   which gives the desired result.
 \end{proof}
-An important conclusion to draw from \cref{th:residual_convergence_criterion} is that if we set some relative tolerance for the residuals $\epsilon_r$ such that we stop iterating when
-\[
+An important conclusion to draw from \cref{th:residual_convergence_criterion} is that if we set some relative tolerance for the residuals $\epsilon_r$ such that we stop iterating when 
+\begin{equation}
   \frac{\|\mathbf{r}_m\|_2}{\|\mathbf{r}_0\|_2} \leq \epsilon_r,
-\]
+  \label{eq:residual_convergence_criterion_r}
+\end{equation}
 then we get that the CG method has converged to a relative error tolerance $\epsilon$ given by
 \[
   \frac{\|\mathbf{e}_m\|_A}{\|\mathbf{e}_0\|_A} \leq \epsilon = \frac{\epsilon_r}{\sqrt{\kappa}}.
 \]
-This means that the CG method converges to a relative tolerance $\epsilon$ that is smaller than the relative tolerance of the residuals $\epsilon_r$ by a factor of $\sqrt{\kappa}$. On the on hand, this allows us to set a convergence criterion based on the residuals, which can actually be computed during CG iterations, as is the point of \cref{th:residual_convergence_criterion}. On the other hand, the convergence criterion based on the residuals is also pessimistic by the same factor of $\sqrt{\kappa}$. In other words, the CG method performs more iterations to converge to a stricter tolerance than the user-defined tolerance $\epsilon_r$. In practice, we often do not have access $\kappa$ and can only set $\epsilon_r$
+This means that the CG method converges to a relative tolerance $\epsilon$ that is smaller than the relative tolerance of the residuals $\epsilon_r$ by a factor of $\sqrt{\kappa}$. On the one hand, this allows us to set a convergence criterion based on the residuals, which can actually be computed during CG iterations, as is the point of \cref{th:residual_convergence_criterion}. On the other hand, the convergence criterion based on the residuals is also pessimistic by the same factor of $\sqrt{\kappa}$. In other words, the CG method performs more iterations to converge to a stricter tolerance than the user-defined tolerance $\epsilon_r$.
 
-In addition to convergence criteria based on residuals, we can also try to find a solution to the minimization problem in \cref{eq:residual_convergence_criterion}. Under the assumption of a uniform distribution of the eigenvalues of $A$, we can further bound the error of the $m^{\text{th}}$ iterate of the CG algorithm by a Chebyshev polynomial. This is done in \cref{th:cg_convergence_rate_bound} and is a direct consequence of \cref{th:minmax_polynomial}.
+Moreover, using \cref{th:rayleigh_quotient_bound} we can also bound the absolute error tolerance $\tilde{\epsilon}$ of the CG method in terms of the initial residual. That is, suppose we set $\epsilon_r$ as a convergence criterion, then we get
+\begin{equation}
+  \tilde{\epsilon} \leq \frac{\epsilon_r}{\sqrt{\kappa}}\|\mathbf{e}_0\|_A = \frac{\epsilon_r}{\sqrt{\kappa}}\|\mathbf{r}_0\|_{A^{-1}} \leq \frac{\epsilon_r}{\sqrt{\lambda_{\text{max}}}}\|\mathbf{r}_0\|_2.
+  \label{eq:cg_absolute_error_bound_r}
+\end{equation}
+
+From \cref{th:residual_convergence_criterion} and choosing $\mathbf{u}_0 = \mathbf{0}\in\mathbb{R}^n$, we can derive a commonly implemented convergence criterion
+\begin{equation}
+   \frac{\|\mathbf{r}_m\|_2}{\|\mathbf{b}\|_2} \leq \epsilon_b.
+  \label{eq:residual_convergence_criterion_b}
+\end{equation}
+In this case, the relative error tolerance $\epsilon$ achieved by the CG method in the sense of \cref{def:cg_convergence_criterion} still depends on the initial guess. Suppose, we choose a 'good' initial guess such that $\|\mathbf{r}_0\|_2 \leq \|\mathbf{b}\|_2$, then 
+\[
+  \frac{\|\mathbf{r}_m\|_2}{\|\mathbf{b}\|_2} \leq \frac{\|\mathbf{r}_m\|_2}{\|\mathbf{r}_0\|_2},
+\]
+which means \cref{eq:residual_convergence_criterion_b} is more optimistic than \cref{eq:residual_convergence_criterion_r}, requiring less CG iterations before it is satisfied. However, if we choose a bad initial guess such that $\|\mathbf{r}_0\|_2 \geq \|\mathbf{b}\|_2$, then \cref{eq:residual_convergence_criterion_b} is more pessimistic than \cref{eq:residual_convergence_criterion_r} and will require more CG iterations before it is satisfied. For a good (bad) initial guess we therefore achieve a relative error tolerance larger (smaller) than $\frac{\epsilon_b}{\sqrt{\kappa}}$. In regard to the absolute error tolerance $\tilde{\epsilon}$, we can write using \cref{th:rayleigh_quotient_bound} that
+\begin{enumerate}
+  \item[\textbf{good initial guess}] $\tilde{\epsilon} \geq \frac{\epsilon_b}{\sqrt{\kappa}}\|\mathbf{e}_0\|_A = \frac{\epsilon_b}{\sqrt{\kappa}}\|\mathbf{r}_0\|_{A^{-1}} \geq \frac{\sqrt{\lambda_{\text{min}}}}{\lambda_{\text{max}}}\epsilon_b\|\mathbf{r}_0\|_2\geq \frac{\sqrt{\lambda_{\text{min}}}}{\lambda_{\text{max}}}\epsilon_b\|\mathbf{b}\|_2$,
+  \item[\textbf{bad initial guess}] $\tilde{\epsilon} \leq \frac{\epsilon_b}{\sqrt{\kappa}}\|\mathbf{e}_0\|_A = \frac{\epsilon_b}{\sqrt{\kappa}}\|\mathbf{r}_0\|_{A^{-1}} \leq \frac{\lambda_{\text{min}}}{\sqrt{\lambda_{\text{max}}}}\epsilon_b\|\mathbf{r}_0\|_2 \leq \frac{\lambda_{\text{min}}}{\sqrt{\lambda_{\text{max}}}}\epsilon_b\|\mathbf{b}\|_2$.
+\end{enumerate}
+In other words, when we use \cref{eq:residual_convergence_criterion_b} as a convergence criterion, the absolute error tolerance we achieve satisfies
+\begin{equation}
+  \frac{\sqrt{\lambda_{\text{min}}}}{\lambda_{\text{max}}}\epsilon_b\|\mathbf{b}\|_2 \leq \tilde{\epsilon} \leq \frac{\lambda_{\text{min}}}{\sqrt{\lambda_{\text{max}}}}\epsilon_b\|\mathbf{b}\|_2.
+  \label{eq:cg_absolute_error_bound_b}
+\end{equation}
+
+Comparing \cref{eq:cg_absolute_error_bound_r} and \cref{eq:cg_absolute_error_bound_b} we gain the insight that when 
+\[
+  \|\mathbf{r}_0\|_2 < \frac{\epsilon_b}{\epsilon_r\sqrt{\kappa}}\|\mathbf{b}\|_2,
+\]
+using convergence criterion \cref{eq:residual_convergence_criterion} is guaranteed to give a more accurate result than \cref{eq:residual_convergence_criterion_b}. On the other hand, if $\|\mathbf{r}_0\|_2$ is larger, then it might be better to use \cref{eq:residual_convergence_criterion_b} as a convergence criterion. In practice, criterion \cref{eq:residual_convergence_criterion_b} is used, since its accuracy bound in \cref{eq:cg_absolute_error_bound_b} holds, independent of initial guesses.
+
+\subsubsection{Convergence rate}
+Next to convergence criteria based on residuals, we can also try to find a solution to the minimization problem in \cref{eq:residual_convergence_criterion}, which gives us an expected convergence rate. Under the assumption of a uniform distribution of the eigenvalues of $A$, we can further bound the error of the $m^{\text{th}}$ iterate of the CG algorithm by a Chebyshev polynomial. This is done in \cref{th:cg_convergence_rate_bound} and is a direct consequence of \cref{th:minmax_polynomial}.
 \begin{fancyth}{Convergence rate of CG}{cg_convergence_rate_bound}
-  Let the linear system $A\mathbf{u} = \mathbf{b}$ be as in \cref{th:cg_error_expression} and let the eigenvalues of $A$ be uniformly distributed in the interval $[\lambda_{\text{min}}, \lambda_{\text{max}}]$. Then the error of the $m^{\text{th}}$ iterate of the CG algorithm satisfies
+  Let the linear system $A\mathbf{u} = \mathbf{b}$ be as in \cref{th:cg_error_bound} and let the eigenvalues of $A$ be uniformly distributed in the interval $[\lambda_{\text{min}}, \lambda_{\text{max}}]$. Then the error of the $m^{\text{th}}$ iterate of the CG algorithm satisfies
   \begin{equation}
     \|\mathbf{e}_m\|_A \leq 2\left(\frac{\sqrt{\kappa} - 1}{\sqrt{\kappa} + 1}\right)^{m} \|\mathbf{e}_0\|_A,
     \label{eq:cg_convergence_rate_bound}
   \end{equation}
 \end{fancyth}
 \begin{proof}
-We use the general expression for CG's error from \cref{th:cg_error_expression} in combination with the uniform distribution of eigenvalues in $[\lambda_{\text{min}}, \lambda_{\text{max}}]$ to write the error of the $m^{\text{th}}$ iterate of the CG algorithm as
+We use the general expression for CG's error from \cref{th:cg_error_bound} in combination with the uniform distribution of eigenvalues in $[\lambda_{\text{min}}, \lambda_{\text{max}}]$ to write the error of the $m^{\text{th}}$ iterate of the CG algorithm as
 \begin{equation}
   \|\mathbf{e}_m\|_A \leq \min_{r \in \mathcal{P}_{m-1}, r(0) = 1} \max_{\lambda \in [\lambda_{\text{min}}, \lambda_{\text{max}}]} |r(\lambda)| ||\mathbf{e}_0||_A,
 \end{equation}
@@ -309,14 +346,14 @@ From \cref{th:cg_convergence_rate_bound} and \cref{def:cg_convergence_criterion}
 \end{equation*}
 such that number of iterations $m$ is given by
 \begin{equation}
-  m \geq \log_f\left(\frac{\epsilon}{2}\right),
+  m \leq \left\lceil{\log_f\left(\frac{\epsilon}{2}\right)}\right\rceil,
   \label{eq:cg_convergence_rate_bound_iterations}
 \end{equation}
-where $f = \frac{\sqrt{\kappa} - 1}{\sqrt{\kappa} + 1}$.
+where $f = \frac{\sqrt{\kappa} - 1}{\sqrt{\kappa} + 1}$. This could in principle be used as a stopping criterion, but it is not practical, since we generally do not know the condition number $\kappa$ of $A$ a priori.
 
-At this point, it is necessary to note that even though the Chebyshev polynomial is optimal in the sense of minimizing the maximum error, it is not guaranteed that the eigenvalues of $A$ are uniformly distributed. In fact, the eigenvalues of $A$ are often clustered around some value. This means that the Chebyshev polynomial is not optimal in this case, and we can actually expect a better convergence rate than \cref{eq:cg_convergence_rate_bound}, as we will see in \cref{sec:cg_eigenvalue_distribution}. In most cases, the bounds \cref{eq:cg_convergence_rate_bound,eq:cg_convergence_rate_bound_iterations} are not sharp, but they are still correct as an upper bound.
+At this point, it is necessary to note that even though the Chebyshev polynomial is optimal for the conditions of \cref{th:cg_convergence_rate_bound}, it is not guaranteed that the eigenvalues of $A$ are uniformly distributed. In fact, the eigenvalues of $A$ are often clustered around some value. This means that the Chebyshev polynomial is not optimal in this case, and we can actually expect a better convergence rate than \cref{eq:cg_convergence_rate_bound}, as we will see in \cref{sec:cg_eigenvalue_distribution}. Even though the bounds from \cref{eq:cg_convergence_rate_bound,eq:cg_convergence_rate_bound_iterations} are not sharp for non-uniform distributions, they are still correct as upper bounds.
 
-Even without a uniform distribution of eigenvalues we can still derive a useful property of the CG method. Instead of the optimal Chebyshev polynomial $\hat{C}_m$ we pose a test polynomial $r_{\textrm{test}}$ of degree $m$ that satisfies the constraints of the minimization problem in \cref{eq:cg_error_expression}. This test polynomial is given by
+For general distributions of eigenvalues we can still derive a useful property of the CG method. Instead of the Chebyshev polynomial $\hat{C}_m$ we pose a test polynomial $r_{\textrm{test}}$ of degree $m$ that satisfies the constraints of the minimization problem in \cref{eq:cg_error_bound}. This test polynomial is given by
 \[
   r_{\textrm{test}}(t) = \prod_{i=1}^m \frac{\lambda_i - t}{\lambda_i}.
 \]
@@ -324,9 +361,9 @@ Indeed, note that $r_{\textrm{test}}\in\mathcal{P}_m$, $r_{\textrm{test}}(0) = 1
 \[
   ||\mathbf{e}_n||_A = ||\mathbf{e}_0||_A \max_{\lambda \in \sigma(A)} |r_{\textrm{test}}(\lambda)| = 0,
 \]
-which implies that CG solves the linear system in $n$ iterations in exact arithmetic. Furthermore, if there are only $k$ distinct eigenvalues, then the CG iteration terminates in at most $k$ iterations.
+which implies that CG solves the linear system in $n$ iterations. Furthermore, if there are only $k$ distinct eigenvalues, then the CG iteration terminates in at most $k$ iterations.
 
-The strategy of posing a test polynomial $r_{\textrm{test}}$ that satisfies the constraints of the minimization problem to come up with a bound for the error of the CG method is not limited to the Chebyshev polynomial from \cref{th:cg_convergence_rate_bound} or the test polynomial $r_{\textrm{test}}$. In fact, we can use any polynomial $r$ of degree $m$ that satisfies the constraints of the minimization problem. Evaluating the maximum value of this polynomial on the eigenspectrum of $A$ would then result in an error bound. The problem is of course that we want to find polynomial that gives a \textit{sharp} error bound. In \cref{sec:cg_nonuniform_spectra} we discuss some recent literature using this strategy to achieve sharper bounds than \cref{eq:cg_convergence_rate_bound} and in \cref{ch:preliminary_results} we apply the same strategy to find a bound for the error of the CG method for the case of clustered eigenvalues.
+The strategy of posing a test polynomial $r_{\textrm{test}}$ that satisfies the constraints of the minimization problem to come up with a bound for the error of the CG method is not limited to the Chebyshev polynomial from \cref{th:cg_convergence_rate_bound} or the test polynomial $r_{\textrm{test}}$. In fact, we can use any polynomial $r$ of degree $m$ that satisfies the constraints of the minimization problem. Evaluating the maximum value of this polynomial on the eigenspectrum of $A$ would then result in an error bound. The problem is of course that we want to find a polynomial that gives a \textit{sharp} error bound. In \cref{sec:cg_nonuniform_spectra} we discuss some recent literature using this strategy to achieve sharper bounds than \cref{eq:cg_convergence_rate_bound} and in \cref{ch:preliminary_results} we apply the same strategy to find a bound for the error of the CG method for the case of clustered eigenvalues.
 
 \subsection{Influence of eigenvalue distribution on CG convergence}\label{sec:cg_eigenvalue_distribution}
 In the derivation of the convergence rate of the CG algorithm, we used the Chebyshev polynomial to bound the error. However, we can find an expression of the error provided the eigendecomposition of $A$ is available. Supposing $A$ is full rank and by its symmetry we can write its diagonalization as $A = VDV^T$, where $V$ is the orthonormal eigenvector matrix and $D$ is the diagonal eigenvalue matrix. Then $r(A) = I - Aq(A) = V(I - Dq(D))V^T = Vr(D)V^T$. Also note that $\mathbf{e}_0 = x^* - \mathbf{u}_0 = A^{-1}b - \mathbf{u}_0 = A^{-1}\mathbf{r}_0$. As seen in \cref{eq:cg_convergence_rate}, the error of the $m^{\text{th}}$ iterate of the CG algorithm is given by
