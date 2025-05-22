@@ -14,11 +14,8 @@ On the eigenspectrum of $A$, consider two intervals $[a, b]$ and $[c, d]$ with $
 \end{equation}
 where $N_{\text{tail}}$ is the number of eigenvalues in the tail. The first case is a two-cluster eigenspectrum, while the second case has one cluster and a tail of eigenvalues. 
 
-In order to derive a CG iteration bound for these two cases we proceed as in the classical case laid out in \ref{sec:cg_convergence_rate}. We know CG is optimal in the $A$-norm by \cref{eq:cg_convergence_rate}, from which it follows that the error at the $m^{\text{th}}$ iterate can be bounded as 
-\begin{equation}
-    ||e_m||_A \leq \min_{r\in \mathcal{P}_{m}, r(0) = 1} \max_{\lambda \in \sigma_i(A)} |r(\lambda)| ||\mathbf{e}_0||_A, \ \text{for } i = 1,2,
-    \label{eq:cg_error_bound}
-\end{equation}
+In order to derive a CG iteration bound for these two cases we proceed as in the classical case laid out in \ref{sec:cg_convergence_rate}. We know CG is optimal in the $A$-norm by \cref{eq:cg_convergence_rate}, from which it follows that the error at the $m^{\text{th}}$ iterate can be bounded as in \cref{eq:cg_error_bound}.
+ 
 To get an upper bound for $m$ \cref{eq:cg_error_bound} suggests we look for a polynomial $r_{\bar{m}}$ of degree $\bar{m}$ that satisfies
 \[
     \min_{r \in \mathcal{P}_{\bar{m}}, r(0) = 1} \max_{\lambda \in \sigma_i(A)} |r(\lambda)| \leq \frac{||e_{m}||_A}{||\mathbf{e}_0||_A} = \epsilon \text{, for } i = 1,2, 
