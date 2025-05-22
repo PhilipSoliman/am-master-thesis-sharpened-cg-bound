@@ -69,7 +69,7 @@ In the special case where $A$ is symmetric, the Arnoldi method can be simplified
   \end{pmatrix},
   \label{eq:lanczos_tridiagonal}
 \end{equation}
-where we redefined $H_m$ to be the tridiagonal matrix $T_m$. The tridiagonality of $T_m$ allows us to reduce the Gramm-Schmidt orthogonalization procedure in the inner for-loop in \cref{alg:arnoldi_linear_systems} to just two vector subtractions and an inner product, resulting in \cref{alg:arnoldi_linear_systems}
+where we redefined $H_m$ to be the tridiagonal matrix $T_m$, also called the \textit{Ritz matrix}. The tridiagonality of $T_m$ allows us to reduce the Gramm-Schmidt orthogonalization procedure in the inner for-loop in \cref{alg:arnoldi_linear_systems} to just two vector subtractions and an inner product, resulting in \cref{alg:arnoldi_linear_systems}
 \begin{algorithm}
   \caption{Lanczos algorithm for linear systems \cite[Algorithm 6.16]{iter_method_saad}}
   \begin{algorithmic}
@@ -208,7 +208,7 @@ Putting it all together, we obtain \cref{alg:dlanczos}.
   \end{algorithmic}
   \label{alg:dlanczos}
 \end{algorithm}
-A core aspect of \cref{alg:dlanczos} is described in 
+Some core properties of \cref{alg:dlanczos} are described in \cref{th:dlanczos_orthogonality,}
 \begin{APPfancyth}{$A$-orthogonality of $p_m$}{dlanczos_orthogonality}
   The vectors $p_m$ produced in algorithm \cref{alg:dlanczos} are $A$-orthogonal to each other.
 \end{APPfancyth}
@@ -220,6 +220,16 @@ A core aspect of \cref{alg:dlanczos} is described in
                 & = U_m^{-T} L_m,
   \end{align*}
   where $U_m^{-T}$ and $L_m$ are both lower diagonal matrices. Their product must be symmetric, since $P^T_m A P_m$ is symmetric (due to the symmetry of $A$). The result follows from the fact that $U_m^{-T} L_m$ must be a diagonal matrix
+\end{proof}
+\begin{APPfancyth}{Lanczos recurrence relation}{lanczos_recurrence}
+  The Lanczos vectors are related through the Lanczos recurrence relation
+  \begin{equation}
+    \label{eq:lanczos_recurrence}
+    \eta_{j+1}(A)\mathbf{v}_{j+1} = A \mathbf{v}_j - \delta_j \mathbf{v}_j - \eta_j \mathbf{v}_{j-1}.
+  \end{equation}
+\end{APPfancyth}
+\begin{proof}
+  This follows directly from the definition of $T_m$ in \cref{eq:lanczos_tridiagonal} and the definition of the Hessenberg matrix in \cref{def:hessenberg_matrix}.  
 \end{proof}
 
 \subsection{Derivation of CG}
@@ -267,9 +277,24 @@ which we substitute into the equation for $\beta_j$ to obtain
 Finally, \cref{eq:cg_alpha,eq:cg_solution_update,eq:cg_residual_update,eq:cg_beta,eq:cg_search_direction_update} comprise one iteration of the CG method, as shown in \cref{alg:cg}.
 
 \subsection{CG relation to Lanczos}
-\todo{Describe relation between CG and Lanczos coefficients.}
+There exist relations between the entries of $T_m$ $\delta_j, \eta_j$ and the CG coefficients $\alpha_j, \beta_j$. Namely, we have
+\begin{equation}
+  \delta_{j+1} =
+  \begin{cases}
+    \frac{1}{\alpha_j} + \frac{\beta_{j-1}}{\alpha_{j-1}} & j > 0, \\
+    \frac{1}{\alpha_0}                                    & j = 0,
+  \end{cases}
+  \label{eq:cg_lanczos_delta}
+\end{equation}
+and
+\begin{equation}
+  \eta_{j+1} = \frac{\sqrt{\beta_{j-1}}}{\alpha_{j-1}}.
+  \label{eq:cg_lanczos_eta}
+\end{equation}
+Here we have used the definition of $T_m$ and the fact that the residuals are multiples of the Lanczos vectors $\mathbf{r}_j = \text{scalar} \times \mathbf{v}_j$ \cite[Equation 6.103]{iter_method_saad}.
 
 \section{Chebyshev approximation}\label{sec:chebyshev_approximation}
+This section contains the definition of Chebyshev polynomials of the first kind, some of their properties and their application to a minimization problem akin to the one described in \cref{th:cg_convergence_rate_bound}.
 
 \subsection{Chebyshev polynomials}
 This section introduces Chebyshev polynomials and some of their properties. First, their definition in \cref{def:chebyshev_polynomial}.
@@ -312,7 +337,7 @@ Indeed, substituting $z_k$ into $C_m$ gives
   \label{eq:chebyshev_polynomial_extrema}
 \end{equation}
  
-For the optimality proof we need to introduce the real-valued, transformed Chebyshev polynomial in \cref{def:scaled_chebyshev_polynomial.}
+For the optimality proof we need to introduce the real-valued, transformed Chebyshev polynomial in \cref{def:scaled_chebyshev_polynomial}.
 \begin{APPfancydef}{Real Transformed Chebyshev polynomial}{scaled_chebyshev_polynomial}
   The transformed Chebyshev polynomial of the first kind is denoted as $\hat{C}_m$, for $x\in\mathbb{R}$ is obtained through an affine change of variables $T$ from the $[a, b] \subset \mathbb{R}$ to the interval $[-1, 1]$ as
   \[
