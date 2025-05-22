@@ -85,4 +85,10 @@
 % \usepackage[backend=biber, style=apa, citestyle=ieee]{biblatex}
 \usepackage[backend=biber,style=numeric,sortcites,sorting=nty,backref,natbib,hyperref]{biblatex}
 
-
+% set list style
+\setlist[enumerate, 1]{% global settings for the first level in enumerate environments
+  leftmargin = \parindent, % item text indentation
+  align = left,
+  labelwidth=\parindent,
+  labelsep = 2pt
+}
