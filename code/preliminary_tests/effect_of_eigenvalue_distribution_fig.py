@@ -31,7 +31,7 @@ NUM_RESPOLY = 3  # number of residual polynomials to plot (from the end)
 RESOLUTION = 2000
 DOMAIN = (0, 1)  # domain for residual polynomial plot
 CODOMAIN = (-1.5, 1.5)
-FIGWIDTH = 6  # inches
+FIGWIDTH = 5  # inches
 
 # set matplotlib style
 set_mpl_style()

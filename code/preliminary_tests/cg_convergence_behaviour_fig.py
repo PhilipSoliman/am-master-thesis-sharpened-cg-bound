@@ -13,7 +13,7 @@ from lib.utils import (
 
 # constants
 ARGS = get_cli_args()
-FIGWIDTH = 6
+FIGWIDTH = 5
 LEGEND_HEIGHT = 0.1
 DOMAIN = (0, 20)
 CODOMAIN = (-1, 1)
