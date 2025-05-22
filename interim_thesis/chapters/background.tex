@@ -170,29 +170,7 @@ where $q_{m-1}(A)$ is the solution polynomial of degree $m-1$ in $A$.
   The CG method is a projection method with the choice $\mathcal{L} = \mathcal{K} = \mathcal{K}_m$. Hence, the approximate solution $\mathbf{u}_m$ is an element of the affine Krylov subspace $\mathbf{u}_0 + \mathcal{K}_m(A, \mathbf{r}_0)$, see \cref{def:error_projection_method}. The result follows from the fact that the Krylov subspace $\mathcal{K}_m(A, \mathbf{r}_0)$ is spanned by the vectors $\{\mathbf{r}_0, A\mathbf{r}_0, A^2\mathbf{r}_0, \dots, A^{m-1}\mathbf{r}_0\}$ and that the approximate solution $\mathbf{u}_m$ is a linear combination of these vectors. The coefficients of this linear combination are given by the \textit{CG solution coefficients} $c_i$.
 \end{proof}
 
-The Lanczos vectors are related through the Lanczos recurrence relation
-\begin{equation}
-  \label{eq:lanczos_recurrence}
-  \eta_{j+1}(A)\mathbf{v}_{j+1} = A \mathbf{v}_j - \delta_j \mathbf{v}_j - \eta_j \mathbf{v}_{j-1}.
-\end{equation}
-
-The following relations exist between the entries of $T_m$ and the CG coefficients $\alpha_j, \beta_j$
-\begin{equation}
-  \delta_{j+1} =
-  \begin{cases}
-    \frac{1}{\alpha_j} + \frac{\beta_{j-1}}{\alpha_{j-1}} & j > 0, \\
-    \frac{1}{\alpha_0}                                    & j = 0,
-  \end{cases}
-  \label{eq:cg_hessenberg_delta}
-\end{equation}
-and
-\begin{equation}
-  \eta_{j+1} = \frac{\sqrt{\beta_{j-1}}}{\alpha_{j-1}}.
-  \label{eq:cg_hessenberg_eta}
-\end{equation}
-Here we have used the definition of $T_m$ and the fact that the residuals are multiples of the Lanczos vectors $\mathbf{r}_j = \text{scalar} \times \mathbf{v}_j$ \cite[Equation 6.103]{iter_method_saad}.
-
-\subsection{CG convergence}\label{sec:cg_convergence_rate}
+\subsection{CG convergence}\label{sec:cg_convergence}
 We derive a general bound for the error of the CG method in 
 \begin{fancyth}{CG general error bound}{cg_error_bound}
   Suppose we apply the CG method to the linear system $A\mathbf{u} = \mathbf{b}$ with $A$ SPD and the exact solution $\mathbf{u}^*$. Then, the error of the $m^{\text{th}}$ iterate $\mathbf{e}_m = \mathbf{u}^* - \mathbf{u}_m$ is bounded as
@@ -205,16 +183,16 @@ We derive a general bound for the error of the CG method in
   Combining the results of \cref{th:error_projection_method} and \cref{th:cg_approximate_solution} we get that the error of the $m^{\text{th}}$ iterate of the CG algorithm $\mathbf{e}_m = \mathbf{u}^* - \mathbf{u}_m$ satisfies
   \begin{equation}
     \|\mathbf{e}_m\|_A = \|(I - Aq_{m-1}(A))\mathbf{e}_0\|_A = \min_{q \in \mathcal{P}_{m-1}}\|(I - Aq(A))\mathbf{e}_0\|_A = \min_{r \in \mathcal{P}_{m}, r(0) = 1}\|r(A)\mathbf{e}_0\|_A,
-    \label{eq:cg_convergence_rate}
+    \label{eq:cg_error}
   \end{equation}
-  The right-hand side can be further bounded by letting $\lambda_i, \xi_i$ be the eigenvalues of $A$ and the components of $\mathbf{e}_0$ in the eigenbasis of $A$, respectively. Then
+  where $r_m(A) = I - Aq_{m-1}(A)$ is the \textit{residual polynomial}. The right-hand side of \cref{eq:cg_error} can be further bounded by letting $\lambda_i, \xi_i$ be the eigenvalues of $A$ and the components of $\mathbf{e}_0$ in the eigenbasis of $A$, respectively. Then
   \[
     ||r(A)\mathbf{e}_0||_A = \sqrt{\sum_{i=1}^n |r(\lambda_i)|^2 |\xi_i|^2} \leq \max_{\lambda \in \sigma(A)} |r(\lambda)| ||\mathbf{e}_0||_A,
   \]
   which gives the desired result.
 \end{proof}
 
-\subsubsection{Convergence criteria}
+\subsubsection{Convergence criteria}\label{sec:cg_convergence_criteria}
 We say that the CG method \textit{converges} to a user-defined, absolute tolerance $\tilde{\epsilon}$ if the error of the $m^{\text{th}}$ iterate $\mathbf{e}_m$ satisfies
 \[
   \|\mathbf{e}_m\|_A \leq \tilde{\epsilon}.
@@ -289,11 +267,11 @@ From \cref{th:residual_convergence_criterion} and choosing $\mathbf{u}_0 = \math
    \frac{\|\mathbf{r}_m\|_2}{\|\mathbf{b}\|_2} \leq \epsilon_b.
   \label{eq:residual_convergence_criterion_b}
 \end{equation}
-In this case, the relative error tolerance $\epsilon$ achieved by the CG method in the sense of \cref{def:cg_convergence_criterion} still depends on the initial guess. Suppose, we choose a 'good' initial guess such that $\|\mathbf{r}_0\|_2 \leq \|\mathbf{b}\|_2$, then 
+In this case, the relative error tolerance $\epsilon$ achieved by the CG method in the sense of \cref{def:cg_convergence_criterion} still depends on the initial guess. Suppose, we choose a `good' initial guess such that $\|\mathbf{r}_0\|_2 \leq \|\mathbf{b}\|_2$, then 
 \[
   \frac{\|\mathbf{r}_m\|_2}{\|\mathbf{b}\|_2} \leq \frac{\|\mathbf{r}_m\|_2}{\|\mathbf{r}_0\|_2},
 \]
-which means \cref{eq:residual_convergence_criterion_b} is more optimistic than \cref{eq:residual_convergence_criterion_r}, requiring less CG iterations before it is satisfied. However, if we choose a bad initial guess such that $\|\mathbf{r}_0\|_2 \geq \|\mathbf{b}\|_2$, then \cref{eq:residual_convergence_criterion_b} is more pessimistic than \cref{eq:residual_convergence_criterion_r} and will require more CG iterations before it is satisfied. For a good (bad) initial guess we therefore achieve a relative error tolerance larger (smaller) than $\frac{\epsilon_b}{\sqrt{\kappa}}$. In regard to the absolute error tolerance $\tilde{\epsilon}$, we can write using \cref{th:rayleigh_quotient_bound} that
+which means \cref{eq:residual_convergence_criterion_b} is more optimistic than \cref{eq:residual_convergence_criterion_r}, requiring less CG iterations before it is satisfied. However, if we choose a `bad' initial guess such that $\|\mathbf{r}_0\|_2 \geq \|\mathbf{b}\|_2$, then \cref{eq:residual_convergence_criterion_b} is more pessimistic than \cref{eq:residual_convergence_criterion_r} and will require more CG iterations before it is satisfied. For a good (bad) initial guess we therefore achieve a relative error tolerance larger (smaller) than $\frac{\epsilon_b}{\sqrt{\kappa}}$. In regard to the absolute error tolerance $\tilde{\epsilon}$, we can write using \cref{th:rayleigh_quotient_bound} that
 \begin{enumerate}
   \item[\textbf{good initial guess}] $\tilde{\epsilon} \geq \frac{\epsilon_b}{\sqrt{\kappa}}\|\mathbf{e}_0\|_A = \frac{\epsilon_b}{\sqrt{\kappa}}\|\mathbf{r}_0\|_{A^{-1}} \geq \frac{\sqrt{\lambda_{\text{min}}}}{\lambda_{\text{max}}}\epsilon_b\|\mathbf{r}_0\|_2\geq \frac{\sqrt{\lambda_{\text{min}}}}{\lambda_{\text{max}}}\epsilon_b\|\mathbf{b}\|_2$,
   \item[\textbf{bad initial guess}] $\tilde{\epsilon} \leq \frac{\epsilon_b}{\sqrt{\kappa}}\|\mathbf{e}_0\|_A = \frac{\epsilon_b}{\sqrt{\kappa}}\|\mathbf{r}_0\|_{A^{-1}} \leq \frac{\lambda_{\text{min}}}{\sqrt{\lambda_{\text{max}}}}\epsilon_b\|\mathbf{r}_0\|_2 \leq \frac{\lambda_{\text{min}}}{\sqrt{\lambda_{\text{max}}}}\epsilon_b\|\mathbf{b}\|_2$.
@@ -315,7 +293,7 @@ Next to convergence criteria based on residuals, we can also try to find a solut
 \begin{fancyth}{Convergence rate of CG}{cg_convergence_rate_bound}
   Let the linear system $A\mathbf{u} = \mathbf{b}$ be as in \cref{th:cg_error_bound} and let the eigenvalues of $A$ be uniformly distributed in the interval $[\lambda_{\text{min}}, \lambda_{\text{max}}]$. Then the error of the $m^{\text{th}}$ iterate of the CG algorithm satisfies
   \begin{equation}
-    \|\mathbf{e}_m\|_A \leq 2\left(\frac{\sqrt{\kappa} - 1}{\sqrt{\kappa} + 1}\right)^{m} \|\mathbf{e}_0\|_A,
+    \|\mathbf{e}_m\|_A \leq 2\left(\frac{\sqrt{\kappa} - 1}{\sqrt{\kappa} + 1}\right)^{m} \|\mathbf{e}_0\|_A.
     \label{eq:cg_convergence_rate_bound}
   \end{equation}
 \end{fancyth}
@@ -346,10 +324,10 @@ From \cref{th:cg_convergence_rate_bound} and \cref{def:cg_convergence_criterion}
 \end{equation*}
 such that number of iterations $m$ is given by
 \begin{equation}
-  m \leq \left\lceil{\log_f\left(\frac{\epsilon}{2}\right)}\right\rceil,
+  m \geq \left\lceil{\log_f\left(\frac{\epsilon}{2}\right)}\right\rceil,
   \label{eq:cg_convergence_rate_bound_iterations}
 \end{equation}
-where $f = \frac{\sqrt{\kappa} - 1}{\sqrt{\kappa} + 1}$. This could in principle be used as a stopping criterion, but it is not practical, since we generally do not know the condition number $\kappa$ of $A$ a priori.
+where $f = \frac{\sqrt{\kappa} - 1}{\sqrt{\kappa} + 1}$ is the CG \textit{convergence rate}. Equation \ref{eq:cg_convergence_rate_bound_iterations} could in principle be used as a stopping criterion, but it is not practical, since we generally do not know the condition number $\kappa$ of $A$ a priori.
 
 At this point, it is necessary to note that even though the Chebyshev polynomial is optimal for the conditions of \cref{th:cg_convergence_rate_bound}, it is not guaranteed that the eigenvalues of $A$ are uniformly distributed. In fact, the eigenvalues of $A$ are often clustered around some value. This means that the Chebyshev polynomial is not optimal in this case, and we can actually expect a better convergence rate than \cref{eq:cg_convergence_rate_bound}, as we will see in \cref{sec:cg_eigenvalue_distribution}. Even though the bounds from \cref{eq:cg_convergence_rate_bound,eq:cg_convergence_rate_bound_iterations} are not sharp for non-uniform distributions, they are still correct as upper bounds.
 
@@ -366,23 +344,25 @@ which implies that CG solves the linear system in $n$ iterations. Furthermore, i
 The strategy of posing a test polynomial $r_{\textrm{test}}$ that satisfies the constraints of the minimization problem to come up with a bound for the error of the CG method is not limited to the Chebyshev polynomial from \cref{th:cg_convergence_rate_bound} or the test polynomial $r_{\textrm{test}}$. In fact, we can use any polynomial $r$ of degree $m$ that satisfies the constraints of the minimization problem. Evaluating the maximum value of this polynomial on the eigenspectrum of $A$ would then result in an error bound. The problem is of course that we want to find a polynomial that gives a \textit{sharp} error bound. In \cref{sec:cg_nonuniform_spectra} we discuss some recent literature using this strategy to achieve sharper bounds than \cref{eq:cg_convergence_rate_bound} and in \cref{ch:preliminary_results} we apply the same strategy to find a bound for the error of the CG method for the case of clustered eigenvalues.
 
 \subsection{Influence of eigenvalue distribution on CG convergence}\label{sec:cg_eigenvalue_distribution}
-In the derivation of the convergence rate of the CG algorithm, we used the Chebyshev polynomial to bound the error. However, we can find an expression of the error provided the eigendecomposition of $A$ is available. Supposing $A$ is full rank and by its symmetry we can write its diagonalization as $A = VDV^T$, where $V$ is the orthonormal eigenvector matrix and $D$ is the diagonal eigenvalue matrix. Then $r(A) = I - Aq(A) = V(I - Dq(D))V^T = Vr(D)V^T$. Also note that $\mathbf{e}_0 = x^* - \mathbf{u}_0 = A^{-1}b - \mathbf{u}_0 = A^{-1}\mathbf{r}_0$. As seen in \cref{eq:cg_convergence_rate}, the error of the $m^{\text{th}}$ iterate of the CG algorithm is given by
+The bound CG error in \cref{th:cg_convergence_rate_bound} and the convergence rate in \cref{eq:cg_convergence_rate_bound_iterations} are based on the assumption that the eigenvalues of $A$ are uniformly distributed. However, this is not always the case. In this section we discuss the influence of the eigenvalue distribution on the convergence of the CG method. In particular, we will see that if the eigenvalues are clustered around some value, then we can expect a better convergence rate than \cref{eq:cg_convergence_rate_bound}.
+
+We can write the diagonalization of $A$ as $A = QDQ^T$ with $Q$ being the orthonormal eigenbasis and $D$ the diagonal matrix of eigenvalues, since $A$ is symmetric. The residual polynomial from \cref{eq:cg_error} can then be expressed as $r_m(A) = I - Aq_{m-1}(A) = Q(I - Dq_{m-1}(D))Q^T = Vr_m(D)V^T$. Also note that $\mathbf{e}_0 = x^* - \mathbf{u}_0 = A^{-1}b - \mathbf{u}_0 = A^{-1}\mathbf{r}_0$. As seen in \cref{eq:cg_error}, the error of the $m^{\text{th}}$ iterate of the CG algorithm is given by
 \begin{equation*}
   ||\mathbf{e}_m||_A^2 = ||r_m(A)\mathbf{e}_0||_A^2,
 \end{equation*}
 and
 \begin{align*}
   ||r_m(A)\mathbf{e}_0||_A^2 & = \mathbf{e}_0^T r_m(A)^T A r_m(A) \mathbf{e}_0                 \\
-                           & = \mathbf{e}_0^T V r_m(D) V^T V D V^T V r_m(D) V^T \mathbf{e}_0 \\
-                           & = (V^T\mathbf{e}_0)^T r_m(D) D r_m(D) V^T \mathbf{e}_0.
+                            & = \mathbf{e}_0^T Q r_m(D) Q^T Q D Q^T Q r_m(D) Q^T \mathbf{e}_0 \\
+                            & = (Q^T\mathbf{e}_0)^T r_m(D) D r_m(D) Q^T \mathbf{e}_0.
 \end{align*}
 We also have
 \begin{align*}
-  V^T\mathbf{e}_0 & = V^T A^{-1} \mathbf{r}_0       \\
-                & = V^T V D^{-1} V^T \mathbf{r}_0 \\
+  Q^T\mathbf{e}_0 & = Q^T A^{-1} \mathbf{r}_0       \\
+                & = Q^T Q D^{-1} Q^T \mathbf{r}_0 \\
                 & = D^{-1} \mathbf{\rho}_0,
 \end{align*}
-where $\mathbf{\rho}_0 = V^T \mathbf{r}_0$ is the initial residual in the eigenvector basis of $A$. Therefore,
+where $\mathbf{\rho}_0 = Q^T \mathbf{r}_0 \in \mathbb{R}^n$ is the initial residual vector in the eigenvector basis of $A$. Therefore,
 \begin{align*}
   ||r_m(A)\mathbf{e}_0||_A^2 & = \mathbf{\rho}_0^T D^{-1} r_m(D) D r_m(D) D^{-1} \mathbf{\rho}_0                 \\
                            & = \mathbf{\rho}_0^T r_m(D) D^{-1} r_m(D)  \mathbf{\rho}_0                         \\
@@ -394,32 +374,34 @@ which gives
   \label{eq:cg_error_eigenvalue}
 \end{equation}
 
-To obtain the residual polynomial $r_m$, we can use the recurrence relation between the Lanczos vectors and expressions for the Hessenberg matrix coefficients in \cref{eq:cg_hessenberg_delta,eq:cg_hessenberg_eta}. In particular,
+From \cref{eq:cg_error_eigenvalue} we learn two important aspects about the convergence of the CG method. First, loosely stated, we see that smaller eigenvalues of $A$ lead to larger errors. This is because the eigenvalues of $A$ are in the denominator of \cref{eq:cg_error_eigenvalue}. Consequently, the second aspect is that the error of the $m^{\text{th}}$ iterate of the CG algorithm is given by a weighted sum, in which the weights are given by the components of the initial residual in the eigenbasis of $A$. As stated in \cref{sec:cg_convergence_criteria}, a `good' initial guess $\mathbf{u}_0$ leads to lower absolute error tolerance, i.e. faster convergence. Now, we learn that a good initial guess $\mathbf{u}_0$ is one that has small components in the eigenbasis of $A$ corresponding to the smallest eigenvalues. 
+
+To obtain the residual polynomial $r_m$, we can use the recurrence relation between the Lanczos vectors $\mathbf{v}_j$ in \cref{th:lanczos_recurrence} and expressions for the Hessenberg matrix coefficients in \cref{eq:cg_lanczos_delta,eq:cg_lanczos_eta}. In particular,
 \begin{align*}
   \frac{1}{\eta_{j+1}} \mathbf{v}_{j+1} & = A \mathbf{v}_j - \delta_j \mathbf{v}_j - \eta_j \mathbf{v}_{j-1} \\
                                         & = p_{j+1}(A) \mathbf{v}_1,
 \end{align*}
-where we define $p_{-1}(A) = 0, p_0(A) = I$. This gives
+where we define $p_{-1}(A) = 0, p_0(A) = I$. Note that it is correct to assume that a polynomial $p_{j+1}$ exists such that the above holds, as the Lanczos vectors form a basis for $\mathcal{K}_m$. This gives
 \begin{align*}
   \eta_{j+1}p_{j+1}(A)\mathbf{v}_1 & = A \mathbf{v}_j - \delta_j \mathbf{v}_j - \eta_j \mathbf{v}_{j-1},          \\
                                    & = \left( A p_j(A) - \delta_j p_j(A) - \eta_j p_{j-1}(A) \right)\mathbf{v}_1, \\
 \end{align*}
-and therefore
+and thus we get the following recurrence relation between successive $p_j$
 \begin{equation}
   p_{j+1}(A) = \frac{1}{\eta_{j+1}}\left( (A - \delta_j )p_j(A) - \eta_j p_{j}(A) \right).
   \label{eq:cg_lanczos_polynomial}
 \end{equation}
-Furthermore, we have the following relation between the residual polynomial and the Lanczos polynomial \cite[Section 3.2]{Meurant_Strakoš_2006}
+Furthermore, we have the following relation between the polynomials $r_j$ and $p_j$ \cite[Section 3.2]{Meurant_Strakoš_2006}
 \begin{equation}
   r_{j}(A) = (I-Aq_{j-1}(A))\mathbf{r}_0 = \frac{p_{j}(A)}{p_{j}(0)}\mathbf{r}_0.
   \label{eq:cg_residual_polynomial}
 \end{equation}
-This gives a way of calculating the residual polynomial $r_m$ and thereby the error of the $m^{\text{th}}$ iterate of the CG algorithm.
+Using \cref{eq:cg_lanczos_polynomial,eq:cg_residual_polynomial} we can construct the $r_j$ for all iterations $j=0,1,\dots,m$ from the initial residual $\mathbf{r}_0$. The result of this process is shown in \cref{fig:cg_convergence_behaviour} for a system with $n=10$, $A = B + B^T + nI_n$ with $B\in\mathbb{R}^{n \times n}$ and random load vector $\mathbf{b}\in\mathbb{R}^n$. The CG method is run until a relative error tolerance of $\epsilon = 10^{-6}$ is attained. This ensured by calculating $\kappa$ and using the criterion from \cref{th:residual_convergence_criterion}. 
 
-Additionally, the coefficients $c_i$ of the solution polynomial $q_m$ in \cref{eq:cg_approximate_solution} can be calculated. First we introduce a function that extracts the coefficients of a polynomial $p$
-\begin{definition}
-  Let $p(t) = \sum_{i=0}^n c_i t^i$ be a polynomial of degree $n$. Then, the function $\text{coeff}(p;i)$ extracts the $i^{\text{th}}$ coefficient of $p$ such that $\text{coeff}(p;i) = c_i$.
-\end{definition}
+The coefficients $c_i$ of the solution polynomial $q_j$ in \cref{eq:cg_approximate_solution} can also be calculated from $r_j$ for $j=0,1,\dots,m$. To this end we suppose a function that extracts the coefficients of a polynomial $p$ exists.
+\begin{fancydef}{Coefficient extraction function}{coeff_extraction}
+  Let $p(t) = \sum_{i=0}^m c_i t^i$ be a polynomial of degree $m$. Then, the function $\text{coeff}(p;i)$ extracts the $i^{\text{th}}$ coefficient of $p$ such that $\text{coeff}(p;i) = c_i$.
+\end{fancydef}
 Now using \cref{eq:cg_residual_polynomial}, we can write the solution polynomial as
 \begin{align*}
                               & Aq_{m-1}(A) = I - r_m(A)                                                  \\
@@ -432,27 +414,28 @@ which implies
 \end{equation}
 \begin{figure}[H]
   \centering
-  \includegraphics[width=\textwidth]{cg_convergence_behaviour.pdf}
+  \includegraphics[width=5in]{cg_convergence_behaviour.pdf}
   \caption{Residual polynomials resulting from successive CG iterations}
   \label{fig:cg_convergence_behaviour}
 \end{figure}
 
-The behavior of the residual polynomials is crucial for understanding the convergence properties of the CG method. In particular, the distribution of the eigenvalues of $A$ significantly affects the convergence rate, as illustrated in \cref{fig:cg_effect_of_eigenvalue_distribution}. For all plots the lowest and highest eigenvalue in \cref{fig:cg_effect_of_eigenvalue_distribution} are $\lambda_{\text{min}} = 0.1$, $\lambda_{\text{max}} = 0.9$ such that $f = \frac{\sqrt{\frac{\lambda_{\text{min}}}{\lambda_{\text{max}}}} - 1}{\sqrt{\frac{\lambda_{\text{min}}}{\lambda_{\text{max}}}} + 1}$ and the ratio $\frac{\|\mathbf{e}_m\|_A}{\|\mathbf{e}_0\|_A}$ is set to $\frac{10^{-6}}{\|\mathbf{u}_{\text{test}} - \mathbf{u}_0\|}$. The system size $N=360$ is kept small and the system matrix $A$ is diagonal so that it is numerically trivial to determine the exact solution $\mathbf{u}_{\text{test}}$. This results in an overall iteration bound 
-\[
-    m_{\text{classical}} = \left\lceil\log_f\left(\frac{10^{-6}}{2\|\mathbf{u}_{\text{test}} - \mathbf{u}_0\|}\right)\right\rceil = 26
-\]
+The behavior of the residual polynomials is crucial for understanding the convergence properties of the CG method. In particular, the distribution of the eigenvalues of $A$ significantly affects the convergence rate, as illustrated in \cref{fig:cg_effect_of_eigenvalue_distribution}. 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=\textwidth]{effect_of_eigenvalue_distribution.pdf}
+  \includegraphics[width=5in]{effect_of_eigenvalue_distribution.pdf}
   \caption{Plots of the last three CG residual polynomials for different eigenvalue distributions. $n_c$ indicates the number of clusters and $\sigma$ is the width of the cluster. The size of the system $N$ and the condition number $\kappa(A)$ are kept constant. $m$ indicates the number of iterations required for convergence.}
   \label{fig:cg_effect_of_eigenvalue_distribution}
 \end{figure}
-Hence, the number of iterations required for convergence depends on the specific clustering of the eigenvalues, as pointed out for example in \citeauthor[Section 2.3]{nonlinear_cg_Kelley_1995}.
+We consider a system $A\mathbf{u}_{\text{test}} = \mathbf{b}_{\text{random}}$ with a known solution $\mathbf{u}_{\text{test}}$ and random load vector $\mathbf{b}_{\text{random}}$. The system size $n=360$ is kept relatively small and the system matrix $A$ is chosen to be diagonal, making it numerically trivial to determine the exact solution $\mathbf{u}_{\text{test}} = D^{-1}$. For all plots the lowest and highest eigenvalue in \cref{fig:cg_effect_of_eigenvalue_distribution} are $\lambda_{\text{min}} = 0.1$, $\lambda_{\text{max}} = 0.9$ such that $\kappa = 9$ and $f = \frac{\sqrt{\kappa} - 1}{\sqrt{\kappa} + 1} = \frac{1}{2}$. Furthermore, we use $\mathbf{u}_{0} = \mathbf{0}$, set the relative error tolerance $\epsilon = 10^{-6}$ and use the stopping criterion from \cref{def:cg_convergence_criterion} directly, as $\mathbf{e}_0 = \mathbf{u}_{\text{test}} - \mathbf{u}_{0}$ is known. Note that we could have used the residual stopping criterion from \cref{th:residual_convergence_criterion}, as $\kappa$ is explicitly known in this case. This results in an overall iteration bound from \cref{eq:cg_convergence_rate_bound_iterations} of
+\[
+    m_{\text{classical}} = \left\lceil\log_f\left(\frac{10^{-6}}{2}\right)\right\rceil = 21.
+\]
+Hence, the number of iterations required for convergence depends on the specific clustering of the eigenvalues, as pointed out for example in \cite[Section 2.3]{nonlinear_cg_Kelley_1995}.
 
 Based behavior exhibited in \cref{fig:cg_effect_of_eigenvalue_distribution} and from \cref{th:cg_krylov_dimension}, we can reason what the best and worst possible spectra for CG convergence are. That is, the best possible spectrum is one where eigenvalues are tightly clustered around distinct values, while the worst possible spectrum is one where the eigenvalues are evenly distributed across the whole range of the spectrum. This is illustrated in \cref{fig:cg_best_worst_spectra}.
 \begin{figure}[H]
   \centering
-  \includegraphics[width=\textwidth]{cg_convergence_extreme_spectra.pdf}
+  \includegraphics[width=5in]{cg_convergence_extreme_spectra.pdf}
   \caption{Best and worst possible spectra for CG convergence. The top row shows the best possible spectrum, where the eigenvalues are tightly clustered on two distinct values. The bottom row shows the worst possible spectrum, where the eigenvalues are evenly distributed across the whole range of the spectrum. The left column shows the eigenvalue distribution with the residual polynomials corresponding to the iteration. The right column shows the norm of the residual versus the iteration number. Convergence is achieved at a tolerance of $10^{-6}$.}
   \label{fig:cg_best_worst_spectra}
 \end{figure}
@@ -536,7 +519,7 @@ The original Schwarz method was a way of proving that a Poisson problem on some 
     \end{array}
     \label{eq:poisson_problem}
 \end{equation}
-Existence of a solution is proved by splitting up the original complex domain in two (or more) simpler, possibly overlapping subdomains and solving the Poisson problem on each of these subdomains. The solution on the original domain is then the sum of the solutions on the subdomains. The method is named after Hermann Schwarz, who first introduced the method in 1869 \cite{og_schwarz_method_Schwarz}. The method has since been extended to more general problems and is now a popular method for solving partial differential equations. Let the alternating Schwarz method be characterised as in \cref{def:schwarz_algorithm}.
+Existence of a solution is proved by splitting up the original complex domain in two (or more) simpler, possibly overlapping subdomains and solving the Poisson problem on each of these subdomains. The solution on the original domain is then the sum of the solutions on the subdomains. The method is named after Hermann Schwarz, who first introduced the method in 1869 \cite{og_schwarz_method_Schwarz}. The method has since been extended to more general problems and is now a popular method for solving partial differential equations. Let the alternating Schwarz method be characterized as in \cref{def:schwarz_algorithm}.
 \begin{definition}
     The Alternating Schwarz algorithm is an iterative method based on alternately solving subproblems in domains $\Omega_1$ and $\Omega_2$. It updates $\left(u_1^n, u_2^n\right) \rightarrow\left(u_1^{n+1}, u_2^{n+1}\right)$ by
     \[
