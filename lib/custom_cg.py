@@ -51,6 +51,7 @@ class CustomCG:
 
         # exact solution
         self.x_exact = np.zeros_like(x_0)
+        self.exact_convergence = False
 
         # number of iterations required
         self.niters = 0
@@ -88,11 +89,11 @@ class CustomCG:
         save_iterates_c = c_bool(save_iterates)
         iterates = self.x_i.flatten().astype(c_double)
         search_directions = self.search_directions.flatten().astype(c_double)
-        exact_convergence = c_bool(False)
         x_exact = x_exact.astype(c_double)
         if x_exact.size > 0:
             self.x_exact = x_exact
-            exact_convergence = c_bool(True)
+            self.exact_convergence = True
+        exact_convergence = c_bool(self.exact_convergence)
 
         # allocate memory for solution
         x = np.zeros_like(self.x_0).astype(c_double)
@@ -275,26 +276,29 @@ class CustomCG:
         """
         # convergence factor
         cond = np.linalg.cond(self.A)
+        sqrt_cond = np.sqrt(cond)
         convergence_factor = (np.sqrt(cond) - 1) / (np.sqrt(cond) + 1)
 
         # convergence tolerance
-        e0 = self.x_exact - self.x_0
-        e0_Anorm = np.sqrt(np.sum(e0 * (self.A @ e0.T).T))
-        conv_tol = np.log(self.tol / (2 * e0_Anorm))
-        # conv_tol = np.log(self.tol / 2)
+        conv_tol = np.log(self.tol / 2)
+        if self.exact_convergence:  # See report Theorem: "Residual convergence criterion"
+            conv_tol -= np.log(sqrt_cond)
 
         return int(np.ceil(conv_tol / np.log(convergence_factor)))
 
     @staticmethod
-    def calculate_iteration_upperbound_static(cond: float, log_rtol: float) -> int:
+    def calculate_iteration_upperbound_static(cond: float, log_rtol: float, exact_convergence: bool = False) -> int:
         """
         Static version of the calculate_iteration_upperbound method.
         """
         # convergence factor
-        convergence_factor = (np.sqrt(cond) - 1) / (np.sqrt(cond) + 1)
+        sqrt_cond = np.sqrt(cond)
+        convergence_factor = (sqrt_cond - 1) / (sqrt_cond + 1)
 
         # convergence tolerance
         conv_tol = log_rtol - np.log(2)
+        if exact_convergence: # See report Theorem: "Residual convergence criterion"
+            conv_tol -= np.log(sqrt_cond)
 
         return int(np.ceil(conv_tol / np.log(convergence_factor)))
 

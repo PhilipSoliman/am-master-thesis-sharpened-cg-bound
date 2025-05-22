@@ -1,4 +1,4 @@
-LIBTARGETS= custom_cg.so
+LIBTARGETS=custom_cg.so
 LIBOBJS=$(LIBTARGETS:=.o)
 
 # flags
