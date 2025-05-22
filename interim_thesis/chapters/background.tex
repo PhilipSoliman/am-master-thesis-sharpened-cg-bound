@@ -426,7 +426,7 @@ The behavior of the residual polynomials is crucial for understanding the conver
   \caption{Plots of the last three CG residual polynomials for different eigenvalue distributions. $n_c$ indicates the number of clusters and $\sigma$ is the width of the cluster. The size of the system $N$ and the condition number $\kappa(A)$ are kept constant. $m$ indicates the number of iterations required for convergence.}
   \label{fig:cg_effect_of_eigenvalue_distribution}
 \end{figure}
-We consider a system $A\mathbf{u}_{\text{test}} = \mathbf{b}_{\text{random}}$ with a known solution $\mathbf{u}_{\text{test}}$ and random load vector $\mathbf{b}_{\text{random}}$. The system size $n=360$ is kept relatively small and the system matrix $A$ is chosen to be diagonal, making it numerically trivial to determine the exact solution $\mathbf{u}_{\text{test}} = D^{-1}$. For all plots the lowest and highest eigenvalue in \cref{fig:cg_effect_of_eigenvalue_distribution} are $\lambda_{\text{min}} = 0.1$, $\lambda_{\text{max}} = 0.9$ such that $\kappa = 9$ and $f = \frac{\sqrt{\kappa} - 1}{\sqrt{\kappa} + 1} = \frac{1}{2}$. Furthermore, we use $\mathbf{u}_{0} = \mathbf{0}$, set the relative error tolerance $\epsilon = 10^{-6}$ and use the stopping criterion from \cref{def:cg_convergence_criterion} directly, as $\mathbf{e}_0 = \mathbf{u}_{\text{test}} - \mathbf{u}_{0}$ is known. Note that we could have used the residual stopping criterion from \cref{th:residual_convergence_criterion}, as $\kappa$ is explicitly known in this case. This results in an overall iteration bound from \cref{eq:cg_convergence_rate_bound_iterations} of
+We consider a system $A\mathbf{u}_{\text{test}} = \mathbf{b}_{\text{random}}$ with a known solution $\mathbf{u}_{\text{test}}$ and random load vector $\mathbf{b}_{\text{random}}$. The system size $n=360$ is kept relatively small and the system matrix $A$ is chosen to be diagonal, making it numerically trivial to determine the exact solution $\mathbf{u}_{\text{test}} = D^{-1}\mathbf{b}_{\text{random}}$. For all plots the lowest and highest eigenvalue in \cref{fig:cg_effect_of_eigenvalue_distribution} are $\lambda_{\text{min}} = 0.1$, $\lambda_{\text{max}} = 0.9$ such that $\kappa = 9$ and $f = \frac{\sqrt{\kappa} - 1}{\sqrt{\kappa} + 1} = \frac{1}{2}$. Furthermore, we use $\mathbf{u}_{0} = \mathbf{0}$, set the relative error tolerance $\epsilon = 10^{-6}$ and use the stopping criterion from \cref{def:cg_convergence_criterion} directly, as $\mathbf{e}_0 = \mathbf{u}_{\text{test}} - \mathbf{u}_{0}$ is known. Note that we could have used the residual stopping criterion from \cref{th:residual_convergence_criterion}, as $\kappa$ is explicitly known in this case. This results in an overall iteration bound from \cref{eq:cg_convergence_rate_bound_iterations} of
 \[
     m_{\text{classical}} = \left\lceil\log_f\left(\frac{10^{-6}}{2}\right)\right\rceil = 21.
 \]
@@ -461,7 +461,7 @@ Suppose $M$ is some SPD preconditioner, then variants of CG can be derived by ap
   \end{align*}
 \end{enumerate}
 
-Furthermore, all these variants are mathematically equivalent. Indeed, for the cases \ref{pcg_type:left} and \ref{pcg_type:right}, we can rewrite the CG algorithm using the $M-$ or $M^{-1}-$inner products, respectively. In either case the iterates are the same. For instance for the left preconditioned CG, we define $\mathbf{z}_j = M^{-1}\mathbf{r}_j$. Note that $M^{-1}A$ is self-adjoint with respect to the $M-$inner product, that is for $\mathbf{x},\mathbf{y}\in\mathbb{R}^n$ we have
+Furthermore, all these variants are mathematically equivalent. Indeed, for the cases \ref{pcg_type:left} and \ref{pcg_type:right}, we can rewrite the CG algorithm using the $M-$ or $M^{-1}-$inner products, respectively. In either case the iterates are the same \cite[Section 9.2]{iter_method_saad}. For instance for the left preconditioned CG, we define $\mathbf{z}_j = M^{-1}\mathbf{r}_j$. Note that $M^{-1}A$ is self-adjoint with respect to the $M-$inner product, that is for $\mathbf{x},\mathbf{y}\in\mathbb{R}^n$ we have
 \[
   (M^{-1}A\mathbf{x}, \mathbf{y})_M = (A\mathbf{x}, \mathbf{y}) = (\mathbf{x}, A\mathbf{y}) = (\mathbf{x}, M^{-1}A\mathbf{y})_M.
 \]
@@ -479,11 +479,11 @@ and therefore
 \]
 Using $\mathbf{p}_{j+1} = \mathbf{z}_{j+1} + \beta_j \mathbf{p}_j$ and A-orthogonality of the search directions $\mathbf{p}_j$ with respect to $M-$norm $(A\mathbf{p}_j, \mathbf{p}_k)_M = 0$, we can write
 \[
-  \alpha_j = \frac{(\mathbf{z}_j, \mathbf{z}_j)_M}{(M^{-1}A\mathbf{p}_j, \mathbf{p}_j)_M}.
+  \alpha_j = \frac{(\mathbf{z}_j, \mathbf{z}_j)_M}{(M^{-1}A\mathbf{p}_j, \mathbf{p}_j)_M} = (\mathbf{r}_j, \mathbf{z}_j) / (A\mathbf{p}_j, \mathbf{p}_j).
 \]
 Similarly, we can derive the equivalent expression for $\beta_j$ as
 \[
-  \beta_j = \frac{(\mathbf{z}_{j+1}, \mathbf{z}_{j+1})_M}{(\mathbf{z}_j, \mathbf{z}_j)_M}.
+  \beta_j = \frac{(\mathbf{z}_{j+1}, \mathbf{z}_{j+1})_M}{(\mathbf{z}_j, \mathbf{z}_j)_M} = \frac{(\mathbf{r}_{j+1}, \mathbf{z}_{j+1})}{(\mathbf{r}_j, \mathbf{z}_j)}.
 \]
 This gives the left preconditioned CG algorithm in \ref{alg:pcg_left}.
 \begin{algorithm}[H]
@@ -492,11 +492,11 @@ This gives the left preconditioned CG algorithm in \ref{alg:pcg_left}.
   \begin{algorithmic}
     \State $\mathbf{r}_0 = b - A\mathbf{u}_0$, $z_0 = M^{-1}\mathbf{r}_0$, $p_0 = z_0$, $\beta_0 = 0$
     \For{$j = 0, 1, 2, \dots, m$}
-    \State $\alpha_j = (\mathbf{z}_j, \mathbf{z}_j)_M / (M^{-1}A\mathbf{p}_j, \mathbf{p}_j)_M = (\mathbf{r}_j, \mathbf{z}_j) / (A\mathbf{p}_j, \mathbf{p}_j)$
+    \State $\alpha_j = (\mathbf{r}_j, \mathbf{z}_j) / (A\mathbf{p}_j, \mathbf{p}_j)$
     \State $\mathbf{u}_{j+1} = \mathbf{u}_j + \alpha_j \mathbf{p}_j$
     \State $\mathbf{r}_{j+1} = \mathbf{r}_j - \alpha_j A \mathbf{p}_j$
     \State $\mathbf{z}_{j+1} = M^{-1}\mathbf{r}_{j+1}$
-    \State $\beta_j = \frac{(\mathbf{z}_{j+1}, \mathbf{z}_{j+1})_M}{(\mathbf{z}_j, \mathbf{z}_j)_M} = \frac{(\mathbf{r}_{j+1}, \mathbf{z}_{j+1})}{(\mathbf{r}_j, \mathbf{z}_j)}$
+    \State $\beta_j = \frac{(\mathbf{r}_{j+1}, \mathbf{z}_{j+1})}{(\mathbf{r}_j, \mathbf{z}_j)}$
     \State $\mathbf{p}_{j+1} = \mathbf{z}_{j+1} + \beta_j \mathbf{p}_j$
     \EndFor
   \end{algorithmic}
@@ -504,7 +504,7 @@ This gives the left preconditioned CG algorithm in \ref{alg:pcg_left}.
 Furthermore it can be shown that the iterates of CG applied to the system with \ref{pcg_type:symmetric} results in identical iterates \cite[Algorithm 9.2]{iter_method_saad}.
 
 \section{Schwarz methods}\label{sec:schwarz_methods}
-The content of this section is largely based on chapters 1, 2, 4 and 5 of \citeauthor{schwarz_methods_Dolean_2015} about Schwarz methods.
+The content of this section is largely based on chapters 1, 2, 4 and 5 of \cite{schwarz_methods_Dolean_2015} about Schwarz methods.
 \begin{figure}[H]
   \centering
   \input{tikz/keyhole.tex}
@@ -519,9 +519,9 @@ The original Schwarz method was a way of proving that a Poisson problem on some 
     \end{array}
     \label{eq:poisson_problem}
 \end{equation}
-Existence of a solution is proved by splitting up the original complex domain in two (or more) simpler, possibly overlapping subdomains and solving the Poisson problem on each of these subdomains. The solution on the original domain is then the sum of the solutions on the subdomains. The method is named after Hermann Schwarz, who first introduced the method in 1869 \cite{og_schwarz_method_Schwarz}. The method has since been extended to more general problems and is now a popular method for solving partial differential equations. Let the alternating Schwarz method be characterized as in \cref{def:schwarz_algorithm}.
-\begin{definition}
-    The Alternating Schwarz algorithm is an iterative method based on alternately solving subproblems in domains $\Omega_1$ and $\Omega_2$. It updates $\left(u_1^n, u_2^n\right) \rightarrow\left(u_1^{n+1}, u_2^{n+1}\right)$ by
+Existence of a solution is proved by splitting up the original complex domain in two (or more) simpler, possibly overlapping subdomains and alternatingly solving the Poisson problem on each of these subdomains. The idea is that with enough iterations, the solutions on the subdomains will converge to a solution on the original domain. The method is named after Hermann Schwarz, who first introduced the method in 1869 \cite{og_schwarz_method_Schwarz} and has since been extended to more general problems and is now a popular method for solving partial differential equations. Let the alternating Schwarz method be characterized as in \cref{def:schwarz_algorithm}.
+\begin{fancydef}{Alternating Schwarz algorithm}{schwarz_algorithm}
+    The alternating Schwarz algorithm is an iterative method based on alternately solving subproblems in domains $\Omega_1$ and $\Omega_2$. It updates $\left(u_1^n, u_2^n\right) \rightarrow\left(u_1^{n+1}, u_2^{n+1}\right)$ by
     \[
         \begin{array}{cc}
             \begin{aligned}
@@ -537,9 +537,9 @@ Existence of a solution is proved by splitting up the original complex domain in
         \end{array}
     \]
     \label{def:schwarz_algorithm}
-\end{definition}
+\end{fancydef}
 
-The original Schwarz algorithm is sequential and, thereby, does not allow for parallelization. However, the algorithm can be parallelized. The Jacobi Schwarz method is a generalization of the original Schwarz method, where the subproblems are solved simultaneously and subsequently combined into a global solution. In order to combine local solutions into one global solution, an extension operator $E_i$, $i=1,2$ is used. It is defined as
+The original Schwarz algorithm is sequential and, thereby, does not allow for parallelization. However, the algorithm can be parallelized. The Jacobi Schwarz method is a generalization of the original Schwarz method, where the subproblems are solved simultaneously and subsequently combined into a global solution\cite{og_alternating_schwarz_Lions1990}. In order to combine local solutions into one global solution, an extension operator $E_i$, $i=1,2$ is used. It is defined as
 \[
     E_i(v)=v \text { in } \Omega_i, \quad E_i(v)=0 \text { in } \Omega \backslash \Omega_i.
 \]
@@ -586,21 +586,20 @@ The RAS algorithm is defined in algorithm \ref{alg:restrictive_additive_schwarz}
 
 
 \subsection{Schwarz methods as preconditioners}
-Let $\mathcal{N}$ be set containing all indices of degrees of freedom in the domain $\Omega$ and $N_{\text{sub}}$ be the number of subdomains such that
+This is largely based on Section 1.3.2 of \cite{schwarz_methods_Dolean_2015}. Let  $\mathcal{N}_i$ be the set containing all degrees of freedom in the subdomain $\Omega_i$ and $N_{\text{sub}}$ the number of subdomains such that $n_i = |\mathcal{N}_i|$ is the number of degrees of freedom in the subdomain $\Omega_i$ and the global set of degrees of freedom then satisfies
 \[
-    \mathcal{N}=\sum_{i=1}^{N_{\text{sub}}} \mathcal{N}_i,
+    \mathcal{N}=\cup_{i=1}^{N_{\text{sub}}} \mathcal{N}_i.
 \]
-$\mathcal{N}_i$ is the set of indices of degrees of freedom in the subdomain $\Omega_i$.
-
-Furthermore, let $R_i\in\mathcal{R}^{|\mathcal{N}_i| \times |\mathcal{N}}|$, $R_i^T$ and $D_i$ be the discrete versions of the restriction, extension and partition of unity operators such that
+  
+Furthermore, let $R_i\in\mathbb{R}^{n_i \times n}$, $R_i^T$ and $D_i$ be the discrete versions of the restriction, extension and partition of unity operators such that
 \[
-    \mathcal{R}^{|\mathcal{N}|}\ni U = \sum_{i=1}^{\mathcal{N}_{\text{sub}}} R_i^T D_i R_i U.
+    \mathbb{R}^{n}\ni U = \sum_{i=1}^{\mathcal{N}_{\text{sub}}} R_i^T D_i R_i U.
 \]
-Note that $D_i$ is a diagonal matrix where the entries are the values of the partition of unity function $\chi_i$ evaluated for each degree of freedom. Consider for instance, a multidimensional FEM problem, in which $\mathcal{T}$ is the triangulation of the domain $\Omega$ and $\mathcal{T}_i$ is the triangulation of the subdomain $\Omega_i$ such that \cite[Equation 1.27]{schwarz_methods_Dolean_2015}
+Note that $D_i$ is a diagonal matrix where the entries are the values of the partition of unity function $\chi_i$ evaluated for each degree of freedom. Consider, for instance, a multidimensional FEM problem like \cref{prob:elliptic_problem_discretized}, and let $\mathcal{T}_i$ be a conforming triangulation of the subdomain $\Omega_i$ such that
 \[
     \Omega_i = \cup_{\tau \in \mathcal{T}_i} \tau.
 \]
-In this case \cite[Equation 1.28]{schwarz_methods_Dolean_2015}
+In this case
 \[
     \mathcal{N}_i = \{k\in\mathcal{N}| \text{meas}(\text{supp}(\phi_k)\cap\Omega_i)>0\},
 \]
@@ -614,7 +613,7 @@ Finally, this leads to
     \label{eq:schwarz_partition_of_unity_FEM}
 \end{equation}
 
-Although the original Schwarz method is not a preconditioner, the ASM and RAS methods can be used as such. Originally the Schwarz method is a fixed point iteration \cite[Definitions 1.12 and 1.13]{schwarz_methods_Dolean_2015}
+Originally the Schwarz method is a fixed point iteration \cite[Definitions 1.12 and 1.13]{schwarz_methods_Dolean_2015}
 \[
     u^{n+1} = u^n + M^{-1}r^n, \ r^n = f - A u^n,
 \]
@@ -625,7 +624,7 @@ where $M$ equals, but is not limited to, one of the following matrices;
         M^{-1}_{\text{RAS}} & = \sum_{i=1}^{N_{\text{sub}}} R_i^T D_i (R_i A R_i^T)^{-1} R_i \label{eq:RAS_preconditioner}.
     \end{align}
 \end{subequations}
-Both $M^{-1}_{\text{ASM}}$ and $M^{-1}_{\text{RAS}}$ are SPD and can be used as preconditioners for CG.
+Although the original Schwarz method is not a preconditioner but a fixed-point iteration, the ASM and RAS methods define linear operators that can be applied as \cref{pcg_type:left,pcg_type:right} preconditioners in Krylov subspace methods such as CG or GMRES, respectively. $M^{-1}_{\text{ASM}}$ is SPD and suitable for CG. $M^{-1}_{\text{RAS}}$ may not be symmetric in general and is typically used with Krylov methods like GMRES.
 
 Optimized Schwarz methods and corresponding preconditioners can also be constructed by including more interface conditions (Robin or Neumann) in the subproblems. One such example is the Optimized Restrictive Additive Schwarz method (ORAS) discussed in \cite[Chapter 2]{schwarz_methods_Dolean_2015}.
 
@@ -637,12 +636,12 @@ Let $L>0$ and the domain $\Omega = (0,L)$. The domain is split into two subdomai
 \[
     \begin{array}{cc}
         \begin{aligned}
-            -\frac{e_1^{n+1}}{d x^2} & = f           \text { in } (0,L_1), &                   \\
-            e_1^{n+1}(0)             & = 0,                                & \quad \text{then} \\
+            -\frac{e_1^{n+1}}{d x^2} & = 0           \text { in } (0,L_1), &                   \\
+            e_1^{n+1}(0)             & = 0,                                & \quad \text{and} \\
             e_1^{n+1}(L_1)           & = e_2^n(L_1);                       &
         \end{aligned} &
         \begin{aligned}
-            -\frac{e_2^{n+1}}{d x^2} & = f                \text { in } (l_2, L), & \\
+            -\frac{e_2^{n+1}}{d x^2} & = 0                \text { in } (l_2, L), & \\
             e_2^{n+1}(l_2)           & = e_1^{n+1}(l_2),                         & \\
             e_2^{n+1}(L)             & = 0.                                      &
         \end{aligned}
@@ -664,7 +663,7 @@ where $\delta = L_1 - l_2 > 0 $ is the overlap. The error is reduced by a factor
 which indicates the convergence becomes quicker as the overlap increases \cite[Section 1.5.1]{schwarz_methods_Dolean_2015}.
 
 \subsubsection{2D case}
-In the 2D case two half planes are considered $\Omega_1 = (-\infty, \delta)\times \mathbb{R}$ and $\Omega_2 = (\delta, \infty)\times \mathbb{R}$. Following the example of \citeauthor{schwarz_methods_Dolean_2015} the problem is
+In the 2D case two half planes are considered $\Omega_1 = (-\infty, \delta)\times \mathbb{R}$ and $\Omega_2 = (\delta, \infty)\times \mathbb{R}$. Following the example of \cite[Section 1.5.2]{schwarz_methods_Dolean_2015} the problem is
 \begin{align*}
     -(\eta - \Delta) u & = f \text{ in } \mathbb{R}^2, \\
     u                  & \text{ bounded at infinity},
@@ -673,7 +672,7 @@ where $\eta > 0$ is a constant. Proceeding in similar fashion as the one-dimensi
 \[
     \hat{e}^{n+1}_{1,2}(x, k) = \gamma_1(k) e^{\lambda_{+}(k) x} + \gamma_2(k) e^{\lambda_{-}(k) x},
 \]
-where $\lambda_{\pm}(k) = \pm \sqrt{k^2 + \eta}$. By using the interface conditions we find
+where $\lambda_{\pm}(k) = \pm \sqrt{k^2 + \eta}$. By using the interface conditions $\hat{e}^{n+1}_{1}(0, k) = \hat{e}^{n+1}_{2}(0, k)$ we get
 \[
     \gamma_{i}^{n+1}(k) = \rho(k;\eta,\delta)^2 \gamma_{i}^{n-1}(k),
 \]
