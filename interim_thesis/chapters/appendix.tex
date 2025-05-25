@@ -1,0 +1,426 @@
+\chapter*{Appendix}
+\addcontentsline{toc}{chapter}{Appendix}\label{ch:appendix}
+
+\section{Derivation of the CG Method}\label{sec:cg_derivation}
+
+\subsection{Arnoldi's method for linear systems}\label{sec:arnoldi_linear_systems}
+Arnoldi's method for linear systems $A\mathbf{u} = \mathbf{b}$, where $A$ is a general (possibly non-symmetric) stiffness matrix, is just an instantiation of \cref{alg:error_projection_method}. It uses a Gramm-Schmidt orthogonalization procedure to simultaneously obtain the basis $V$ of $\mathcal{K}$ and the Hessenberg matrix, see \cref{def:hessenberg_matrix}. Assuming without loss of generality that $V$ has dimension $m$, we set $V=V_m$ and let $\mathbf{v}_1 = \mathbf{r}_0/||\mathbf{r}_0||_2$ and $\beta = ||\mathbf{r}_0||_2$, then by \cref{def:error_projection_method} we have
+\[
+  V^T_mAV_m = H_m \text{ and } V^T_m\mathbf{r}_0 = V^T_m\beta \mathbf{v}_1 = \beta e_1 \implies
+  \begin{array}{c}
+    \mathbf{u}_m = \mathbf{u}_0 + V_m \mathbf{c}, \\
+    H_m \mathbf{c} = \beta e_1.
+  \end{array}
+\]
+Substituting this into the template for the error projection methods given in \cref{alg:error_projection_method} gives \cref{alg:arnoldi_linear_systems}.
+\begin{algorithm}[H]
+  \caption{Arnoldi's method for linear systems (FOM) \cite[Algorithm 6.4]{iter_method_saad}}
+  \label{alg:arnoldi_linear_systems}
+  \begin{algorithmic}
+    \State Compute $\mathbf{r}_0 = \mathbf{b} - A\mathbf{u}_0$, $\beta = ||\mathbf{r}_0||_2$ and $\mathbf{v}_1 = \mathbf{r}_0 / \beta$
+    \State Define $H_m = \{0\}$
+    \State Define $V_1 = \{\mathbf{v}_1\}$
+    \For{$j = 1, 2, \dots, m$}
+    \State $\mathbf{w}_j = A\mathbf{v}_j$
+    \For{$i = 1, 2, \dots, j$}
+    \State $h_{ij} = (\mathbf{w}_j, \mathbf{v}_i)$ and store $h_{ij}$ in $H_m$
+    \State $\mathbf{w}_j = \mathbf{w}_j - h_{ij}\mathbf{v}_i$
+    \EndFor
+    \State $h_{j+1,j} = ||\mathbf{w}_j||_2$
+    \If{$h_{j+1,j} = 0$}
+    \State $m = j$
+    \State break
+    \EndIf
+    \State $\mathbf{v}_{j+1} = \mathbf{w}_j / h_{j+1,j}$ and store $\mathbf{v}_{j+1}$ into $V_{j+1}$
+    \EndFor
+    \State Solve $H_m \mathbf{c} = \beta e_1$ for $\mathbf{c}$
+    \State $\mathbf{u}_m = \mathbf{u}_0 + V_m \mathbf{c}$
+  \end{algorithmic}
+\end{algorithm}
+
+Note that a stopping criterion can be derived from the residual vector $\mathbf{r}_m = \mathbf{b} - A\mathbf{u}_m$. Theorem \ref{th:arnoldi_residual} gives a way of calculating the size of the residual vector.
+\begin{APPfancyth}{Arnoldi residual \cite[Proposition 6.7]{iter_method_saad}}{arnoldi_residual}
+  The residual vector $\mathbf{r}_m = \mathbf{b} - A\mathbf{u}_m$ satisfies
+  \begin{equation}
+    \|r_m\|_2 = h_{m+1,m}|\mathbf{e}^T_m \mathbf{c}|,
+  \end{equation}
+\end{APPfancyth}
+\begin{proof}
+  We have
+  \begin{align*}
+    \mathbf{r}_m & = \mathbf{b} - A\mathbf{u}_m                                                   \\
+                  & = \mathbf{r}_0 - AV_m \mathbf{c}                                               \\
+                  & = \beta v_1 - V_m H_m \mathbf{c} - h_{m+1,m} \mathbf{e}_m^T \mathbf{c} \mathbf{v}_{m+1} \\
+                  & = - h_{m+1,m} \mathbf{e}_m^T \mathbf{c} \mathbf{v}_{m+1}.
+  \end{align*}
+  The result follows by taking the $2$-norm of both sides of the equality and using the fact that $||\mathbf{v}_{m+1}||_2 = 1$.
+\end{proof}
+
+\subsection{Lanczos' Algorithm}
+In the special case where $A$ is symmetric, the Arnoldi method can be simplified to the Lanczos algorithm. In particular, for symmetric $A$, the Hessenberg matrix $H_m$ is tridiagonal
+\begin{equation}
+  H_m = T_m =
+  \begin{pmatrix}
+    \delta_1 & \eta_2   & 0        & \dots  & 0        \\
+    \eta_2   & \delta_3 & \eta_3   & \dots  & 0        \\
+    0        & \eta_3   & \delta_4 & \dots  & 0        \\
+    \vdots   & \vdots   & \vdots   & \ddots & \eta_m   \\
+    0        & 0        & 0        & \eta_m & \delta_m
+  \end{pmatrix},
+  \label{eq:lanczos_tridiagonal}
+\end{equation}
+where we redefined $H_m$ to be the tridiagonal matrix $T_m$, also called the \textit{Ritz matrix}. The tridiagonality of $T_m$ allows us to reduce the Gramm-Schmidt orthogonalization procedure in the inner for-loop in \cref{alg:arnoldi_linear_systems} to just two vector subtractions and an inner product, resulting in \cref{alg:arnoldi_linear_systems}
+\begin{algorithm}
+  \caption{Lanczos algorithm for linear systems \cite[Algorithm 6.16]{iter_method_saad}}
+  \begin{algorithmic}
+    \State Compute $\mathbf{r}_0 = b - A\mathbf{u}_0$, $\beta = ||\mathbf{r}_0||_2$, $\mathbf{v}_0 = 0$ and $\mathbf{v}_1 = \mathbf{r}_0 / \beta$
+    \State $V_{1} = \{\mathbf{v}_1\}$
+    \For{$j = 1, 2, \dots, m$}
+    \State $\mathbf{w}_j = A\mathbf{v}_j - \eta_j \mathbf{v}_{j-1}$
+    \State $\delta_j = (\mathbf{w}_j, \mathbf{v}_j)$
+    \State $\mathbf{w}_j = \mathbf{w}_j - \delta_j \mathbf{v}_j$
+    \State $\eta_{j+1} = ||\mathbf{w}_j||_2$
+    \If{$\eta_{j+1} = 0$}
+    \State $m = j$
+    \State Break
+    \EndIf
+    \State $\mathbf{v}_{j+1} = \mathbf{w}_j / \eta_{j+1}$ and store $\mathbf{v}_{j+1}$ into $V_{j+1}$
+    \EndFor
+    \State Solve the tridiagonal system $T_m \mathbf{c} = \beta \mathbf{e}_1$ for $\mathbf{c}$
+    \State $\mathbf{u}_m = \mathbf{u}_0 + V_m \mathbf{c}$
+  \end{algorithmic}
+  \label{alg:lanczos_linear_systems}
+\end{algorithm}
+
+\subsection{D-Lanczos} 
+A downside of \cref{alg:lanczos_linear_systems} in particular and projections methods like \cref{alg:error_projection_method} in general is their reliance on an arbitrary choice of dimension $m$. The methods run until the basis $V_m$ is constructed and subsequently construct $H_m$ to determine the correction $\mathbf{c}$. This is not ideal, since the resulting solution $\mathbf{u}_m$ may not be close enough to the true solution $\mathbf{u}$. That is, it is not guaranteed that the residual vector $\mathbf{r}_m$ is `small enough'. Alternately, it might happen $m$ is chosen too large, and the method is unnecessarily expensive. In the specific case of the Arnoldi method \cref{th:arnoldi_residual} may be used to determine the residual before calculating $\mathbf{c}$. Though this saves some computational time, it still requires the construction of the basis $V_m$ and the tridiagonal matrix $T_m$, as well as a restart of the algorithm. This is not ideal, since the construction of $V_m$ and $T_m$ is expensive.
+
+To address the issue of arbitrary $m$, we construct a version of \cref{alg:lanczos_linear_systems} that allows us to incrementally update the solution $\mathbf{u}_m$ and the residual vector $\mathbf{r}_m$. This way, we can stop the algorithm when the residual vector is smaller than some predefined threshold, like $\mathbf{r}_m < \epsilon$. 
+
+To that end, we start by performing a LU-factorisation of $T_m$ given by
+\begin{equation}
+  T_m = L_m U_m =
+  \begin{pmatrix}
+    1              & 0              & 0      & \dots          & 0      \\
+    \tilde{\eta}_2 & 1              & 0      & \dots          & 0      \\
+    0              & \tilde{\eta}_3 & 1      & \dots          & 0      \\
+    \vdots         & \vdots         & \vdots & \ddots         & \vdots \\
+    0              & 0              & \dots  & \tilde{\eta}_m & 1
+  \end{pmatrix}
+  \times
+  \begin{pmatrix}
+    \tilde{\delta}_1 & \eta_2           & 0                & \dots  & 0                \\
+    0                & \tilde{\delta}_2 & \eta_3           & \dots  & 0                \\
+    0                & 0                & \tilde{\delta}_3 & \dots  & 0                \\
+    \vdots           & \vdots           & \vdots           & \ddots & \eta_m           \\
+    0                & 0                & 0                & \dots  & \tilde{\delta}_m
+  \end{pmatrix}
+  \label{eq:lanczos_lu}
+\end{equation}
+Then, the approximate solution is given by
+\begin{align*}
+  \mathbf{u}_m & = \mathbf{u}_0 + V_m \mathbf{c}                           \\
+      & = \mathbf{u}_0 + V_m U_m^{-1} L_m^{-1} \beta \mathbf{e}_1   \\
+      & = \mathbf{u}_0 + V_m U_m^{-1} (L_m^{-1} \beta \mathbf{e}_1) \\
+      & = \mathbf{u}_0 + P_m \mathbf{z}_m,
+\end{align*}
+where $P_m = V_m U_m^{-1}$ and $\mathbf{z}_m = L_m^{-1} \beta \mathbf{e}_1$. Considering the definition of $U_m$ in \cref{eq:lanczos_lu}, we have that the $m^{\text{th}}$ column of $P_m$ is given by
+\begin{equation}
+  \mathbf{p}_m = \frac{1}{\tilde{\delta}_m}\left[\mathbf{v}_m - \eta_m \mathbf{p}_{m-1}\right].
+  \label{eq:lanczos_p}
+\end{equation}
+Furthermore, from the LU factorization of $T_m$ we have that
+\begin{align*}
+  \tilde{\eta}_m   & = \frac{\eta_m}{\tilde{\delta}_{m-1}},       \\
+  \tilde{\delta}_m & = \delta_m - \tilde{\eta}_m \eta_m, \ m > 1.
+\end{align*}
+Now the solution can be incrementally updated by realizing that
+\[
+  \mathbf{z}_m =
+  \begin{pmatrix}
+    \mathbf{z}_{m-1} \\
+    \zeta_m
+  \end{pmatrix} =
+  \begin{pmatrix}
+    \mathbf{z}_{m-2}     \\
+    \zeta_{m-1} \\
+    \zeta_m
+  \end{pmatrix},
+\]
+and
+\[
+  L_m =
+  \begin{pmatrix}
+    L_{m-1}            & \multicolumn{2}{c}{\mathbf{0}_{m-1}}     \\
+    \mathbf{0}_{m-2}^T & \tilde{\eta}_m                       & 1
+  \end{pmatrix}.
+\]
+Then,
+\[
+  L_m \mathbf{z}_m =
+  \begin{pmatrix}
+    L_{m-1} \mathbf{z}_{m-1} \\
+    \tilde{\eta}_m \zeta_{m-1} + \zeta_m
+  \end{pmatrix} =
+  \begin{pmatrix}
+    \beta \mathbf{e}_1 \\
+    0
+  \end{pmatrix},
+\]
+where the last equality follows from definition of $\mathbf{z}_m$. Consequently, we have that
+\[
+  \zeta_m = -\tilde{\eta}_m \zeta_{m-1}.
+\]
+Finally, we obtain
+\begin{align*}
+  u_m & = \mathbf{u}_0 + P_m \mathbf{z}_m                                   \\
+      & = \mathbf{u}_0 + \left[P_{m-1} \mathbf{p}_m\right] 
+      \begin{pmatrix}
+                                             \mathbf{z}_{m-1} \\
+                                            \zeta_m
+                                           \end{pmatrix} \\
+      & = \mathbf{u}_0 + P_{m-1} \mathbf{z}_{m-1} + \mathbf{p}_m \zeta_m \\
+      & = \mathbf{u}_{m-1} + \mathbf{p}_m \zeta_m.
+\end{align*}
+Putting it all together, we obtain \cref{alg:dlanczos}.
+\begin{algorithm}[H]
+  \caption{D-Lanczos \cite[Algorithm 6.17]{iter_method_saad}}
+  \begin{algorithmic}
+    \State $\mathbf{r}_0 = b - A\mathbf{u}_0$, $\beta = ||\mathbf{r}_0||_2$, $\mathbf{v}_1 = \mathbf{r}_0 / \beta$
+    \State $\tilde{\eta}_1 = \beta_1 = 0$, $\mathbf{p}_0 = 0$
+    \For{$m = 1, 2, \dots, m$ until convergence}
+    \State $w = A\mathbf{v}_m - \beta_m \mathbf{v}_{m-1}$
+    \State $\delta_m = (w, \mathbf{v}_m)$
+    \If{$m > 1$}
+    \State $\tilde{\eta}_m = \frac{\beta_m}{\tilde{\delta}_{m-1}}$
+    \State $\zeta_m = -\tilde{\eta}_m \zeta_{m-1}$
+    \EndIf
+    \State $\tilde{\delta}_m = \delta_m - \tilde{\eta}_m \beta_m$
+    \State $\mathbf{p}_m = \frac{1}{\tilde{\delta}_m}\left[\mathbf{v}_m - \beta_m \mathbf{p}_{m-1}\right]$
+    \State $\mathbf{u}_m = \mathbf{u}_{m-1} + \mathbf{p}_m \zeta_m$
+    \If{$\|\mathbf{r}_{m+1}\|_2 < \epsilon$}
+    \State break
+    \EndIf
+    \State $\mathbf{w} = \mathbf{w} - \delta_m \mathbf{v}_m$
+    \State $\beta_{m+1} = ||\mathbf{w}||_2$
+    \State $\mathbf{v}_{m+1} = \mathbf{w} / \beta_{m+1}$
+    \EndFor
+  \end{algorithmic}
+  \label{alg:dlanczos}
+\end{algorithm}
+Some core properties of \cref{alg:dlanczos} are described in \cref{th:dlanczos_orthogonality,}
+\begin{APPfancyth}{$A$-orthogonality of $p_m$}{dlanczos_orthogonality}
+  The vectors $p_m$ produced in algorithm \cref{alg:dlanczos} are $A$-orthogonal to each other.
+\end{APPfancyth}
+\begin{proof}
+  We have
+  \begin{align*}
+    P^T_m A P_m & = U_m^{-T} V_m^T A V_m U_m^{-1} \\
+                & = U_m^{-T} T_m U_m^{-1}         \\
+                & = U_m^{-T} L_m,
+  \end{align*}
+  where $U_m^{-T}$ and $L_m$ are both lower diagonal matrices. Their product must be symmetric, since $P^T_m A P_m$ is symmetric (due to the symmetry of $A$). The result follows from the fact that $U_m^{-T} L_m$ must be a diagonal matrix
+\end{proof}
+\begin{APPfancyth}{Lanczos recurrence relation}{lanczos_recurrence}
+  The Lanczos vectors are related through the Lanczos recurrence relation
+  \begin{equation}
+    \label{eq:lanczos_recurrence}
+    \eta_{j+1}(A)\mathbf{v}_{j+1} = A \mathbf{v}_j - \delta_j \mathbf{v}_j - \eta_j \mathbf{v}_{j-1}.
+  \end{equation}
+\end{APPfancyth}
+\begin{proof}
+  This follows directly from the definition of $T_m$ in \cref{eq:lanczos_tridiagonal} and the definition of the Hessenberg matrix in \cref{def:hessenberg_matrix}.  
+\end{proof}
+
+\subsection{Derivation of CG}
+From general properties of error projection methods and observations made in the in \cref{alg:dlanczos}, we can derive the CG method. We start by constraining subsequent residuals $r_j$ to be orthogonal. This follows from choosing subspaces $\mathcal{K} = \mathcal{L}$, as in the Arnoldi process. Again, the space $\mathcal{K}$ is spanned by the vectors $\mathbf{v}_m$. Thus setting $\mathbf{v}_1 = \mathbf{r}_0/\|\mathbf{r}_0\|_2$, automatically means subsequent residuals will be orthogonal to each other. Then, as suggested by \cref{th:dlanczos_orthogonality}, we also require that the vectors $p_j$ are $A$-orthogonal to each other. From this point on, we use the term \textit{search direction} to refer to the vectors $p_j$. Next to this we also introduce the CG variables $\alpha_j$ and $\beta_j$, which are the step size and the search direction update, respectively. This results in the following update equations
+\begin{equation}
+  \mathbf{u}_{j+1} = \mathbf{u}_j + \alpha_j \mathbf{p}_j,
+  \label{eq:cg_solution_update}
+\end{equation}
+and, thereby,
+\begin{equation}
+  \mathbf{r}_{j+1} = \mathbf{r}_j - \alpha_j A \mathbf{p}_j.
+  \label{eq:cg_residual_update}
+\end{equation}
+If the residuals are to be orthogonal, then
+\[
+  (\mathbf{r}_{j+1}, \mathbf{r}_j) = 0 \implies (\mathbf{r}_j - \alpha_j A \mathbf{p}_j, \mathbf{r}_j) = 0 \implies \alpha_j = \frac{(\mathbf{r}_j, \mathbf{r}_j)}{(A \mathbf{p}_j, \mathbf{r}_j)}.
+\]
+Now, using the relation between $\mathbf{r}_m$ and $\mathbf{v}_{m+1}$ found in the proof of \cref{th:arnoldi_residual} and \cref{eq:lanczos_p}, we can write the next search direction as a linear combination of the previous search direction and the next residual
+\begin{equation}
+  \mathbf{p}_{j+1} = \mathbf{r}_{j+1} + \beta_j \mathbf{p}_j.
+  \label{eq:cg_search_direction_update}
+\end{equation}
+Substituting \cref{eq:cg_search_direction_update}, we obtain
+\[
+  (A\mathbf{p}_{j+1}, \mathbf{r}_j) = (A\mathbf{p}_j, \mathbf{p}_j -\beta_{j-1}\mathbf{p}_{j-1}) = (A\mathbf{p}_j, \mathbf{p}_j),
+\]
+since $p_j$ is $A$-orthogonal to $p_{j-1}$. This allows us to write
+\begin{equation}
+  \alpha_j = \frac{(\mathbf{r}_j, \mathbf{r}_j)}{(A \mathbf{p}_j, \mathbf{p}_j)}.
+  \label{eq:cg_alpha}
+\end{equation}
+Additionally, taking the inner product with $A \mathbf{p}_j$ on both sides of \cref{eq:cg_search_direction_update} gives
+\[
+  \beta_j = \frac{(\mathbf{r}_{j+1}, A \mathbf{p}_j)}{(\mathbf{p}_j, A \mathbf{p}_j)}.
+\]
+Now, rewriting \cref{eq:cg_residual_update} gives
+\[
+  A \mathbf{p}_j = \frac{1}{\alpha_j} (\mathbf{r}_j - \mathbf{r}_{j+1}),
+\]
+which we substitute into the equation for $\beta_j$ to obtain
+\begin{equation}
+  \beta_j = \frac{1}{\alpha_j}\frac{(\mathbf{r}_{j+1}, (\mathbf{r}_{j+1}-\mathbf{r}_j))}{(A \mathbf{p}_j, \mathbf{r}_j)} = \frac{(\mathbf{r}_{j+1},\mathbf{r}_{j+1})}{((\mathbf{r}_j - \mathbf{r}_{j-1}), \mathbf{r}_j)} = \frac{(\mathbf{r}_{j+1},\mathbf{r}_{j+1})}{(\mathbf{r}_j, \mathbf{r}_j)}.
+  \label{eq:cg_beta}
+\end{equation}
+Finally, \cref{eq:cg_alpha,eq:cg_solution_update,eq:cg_residual_update,eq:cg_beta,eq:cg_search_direction_update} comprise one iteration of the CG method, as shown in \cref{alg:cg}.
+
+\subsection{CG relation to Lanczos}
+There exist relations between the entries of $T_m$ $\delta_j, \eta_j$ and the CG coefficients $\alpha_j, \beta_j$. Namely, we have
+\begin{equation}
+  \delta_{j+1} =
+  \begin{cases}
+    \frac{1}{\alpha_j} + \frac{\beta_{j-1}}{\alpha_{j-1}} & j > 0, \\
+    \frac{1}{\alpha_0}                                    & j = 0,
+  \end{cases}
+  \label{eq:cg_lanczos_delta}
+\end{equation}
+and
+\begin{equation}
+  \eta_{j+1} = \frac{\sqrt{\beta_{j-1}}}{\alpha_{j-1}}.
+  \label{eq:cg_lanczos_eta}
+\end{equation}
+Here we have used the definition of $T_m$ and the fact that the residuals are multiples of the Lanczos vectors $\mathbf{r}_j = \text{scalar} \times \mathbf{v}_j$ \cite[Equation 6.103]{iter_method_saad}.
+
+\section{Chebyshev approximation}\label{sec:chebyshev_approximation}
+This section contains the definition of Chebyshev polynomials of the first kind, some of their properties and their application to a minimization problem akin to the one described in \cref{th:cg_convergence_rate_bound}.
+
+\subsection{Chebyshev polynomials}
+This section introduces Chebyshev polynomials and some of their properties. First, their definition in \cref{def:chebyshev_polynomial}.
+\begin{APPfancydef}{Chebyshev polynomial}{chebyshev_polynomial}
+  The $m^{\text{th}}$ degree Chebyshev polynomial of the first kind is denoted as $C_m$, for $z\in\mathbb{C}$
+  \[
+    C_m(z) = \begin{cases}
+      \cos(m \cos^{-1}(z)), & |z| \leq 1, \\
+      \cosh(m \cosh^{-1}(z)), & |z| > 1,
+    \end{cases},
+  \]
+  as well as through the recurrence relation
+  \[
+    C_m(z) = 2z C_{m-1}(z) - C_{m-2}(z), \quad m \geq 2,
+  \]
+  with initial conditions
+  \[
+    C_0(z) = 1, \quad C_1(z) = z.
+  \]
+\end{APPfancydef}
+
+For $|z|>1$ we can also write
+\begin{equation}
+  C_m(z) = \frac{1}{2}\left(\left(z + \sqrt{z^2 - 1}\right)^m + \left(z - \sqrt{z^2 - 1}\right)^m\right),
+  \label{eq:chebyshev_polynomial_explicit}
+\end{equation}
+which for large $k$ may be approximated as
+\begin{equation}
+  C_m(z) \gtrapprox \frac{1}{2}\left(z + \sqrt{z^2 - 1}\right)^m.
+  \label{eq:chebyshev_polynomial_approximation}
+\end{equation}
+The extreme points of $C_m$ are given by
+\begin{equation}
+  z_k = \cos\left(\frac{k \pi}{m}\right), \quad k = 0, 1, \dots, m.
+  \label{eq:chebyshev_polynomial_extreme_points}
+\end{equation}
+Indeed, substituting $z_k$ into $C_m$ gives 
+\begin{equation}
+  C_m(z_k) = \cos(k \pi) = \cos(k \pi) = (-1)^k, \quad k = 0, 1, \dots, m.
+  \label{eq:chebyshev_polynomial_extrema}
+\end{equation}
+ 
+For the optimality proof we need to introduce the real-valued, transformed Chebyshev polynomial in \cref{def:scaled_chebyshev_polynomial}.
+\begin{APPfancydef}{Real Transformed Chebyshev polynomial}{scaled_chebyshev_polynomial}
+  The transformed Chebyshev polynomial of the first kind is denoted as $\hat{C}_m$, for $x\in\mathbb{R}$ is obtained through an affine change of variables $T$ from the $[a, b] \subset \mathbb{R}$ to the interval $[-1, 1]$ as
+  \[
+    t \in [a,b] \implies z = T(t) = \frac{2t - (a + b)}{b - a} \in [-1, 1],
+  \]
+  and a subsequent scaling with the factor $C_m(T(\gamma))$ for $\gamma\in\mathbb{R}$ outside the interval $[a, b]$ as
+  \[
+    \hat{C}_m(t) = \frac{C_m(T(t))}{C_m(T(\gamma))} = \frac{C_m\left(\frac{2t - (a + b)}{b - a}\right)}{C_m\left(\frac{2\gamma - (a + b)}{b - a}\right)}
+  \]
+\end{APPfancydef}
+
+Lastly, by \cref{eq:chebyshev_polynomial_extrema} we get for $t_k = T^{-1}(z_k)$
+\begin{equation}
+    \hat{C}_m(t_k) = \frac{(-1)^k}{C_m(T(\gamma))} = \frac{(-1)^k}{d_m(\gamma)},
+    \label{eq:chebyshev_polynomial_extrema_scaled}
+\end{equation}
+where $d_m(\gamma) = C_m(T(\gamma))$. 
+
+\subsection{Chebyshev optimality}
+We now show that $\hat{C}_m$ from \cref{def:scaled_chebyshev_polynomial} is the solution of the following minimization problem
+\begin{APPfancyth}{Min-max polynomial}{minmax_polynomial}
+  The real-valued polynomial $p_m(t)$ of degree $m$ such that for $\gamma\in\mathbb{R}$ outside the interval $[a, b]$ the following holds
+  \[
+    \min_{p\in\mathcal{P}_m,p(\gamma)=1} \max_{t\in[a,b]} |p(t)|,
+  \]
+  is given by the Chebyshev polynomial $\hat{C}_m$. Furthermore, we have
+  \[
+    \min_{p\in\mathcal{P}_m,p(\gamma)=1} \max_{t\in[a,b]} |p_m(t)| = \frac{1}{d_m(\gamma)},
+  \]
+  where $d_m(\gamma)$ is as in \cref{eq:chebyshev_polynomial_extrema_scaled}.
+\end{APPfancyth}
+\begin{proof}
+  We proof this by contradiction. First, note that by \cref{eq:chebyshev_polynomial_extrema_scaled} we have
+  \[
+    \max_{t\in[a,b]} |\hat{C}_m(t)| = \max_{k=0,1,\dots,m} |\hat{C}_m(t_k)| = \frac{1}{d_m},
+  \]
+  Assume that there exists a polynomial $w_m(t)$ of degree $m$ such that
+  \[
+    \max_{t\in[a,b]} |w_m(t)| < \frac{1}{d_m}.
+  \]
+  Without loss of generality we can assume $w_m$, just like $\hat{C}_m$, is a monic polynomial, i.e. $w_m(t) = t^m + \dots$. We now define the difference polynomial
+  \[
+    f_m(t) = \hat{C}_m(t) - w_m(t) \in \mathcal{P}_{m-1},
+  \]
+  where the inclusion in the $m-1$ degree polynomials follows from the fact that $f_m$ is the difference of two monic polynomials of degree $m$. 
+
+  Consider the values of $f_m$ at the extreme points $t_k = T^{-1}(z_k)$ of $\hat{C}_m$ with $z_k$ as in \cref{eq:chebyshev_polynomial_extreme_points} and $T$ as in \cref{def:scaled_chebyshev_polynomial}. We distinguish between even and odd $k$. By \cref{eq:chebyshev_polynomial_extrema_scaled} and the assumption on $w_m$ we then obtain
+  \begin{enumerate}[leftmargin=1.3cm]
+    \item[\textbf{even} $k$:] $f_m(t_k) = \frac{1}{d_m} - w_m(t_k) > 0$.
+    \item[\textbf{odd} $k$:] $f_m(t_k) =  -\frac{1}{d_m} - w_m(t_k) < 0$. 
+  \end{enumerate}
+  From this we gather that $f_m(t_k)$ has alternating signs at the extreme points $t_k$ of $\hat{C}_m$. 
+
+  Now, the sequence $(z_k)_{k=0}^m$ is decreasing, and thus the sequence $(t_k)_{k=0}^m$ is also decreasing. This means that we can construct $m$ distinct intervals $I_k = [t_{k+1}, t_k]$ such that $f_m$ switches sign in each interval. By the intermediate value theorem, we know that $f_m$ must have at least one root in each interval $I_k$. This leads to the conclusion that $f_m$ has at least $m$ roots in the interval $[a, b]$. 
+
+  However, by the fundamental theorem of algebra $f_m$, a polynomial of degree $m-1$, can have at most $m-1$ distinct roots. The only possibility is for $f_m \equiv 0$, but then we have
+  \[
+    \max_{t\in[a,b]} |w_m(t)| = \max_{t\in[a,b]} |\hat{C}_m(t)| = \frac{1}{d_m},
+  \]
+  which contradicts our main assumption that $w_m$ is a polynomial such that $\max_{t\in[a,b]} |w_m(t)| < \frac{1}{d_m}$. Thus, we conclude that the Chebyshev polynomial $\hat{C}_m$ is indeed the solution to the minimization problem.
+\end{proof}
+
+\section{Rayleigh quotient} \label{sec:rayleigh_quotient}
+\begin{APPfancydef}
+  The Rayleigh quotient of a matrix $A$ and a vector $\mathbf{u}$ is defined as
+  \begin{equation}
+    R(A, \mathbf{u}) = \frac{\mathbf{u}^T A \mathbf{u}}{\mathbf{u}^T \mathbf{u}}.
+    \label{eq:rayleigh_quotient}
+  \end{equation}
+\end{APPfancydef}
+\begin{APPfancyth}{Rayleigh quotient bound}{rayleigh_quotient_bound}
+  Suppose $A$ is symmetric. Then the Rayleigh quotient $R(A, \mathbf{u})$ is bounded by the smallest and largest eigenvalue of $A$, i.e.
+  \[
+    \lambda_{\min} \leq R(A, \mathbf{u}) \leq \lambda_{\max}.
+  \]
+\end{APPfancyth}
+\begin{proof}
+  $A$ has diagonalization $A = Q \Lambda Q^T$, where $Q$ is an orthonormal eigenbasis and $\Lambda$ is the diagonal with real and positive eigenvalues $\lambda_i$ of $A$. The Rayleigh quotient satisfies with $\mathbf{v} = Q \mathbf{u}$
+  \[
+    R(A, \mathbf{u}) = \frac{\mathbf{u}^T A \mathbf{u}}{\mathbf{u}^T \mathbf{u}} = \frac{\mathbf{v}^T \Lambda \mathbf{v}}{\mathbf{v}^T \mathbf{v}} = \sum_{i=1}^n \frac{\lambda_i v_i^2}{\|v\|_2},
+  \]
+  which is a convex combination of the eigenvalues $\lambda_i$ of $A$. Thus, we have
+  \[
+    \lambda_{\min} \leq R(A, \mathbf{u}) \leq \lambda_{\max}.
+  \]
+\end{proof}

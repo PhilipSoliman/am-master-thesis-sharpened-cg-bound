@@ -1,0 +1,97 @@
+% problem
+\newtheoremstyle{boldnewline}
+  {\topsep}         % Space above
+  {\topsep}         % Space below
+  {}                % Body font
+  {}                % Indent amount
+  {\bfseries}       % Theorem head font
+  {\newline}        % Punctuation after theorem head
+  {1em}             % Space after theorem head
+  {}                % Theorem head spec
+
+\theoremstyle{boldnewline}
+\newtheorem{problem}{Problem}
+
+% theorem
+\newtheoremstyle{customthm}
+{}
+{}
+{\upshape}
+{}
+{\bfseries}
+{.}
+{.5em}
+{}
+\theoremstyle{customthm}
+\newtheorem{theorem}{Theorem}[chapter]
+\newtheorem{definition}{Definition}[chapter]
+
+%custom problem environment
+%todo: make box outline thinner
+%todo: reduce alpha of color
+%feedback from lisi: the conten should stand out more than the box itself
+\newtcbtheorem[number within=chapter,crefname={Problem}{Problems}]{fancyprob}{Problem}%
+{colback=white,colframe=chapter,fonttitle=\bfseries}{prob}
+\newtcbtheorem[number within=section,crefname={Problem}{Problems}]{APPfancyprob}{Problem}%
+{colback=white,colframe=chapter,fonttitle=\bfseries}{prob}
+
+% custom theorem environment
+\newtcbtheorem[number within=chapter,crefname={Theorem}{Theorems}]{fancyth}{Theorem}%
+{colback=white,colframe=subsection,fonttitle=\bfseries}{th}
+\newtcbtheorem[number within=section,crefname={Theorem}{Theorems}]{APPfancyth}{Theorem}%
+{colback=white,colframe=subsection,fonttitle=\bfseries}{th}
+
+% custom definition environment
+\newtcbtheorem[number within=chapter,crefname={Definition}{Definitions}]{fancydef}{Definition}%
+{colback=white,colframe=subsubsection,fonttitle=\bfseries}{def}
+\newtcbtheorem[number within=section,crefname={Definition}{Definitions}]{APPfancydef}{Definition}%
+{colback=white,colframe=subsubsection,fonttitle=\bfseries}{def}
+
+% research question environments
+\newtheorem*{researchq}{Research Question}
+\newtheorem*{subsidiaryq}{Subsidiary Questions}
+
+%tikz pictures
+\usetikzlibrary{intersections, arrows.meta, calc}
+
+% pgf figures
+\usepackage{pgf}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.14}
+% \usepackage{lmodern}
+\usepackage{import}
+\def\mathdefault#1{#1}
+\everymath=\expandafter{\the\everymath\displaystyle}
+
+% comment macros
+\newif\ifshowcomments
+\showcommentstrue
+% \showcommentsfalse
+\ifshowcomments
+    \newcommand{\mynote}[2]{\fbox{\bfseries\sffamily\scriptsize{#1}}
+        {\small$\blacktriangleright$\textsf{\emph{#2}}$\blacktriangleleft$}}
+    \newcommand{\citehere}[0]{\textcolor{red}{\fbox{\bfseries\sffamily\scriptsize{CITATION}}}}
+\else
+    \newcommand{\mynote}[2]{}
+    \newcommand{\citehere}[0]{}
+\fi
+\newcommand{\todo}[1]{\textcolor{blue}{\mynote{To do}{#1}}}
+
+% subfiles (for chapters)
+\usepackage{subfiles}
+
+% subfile macros
+\newcommand{\onlyinsubfile}[1]{#1}
+\newcommand{\notinsubfile}[1]{}
+
+% Bibliography
+% \usepackage[backend=biber, style=apa, citestyle=ieee]{biblatex}
+\usepackage[backend=biber,style=numeric,sortcites,sorting=nty,backref,natbib,hyperref]{biblatex}
+
+% set list style
+\setlist[enumerate, 1]{% global settings for the first level in enumerate environments
+  leftmargin = \parindent, % item text indentation
+  align = left,
+  labelwidth=\parindent,
+  labelsep = 2pt
+}

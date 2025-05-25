@@ -1,10 +1,37 @@
-*.aux
-*.log
-*.nav
-*.snm
-*.synctex.gz
-*.toc
-*.vrb
-*.fdb_latexmk
-*.fls
-*.DS_Store
+# Latex build files
+**/*.nav
+**/*.snm
+**/*.vrb
+**/*.toc
+**/*.aux
+**/*.log
+**/*.out
+**/*.bcf
+**/*.xml
+**/*.fdb_latexmk
+**/*.fls
+**/*.synctex.gz
+**/*synctex(busy)
+**/*.blg
+**/*.bbl
+**/*.DS_Store
+docs/
+
+# python
+**.venv
+**/__pycache__
+**/indent.log
+**/*.egg-info
+
+# c
+clibs/build/
+**/*.so
+
+# vscode
+.vscode/
+
+# report
+figures/
+
+# Latex-Workshop
+./build/

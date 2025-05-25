@@ -1,0 +1,75 @@
+\begin{titlepage}
+
+    \begin{center}
+
+        %% Print the title
+        {\makeatletter
+            \largecoverstyle\fontsize{45}{45}\selectfont\@title
+            \makeatother}
+
+        %% Print the subtitle
+        {\makeatletter
+            \ifdefvoid{\@subtitle}{}{\bigskip\coverstyle\fontsize{20}{20}\selectfont\@subtitle}
+            \makeatother}
+
+        \bigskip
+        \bigskip
+
+        by
+
+        \bigskip
+        \bigskip
+
+        %% Print the name of the author
+        {\makeatletter
+            \coverstyle\fontsize{25}{25}\selectfont\@author
+            \makeatother}
+
+        \bigskip
+        \bigskip
+
+        To obtain the degree of Master of Science
+
+        at the Delft University of Technology,
+
+        to be defended publicly on \theDefenseDateTime
+
+        \vfill
+
+        \begin{tabular}{lll}
+            Student number:   & 4945255                                                                                \\
+            Project duration: & \multicolumn{2}{l}{December 2024 -- September 2025}                                    \\
+            Thesis committee: & Prof. \ H. Schuttelaars,                            & TU Delft, responsible supervisor \\
+                              & Dr.\ A.\ Heinlein,                                  & TU Delft, daily supervisor       \\
+                              & F.\ Cumaru,                                         & TU Delft, daily co-supervisor    \\
+            Faculty:          & Faculty of Electrical Engineering,                                                     \\
+                              & Mathematics and Computer Science                                                       \\
+            Department:       & Delft Institute of Applied Mathematics (DIAM)                                          \\
+        \end{tabular}
+
+        \bigskip
+        \bigskip
+        Published on \thePublishDate.
+
+        \bigskip
+        \bigskip
+        \emph{This thesis is confidential and cannot be made public until \thePublicDate.}
+
+        \bigskip
+        \bigskip
+        An electronic version of this thesis is available at \url{http://repository.tudelft.nl/}.
+
+        \bigskip
+        \bigskip
+        Generative AI was used to assist in the writing of this thesis. The author is responsible for the content and accuracy of the work.
+
+    \end{center}
+
+    %% Insert the TU Delft logo at the bottom of the page
+    \begin{tikzpicture}[remember picture, overlay]
+        \node[above=10mm] at (current page.south) {%
+            \includegraphics{logo-black.pdf}
+        };
+    \end{tikzpicture}
+
+\end{titlepage}

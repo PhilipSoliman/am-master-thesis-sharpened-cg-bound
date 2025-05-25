@@ -1,0 +1,161 @@
+\section{Projection methods}\label{sec:projm}
+This section is largely based on the extremely instructive book by \citeauthor{iter_method_saad} about iterative methods \cite[Section 5: Projection Methods]{iter_method_saad}.
+
+Most iterative methods that aim to solve (large) linear systems like
+\[
+    Ax = b
+\]
+for $x, b \in \mathbb{R}^n$ and $A \in \mathbb{R}^{n \times n}$ a linear operator, can be interpreted as projection methods.
+
+A general description of projection methods is as follows let $x_0 \in \mathbb{R}^n$ be an initial guess, $\mathcal{K}, \mathcal{L}$ subspaces of $\mathbb{R}^n$, $r_0 = Ax_0 - b$ the residual.
+\begin{subequations}\label{eq:projm_general}
+    \begin{align}
+        \tilde{x}                & = x_0 + \delta, \quad \delta \in \mathcal{K} \label{eq:projm_ic_plus_correction}
+        \\
+        \quad (r_0 - A\delta, w) & = 0, \quad \forall w \in \mathcal{L}.
+        \label{eq:projm_orthogonality_condition}
+    \end{align}
+\end{subequations}
+where $\delta$ is the correction to the initial guess $x_0$ and $(\cdot, \cdot)$ is the inner product \cite[Equation 5.5-6]{iter_method_saad}. The second equation is the orthogonality condition.
+
+Furthermore, orthogonal projection methods are a subclass of projection methods where $\mathcal{K} = \mathcal{L}$. The most well-known orthogonal projection method is the conjugate gradient method,  \cref{sec:cg}. In the case where $\mathcal{K} \perp \mathcal{L}$, the method is oblique projection method. Examples of oblique projection
+
+\subsection{Matrix representation}
+Let V and W be the bases for $\mathcal{K}$ and $\mathcal{L}$ respectively. Then \cref{eq:projm_ic_plus_correction,eq:projm_orthogonality_condition} can be written as 
+\begin{align}
+    \tilde{x} & = x_0 + Vy, \\
+    W^TAVy    & = W^Tr_0.
+\end{align}
+In case $W^TAVy$ is invertible, the solution is \cite[Equation 5.7]{iter_method_saad}
+\begin{equation}
+    x = x_0 + (W^TAV)^{-1}W^Tr_0.
+    \label{eq:projm_approximate_solution}
+\end{equation}
+
+\subsection{Interpretation in terms of projectors}\label{sec:projm_projectors}
+
+\subsubsection{Residual projection methods} 
+Let $\mathcal{L} = A \mathcal{K}$ and define the approximate residual
+\begin{equation}
+    \tilde{r} = b - A\tilde{x} = r_0 + A\delta.
+    \label{eq:projm_residual}
+\end{equation}
+then $\tilde{r}$ is the residual is $r_0$ minus its orthogonal projection onto $\mathcal{L}$, $P_{\mathcal{L}}$. This can be expressed as \cite[Proposition 5.4]{iter_method_saad}
+\begin{equation}
+    \tilde{r} = r_0 - P_{\mathcal{L}}r_0 = (I - P_{\mathcal{L}})r_0.
+    \label{eq:projm_residual_projection}
+\end{equation}
+
+\subsubsection{Error projection methods} 
+Similarly, suppose $\mathcal{K} = \mathcal{L}$ and $A$ is SPD. Then the correction vector is obtained by constraining the residual vector $r_0 - A\delta$ to be orthogonal to $\mathcal{K}$.
+\begin{equation*}
+    (r_0 - A\delta, w) = 0, \quad \forall w \in \mathcal{K}.
+\end{equation*}
+Now, define the initial error
+\begin{equation}
+    e_0 = x_* - x_0
+    \label{eq:projm_error_initial}
+\end{equation}
+and the error after approximation
+\begin{equation}
+    \tilde{e} = x_* - \tilde{x}.
+    \label{eq:projm_error_approximation}
+\end{equation}
+Then,
+\begin{align*}
+    A\tilde{e} & = A(x_* - x_0 - \delta) \\
+               & = A(e_0 - \delta)       \\
+               & = r_0 - A\delta         \\
+\end{align*}
+Hence, the orthogonality condition can be written as
+\begin{align*}
+    (A\tilde{e}, w) = (e_0 - \delta, w)_{A} = 0, \quad \forall w \in \mathcal{K}.
+\end{align*}
+It follows that the correction vector $\delta$ is the error $e_0$ projected onto $\mathcal{K}$ with respect to the inner product $(\cdot, \cdot)_A$ \cite[Proposition 5.5]{iter_method_saad}.
+\begin{equation}
+    \tilde{e} = (I - P_{\mathcal{K}}^{A}) e_0.
+    \label{eq:projm_error_projection}
+\end{equation}
+
+\subsection{Projection-based iterative methods (1D)}
+In general these kinds of methods are invoked when $\mathcal{K} = \text{span}\{v\}$ and $\mathcal{L} = \text{span}\{w\}$ for some vectors $v, w \in \mathbb{R}^n$ and may be described by the algorithm
+\begin{align*}
+    r      & \leftarrow b - Ax,                 \\
+    \alpha & \leftarrow \frac{(r, w)}{(Av, w)}, \\
+    x      & \leftarrow x + \alpha v.
+\end{align*}
+
+\subsubsection{Steepest descent}
+For the case where $A$ is SPD 
+\begin{algorithm}[H]
+    \caption{Steepest descent \cite[Algorithm 5.2]{iter_method_saad}}
+    \begin{algorithmic}
+        \State $r \leftarrow b - Ax$
+        \State $p = Ar$
+        \While{$r \neq 0$}
+        \State $\alpha \leftarrow \frac{(r, r)}{(p, r)}$
+        \State $x \leftarrow x + \alpha r$
+        \State $r \leftarrow r - \alpha p$
+        \State $p \leftarrow Ar$
+        \EndWhile
+    \end{algorithmic}
+\end{algorithm}
+Each iteration is of the form $x \leftarrow x + \alpha d$, where $d$ is the search direction or the negative of the gradient of
+\[
+    f(x) = ||x - x_*||_A^2.
+\]
+The convergence rate is \cite[Theorem 5.9]{iter_method_saad}
+\begin{theorem}
+    Let $x_*$ be the solution to $Ax = b$. Then the steepest descent method converges to $x_*$ with the rate
+    \begin{equation}
+        ||x_* - x_{k+1}||_A^2 \leq \frac{\lambda_{\text{max}} - \lambda_{\text{min}}}{\lambda_{\text{max}} + \lambda_{\text{min}}} ||x_* - x_k||_A^2
+        \label{eq:steepest_descent_convergence}
+    \end{equation}
+    \label{th:steepest_descent_convergence}
+\end{theorem}
+
+\subsubsection{Minimal residual method} 
+In this case we only assume A is positive definite. The algorithm is
+\begin{algorithm}[H]
+    \caption{Minimal residual method \cite[Algorithm 5.3]{iter_method_saad}}
+    \begin{algorithmic}
+        \State $r \leftarrow b - Ax$
+        \State $p = Ar$
+        \While{$r \neq 0$}
+        \State $\alpha \leftarrow \frac{(r, p)}{(p, p)}$
+        \State $x \leftarrow x + \alpha r$
+        \State $r \leftarrow r - \alpha p$
+        \State $p \leftarrow Ar$
+        \EndWhile
+    \end{algorithmic}
+\end{algorithm}
+Here, each iteration minimizes the residual $f(x) = ||b - Ax||_A^2$.
+The convergence rate is \cite[Theorem 5.10]{iter_method_saad}
+\begin{theorem}
+    Let A be positive definite, and let
+    \[
+        \mu = \lambda_{\text{min}}(A + A^T) / 2, \quad \sigma = ||A||_2.
+    \]
+    Then the minimal residual method converges with the rate
+    \begin{equation}
+        ||r_{k+1}||^2 \leq \left( 1 - \frac{\mu^2}{\sigma^2} \right)^{1/2} ||r_k||^2.
+        \label{eq:minimal_residual_convergence}
+    \end{equation}
+\end{theorem}
+
+\subsubsection{Residual norm steepest descent} 
+Assume only that $A$ is square non-singular matrix. The algorithm is
+\begin{algorithm}[H]
+    \caption{Residual norm the steepest descent \cite[Alogrithm 5.4]{iter_method_saad}}
+    \begin{algorithmic}
+        \State $r \leftarrow b - Ax$
+        \While{$r \neq 0$}
+        \State $v \leftarrow = A^T r$
+        \State $p \leftarrow Av$
+        \State $\alpha \leftarrow \frac{||v||_2}{||p||_2}$
+        \State $x \leftarrow x + \alpha v$
+        \State $r \leftarrow r - \alpha p$
+        \EndWhile
+    \end{algorithmic}
+\end{algorithm}
+here is each step minimizes the residual norm $f(x) = ||b - Ax||_2$ in the direction of the negative gradient of $f$. This is equivalent to the steepest descent method applied to the normal equations $A^TAx = A^Tb$.

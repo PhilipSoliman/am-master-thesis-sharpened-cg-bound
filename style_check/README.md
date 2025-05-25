@@ -1,0 +1,2 @@
+# Style check
+This is just a simple tex file containing some of the major style components in any of the thesis documents. Its aim is to serve as a simple check on the style and formatting used throughout the thesis.

@@ -1,0 +1,28 @@
+\documentclass[../../manuscript.tex]{subfiles}
+
+\begin{document}
+
+\chapterimage{theory_ch_cover.png}
+\chapter{Theory}\label{ch:theory}
+\newpage
+
+% sections
+\input{sections/physical_system.tex}
+\newpage
+\input{sections/projection_methods.tex}
+\newpage
+\input{sections/schwarz_methods.tex}
+\newpage
+\input{sections/cg.tex}
+\newpage
+\input{sections/gmres.tex}
+\newpage
+\input{sections/nonlinear_systems.tex}
+\newpage
+
+% only print bibliography in subfile if it is compiled on its own (otherwise it will be printed in main.tex)
+\onlyinsubfile{%
+  \nochapterimage%
+  \printbibliography%
+}
+\end{document}

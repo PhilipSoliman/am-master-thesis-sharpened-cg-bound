@@ -1,0 +1,13 @@
+\documentclass[../../manuscript.tex]{subfiles}
+
+\begin{document}
+
+% only set counter to chapter number if compiling subfile on its own
+\chapter{Introduction}\label{ch:introduction}
+\input{content.tex}
+
+% only print bibliography in subfile if it is compiled on its own (otherwise it will be printed in main.tex)
+\onlyinsubfile{%
+  \printbibliography%
+}
+\end{document}

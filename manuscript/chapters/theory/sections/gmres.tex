@@ -1,0 +1,125 @@
+\section{Generalized Minimal Residual Method}\label{sec:gmres}
+This section is largely based on Section 6.5 from the book by \citeauthor{iter_method_saad} about iterative methods.
+
+CG is limited to symmetric positive definite matrices, but the Generalized Minimal Residual Method (GMRES) can be used for general matrices.
+
+GMRES is a Krylov subspace projection method with $\mathcal{K} = \mathcal{K}_m$ and $\mathcal{L} = A\mathcal{K}_m$. This method minimizes the residual norm, as is described in \cref{sec:projm_projectors} with \cref{eq:projm_residual_projection} and later in \cref{sec:cg_variants} with the second instance of \cref{cg_type:direct}.
+
+Furthermore, GMRES is similar to Arnoldi's method for linear systems (see \cref{sec:arnoldi,sec:arnoldi_linear_systems}). The only difference being that instead of performing a system solve after determining the Hessenberg matrix $H_m$, GMRES performs a least squares solve to find vector that minimizes the residual norm. To show this note that $x_m = x_0 + V_m y$ and consider
+\begin{align*}
+    b - Ax_m                                               & = b - A(x_0  + V_my)               \\
+                                                           & = r_0 - AV_my                      \\
+    \textrm{\cref{eqn:arnoldi_decomposition1}} \rightarrow & = \beta v_1 - V_{m+1}\bar{H}_m y   \\
+                                                           & = V_{m+1}(\beta e_1 - \bar{H}_m y) \\
+\end{align*}
+Now, using orthonormality of $V_{m+1}$, we can write
+\begin{align*}
+    y & = \underset{y}{\text{argmin}} ||b - Ax_m||                        \\
+      & = \underset{y}{\text{argmin}}||V_{m+1}(\beta e_1 - \bar{H}_m y)|| \\
+      & = \underset{y}{\text{argmin}} ||\beta e_1 - \bar{H}_m y||,        \\
+\end{align*}
+which is a least squares problem.
+
+Even though GMRES is the same as \cref{alg:arnoldi_linear_systems} with a least squares solve instead of a system solve, the algorithm is presented in \cref{alg:gmres} for completeness.
+\begin{algorithm}[H]
+    \caption{GMRES \cite[Algorithm 6.9]{iter_method_saad}}
+    \label{alg:gmres}
+    \begin{algorithmic}[1]
+        \State Compute $r_0 = b - Ax_0$, $\beta = ||r_0||_2$ and $v_1 = r_0 / \beta$
+        \State Define $H_m = \{0\}$
+        \State Define $V_1 = \{v_1\}$
+        \For{$j = 1, 2, \dots, m$}
+        \State $w_j = Av_j$
+        \For{$i = 1, 2, \dots, j$}
+        \State $h_{ij} = (w_j, v_i)$ and store $h_{ij}$ in $H_m$
+        \State $w_j = w_j - h_{ij}v_i$
+        \EndFor
+        \State $h_{j+1,j} = ||w_j||_2$
+        \If{$h_{j+1,j} = 0$}
+        \State $m = j$
+        \State break
+        \EndIf
+        \State $v_{j+1} = w_j / h_{j+1,j}$ and store $v_{j+1}$ into $V_{j+1}$
+        \EndFor
+        \State Construct Hessenberg matrix $\bar{H}_m \in \mathbb{R}^{(m+1)\times m}$
+        \State Solve the least squares problem $\min_{y \in \mathbb{R}^m} ||\beta e_1 - \bar{H}_m y||_2$
+        \State $x_m = x_0 + V_m y_m$
+    \end{algorithmic}
+\end{algorithm}
+
+\subsection{GMRES implementation details}
+Algorithm \ref{alg:gmres} does not explicitly produce successive approximations $x_k$ as in \cref{alg:arnoldi_linear_systems}. Hence, it is cumbersome to check for convergence. Moreover, employing a monolithic least squares solve at the end of the algorithm does not allow the use of intermediary results like in \cref{alg:arnoldi_linear_systems} or \cref{alg:dlanczos}.
+
+To tackle these issues, one can apply a rotation to the Hessenberg matrix at each iteration in order to make it upper triangular. The $i^{\textrm{th}}$ rotation matrix is of the form \cite[Equation 6.34]{iter_method_saad}
+\begin{equation}
+    \Omega_i =
+    \begin{pmatrix}
+        1 &        &   &      &  &     &   &        &   \\
+          & \ddots &   &      &  &     &   &        &   \\
+          &        & 1 &      &  &     &   &        &   \\
+          &        &   & c_i  &  & s_i &   &        &   \\
+          &        &   & -s_i &  & c_i &   &        &   \\
+          &        &   &      &  &     & 1 &        &   \\
+          &        &   &      &  &     &   & \ddots &   \\
+          &        &   &      &  &     &   &        & 1 \\
+    \end{pmatrix},
+\end{equation}
+where \cite[Equation 6.37]{iter_method_saad}
+\begin{align*}
+    c_i & = \frac{h^(i-1)_{ii}}{\sqrt{h^(i-1)_{ii}^2 + h_{i+1,i}^2}}, \\
+    s_i & = \frac{h_{i+1,i}}{\sqrt{h^(i-1)_{ii}^2 + h_{i+1,i}^2}},
+\end{align*}
+and $h^(i-1)_ii$ is the $i^{\textrm{th}}$ diagonal element of the Hessenberg matrix after $i-1$ iterations and rotations $\bar{H}^(i-1)_{i-1}$. That is 
+\[
+    \bar{H}^(k)_k = \Omega_{k}\dots\Omega_1\bar{H}_k = Q_k\bar{H}_k,
+\]
+where
+\[
+    Q_k = \Omega_k\dots\Omega_1.
+\]
+Define 
+\begin{subequations}
+    \begin{align}
+        \bar{R}_k &= \bar{H}^(k)_k \label{eq:gmres_Rk}, \\
+        \bar{g}_k &= Q_k(\beta e_1) = (\gamma_1, \dots, \gamma_{k+1})^T \label{eq:gmres_gk}.
+    \end{align}
+\end{subequations} Note that 
+\[
+    \det(\Omega_i) = 1, \quad \forall i,
+\]
+and, therefore, $\det(Q_k) = 1$. This implies that $Q_k$ is unitary. Consequently,
+\[
+    \min\|\beta e_1 - \bar{H}_m y\| = \min\|Q_m(\beta e_1 - \bar{H}_m y)\| = \min\|\bar{g}_m - \bar{R}_m y\|.
+\]
+The following theorem is then obtained \cite[Proposition 6.9]{iter_method_saad}.
+\begin{theorem}
+    Let $m \leq n$ and $\Omega_i, i=1, \ldots, m$ be the rotation matrices used to transform $\bar{H}_m$ into an upper triangular form. Denote by $\bar{R}_m, \bar{g}_m=\left(\gamma_1, \ldots, \gamma_{m+1}\right)^T$ the resulting matrix and right-hand side, as defined by \cref{eq:gmres_Rk,eq:gmres_gk} and by $R_m, g_m$ the $m \times m$ upper triangular matrix and m-dimensional vector obtained from $\bar{R}_m, \bar{g}_m$ by deleting their last row and component respectively. Then,
+    \begin{enumerate} [label=\roman*, ref=rotated GMRES\roman*]
+        \item\label{rotated_gmres:rank} The rank of $AV_m$ is equal to the rank of $R_m$. In particular, if $r_{m m} = 0$ then $A$ must be singular.
+        \item\label{rotated_gmres:least_squares} The vector $y_m$ which minimizes $\|\beta e_1 - \bar{H}_m y\|_2$ is given by
+              \[
+                  y_m = R_m^{-1} g_m.
+              \]
+        \item\label{rotated_gmres:residual} The residual vector at step $m$ satisfies 
+              \[
+                  b - Ax_m = V_{m+1}(\beta e_1 - \bar{H}_m y_m) = V_{m+1}Q_m^T(\gamma_{m+1}e_{m+1}),
+              \]
+              and, as a result,
+              \[
+                  \|b - Ax_m\|_2 = |\gamma_{m+1}|.
+              \]
+    \end{enumerate}
+\end{theorem}
+
+Item \ref{rotated_gmres:residual} is particularly useful for checking convergence, as \cite[Equation 6.47]{iter_method_saad}
+\[
+    \gamma_{k+1} = -s_j\gamma_j.
+\]
+Therefore, 
+\begin{equation}
+    \|r_k\| = |s_k||\gamma_k|.
+    \label{eq:gmres_residual}
+\end{equation}
+
+\subsection{Relation between GMRES and CG}
+\todo{Talk about how the iterates of the (rotated) GMRES method are related to the iterates of the CG method.}

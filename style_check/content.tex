@@ -1,0 +1,35 @@
+Welcome to the style check chapter.
+\section{Section}
+Some text. Want to see a cool figure? Check out \cref{fig:my_label}.
+\subsection{Subsection}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.5\textwidth]{logo-black.pdf}
+    \caption{Some random caption}
+    \label{fig:my_label}
+\end{figure}
+
+\subsubsection{Subsubsection 1}\label{subsubsec:subsubsection1}
+Hey I am a wa and here is a cool equation that explains how wa I am, taken from \cite{ams_coarse_space_comp_study_Alves2024}:
+\begin{equation}
+    \text{wa}_{\text{me}} = \text{wa}_{\text{us}} - \text{wa}_{\text{you}}
+    \label{eq:wa}
+\end{equation}
+
+\subsubsection{Subsubsection 2}
+\paragraph{Paragraph}
+Hey I am a paragraph, did you forget about the previous \cref{eq:wa} from \cref{subsubsec:subsubsection1}? I am here to remind you that it exists.
+
+Also look at this nicely formatted code snippet:
+\begin{lstlisting}[language=Python,caption={Python Code Snippet},label={lst:code}]
+def wa():
+    print("wa")
+
+\end{lstlisting}
+
+\subsection{Subsection 2}
+Hey remember the \cref{fig:my_label}? It's cool right? What about the code snippet \ref{lst:code}? It's also cool right? What about another equation? Here you go:
+\begin{equation}
+    \exp(\text{wa}_{\text{me}}) = \exp(\text{wa}_{\text{us}}) / \exp(\text{wa}_{\text{you}})
+    \label{eq:wa2}
+\end{equation}

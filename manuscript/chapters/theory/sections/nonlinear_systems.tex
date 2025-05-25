@@ -1,0 +1,174 @@
+\section{Nonlinear systems}\label{sec:nonlinear_systems}
+We start out with a general formulation of a nonlinear system of equations. Define the non-linear operator $F: \mathbb{R}^N\rightarrow \mathbb{R}^N$ as
+\begin{equation}
+  F(x) = 0,
+  \label{eq:nonlinear_system}
+\end{equation}
+Some general restrictions are placed on $F$, which can be weakened depending on the method
+\begin{enumerate}[label=\roman*,ref=$F$-criterium \roman*]
+  \item\label{F_criteria:existence} Existence: \ref{eq:nonlinear_system} has a solution $x^*$.
+  \item\label{F_criteria:lipschitz} Lipschitz continuity: $F': \Omega \rightarrow \mathbb{R}^{N \times N}$ is Lipschitz continuous with constant $\gamma$.
+  \item\label{F_criteria:nonsigular} Non-singularity: $F'(x^*)$ is nonsingular.
+\end{enumerate}
+Define $\mathbb{B}(r) = \{x\in\mathbb{R}^N| ||e||<r\}$ to be the ball of radius $r$ centered at the one of the roots of $F$ with $e = x-x^{*}$. The following theorem then follows from the restrictions above \cite[lemma 4.3.1]{nonlinear_cg_Kelley_1995}.
+\begin{theorem}
+  Assume that the standard assumptions \cref{F_criteria:existence,F_criteria:lipschitz,F_criteria:nonsigular} hold. Then there is $\delta>0$ so that for all $x \in \mathcal{B}(\delta)$
+  \begin{align}
+    \left\|F^{\prime}(x)\right\|      & \leq 2\left\|F^{\prime}\left(x^*\right)\right\|      \\
+    \left\|F^{\prime}(x)^{-1}\right\| & \leq 2\left\|F^{\prime}\left(x^*\right)^{-1}\right\|
+  \end{align}
+  and
+  \begin{equation}
+    \frac{\|e\|}{2\left\|F^{\prime}\left(x^*\right)^{-1}\right\|}  \leq\|F(x)\| \leq 2\left\|F^{\prime}\left(x^*\right)\right\|\|e\|
+  \end{equation}
+  \label{thm:nonlinear_system}
+\end{theorem}
+
+Various kinds of convergence known as `q-type' for iteration techniques can be defined for nonlinear systems. The following definitions are taken from \cite[Section 4.3]{nonlinear_cg_Kelley_1995}. If $x_k \rightarrow x^{*}$, then for $k$ sufficiently large, there exists convergence that is:
+\begin{enumerate}[label=\roman*,ref=nonlinear \roman*]
+  \item\label{conv_type:qlinear} q-linear with q-factor $\nu \in(0,1)$
+  \[
+    ||x_{k+1} - x^*|| \leq \nu ||x_k - x^*||,
+  \]
+  \item\label{conv_type:qsuper_linear} q-superlinear
+  \[
+    \lim_{k\rightarrow\infty} \frac{||x_{k+1} - x^*||}{||x_k - x^*||} = 0,
+  \]
+  \item\label{conv_type:qquadratic} q-quadratic with constant $C>0$
+  \[
+    ||x_{k+1} - x^*|| \leq C ||x_k - x^*||^2,
+  \]
+  \item\label{conv_type:qsuper_linear_order} q-quadratic with q-order $\mu > 1$ and constant $C>0$
+  \[
+    ||x_{k+1} - x^*|| \leq C ||x_k - x^*||^{\mu}.
+  \]
+\end{enumerate}
+For instance, Fixed Point (FP) or Richardson iteration method is q-linear with constant equal to the Lipschitz constant of the operator \cite[Theorem 4.2.1]{nonlinear_cg_Kelley_1995}. Moreover, assuming \cref{F_criteria:existence,F_criteria:lipschitz,F_criteria:nonsigular} hold, then Newton's method is q-quadratic with $C = \gamma \|F'(x^*)\|$ provided that the initial guess is close enough to the solution \cite[Theorem 5.1.2]{nonlinear_cg_Kelley_1995}. Additionally, The chord method is q-linear with q-factor $\nu = C_C\|e_0\|$ \cite[Theorem 5.4.2]{nonlinear_cg_Kelley_1995}, where $C_C = \bar{C}(1+2\gamma)$ and $\bar{C} = C + 16 \|F(x^*)^{-1}\|^2\|F(x^*)\| + 4\|F(x^*)^{-1}\|$ \cite[Theorem 5.4.1]{nonlinear_cg_Kelley_1995}.
+
+Moreover, it can occur that the operator $F$ introduces errors that are independent of the approximation error. In this case a different kind of convergence `r-type' is used to describe the behavior of the method \cite[Definition 4.1.3]{nonlinear_cg_Kelley_1995}
+\begin{definition}
+  Let $\left\{x_n\right\} \subset R^N$ and $x^* \in R^N$. Then $\left\{x_n\right\}$ converges to $x^*$ r-(quadratically, super-linearly, linearly) if there is a sequence $\left\{\xi_n\right\} \subset R$ converging q-(quadratically, super-linearly, linearly) to zero such that
+  \[
+    \left\|x_n-x^*\right\| \leq \xi_n
+  \]
+  We say that $\left\{x_n\right\}$ converges r-super-linearly with r-order $\mu>1$ if $\xi_n \rightarrow 0$ q-super-linearly with q -order $\mu$.
+\end{definition}
+
+\subsection{Inexact Newton-Raphson method}
+The Newton-Raphson (NR) iteration or step $s$ for the $k^{\textrm{th}}$ iterate such that $x_{k+1} = x_k + s$ given is exactly defined as
+\[
+  F'(x_k)s = -F(x_k).
+\]
+However, for large sparse systems it is computationally expensive to solve the linear system exactly. Instead, we can solve the linear system approximately by using an iterative method, like CG or GMRES (see \cref{sec:cg,sec:gmres}). However, this leads to an approximate newton step, and thus the Inexact Newton-Raphson (INR) method is defined as follows \cite[Equation 6.1]{nonlinear_cg_Kelley_1995}:
+\[
+  \| F'(x_k)s + F(x_k) \| \leq \eta_k \| F(x_k) \|,
+\]
+where $\eta_k$ is an inexactness parameter.
+
+\subsubsection{Convergence of INR}
+The following theorem is taken from \cite[Theorem 6.1.2]{nonlinear_cg_Kelley_1995} and uses \cref{thm:nonlinear_system} to state that the inexact Newton method converges q-linearly or faster
+\begin{theorem}
+  Let \cref{F_criteria:existence,F_criteria:lipschitz,F_criteria:nonsigular} hold. Then there are $\delta$ and $\bar{\eta}$ such that if $x_0 \in \mathcal{B}(\delta),\left\{\eta_k\right\} \subset[0, \bar{\eta}]$ and $\bar{\eta}$ is such that $C_I < 1$ then the inexact Newton iteration converges q-linearly to $x^*$ with constant $C_I = \left(C + 4 \kappa(F'(x^*))\right)(\bar{\eta} + \delta)$. Moreover,
+  \begin{enumerate}
+    \item if $\eta_k \rightarrow 0$ the convergence is q-superlinear,
+    \item if $\eta_n \leq C_\eta\left\|F\left(x_n\right)\right\|^p$ for some $C_\eta>0$ the convergence is q-superlinear with q -order $1+p$.
+  \end{enumerate}
+  \label{thm:inexact_newton}
+\end{theorem}
+Additionally, if the constraint on $\bar{\eta}$ is relaxed to $0 \leq \eta_k \leq \bar{\eta} < 1$ a result similar to \cref{thm:inexact_newton} can be obtained \cite[Theorem 6.1.4]{nonlinear_cg_Kelley_1995}. In this case, the convergence is with respect to the norm $\|\cdot\|_*$, which is defined as $\|\cdot\|_* = \|F'(x^*)\cdot\|$.
+\begin{theorem}
+  Let \cref{F_criteria:existence,F_criteria:lipschitz,F_criteria:nonsigular} hold. Then there is $\delta$ such that if $x_0 \in \mathcal{B}(\delta),\left\{\eta_k\right\} \subset[0, \eta]$ with $\eta\leq\bar{\eta}<1$, then the inexact Newton iteration converges q-linearly with respect to $\|\cdot\|_*$ to $x^*$ with constant $\bar{\eta}$. Moreover,
+  \begin{enumerate}
+    \item if $\eta_k \rightarrow 0$ the convergence is q-superlinear,
+    \item if $\eta_n \leq C_\eta\left\|F\left(x_n\right)\right\|^p$ for some $C_\eta>0$ the convergence is q-superlinear with q -order $1+p$.
+  \end{enumerate}
+  \label{thm:inexact_newton_star}
+\end{theorem}
+Furthermore, errors made in the calculation of $F$ do not directly slow down the convergence of the method. However, they do introduce a separate error term resulting in r- instead q-type convergence \cite[Theorems 5.4.6, 6.1.5, 6.1.6]{nonlinear_cg_Kelley_1995}.
+
+\subsubsection{Implementation of INR}
+As mentioned in the beginning of this section, the linear system in the INR method is solved approximately. If one of the Krylov subspace method is used, then for each iteration thereof the action of $F'(x_k)$ on a vector is required. That is, $F'(x_k)v$, where $v$ is a basis vector of the Krylov subspace (see \cref{alg:arnoldi_linear_systems,alg:gmres}), or provided $F'(x_k)$ is SPD, $F'(x_k)p$ where $p$ is the search direction in the CG method (see \cref{alg:cg}). This action of $F'(x_k)$ on a vector $v$ can be approximated in two ways
+\begin{enumerate}
+  \item By using a finite difference approximation to get an approximation of the Jacobian matrix $F'(x_k)$ and, subsequently applying said matrix directly.
+  \item By using a directional derivative of $F$ at $x_k$ in the direction of the vector $v$. For instance, the first-order accurate forward difference approximation of the directional derivative is given by
+        \begin{equation}
+          D_h F(x ; v) =
+          \begin{cases*}
+            0,                                              & v = 0,           \\
+            \|v\| \frac{F(x + h\|x\|v/\|v\|)-F(x)}{h\|x\|}, & v,x \neq 0,      \\
+            \|v\| \frac{F(h v/\|v\|)-F(x)}{h},              & v \neq 0, x = 0.
+          \end{cases*}
+        \end{equation}
+\end{enumerate}
+In the remainder of this section a general Krylov subspace method with corresponding operator $G$ is denoted by $\text{Krylov}(r_0, G)$. For instance, $\text{Krylov}(r_0, F'(x_k))$ is the Krylov subspace method with the exact jacobian $F'(x_k)$ and initial residual $r_0 = F(x_k)$, or $\text{Krylov}(r_0, D_h F(x_k; \cdot))$ is the Krylov subspace method with the directional derivative $D_h F(x_k; \cdot)$ and initial residual $r_0$. Additionally, note that any of the Krylov methods from \cref{alg:arnoldi_linear_systems,alg:cg,alg:gmres} produce intermediate residuals $\rho_j$ (see \cref{eq:arnoldi_residual_size,eq:cg_residual_update,eq:gmres_residual}), which can be used to check for convergence.
+
+Algorithm \ref{alg:inr_krylov} describes a general recipe for solving nonlinear systems with INR
+\begin{algorithm}[H]
+  \caption{INR-Krylov\cite[Algorithms 6.2.1 and 6.3.1]{nonlinear_cg_Kelley_1995}}
+  \label{alg:inr_krylov}
+  \begin{algorithmic}
+    \State $r_0$ = $\|F(x_0)\|/\sqrt{N}$, $k=0$
+    \While{$\|F(x_k)\| > \text{tol}$}
+    \State $k = k + 1$
+    \State Select $\eta$ (see \cref{sec:inr_krylov_inexactness})
+    \State Perform $\text{Krylov}(-F(x_k), G)$ until $\rho_j \leq \eta \|F(x_k)\|$ or until $j=j_{\text{max}}$ to get $s_k$
+    \State $x_{k+1} = x_k + s_k$
+    \EndWhile
+  \end{algorithmic}
+\end{algorithm}
+where the tolerance $\text{tol} = \tau_a + \tau_r r_0$ (see \cref{sec:inr_krylov_inexactness}) and $j_{\text{max}}$ is the maximum number of iterations for the Krylov method. The convergence of the INR-Krylov method is discussed in the next section.
+
+\subsubsection{INR-Krylov convergence}
+The approximation of the jacobian introduces error. The next theorems are the equivalents of \cref{thm:inexact_newton,thm:inexact_newton_star} \cite[Theorem 6.2.1]{nonlinear_cg_Kelley_1995}.
+\begin{theorem}
+  Let \cref{F_criteria:existence,F_criteria:lipschitz,F_criteria:nonsigular} hold. Then there are $\delta, \sigma$ such that if $x_0 \in \mathcal{B}(\delta)$ and the sequences $\left\{\eta_k\right\}$ and $\left\{\eta_k\right\}$ satisfy
+  \[
+    \sigma_k = \eta_k + C_{\textrm{INR-K}} h_k \leq \sigma,
+  \]
+  then the forward difference INR-Krylov with iteration $G=D_{h_k}(x_k; \cdot)$ converges q-linearly with constant $C_{\textrm{INR-K}} = 4\gamma(\|x^*\| + \delta)(1+\eta)\|F'(x^*)^{-1}\|$. Moreover,
+  \begin{enumerate}
+    \item if $\sigma_k \rightarrow 0$ the convergence is q-superlinear,
+    \item if $\sigma_k \leq C_\eta\left\|F\left(x_n\right)\right\|^p$ for some $C_\eta>0$ the convergence is q-superlinear with q -order $1+p$.
+  \end{enumerate}
+  \label{thm:inr_krylov}
+\end{theorem}
+Similarly, the constraint on the sequence $\sigma_k$ can be somewhat relaxed resulting in the next theorem
+\begin{theorem}
+  Let \cref{F_criteria:existence,F_criteria:lipschitz,F_criteria:nonsigular} hold. Then there are $\delta, \sigma$ such that if $x_0 \in \mathcal{B}(\delta)$ and the sequences $\left\{\eta_k\right\}$ and $\left\{\eta_k\right\}$ satisfy
+  \[
+    \sigma_k = \eta_k + C_{\textrm{INR-K}} h_k \leq \sigma,
+  \]
+  then the forward difference inexact NR iteration converges q-linearly with respect $\|\cdot\|_*$. Moreover,
+  \begin{enumerate}
+    \item if $\sigma_k \rightarrow 0$ the convergence is q-superlinear,
+    \item if $\sigma_k \leq C_\eta\left\|F\left(x_n\right)\right\|^p$ for some $C_\eta>0$ the convergence is q-superlinear with q -order $1+p$.
+  \end{enumerate}
+  \label{thm:inr_krylov_star}
+\end{theorem}
+Note that in the case that $h_k$ is around machine precision $\sigma_k \approx \eta_k$, provided that $\eta_k$ is not too small.
+
+\subsubsection{INR-Krylov inexactness parameter}\label{sec:inr_krylov_inexactness}
+The inexactness parameter $\eta_k$ can be chosen in various ways. For instance, it can be chosen to be a constant, a function of the residual, or a function of the iteration number. The following is taken from \cite[Equations 6.19 and 6.20]{nonlinear_cg_Kelley_1995} and provides a guideline for choosing $\eta_k$. Let
+\[
+  \eta_k^A = \gamma \frac{\| F(x_k) \|^2}{\|F(x_{k-1})\|^2},
+\]
+then define
+\begin{equation*}
+  \eta_n^B=
+  \begin{cases}
+    \eta_{\max },                                                                    & k=0,                             \\
+    \min \left(\eta_{\max }, \eta_k^A\right),                                        & k>0, \gamma \eta_{k-1}^2 \leq .1 \\
+    \min \left(\eta_{\max }, \max \left(\eta_k^A, \gamma \eta_{k-1}^2\right)\right), & k>0, \gamma \eta_{k-1}^2>.1
+  \end{cases}
+\end{equation*}
+and finally set
+\begin{equation}
+  \eta_k = \min \left(\eta_{\max }, \max \left(\eta_k^B, \frac{1}{2}\tau_t/\|F(x_k)\|\right)\right),
+\end{equation}
+where 
+\[
+  \tau_t = \tau_a + \tau_r \|F(x_0)\|.
+\]
+The parameters $\eta_{\max}, \tau_a, \tau_r$ are user-defined constants. The parameter $\gamma$ is the Lipschitz constant of the operator $F$. For instance, for a 2D finite difference problem one can set $\tau_a =\tau_r = h^2$, where $h$ is the grid constant.
+
+This choice of $\eta_k$ is based on the assumption that the error in the approximation of the jacobian is proportional to the error in the approximation of the residual. The parameter $\eta_k$ is then chosen to be the minimum of the maximum of the two errors and a user-defined constant. The parameter $\eta_{\max}$ is used to prevent the inexactness parameter from becoming too large. The parameter $\tau_t$ is used to prevent the inexactness parameter from becoming too small. The parameter $\tau_a$ is used to prevent the inexactness parameter from becoming too small in the beginning of the iteration, while $\tau_r$ does the same for the end of the iteration. This prevents so-called `safeguarding' during and `over-solving' at the end of the iteration \cite[Section 6.3]{nonlinear_cg_Kelley_1995}.
