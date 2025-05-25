@@ -1,8 +1,9 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-from clibs.custom_cg import CustomCG
-from utils.utils import (
+# from clibs.custom_cg import CustomCG
+from lib.custom_cg import CustomCG
+from lib.utils import (
     get_cli_args,
     mpl_graph_plot_style,
     save_latex_figure,
@@ -12,7 +13,7 @@ from utils.utils import (
 
 # constants
 ARGS = get_cli_args()
-FIGWIDTH = 6
+FIGWIDTH = 5
 LEGEND_HEIGHT = 0.1
 DOMAIN = (0, 20)
 CODOMAIN = (-1, 1)

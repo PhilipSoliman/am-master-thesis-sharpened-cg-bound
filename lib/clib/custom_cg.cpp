@@ -34,9 +34,6 @@ extern "C"
 
 bool custom_cg(double *Af, double *b, double *x, double *x_m, double *alpha, double *beta, const int size, int &niters, const int max_iter, const double tol, const bool save_iterates, double *iterates, const bool safe_search_directions, double *search_directions, const bool exact_convergence, double *x_exact)
 {
-   // lapack_int n, info;
-   // n = size;
-
    // convert Af to A
    double **A = (double **)malloc(size * sizeof(double *));
    for (int i = 0; i < size; i++)
@@ -60,6 +57,18 @@ bool custom_cg(double *Af, double *b, double *x, double *x_m, double *alpha, dou
    double *p = (double *)malloc(size * sizeof(double));
    std::copy(r, r + size, p);
 
+   // initial residual
+   double r0_dot_r0;
+   dot_product(r, r, r0_dot_r0, size);
+   double r0_norm = sqrt(r0_dot_r0);
+
+   // initial error
+   double e0[size];
+   subtract(x_exact, x, e0, size);
+   double e0_dot_e0;
+   dot_product(e0, e0, e0_dot_e0, size);
+   double e0_norm = sqrt(e0_dot_e0);
+
    int j;
    for (j = 0; j < max_iter; j++)
    {
@@ -72,10 +81,10 @@ bool custom_cg(double *Af, double *b, double *x, double *x_m, double *alpha, dou
       {
          double em[size];
          subtract(x_exact, x_m, em, size);
-         double em_norm;
-         dot_product(em, em, em_norm, size);
-         em_norm = sqrt(em_norm);
-         if (em_norm < tol)
+         double em_dot_em;
+         dot_product(em, em, em_dot_em, size);
+         double e_ratio = sqrt(em_dot_em)/e0_norm;
+         if (e_ratio < tol)
          {
             success = true;
             break;
@@ -83,8 +92,8 @@ bool custom_cg(double *Af, double *b, double *x, double *x_m, double *alpha, dou
       }
       else
       {
-         double r_norm = sqrt(r_dot_r);
-         if (r_norm < tol)
+         double r_ratio = sqrt(r_dot_r)/r0_norm;
+         if (r_ratio < tol)
          {
             success = true;
             break;
