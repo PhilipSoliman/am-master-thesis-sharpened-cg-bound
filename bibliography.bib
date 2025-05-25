@@ -276,3 +276,29 @@
   url                    = {http://www.ddm.org/DD03/On\_the\_Schwarz\_Alternating\_Method\_III\_A\_Variant\_for\_Nonoverlapping\_Subdomains\_(Lions).pdf},
   year                   = 1990
 }
+@article{ddp_for_multiscale_flows_in_high_contrast_media_Galvis2010,
+  author   = {Galvis, Juan and Efendiev, Yalchin},
+  title    = {Domain Decomposition Preconditioners for Multiscale Flows in High-Contrast Media},
+  journal  = {Multiscale Modeling \& Simulation},
+  volume   = {8},
+  number   = {4},
+  pages    = {1461-1483},
+  year     = {2010},
+  doi      = {10.1137/090751190},
+  url      = {https://doi.org/10.1137/090751190},
+  eprint   = {https://doi.org/10.1137/090751190},
+  abstract = {In this paper, we study domain decomposition preconditioners for multiscale flows in high-contrast media. We consider flow equations governed by elliptic equations in heterogeneous media with a large contrast in the coefficients. Our main goal is to develop domain decomposition preconditioners with the condition number that is independent of the contrast when there are variations within coarse regions. This is accomplished by designing coarse-scale spaces and interpolators that represent important features of the solution within each coarse region. The important features are characterized by the connectivities of high-conductivity regions. To detect these connectivities, we introduce an eigenvalue problem that automatically detects high-conductivity regions via a large gap in the spectrum. A main observation is that this eigenvalue problem has a few small, asymptotically vanishing eigenvalues. The number of these small eigenvalues is the same as the number of connected high-conductivity regions. The coarse spaces are constructed such that they span eigenfunctions corresponding to these small eigenvalues. These spaces are used within two-level additive Schwarz preconditioners as well as overlapping methods for the Schur complement to design preconditioners. We show that the condition number of the preconditioned systems is independent of the contrast. More detailed studies are performed for the case when the high-conductivity region is connected within coarse block neighborhoods. Our numerical experiments confirm the theoretical results presented in this paper.}
+}
+@article{from_potential_theory_to_matrix_iterations_in_six_steps_Driscoll1998,
+  author   = {Driscoll, Tobin A. and Toh, Kim-Chuan and Trefethen, Lloyd N.},
+  title    = {From Potential Theory to Matrix Iterations in Six Steps},
+  journal  = {SIAM Review},
+  volume   = {40},
+  number   = {3},
+  pages    = {547-578},
+  year     = {1998},
+  doi      = {10.1137/S0036144596305582},
+  url      = {https://doi.org/10.1137/S0036144596305582},
+  eprint   = {https://doi.org/10.1137/S0036144596305582},
+  abstract = { The theory of the convergence of Krylov subspace iterations for linear systems of equations (conjugate gradients, biconjugate gradients, GMRES, QMR, Bi-CGSTAB, and so on) is reviewed. For a computation of this kind, an estimated asymptotic convergence factor \$\rho \le 1\$ can be derived by solving a problem of potential theory or conformal mapping. Six approximations are involved in relating the actual computation to this scalar estimate. These six approximations are discussed in asystematic way and illustrated by a sequence of examples computed with tools of numerical conformal mapping and semidefinite programming. }
+}
