@@ -6,7 +6,7 @@ This section outlines the setup process for the project, including the installat
 
 ### Requirements
 Check that you have the following 
-- `python` (3.9 or higher)
+- `python` (3.10 or higher)
 - `make` (consider using [MSYS2](https://www.msys2.org/) on Windows)
 - `gcc` (again, consider using [MSYS2](https://www.msys2.org/) on Windows)
 - Full [TeXLive](https://www.tug.org/texlive/windows.html) installation. On Linux this can be done using the following command:

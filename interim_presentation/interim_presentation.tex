@@ -1,0 +1,52 @@
+% add style folder to path
+\makeatletter
+\def\input@path{{../style/}}
+\makeatother
+
+\documentclass[t, aspectratio=169, english, table]{tudelft-beamer}
+
+\input{preamble.tex}
+\addbibresource[type=file, glob, datatype=bibtex, location=local]{../bibliography.bib}
+
+% redefine image path
+\graphicspath{{../images}{../figures}}
+
+% main title
+\title[]{Sharpened CG Iteration Bound for Schwarz-preconditioned High-contrast Heterogeneous Scalar Elliptic PDEs}
+\subtitle{Going Beyond Condition Number}
+\author[]{P.~Soliman\inst{1}}
+
+% define a graphic to be shown next to the title
+\titlegraphic{\includegraphics[width=0.4\paperwidth]{two_cluster_respoly.png}}
+
+\institute[University]{
+  \strut\llap{\inst{1}\,}Delft University of Technology
+}
+\date[EEMCS-DIAM-NA MSc. Thesis \monthyeardate]{EEMCS-DIAM Numerical Analysis MSc. Thesis Presentation, \monthyeardate}
+
+% command for including images
+\newcommand{\absimage}[4][0.5,0.5]{%
+	\begin{textblock}{#3}%width
+		[#1]% alignment anchor within image (centered by default)
+		(#2)% position on the page (origin is top left)
+		\includegraphics[width=#3\paperwidth]{#4}%
+	\end{textblock}%
+}
+
+\begin{document}
+
+\titleframe
+
+\input{sections/opening.tex}
+
+\input{sections/toc.tex}
+
+\input{sections/questions.tex}
+
+\input{sections/background.tex}
+
+\input{sections/results.tex}
+
+\input{sections/outlook.tex}
+
+\end{document}

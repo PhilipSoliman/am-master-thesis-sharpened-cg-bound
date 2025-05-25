@@ -4,6 +4,7 @@ import sys
 import venv
 
 VENV_NAME = ".venv"
+DYNAMIC_LIBRARY_FOLDER = "clibs"
 
 
 def create_virtual_environment():

@@ -1,4 +1,9 @@
-\documentclass{../tudelft-report}
+% add style folder to path
+\makeatletter
+\def\input@path{{../style/}}
+\makeatother
+
+\documentclass{tudelft-report}
 
 \input{../preamble.tex}
 
@@ -7,7 +12,7 @@
 \DeclareFieldFormat{url}{\href{#1}{\mkbibacro{URL}}}
 
 % redefine image path
-\graphicspath{{../images}{../figures}{images}}
+\graphicspath{{../images}{../figures}}
 
 \begin{document}
 
