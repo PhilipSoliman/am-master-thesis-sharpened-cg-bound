@@ -41,6 +41,7 @@ rng = np.random.default_rng(42)
 # initiate problem
 b = rng.random(PROBLEM_SIZE)
 x0 = np.zeros(PROBLEM_SIZE)
+r0_norm = np.linalg.norm(b, ord=2)
 
 # construct matrices with various eigenvalue distributions, but same condition number
 As = []
@@ -103,9 +104,6 @@ for i, A in enumerate(As):
 
     # upperbound for the number of iterations
     iteration_upperbound = custom_cg.calculate_iteration_upperbound()
-    print(
-        f"#clusters: {CLUSTER_COUNTS[i]}, spread: {CLUSTER_SPREAD}, m_th: {iteration_upperbound}"
-    )
 
     # calculate residual polynomials
     cg_poly_x, cg_poly_r, cg_poly_e = custom_cg.cg_polynomial(RESOLUTION, domain=DOMAIN)
@@ -211,12 +209,12 @@ for i, A in enumerate(As):
     ax_sep = axs_seperate[i][0, 1]
     residuals = custom_cg.calculate_residuals()
     residuals_norm = np.linalg.norm(residuals, axis=1)
-    ax.semilogy(residuals_norm, label="residual norm")
-    ax_sep.semilogy(residuals_norm, label="residual norm")
+    ax.semilogy(residuals_norm/r0_norm, label="residual  ratio")
+    ax_sep.semilogy(residuals_norm/r0_norm, label="residual norm ratio")
     ax.set_xlabel(r"$\mathbf{m}$")
     ax_sep.set_xlabel(r"$\mathbf{m}$")
-    ax.set_ylabel(r"$\mathbf{||r_m||_2}$")
-    ax_sep.set_ylabel(r"$\mathbf{||r_m||_2}$")
+    ax.set_ylabel(r"$\mathbf{||r_m||_2/||r_0||_2}$")
+    ax_sep.set_ylabel(r"$\mathbf{||r_m||_2/||r_0||_2}$")
     ax.set_ylim(bottom=1e-16, top=1e2)
     ax_sep.set_ylim(bottom=1e-16, top=1e2)
     ax.set_xlim(left=0, right=iteration_upperbound + 1)
@@ -226,6 +224,11 @@ for i, A in enumerate(As):
     ax.axhline(y=custom_cg.tol, linestyle="--", zorder=8)
     ax_sep.axhline(
         y=custom_cg.tol, color=ax.lines[-1].get_color(), linestyle="--", zorder=8
+    )
+
+    # print meta information
+    print(
+        f"#clusters: {CLUSTER_COUNTS[i]}, spread: {CLUSTER_SPREAD}, m_th: {iteration_upperbound}, ||r_m||/||r_0|| = {residuals_norm[-1]/r0_norm:.2e}"
     )
 
 
