@@ -1,0 +1,143 @@
+\chapter{Related Work}\label{ch:literature}
+\section{The spectral gap arising in Darcy problems}\label{sec:spectral_gap_darcy}
+In \cref{prob:elliptic_problem}, high-contrast $\mathcal{C}(x)$ (e.g., $10^6$ in conductive channels vs.\ $ 10^{-6} $ in barriers) means diffusion concentrates in high-permeability regions, while low-permeability zones resist it. This heterogeneity introduces modes (eigenvectors) corresponding to small eigenvalues on the order of the inverse of the high conductivity, i.e. $\mathcal{O}(10^{-6})$. In fact, the number of these eigenmodes in any (sub)domain is equal to the number of connected conductivity regions \cite{ddp_for_multiscale_flows_in_high_contrast_media_Galvis2010}. High-contrast $\mathcal{C}(x)$ thus splits the eigenspectrum of the stiffness matrix into two parts: a low-frequency and high-frequency part. This phenomenon is known as the \textit{spectral gap}.
+
+\section{Techniques for high-contrast problems}\label{sec:tailored_coarse_spaces}
+The small eigenvalues of the stiffness matrix $A$ in \cref{prob:elliptic_problem} lead to a large condition number $\kappa$, which in turn leads to slow convergence of the CG method through \cref{th:cg_convergence_rate_bound}. Modern techniques effectively shrink the size of the spectral gap or try to (partly) remove the small eigenvalues from the spectrum with the aim of reducing $\kappa$. Below we discuss the use of multiscale solvers and or construct a coarse space that are \textit{robust to high contrast}. 
+
+\subsection{MsFEM} 
+The multiscale finite element method (MsFEM), as presented in \cite{og_msfem_Hou1997}, constructs the local basis functions that span $V_h$ from a homogeneous version of \cref{prob:elliptic_problem} using the oversampling method. These basis functions are then used to construct the stiffness matrix. The resulting system is then solved using a multi-grid method. Though \citeauthor{og_msfem_Hou1997} shows that MsFEM performs just as well as or better than traditional FEM depending on whether the computational grid can resolve the fine-scale features of $\mathcal{C}$, MsFEM still solves a global problem. 
+
+However, as we have seen \cref{sec:schwarz_coarse_space}, we can also construct preconditioners for the purpose of dealing with high-contrast $\mathcal{C}$. That is, we construct the basis traditional FEM basis functions as in \cref{prob:elliptic_problem_discretized}, decompose the domain into subdomains $\Omega_i$ and define coarse and local operators $A_0, A_i$ as in \cref{eq:ASM_preconditioner_coarse,eq:RAS_preconditioner_coarse}. The basis functions constructed using MsFEM can then be used for the construction of the coarse space $R_0$, akin to how the coarse space constructed based on the eigenmodes of the $\operatorname{DtN}$ in \cref{ASM_coarse_space:local_eigenfunctions}. 
+
+In \cite{msfem_coarse_space_Graham_2007,msfem_for_darcy_Efendiev2011} a separation of scales with conforming fine and coarse triangulations, denoted as $\mathcal{T}_h$ and $\mathcal{T}_H$ is introduced and resulting coarse basis functions are required to satisfy five key assumptions (C1-C5) in \cite[Section 2.2]{msfem_coarse_space_Graham_2007}. The coarse bases are constructed by homogeneous version of the system problem \cref{eq:elliptic_problem} on a coarse grid element $K\in\mathcal{T}_H$.
+\begin{equation}
+    \begin{aligned}
+        -\nabla\cdot(\mathcal{C} \nabla \phi^e_{c,i}) &= 0, \quad \forall \mathbf{x} \in K,\\
+        \phi^e_{c,i}(\mathbf{x}) &= \mu^e_i(\mathbf{x}), \quad \forall \mathbf{x} \in e, \ \forall e \partial K,
+    \end{aligned}
+    \label{eq:msfem_coarse_basis}
+\end{equation}
+where $e$ is an edge of the coarse grid element $K$ and $\mathcal{C}^e$. The boundary conditions, $\mu^e_i(\mathbf{x})$ for edge $e\in K$, for this problem should satisfy conditions M1-M4 \cite[Section 4]{msfem_coarse_space_Graham_2007} and are chosen to be either a linear interpolation of the nodal values of $\mathcal{C}$, denoted as $\mathcal{C}^e$ or a harmonic extension thereof on the coarse grid element $K$. The latter satisfies
+\begin{equation}
+    \mu^e_i(\mathbf{x}) = \left(\int_e \mathcal{C}^e ds\right)^{-1}\int_e^x \mathcal{C}^e ds, \quad \forall \mathbf{x} \in e,
+    \label{eq:msfem_harmonic_extension}
+\end{equation}
+and is similar to the oversampling method used in \cite{og_msfem_Hou1997}. The restriction operator $R_0$ is then derived from these basis functions, as given in Equation 2.12 of \cite{msfem_coarse_space_Graham_2007}. The method introduces robustness indicators, $\pi(\alpha)$ and $\gamma(\alpha)$, to quantify the stability of the coarse space and its effectiveness in capturing fine-scale features. Similar to \cref{eq:two_level_ASM_condition_number,eq:c0_local_eigenfunctions}, we get \cite[Theorem 3.9]{msfem_coarse_space_Graham_2007}
+\begin{equation}
+    \kappa(M^{-1}_{\text{ASM,2}}A) \lessapprox \pi(\mathcal{C})\gamma(1)\max_i^{N_{\text{sub}}}\left(1+\frac{H_i}{\delta}\right) + \gamma(\mathcal{C}).
+    \label{eq:msfem_condition_number}
+\end{equation}
+In particular, for linearly interpolated boundary conditions, 
+\[
+    K(\eta) = \left\{\mathbf{x} \in K | \mathcal{C}(\mathbf{x}) \geq \eta\right\},
+\]
+and arbitrary $\eta\geq 1$ the authors obtain \cite[Theorem 4.3]{msfem_coarse_space_Graham_2007}
+\[
+    \gamma^{\text{L}}(\mathcal{C}) \lessapprox \max_{K\in\mathcal{T}_H} \left\{\eta\frac{H_K}{\epsilon(\eta,K)}\right\},
+\]
+which does not grow unboundedly with the contrast of $\mathcal{C}$ as long as $\epsilon(\eta,K) = \text{dist}(K(\eta),\delta K) > \frac{3h}{2}$, i.e. as long as $\mathcal{C}$ is \textit{well-behaved} near the boundary of $K$. However, even for $\max_{\mathbf{x}\in K(\eta)} \rightarrow \infty$, i.e. badly behaved $\mathcal{C}$, the authors show that by the choosing oscillatory boundary condition from \cref{eq:msfem_harmonic_extension} for the construction of the coarse bases $\gamma^{\text{Osc}}(\mathcal{C})$ remains bounded. Therefore, for an MsFEM coarse space spanned by coarse basis functions constructed from \cref{eq:msfem_coarse_basis} with $\mu^e_i(\mathbf{x})$ as in \cref{eq:msfem_harmonic_extension}, the condition number bound \cref{eq:msfem_condition_number} is bounded and does not grow unboundedly with the contrast of $\mathcal{C}$. In other words, MsFEM is \textit{robust} to high-contrast $\mathcal{C}$.
+
+\subsection{ACMS}
+The approximate component mode synthesis (ACMS) method, detailed in \cite{acms_coarse_space_Heinlein2018}, is closely related to MsFEM in that it uses similar fine and coarse scale grids. The coarse problem is decomposed into two components: $u_c = u_I + u_{\Gamma}$, where $u_I$ and $u_{\Gamma}$ represent the interior and interface contribution, respectively. ACMS extends MsFEM by incorporating vertex-specific, edge-specific, and fixed-interface basis functions, where MsFEM corresponds solely to the vertex-specific functions. The vertex-specific basis functions are defined as harmonic extensions of trace values on the interface set $\Gamma$. Edge-specific basis functions, on the other hand, arise from an eigenvalue problem defined on an edge $e$, while fixed-interface basis functions correspond to eigenmodes of an eigenvalue problem within a coarse element $T$.
+    
+ACMS supports two types of coarse spaces, depending on whether Dirichlet (DBC) or Neumann (NBC) boundary conditions are applied. Under DBCs and similar to the coarse space constructed using the $\operatorname{DtN}$ in \cref{sec:two_level_additive_schwarz}, MsFEM basis functions are combined with edge-specific basis functions that match on a shared edge $e_{ij}$ between subdomains $\Omega_i$ and $\Omega_j$. These functions are constructed from the harmonic extension of eigenmodes defined on the edge $e_{ij}$, with a scaled bilinear form on the right-hand side. Only eigenmodes corresponding to eigenfrequencies below a set tolerance are retained. With NBCs, both MsFEM and edge-specific basis functions are modified. MsFEM functions remain defined on an edge $e_{ij}$ and satisfy a Kronecker-delta vertex condition but are now obtained via a generalized eigenvalue problem on a slab of width $kh$, denoted $\eta^{kh}_{ij}$. The edge-specific functions are similarly defined through a generalized eigenvalue problem on the slab but without enforcing DBCs. Solving these eigenvalue problems can be computationally efficient by employing mass matrix lumping techniques.
+ 
+\subsection{GDSW}
+The Generalized Dryja-Smith-Widlund (GDSW) method, introduced by \cite{gdsw_coarse_space_Dohrmann2008} and like MsFEM and ACMS, partitions the computational domain into non-overlapping subdomains and further divides degrees of freedom (DOFs) into interior and interface nodes. The only required input for the method is a coarse space $G$. $G$ corresponds to the null space of the problem. In the case of linear elasticity, $G$ spans the rigid body modes, while for the diffusion problem the null space is a constant function. The restriction operators $R_{\Gamma}$ and $R_I$ project onto interface and interior DOFs, respectively, with subdomain-specific versions such as $R_{\Gamma_j}$.
+
+By ordering the DOFs of into interface $\Gamma$ and interior $I$ nodes we can get \cite[Equation 4,5]{ams_coarse_space_comp_study_Alves2024}
+\begin{equation}
+    R_0 = 
+    \begin{pmatrix}
+        R_I \\
+        R_{\Gamma}
+    \end{pmatrix} =
+    \begin{pmatrix}
+        -A_{II}^{-1} A_{I\Gamma} \\
+        I_{\Gamma\Gamma}
+    \end{pmatrix} R_{\Gamma},
+    \label{eq:gdsw_coarse_space}
+\end{equation}
+in which $R_{\Gamma}$ and $R_I = -A_{II}^{-1} A_{I\Gamma} R_{\Gamma}$ are the restriction operators to the interface and interior nodes, respectively. Note that \cref{eq:gdsw_coarse_space} is the discrete version of solving the problem in \cref{eq:msfem_coarse_basis}, known as \textit{discrete harmonic extension}. The coarse solution on the interface set is subsequently defined as
+\[
+    u_{0,\Gamma} = \sum_{j=1}^{N_{\text{sub}}} R^T_{\Gamma_j} G_{\Gamma_j} q_j = R_{\Gamma} q,
+\]
+where $q$ represents the coarse space coefficients. The complete coarse solution is then given by 
+\[
+    u_0 = R^T_{\Gamma} u_{0,\Gamma} + R^T_I u_{0,I},
+\]
+ 
+\subsubsection{RGDSW}
+The RGDSW method alters the GDSW preconditioner by reducing the coarse space dimension through a partitioning strategy based on nodal equivalence classes that associates each coarse mesh vertex with interface components formed by adjacent edges and faces, distributed among nearby vertices \cite{rgdsw_coarse_space_Dohrmann2017}. This reduction in the dimension of the coarse space is achieved without compromising the robustness of the condition number estimate, ensuring that the preconditioner's convergence properties are maintained \cite{argdsw_coarse_space_Heinlein2022}.
+
+\subsection{AMS}
+The Algebraic Multiscale Solver (AMS) method, introduced in \cite{msfvm_ams_Lunati2009,ams_framework_Wang2014} and further studied in \cite{ams_coarse_space_comp_study_Alves2024}, is again like MsFEM and also relies on domain decomposition into non-overlapping subdomains, followed by a further subdivision of interface nodes into edge, vertex, and face nodes (in 3D). The method eliminates lower diagonal blocks in the system matrix to facilitate efficient computation. Like (R)GDSW, AMS employs the energy minimization principle to obtain $R_I$, ensuring an optimal coarse space representation.
+
+\section{CG convergence in case of non-uniform spectra}\label{sec:cg_nonuniform_spectra}
+The literature in the previous \cref{sec:tailored_coarse_spaces} mostly aims to control the condition number of the preconditioned system $M_{\text{ASM}}^{-1}A$, which according to \cref{eq:cg_convergence_rate_bound,eq:cg_convergence_rate_bound_iterations} controls the error and number of iterations in the CG method, respectively. However, we know from \cref{sec:cg_eigenvalue_distribution} that the condition number is not the only factor influencing convergence. Excessive work has been done on the convergence rate of the CG method, especially in the context of non-uniform spectra. The following papers provide valuable insights into this topic.
+
+\todo{Talk about numerical ways of calculating the CG convergence rate.}
+
+First, in \cite{cg_sharpened_convrate_Axelsson1976} a clever use of Chebyshev polynomials is demonstrated to obtain a sharpened CG iteration bound for the case of two clusters of eigenvalues, i.e. an eigenspectrum with a spectral gap. The authors pose a polynomial that satisfies the minimization problem in \cref{th:cg_convergence_rate_bound} and derive an error bound from the maximum of that polynomial on the eigenspectrum of $A$, a strategy described at the end of \cref{sec:cg_convergence}. In \cref{sec:cg_sharpened_convrate} the arguments made in \cite{cg_sharpened_convrate_Axelsson1976} are summarized and extended to the case of multiple clusters of eigenvalues. 
+
+\todo{talk about \citeauthor{cg_sharpened_convrate_Axelsson1976}'s later works, namely for PCG}.
+
+Second, in \cite{cg_convrate_Strakos1991} the convergence rate of CG method is investigated in \textit{finite precision arithmetic} for the family of clusterpoint distributions with parameter $0 \leq \rho \leq 1$
+\[
+    \lambda_i = \lambda_{\text{min}} + \frac{i-1}{n-1}(\lambda_{\text{max}} - \lambda_{\text{min}})\rho^{n-i}, \quad i=1,\ldots,n.
+\]
+The authors show that the convergence rate strongly depends on the eigenvalue distribution of the matrix $A$. Their experiments reveal that there exists a critical value of a $\rho$ at which the number of iterations required for convergence greatly exceeds the degrees of freedom $n$, even when the condition number is small $\kappa=100$. Moreover, this critical value shifts with increasing precision, so that higher precision reduces the impact of rounding errors. The study further shows that the CG behavior is consistent across different algorithm variants (standard CG, SYMMQL, Jacobi acceleration, etc.). These results suggest that certain eigenvalue distributions make CG highly sensitive to numerical errors, and they underline the importance of preconditioners that can modify the eigenvalue distribution to improve CG robustness in practical applications.
+
+Third, in \cite{cg_superlinear_Beckermann2001} the authors provide a proof of CG's superlinear convergence. This proof is fundamentally different from the polynomial-based strategy that is used in the work of \cite{cg_sharpened_convrate_Axelsson1976}, in that this proof is based in the field of \textit{logarithmic potential theory} (LPT). LPT is used to solve the minimization problem in \cref{th:cg_convergence_rate_bound} using a strategy that is akin to how charges distribute themselves over a conductor, the interested reader is referred to \cite{from_potential_theory_to_matrix_iterations_in_six_steps_Driscoll1998}. The authors of \cite{cg_superlinear_Beckermann2001} explain why the conjugate gradient method exhibits faster (superlinear) convergence than the classical bound suggests. In particular, they derive a new asymptotic error bound that is sharper than the standard estimate. This new bound is expressed via the integral \cite[Equation 1.8]{cg_superlinear_Beckermann2001}:
+\begin{equation}
+    \frac{1}{m} \log \left(\min_{r\in\mathcal{P}_m, \ r(0)=1}\max_{\lambda \in \sigma(A)}|r(\lambda)|\right) \lesssim-\frac{1}{t} \int_0^t g_{S(\tau)}(0) d \tau,
+    \label{eq:cg_superlinear_Beckermann2001}
+\end{equation}
+where $t = \lim_{n\to\infty}\frac{m}{n}$, $S(t)$ is a family of sets determined by the eigenvalue distribution and $g_S$ is the Green function for the complement of $S$ with pole at $\infty$.
+\todo{Do a more detailed summary of the paper, including the definition of $S(\tau)$ and $g_S$ and how they relate to the eigenvalue distribution.}
+Steps to reproduce: 
+\begin{enumerate}
+    \item Construct a family of matrices $(A_n)_n$ with eigenvalues $\sigma(A_n)$ that are all contained in a fixed compact set $S\subset\mathbb{R}$ and for every function $f$ continuous on $S$ we have (condition (i) and (iii) \cite[Equation 2.1]{cg_superlinear_Beckermann2001})
+    \[
+        \lim_{n\to\infty}\frac{1}{m}\sum_{\lambda\in\sigma(A_n)}f(\lambda) = \int_S f d\sigma,
+    \]
+    where $\sigma$ is a Borel measure on $S$.
+    \item Define a continuous, real-valued logarithmic potential that satisfies (condition (ii) \cite[Equation 2.1]{cg_superlinear_Beckermann2001})
+    \[
+        U^{\mu} = \int \log \frac{1}{|\lambda-\lambda'|} d\mu(\lambda'), \quad \lambda \in \mathbb{C},
+    \]
+    \item Now for every $t\in(0, ||\sigma||)$, define the class
+    \[
+        \mathcal{M}(t;\sigma) = \left\{\mu\text{ is a Borel probability measure on } \mathbb{R} : 0 \leq t\mu \leq \sigma \right\},
+    \]
+    and the logarithmic energy
+    \[
+        I(\mu) = \int U^{\mu} d\mu(\lambda) = \int \int \log \frac{1}{|\lambda-\lambda'|} d\mu(\lambda') d\mu(\lambda).
+    \]
+    \item Find the minimizer $\mu_t$ of the logarithmic energy $I(\mu)$ over the class $\mathcal{M}(t;\sigma)$, i.e.
+    \[
+        \mu_t = \arg\min_{\mu\in\mathcal{M}(t;\sigma)} I(\mu).
+    \]
+    \item Use results from potential theory \citehere to get that
+    \[
+        \begin{aligned}
+            U^{\mu_t}(\lambda) &= F_t &\text{ for} \lambda \in \text{supp}(\sigma - t\mu_t),\\
+            U^{\mu_t}(\lambda) &\leq F_t &\text{ for} \lambda \in \mathbb{R}\setminus\text{supp}(\sigma - t\mu_t),
+        \end{aligned}
+    \]
+    \item define the set
+    \[
+        S(t) = \text{supp}(\sigma - t\mu_t)
+    \]
+    \item Let $\omega_S(t)$ be the equilibrium measure for the set $S(t)$ and define the Green function $g_S(t)$ as
+    \[
+        g_S(t) = \log \text{cap}(S(t)) - U^{\omega_S(t)}(\lambda).
+    \]
+\end{enumerate}
+
+As shown by \cref{eq:cg_superlinear_Beckermann2001} and theorem 2.1 in \cite{cg_sharp_bound_Beckermann2001}, the error is bounded by a term that decreases more quickly as the number of iterations increases. Under additional separation conditions among eigenvalues (see Theorem 2.2), the bound is proven to be asymptotically sharp. Moreover, for matrices with equidistant eigenvalues, an explicit formula \cite[Corollary 3.2 and Equation 3.11]{cg_superlinear_Beckermann2001} confirms the improved bound and aligns with observed CG error curves. These findings help to explain why, in practice, CG converges faster than predicted by traditional condition number bounds.
+
+In \cite{cg_sharp_bound_Beckermann2001} the authors present a proof of the sharpness of the CG iteration bound in \cref{eq:cg_superlinear_Beckermann2001}. The paper shows that one cannot beat the asymptotic error estimate bound obtained earlier. It analyzes a strategy in which zeros of the polynomial are set at all eigenvalues outside a chosen set $S$. The authors prove that any such polynomial cannot yield a better asymptotic error bound than the one given in \cref{eq:cg_superlinear_Beckermann2001}. Under conditions that are natural for problems arising from discretized PDEs on the eigenvalue distribution, the bound is demonstrated to be sharp, and the discussion includes cases where equality in the bound is reached.
+
+Finally, in \cite{cg_superlinear_rhs_Beckermann2002} the authors extend the results of \cite{cg_superlinear_Beckermann2001} to cases where the eigenvalue distribution is asymptotically uniform. They show that even when the asymptotic distribution equals an equilibrium distribution, the CG method can exhibit superlinear convergence. In this work, the superlinearity stems from the particular choice of the right-hand side $b$. The authors present a family of examples based on the finite difference discretization of the one-dimensional Poisson problem, where they observe superlinear convergence according to the chosen right-hand sides.

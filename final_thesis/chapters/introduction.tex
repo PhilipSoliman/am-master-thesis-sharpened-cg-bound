@@ -1,0 +1,88 @@
+\chapter{Introduction}\label{ch:introduction}
+In this thesis we focus on a simple scalar diffusion problem. Let $\Omega\subset\mathbb{R}^d$ be a bounded domain with Lipschitz boundary $\delta\Omega$, $\mathcal{C}\in L^\infty(\Omega)$ be scalar field defined on $\Omega$ such that $0 < \mathcal{C}_{\min} \leq \mathcal{C}(x) \leq \mathcal{C}_{\max} < \infty$ for all $x\in\Omega$ and $f\in L^2(\Omega)$ be a source term, then we define
+\begin{fancyprob}{High-contrast scalar elliptic problem: strong formulation}{elliptic_problem}
+    Let $u_D\in H^2(\delta\Omega)$ be a Dirichlet boundary condition. Find $u\in H^2(\Omega)$ such that
+    \begin{equation}
+        \begin{aligned}
+            -\nabla\cdot\left(\mathcal{C}\nabla u\right) & = f \quad \text{in } \Omega,           \\
+            u                                       & = u_D \quad \text{on } \delta\Omega.
+        \end{aligned}
+        \label{eq:elliptic_problem}
+    \end{equation}
+\end{fancyprob}
+
+The first step in solving \cref{prob:elliptic_problem} is to reformulate the problem in a way that reduces the regularity constraint on the solution $u\in H^2(\Omega)$ and not requiring to $\nabla\cdot\left(\mathcal{C}\nabla u\right)$ to exist pointwise. This leads to the weak formulation of the problem, which is obtained by multiplying \cref{eq:elliptic_problem} with a test function $v\in H^1_0(\Omega)$ and integrating over $\Omega$. The weak formulation is given by
+\begin{fancyprob}{High-contrast scalar elliptic problem: weak formulation}{elliptic_problem_weak}
+    Let $u_D\in H^1(\delta\Omega)$ be a Dirichlet boundary condition. Find $u\in V = \{u\in H^1(\Omega) | u_{\delta \Omega} = u_D\}$ such that $\forall v \in H^1_0(\Omega)$
+    \begin{equation}
+        \label{eq:galerkin}
+        \int_\Omega \mathcal{C}\nabla u\cdot\nabla v\,dx = \int_\Omega f v\,dx.
+    \end{equation}
+\end{fancyprob}
+
+To solve this problem numerically, we need to discretize the domain $\Omega$ and the solution space $V$. To that end we consider a triangulation $\mathcal{T}$ of the domain $\Omega$ with the $\mathcal{N}$ the set of degrees of freedom (DOFs). Then, we pick a finite dimensional subspace of $V$, $V_h$ spanned by a set of basis functions $\phi_i$ defined locally on each of the elements $\tau \in \mathcal{T}$
+\begin{equation*}
+  V_h = \text{span}\{\phi_i\}_{i=1}^{n},
+\end{equation*}
+where $n = |\mathcal{N}|$. This leads to the discretized weak formulation
+\begin{fancyprob}{High-contrast scalar elliptic problem: discretized weak formulation}{elliptic_problem_discretized}
+    Let $u_D\in H^1(\delta\Omega)$ be a Dirichlet boundary condition. Find $u_h\in V_h$ such that $\forall v_h \in V_{h,0} = V_h\cap H^1_0(\Omega)$
+    \begin{equation}
+        a(u_h, v_h) = \int_\Omega \mathcal{C}\nabla u_h\cdot\nabla v_h\,dx = \int_\Omega f v_h \,dx = (f, v_h),
+        \label{eq:discretized_problem}
+    \end{equation}
+    where $a(u_h, v_h)$ is the bilinear form and $(f, v_h)$ is the linear form. \cref{eq:discretized_problem} gives rise to the following system of equations
+    \begin{equation*}
+        A\mathbf{u} = \mathbf{b}, \quad A_{ij} = a(\phi_j, \phi_i), \ b_i = (f, \phi_i) \quad \forall i,j\in\mathcal{N},
+    \end{equation*}
+    where $A\in\mathbb{R}^{n \times n}$ is the (by construction) symmetric stiffness matrix, $\mathbf{u}\in\mathbb{R}^{n}$ the solution vector with components $u_i$ and $\mathbf{b}\in\mathbb{R}^{n}$ the load vector. The load vector $\mathbf{b}$ is constructed from the source term $f$ and the boundary conditions. The approximate solution $u_h$ is constructed from the basis functions $\phi_i$ as
+    \begin{equation*}
+        u_h = \sum_{i\in\mathcal{N}} u_i \phi_i,
+    \end{equation*}
+\end{fancyprob}
+Note that the bilinear form $a$ in \cref{prob:elliptic_problem_discretized} is positive definite, meaning that for all $0\neq w\in H^1_0(\Omega)$ we have
+\begin{equation*}
+  a(w,w) = \int_\Omega \mathcal{C} \nabla w\cdot\nabla w\,dx = \int_\Omega \mathcal{C} |\nabla w|^2\,dx > 0,
+\end{equation*}
+since $\mathcal{C}>0$. Moreover, for $w = \sum_{i\in\mathcal{N}} w_i \phi_i$ with $\mathbf{w} = (w_1, w_2, \ldots, w_n)^T \neq \mathbf{0}$ we have
+\begin{equation*}
+    \mathbf{w}^T A \mathbf{w} = a(w,w) > 0.
+\end{equation*}
+It follows that $A$ is positive definite, making it symmetric positive definite (SPD). This means that the numerical problem \cref{prob:elliptic_problem_discretized} is well-posed and has a unique solution $\mathbf{u}$ for any given load vector $\mathbf{b}$.
+
+Apart from possibly complex domains $\Omega$, a major obstacle in solving  the linear system $A\mathbf{u} = \mathbf{b}$ from \cref{prob:elliptic_problem_discretized}, comes from its high-contrast coefficient $\mathcal{C}$, which requires a broad range of element sizes $|\tau|$ in the triangulation $\mathcal{T}$ to fully resolve. As a result, the number of DOFs $n = |\mathcal{N}|$ can be very large, leading to a system matrix $A$ that is large and sparse. This makes direct methods like Gaussian elimination, LU- or Cholesky decomposition impractical, as they require storing the entire matrix in memory and generally have complexity $\mathcal{O}(n^3)$.
+
+Though $A$ is large and sparse, it \textit{is} SPD. Therefore, the linear system $A\mathbf{u} = \mathbf{b}$ can be solved using CG. CG requires only the ability to compute matrix-vector products with $A$ (complexity $\mathcal{O}(n)$ for sparse matrices) and does not require storing the entire matrix. Being an iterative method, CG produces a sequence of approximations $\mathbf{u}_i, \ i = 1,\dots,m$ to the solution $\mathbf{u}$ and stops when some convergence criterion depending on a desired tolerance $\epsilon$ is met. This means that CG's complexity is given by $\mathcal{O}(mn)$.
+
+Hence, the number of iterations $m$ required for convergence is a crucial factor in the performance of CG. The key subject of \cref{sec:cg_convergence_rate} is to analyze the convergence of CG and how it depends on the properties of the system matrix $A$. In particular, we will show that $m$ is related to the distribution of the eigenvalues of $A$. For instance, in exact arithmetic $m$ is equal to the number of distinct eigenvalues of $A$, say $k$, from which follows that CG's complexity is given by $\mathcal{O}(kn)$. In general, we can derive, using a well-known bound on CG's convergence rate discussed in \cref{th:cg_convergence_rate_bound}, an explicit expression for CG's complexity
+\begin{equation}
+  \mathcal{O}\left(\sqrt{\kappa(A)}\log\left(\frac{1}{\epsilon}\right)n\right),
+  \label{eq:cg_complexity}
+\end{equation}
+where $\kappa(A)$ is the condition number of $A$. Comparing \cref{eq:cg_complexity} with the complexity of direct methods, we see that CG is much more efficient for large sparse SPD systems like $A$. 
+
+However, the difficulty of allowing for complex domains and a high-contrast coefficient $\mathcal{C}$ resides in that the condition number $\kappa(A)$ can be very large, which in turn increases CG's iteration count and complexity. Handling of complex domains can be done using \textit{domain decomposition methods} and this is the topic of \cref{sec:schwarz_methods}. On the other hand, accounting for the high-contrast coefficient $\mathcal{C}$ is the topic of recent literature and concerns the construction of robust \textit{coarse spaces}, some examples of which are given in \cref{ch:literature}.
+
+The particular implementation of domain decomposition method and coarse space results in a preconditioner matrix $M\in\mathbb{R}^{n \times n}$, which is used to transform the system $A\mathbf{u} = \mathbf{b}$ into a new system $M^{-1}A\mathbf{u} = M^{-1}\mathbf{b}$ with a (hopefully) smaller condition number. The preconditioned CG method (PCG), described in \cref{sec:cg_preconditioning}, is then used to solve the transformed system. Consequently, using the equivalent of the CG complexity bound \cref{eq:cg_complexity} for PCG, we can determine the performance of PCG with the preconditioner $M$ as
+\begin{equation}
+  \mathcal{O}\left(\sqrt{\kappa(M^{-1}A)}\log\left(\frac{1}{\epsilon}\right)n\right).
+  \label{eq:pcg_complexity}
+\end{equation}
+
+This thesis seeks to challenge the applicability of the bound in \cref{eq:pcg_complexity} to problems like \cref{prob:elliptic_problem}. The bound relies on an overestimation of the actual number of iterations $m$ required for convergence and overstates the role of the condition number $\kappa(M^{-1}A)$ in determining the convergence rate of CG. We will see in \cref{sec:cg_eigenvalue_distribution} that the actual number of iterations $m$ is much smaller than the classical bound that \cref{eq:pcg_complexity} relies on and that the condition number $\kappa(M^{-1}A)$ is not the only factor influencing the convergence rate of CG. 
+
+This thesis answers the following central question:
+\vspace{0.5em}
+\begin{center}
+\textit{\textbf{Can we derive more precise bounds for the convergence rate of the Conjugate Gradient (CG) method in high-contrast scalar elliptic problems, improving upon the classical condition number based bound?}}
+\end{center}
+\vspace{0.5em}
+
+To answer this central question, the thesis explores several sub-questions:
+\begin{enumerate}
+    \item Can we derive an explicit expression of the convergence rate of CG that either as least as sharp or sharper than the classical bound depending on the contrast in the coefficient $\mathcal{C}$?
+\end{enumerate}
+
+The hope is that addressing these questions leads to a richer understanding of the convergence rate of the (P)CG method in the specific case of high-contrast problems and, subsequently, aid in the selection of suitable preconditioners $M$.
+
+This thesis is organized as follows. In \cref{ch:background}, the mathematical background of the CG method and Schwarz methods is introduced. \cref{ch:literature} reviews related work, providing context for the current study and highlighting differences between existing approaches. Chapter \ref{ch:questions} details the research questions, motivation, and challenges associated with refining the CG iteration bound. Chapter \ref{ch:preliminary_results} presents preliminary results that illustrate the potential benefits of the proposed approach. Finally, \cref{ch:conclusion} summarizes the key insights and discusses directions for future research.
