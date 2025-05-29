@@ -269,27 +269,20 @@ class CustomCG:
         return self.b - (self.A @ self.x_i.T).T
 
     def calculate_iteration_upperbound(self) -> int:
+        return CustomCG.calculate_iteration_upperbound_static(
+            cond=np.linalg.cond(self.A),
+            log_rtol=np.log(self.tol),
+            exact_convergence=self.exact_convergence,
+        )
+
+    @staticmethod
+    def calculate_iteration_upperbound_static(
+        cond: float, log_rtol: float, exact_convergence: bool = True
+    ) -> int:
         """
         Assumes eigenvalues are uniformly distributed between lowest and highest eigenvalue. In this case, the
         classical CG convergence factor is given by f = (sqrt(cond) - 1) / (sqrt(cond) + 1), where cond is the condition
         number of A. The number of iterations required to reach a tolerance tol is given by ceil(log(tol / 2) / log(f)).
-        """
-        # convergence factor
-        cond = np.linalg.cond(self.A)
-        sqrt_cond = np.sqrt(cond)
-        convergence_factor = (np.sqrt(cond) - 1) / (np.sqrt(cond) + 1)
-
-        # convergence tolerance
-        conv_tol = np.log(self.tol / 2)
-        if not self.exact_convergence:  # See report Theorem: "Residual convergence criterion"
-            conv_tol -= np.log(sqrt_cond)
-
-        return int(np.ceil(conv_tol / np.log(convergence_factor)))
-
-    @staticmethod
-    def calculate_iteration_upperbound_static(cond: float, log_rtol: float, exact_convergence: bool = True) -> int:
-        """
-        Static version of the calculate_iteration_upperbound method.
         """
         # convergence factor
         sqrt_cond = np.sqrt(cond)
@@ -297,7 +290,9 @@ class CustomCG:
 
         # convergence tolerance
         conv_tol = log_rtol - np.log(2)
-        if not exact_convergence: # See report Theorem: "Residual convergence criterion"
+        if (
+            not exact_convergence
+        ):  # See report Theorem: "Residual convergence criterion"
             conv_tol -= np.log(sqrt_cond)
 
         return int(np.ceil(conv_tol / np.log(convergence_factor)))
@@ -306,12 +301,24 @@ class CustomCG:
         self,
         clusters: list[tuple[float, float]],
     ) -> int:
+        return CustomCG.calculate_improved_cg_iteration_upperbound_static(
+            clusters=clusters,
+            tol=self.tol,
+            exact_convergence=self.exact_convergence,
+        )
+
+    @staticmethod
+    def calculate_improved_cg_iteration_upperbound_static(
+        clusters: list[tuple[float, float]],
+        tol: float = 1e-6,
+        exact_convergence: bool = True,
+    ) -> int:
         """
         Calculates an improved CG iteration bound for non-uniform eigenspectra.
         Assumes available knowledge on the whereabouts of eigenvalue clusters
         """
         # setup
-        log_rtol = np.log(self.tol)
+        log_rtol = np.log(tol)
         degrees = [0] * len(clusters)
 
         for i, cluster in enumerate(clusters):
@@ -328,7 +335,9 @@ class CustomCG:
 
             # calculate & store chebyshev degree
             degrees[i] = CustomCG.calculate_iteration_upperbound_static(
-                cond=b_i / a_i, log_rtol=log_rtol_eff, exact_convergence=self.exact_convergence
+                cond=b_i / a_i,
+                log_rtol=log_rtol_eff,
+                exact_convergence=exact_convergence,
             )
         return sum(degrees)
 
