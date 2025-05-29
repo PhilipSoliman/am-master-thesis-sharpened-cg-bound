@@ -147,7 +147,7 @@ These settings should compile allow for compilation of all the main LaTeX files 
 
 Alternatively, one can use the recipe and subsidiary commands outlined above to compile the documents manually in a terminal (with a working Latex installation).
 
-#### C File Compilation
+#### 4. C File Compilation
 For this, one can either use gcc or clang directly in combination with the provided [Makefile](clibs/Makefile). To compile the C files, run the following command in the terminal:
 ```bash
 make

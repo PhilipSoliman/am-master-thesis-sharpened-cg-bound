@@ -260,5 +260,5 @@ if ARGS.show_output:
     plt.close(fig)
     for _fig in figs_seperate:
         _fig.show()
-        input("Press Enter to exit...")
+        input("Press Enter to continue...")
         plt.close(_fig)
