@@ -182,7 +182,7 @@ if ARGS.generate_output:
     save_latex_figure("effect_of_eigenvalue_distribution")
 if ARGS.show_output:
     fig.show()
-    input()
+    input("Press Enter to continue...")
 
 # add improved classical upperbound
 for i, _ in enumerate(As):

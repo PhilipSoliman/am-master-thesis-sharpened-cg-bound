@@ -256,9 +256,9 @@ if ARGS.generate_output:
         save_latex_figure(f"cg_convergence_extreme_spectra_cluster{i}", fig=_fig)
 if ARGS.show_output:
     fig.show()
-    input()
+    input("Press Enter to continue...")
     plt.close(fig)
     for _fig in figs_seperate:
         _fig.show()
-        input()
+        input("Press Enter to exit...")
         plt.close(_fig)
