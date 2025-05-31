@@ -4,7 +4,6 @@ import json
 
 import matplotlib.pyplot as plt
 
-# import netgen.occ as occ
 import netgen.libngpy._NgOCC as occ
 import ngsolve as ngs
 import numpy as np
