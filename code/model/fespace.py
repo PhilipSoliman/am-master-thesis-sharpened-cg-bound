@@ -10,7 +10,7 @@ class FESpace:
     """
 
     def __init__(
-        self, two_mesh: TwoLevelMesh, order: int = 1, discontinuous: bool = False
+        self, two_mesh: TwoLevelMesh, order: int = 1, discontinuous: bool = False, **bcs
     ):
         """
         Initialize the finite element space for the given mesh.
@@ -25,9 +25,9 @@ class FESpace:
         """
         self.two_mesh = two_mesh
         if discontinuous:
-            self.fespace = ngs.H1(two_mesh.fine_mesh, order=order, discontinuous=True)
+            self.fespace = ngs.H1(two_mesh.fine_mesh, order=order, discontinuous=True, **bcs)
         else:
-            self.fespace = ngs.H1(two_mesh.fine_mesh, order=order)
+            self.fespace = ngs.H1(two_mesh.fine_mesh, order=order, **bcs)
 
         self.calculate_dofs()
         if self.fespace.ndof != (
@@ -133,6 +133,25 @@ class FESpace:
             }
         return self.domain_dofs
 
+    @property
+    def u (self):
+        """
+        Get the trial function of the finite element space.
+
+        Returns:
+            ngs.TrialFunction: The trial function of the finite element space.
+        """
+        return self.fespace.TrialFunction()
+
+    @property
+    def v(self):
+        """
+        Get the test function of the finite element space.
+
+        Returns:
+            ngs.TestFunction: The test function of the finite element space.
+        """
+        return self.fespace.TestFunction()
 
 if __name__ == "__main__":
     """
