@@ -60,9 +60,9 @@ class FESpace:
         # remove coarse node DOFs from fine DOFs
         coarse_node_dofs = set()
         edge_dofs = set()
-        for domain, domain_data in self.domain_dofs.items():
-            edge_dofs.update(domain_data["edges"])
-            coarse_node_dofs.update(domain_data["coarse_nodes"])
+        for domain, subdomain_data in self.domain_dofs.items():
+            edge_dofs.update(subdomain_data["edges"])
+            coarse_node_dofs.update(subdomain_data["coarse_nodes"])
 
         # remove edge DOFs from interio DOFs
         interior -= edge_dofs
@@ -90,34 +90,34 @@ class FESpace:
             dict: Mapping from coarse elements to their classified DOFs.
         """
         self.domain_dofs = {}
-        for coarse_el, domain_data in self.two_mesh.coarse_domains.items():
+        for subdomain, subdomain_data in self.two_mesh.subdomains.items():
             coarse_node_dofs = set()
-            for coarse_v in coarse_el.vertices:
-                dofs = self.fespace.GetDofNrs(coarse_v)
+            for v in subdomain.vertices:
+                dofs = self.fespace.GetDofNrs(v)
                 coarse_node_dofs.update(dofs)
 
             interior_dofs = set()
-            for fine_el in domain_data["interior"]:
-                dofs = self.fespace.GetDofNrs(fine_el)
+            for el in subdomain_data["interior"]:
+                dofs = self.fespace.GetDofNrs(el)
                 interior_dofs.update(dofs)
             interior_dofs -= coarse_node_dofs
 
             subdomain_edge_dofs = set()
-            for fine_edge in domain_data["edges"]:
-                v1, v2 = self.two_mesh.fine_mesh.edges[fine_edge.nr].vertices
+            for e in subdomain_data["edges"]:
+                v1, v2 = self.two_mesh.fine_mesh.edges[e.nr].vertices
 
                 # get vertex DOFs
                 subdomain_edge_dofs.update(self.fespace.GetDofNrs(v1))
                 subdomain_edge_dofs.update(self.fespace.GetDofNrs(v2))
 
                 # get edge subdomain_edge_dofs
-                subdomain_edge_dofs.update(self.fespace.GetDofNrs(fine_edge))
+                subdomain_edge_dofs.update(self.fespace.GetDofNrs(e))
             subdomain_edge_dofs -= coarse_node_dofs
             interior_dofs -= subdomain_edge_dofs
 
             layer_dofs = set()
-            for layer_idx in range(1, self.two_mesh.overlap + 1):
-                layer_elements = domain_data[f"layer_{layer_idx}"]
+            for layer_idx in range(1, self.two_mesh.layers + 1):
+                layer_elements = subdomain_data[f"layer_{layer_idx}"]
                 for el in layer_elements:
                     dofs = self.fespace.GetDofNrs(el)
                     layer_dofs.update(dofs)
@@ -125,7 +125,7 @@ class FESpace:
             layer_dofs -= coarse_node_dofs
             layer_dofs -= interior_dofs
 
-            self.domain_dofs[coarse_el] = {
+            self.domain_dofs[subdomain] = {
                 "interior": list(interior_dofs),
                 "coarse_nodes": list(coarse_node_dofs),
                 "edges": list(subdomain_edge_dofs),
@@ -138,5 +138,15 @@ if __name__ == "__main__":
     """
     Example usage: Load a TwoLevelMesh and construct a FESpace on it.
     """
-    two_mesh = TwoLevelMesh.load()
+    lx, ly = 1.0, 1.0
+    coarse_mesh_size = 0.15
+    refinement_levels = 2
+    layers= 2
+    two_mesh = TwoLevelMesh.load(
+        lx=lx,
+        ly=ly,
+        coarse_mesh_size=coarse_mesh_size,
+        refinement_levels=refinement_levels,
+        layers=layers
+    )
     fespace = FESpace(two_mesh, order=1, discontinuous=False)

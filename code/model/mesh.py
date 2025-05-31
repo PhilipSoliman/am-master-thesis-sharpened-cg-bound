@@ -1,9 +1,9 @@
 import copy
-from enum import Enum
 import json
+from enum import Enum
+from pathlib import Path
 
 import matplotlib.pyplot as plt
-
 import netgen.libngpy._NgOCC as occ
 import ngsolve as ngs
 import numpy as np
@@ -18,19 +18,22 @@ DATA_DIR = get_root() / "data"
 def OCCRectangle(l, w):
     return occ.WorkPlane().Rectangle(l, w)
 
+
 class BoundaryNames(Enum):
     """
     Enum for boundary names used in the TwoLevelMesh class.
     """
+
     BOTTOM = "bottom"
     RIGHT = "right"
     TOP = "top"
     LEFT = "left"
 
+
 class TwoLevelMesh:
     """
     TwoLevelMesh
-    A class for generating, managing, and visualizing two-level conforming meshes (coarse and fine) for rectangular domains, with support for overlapping domain decomposition and mesh serialization.
+    A class for generating, managing, and visualizing two-level conforming meshes (coarse and fine) for rectangular domains, with support for layersping domain decomposition and mesh serialization.
     Attributes:
         lx (float): Length of the domain in the x-direction.
         ly (float): Length of the domain in the y-direction.
@@ -38,32 +41,34 @@ class TwoLevelMesh:
         refinement_levels (int): Number of uniform refinements for the fine mesh.
         fine_mesh (ngs.Mesh): Refined fine mesh.
         coarse_mesh (ngs.Mesh): Coarse mesh.
-        coarse_domains (dict): Mapping of coarse elements to their corresponding fine mesh domains and overlap layers.
-        overlap (int): Number of overlap layers for domain decomposition.
+        subdomains (dict): Mapping of coarse elements to their corresponding fine mesh domains and layers.
+        layers(int): Number of layers for domain decomposition.
     Methods:
-        - __init__(lx, ly, coarse_mesh_size, refinement_levels=1, overlap=0):
-            Initialize the TwoLevelMesh with domain size, mesh size, refinement, and overlap.
+        - __init__(lx, ly, coarse_mesh_size, refinement_levels=1, layers=0):
+            Initialize the TwoLevelMesh with domain size, mesh size, refinement, and layers.
         - create_conforming_meshes():
             Create conforming coarse and fine meshes for the rectangular domain.
-        - get_coarse_domains():
+        - get_subdomains():
             Identify and return the mapping of coarse mesh elements to their corresponding fine mesh domains.
-        - get_coarse_domain_edges(coarse_el, interior_elements):
+        - get_subdomain_domain_edges(subdomain, interior_elements):
             Find all fine mesh edges that lie on the edges of a given coarse mesh element.
-        - extend_coarse_domains(layer_idx=1):
-            Extend the coarse domains by adding overlap layers of fine mesh elements.
+        - extend_subdomains(layer_idx=1):
+            Extend the subdomains by adding layers of fine mesh elements.
         - save(file_name=""):
-            Save the mesh, metadata, and coarse domain information to disk.
+            Save the mesh, metadata, and subdomain information to disk.
         - load(file_name=""):
             Class method to load a TwoLevelMesh instance from saved files.
         - plot_domains(domains=1, plot_layers=False, opacity=0.9, fade_factor=1.5):
-            Visualize the coarse domains and optional overlap layers using matplotlib.
+            Visualize the subdomains and optional layers using matplotlib.
         - plot_element(ax, element, mesh, fillcolor="blue", edgecolor="black", alpha=1.0, label=None):
             Static method to plot a single mesh element on a matplotlib axis.
     Usage:
         - Construct a TwoLevelMesh for a rectangular domain.
         - Save and load mesh and domain decomposition data.
-        - Visualize mesh domains and overlaps for debugging or analysis.
+        - Visualize mesh domains and layerss for debugging or analysis.
     """
+
+    SAVE_STRING = "tlm_lx={0:.1f}_ly={1:.1f}_H={2:.2f}_lvl={3:.0f}_lyr={4:.0f}"
 
     def __init__(
         self,
@@ -71,29 +76,29 @@ class TwoLevelMesh:
         ly: float,
         coarse_mesh_size: float,
         refinement_levels: int = 1,
-        overlap: int = 0,
+        layers: int = 0,
     ):
         """
-        Initialize the TwoLevelMesh with domain size, mesh size, refinement, and overlap.
+        Initialize the TwoLevelMesh with domain size, mesh size, refinement, and layers.
 
         Args:
             lx (float): Length of the domain in the x-direction.
             ly (float): Length of the domain in the y-direction.
             coarse_mesh_size (float): Mesh size for the coarse mesh.
             refinement_levels (int, optional): Number of uniform refinements for the fine mesh. Defaults to 1.
-            overlap (int, optional): Number of overlap layers for domain decomposition. Defaults to 0.
+            layers(int, optional): Number of layers for domain decomposition. Defaults to 0.
         """
         self.lx = lx
         self.ly = ly
         self.coarse_mesh_size = coarse_mesh_size
         self.refinement_levels = refinement_levels
         self.fine_mesh, self.coarse_mesh = self.create_conforming_meshes()
-        self.coarse_domains = self.get_coarse_domains()
-        self.overlap = overlap
-        for layer_idx in range(1, overlap + 1):
-            self.extend_coarse_domains(layer_idx=layer_idx)
+        self.subdomains = self.get_subdomains()
+        self.layers= layers
+        for layer_idx in range(1, layers+ 1):
+            self.extend_subdomains(layer_idx=layer_idx)
 
-    def create_conforming_meshes(self):
+    def create_conforming_meshes(self) -> tuple[ngs.Mesh, ngs.Mesh]:
         """
         Create conforming coarse and fine meshes by refining the coarse mesh.
         Args:
@@ -127,14 +132,14 @@ class TwoLevelMesh:
 
         return fine_mesh, coarse_mesh
 
-    def get_coarse_domains(self):
+    def get_subdomains(self):
         """
         Identify and return the mapping of coarse mesh elements to their corresponding fine mesh domains.
 
         Returns:
             dict: Mapping of coarse elements to their fine mesh interior elements and edges.
         """
-        coarse_domains = {}
+        subdomains = {}
         coarse_elements = self.coarse_mesh.Elements()
         interior_indices = np.arange(self.fine_mesh.ne)  # indices of fine elements
         fine_elements_vertices = np.zeros(
@@ -148,14 +153,14 @@ class TwoLevelMesh:
             fine_elements_vertices[i, 1, :] = fine_v2
             fine_elements_vertices[i, 2, :] = fine_v3
 
-        for coarse_el in coarse_elements:
+        for subdomain in coarse_elements:  # coarse elements are taken to be subdomains
             interior_indices_copy = np.copy(
                 interior_indices
             )  # copy of fine indices to filter
             fine_elements_vertices_copy = np.copy(fine_elements_vertices)
-            coarse_v1 = self.coarse_mesh.vertices[coarse_el.vertices[0].nr].point
-            coarse_v2 = self.coarse_mesh.vertices[coarse_el.vertices[1].nr].point
-            coarse_v3 = self.coarse_mesh.vertices[coarse_el.vertices[2].nr].point
+            coarse_v1 = self.coarse_mesh.vertices[subdomain.vertices[0].nr].point
+            coarse_v2 = self.coarse_mesh.vertices[subdomain.vertices[1].nr].point
+            coarse_v3 = self.coarse_mesh.vertices[subdomain.vertices[2].nr].point
             for vertex_idx in range(3):
                 # look at first vertices
                 fine_elements_vertex = fine_elements_vertices_copy[:, vertex_idx, :]
@@ -172,44 +177,44 @@ class TwoLevelMesh:
                 self.fine_mesh[ngs.ElementId(ngs.VOL, idx)]
                 for idx in interior_indices_copy
             ]
-            coarse_domains[coarse_el] = {
+            subdomains[subdomain] = {
                 "interior": interior_elements,
-                "edges": self.get_coarse_domain_edges(coarse_el, interior_elements),
+                "edges": self.get_subdomain_domain_edges(subdomain, interior_elements),
             }
-        return coarse_domains
+        return subdomains
 
-    def get_coarse_domain_edges(self, coarse_el, interior_elements):
+    def get_subdomain_domain_edges(self, subdomain, interior_elements):
         """
         Find all fine mesh edges that lie on the edges of a given coarse mesh element.
 
         Args:
-            coarse_el: The coarse mesh element.
+            subdomain: The coarse mesh element.
             interior_elements: List of fine mesh elements inside the coarse element.
 
         Returns:
             list: Fine mesh edges that lie on the coarse element's edges.
         """
-        coarse_domain_edges = set()
-        for coarse_edge in coarse_el.edges:
+        subdomain_edges = set()
+        for coarse_edge in subdomain.edges:
             for el in interior_elements:
                 mesh_el = self.fine_mesh[el]
-                fine_edges = self._get_edges_on_coarse_domain_edge(coarse_edge, mesh_el)
-                coarse_domain_edges.update(fine_edges)
+                fine_edges = self._get_edges_on_subdomain_edge(coarse_edge, mesh_el)
+                subdomain_edges.update(fine_edges)
 
-        return list(coarse_domain_edges)
+        return list(subdomain_edges)
 
-    def extend_coarse_domains(self, layer_idx: int = 1):
+    def extend_subdomains(self, layer_idx: int = 1):
         """
-        Extend the coarse domains by adding overlap layers of fine mesh elements.
+        Extend the subdomains by adding layers of fine mesh elements.
 
         Args:
             layer_idx (int, optional): The new layer's index. Defaults to 1.
         """
-        for domain_data in self.coarse_domains.values():
+        for subdomain_data in self.subdomains.values():
             interior_edges = set()
-            domain_elements = copy.copy(domain_data["interior"])
+            domain_elements = copy.copy(subdomain_data["interior"])
             for prev_layer_idx in range(1, layer_idx):
-                domain_elements += domain_data[f"layer_{prev_layer_idx}"]
+                domain_elements += subdomain_data[f"layer_{prev_layer_idx}"]
             for el in domain_elements:
                 mesh_el = self.fine_mesh[el]
                 for fine_edge in mesh_el.edges:
@@ -225,44 +230,43 @@ class TwoLevelMesh:
                         if edge.nr not in interior_edges:
                             mesh_e = self.fine_mesh[edge]
                             layer_elements.update(mesh_e.elements)
-            domain_data[f"layer_{layer_idx}"] = list(layer_elements)
+            subdomain_data[f"layer_{layer_idx}"] = list(layer_elements)
 
     # saving
-    def save(self, file_name: str = ""):
+    def save(self):
         """
-        Save the mesh, metadata, and coarse domain information to disk.
+        Save the mesh, metadata, and subdomain information to disk.
 
         Args:
             file_name (str, optional): Name of the file to save the mesh and metadata. Defaults to "".
         """
-        self._save_metadata(file_name)
-        self._save_meshes(file_name)
-        self._save_coarse_domains(file_name)
+        if not self.save_dir.exists():
+            self.save_dir.mkdir(parents=True, exist_ok=True)
+        print(f"Saving TwoLevelMesh to {self.save_dir}...")
+        self._save_metadata()
+        self._save_meshes()
+        self._save_subdomains()
 
-    def _save_metadata(self, file_name: str = ""):
+    def _save_metadata(self):
         """
         Save mesh and domain metadata to a JSON file.
-
-        Args:
-            file_name (str, optional): Name of the file to save the metadata. Defaults to "".
         """
         metadata = {
             "lx": self.lx,
             "ly": self.ly,
             "coarse_mesh_size": self.coarse_mesh_size,
             "refinement_levels": self.refinement_levels,
-            "overlap": self.overlap,
+            "layers": self.layers,
         }
-        metadata_path = DATA_DIR / (file_name + "metadata.json")
+        metadata_path = self.save_dir / "metadata.json"
         with open(metadata_path, "w") as f:
             json.dump(metadata, f, indent=4)
 
-    def _save_meshes(self, file_name: str = "", save_vtk: bool = True):
+    def _save_meshes(self, save_vtk: bool = True):
         """
         Saves the fine and coarse mesh data to disk in both .vol and optionally .vtk formats.
 
         Args:
-            file_name (str, optional): Prefix for the VTK output files. Defaults to "".
             save_vtk (bool, optional): If True, saves the meshes in VTK format as well. Defaults to True.
 
         Side Effects:
@@ -270,59 +274,63 @@ class TwoLevelMesh:
             - Saves the fine and coarse meshes to .vol files in the DATA_DIR directory.
             - If save_vtk is True, also saves the meshes in VTK format with the specified file name prefix.
         """
-        print("Fine mesh loaded:")
-        print(f"\tNumber of elements: {self.fine_mesh.ne}")
-        print(f"\tNumber of vertices: {self.fine_mesh.nv}")
-        print(f"\tNumber of edges: {len(self.fine_mesh.edges)}")
-        print("Coarse mesh loaded:")
-        print(f"\tNumber of elements: {self.coarse_mesh.ne}")
-        print(f"\tNumber of vertices: {self.coarse_mesh.nv}")
-        print(f"\tNumber of edges: {len(self.coarse_mesh.edges)}")
-        self.fine_mesh.ngmesh.Save(str(DATA_DIR / "fine_mesh.vol"))
-        self.coarse_mesh.ngmesh.Save(str(DATA_DIR / "coarse_mesh.vol"))
+        self.fine_mesh.ngmesh.Save(str(self.save_dir / "fine_mesh.vol"))
+        self.coarse_mesh.ngmesh.Save(str(self.save_dir / "coarse_mesh.vol"))
         if save_vtk:
             vtk = ngs.VTKOutput(
                 self.fine_mesh,
                 coefs=[],
                 names=[],
-                filename=str(DATA_DIR / (file_name + "fine_mesh")),
+                filename=str(self.save_dir / "fine_mesh"),
             )
             vtk.Do()
             vtk = ngs.VTKOutput(
                 self.coarse_mesh,
                 coefs=[],
                 names=[],
-                filename=str(DATA_DIR / (file_name + "coarse_mesh")),
+                filename=str(self.save_dir / "coarse_mesh"),
             )
             vtk.Do()
+            print("Fine mesh saved:")
+            print(f"\tNumber of elements: {self.fine_mesh.ne}")
+            print(f"\tNumber of vertices: {self.fine_mesh.nv}")
+            print(f"\tNumber of edges: {len(self.fine_mesh.edges)}")
+            print("Coarse mesh saved:")
+            print(f"\tNumber of elements: {self.coarse_mesh.ne}")
+            print(f"\tNumber of vertices: {self.coarse_mesh.nv}")
+            print(f"\tNumber of edges: {len(self.coarse_mesh.edges)}")
 
-    def _save_coarse_domains(self, file_name: str = ""):
+    def _save_subdomains(self):
         """
-        Save coarse domains to a file.
-
-        Args:
-            file_name (str, optional): Name of the file to save the coarse domains. Defaults to "".
+        Save subdomains to a file.
         """
-        coarse_domains_path = DATA_DIR / (file_name + "coarse_domains.json")
-        with open(coarse_domains_path, "w") as f:
-            coarse_domains_picklable = {
-                int(coarse_el.nr): {
-                    "interior": [el.nr for el in domain_data["interior"]],
-                    "edges": [edge.nr for edge in domain_data["edges"]],
+        subdomains_path = self.save_dir / "subdomains.json"
+        with open(subdomains_path, "w") as f:
+            subdomains_picklable = {
+                int(subdomain.nr): {
+                    "interior": [el.nr for el in subdomain_data["interior"]],
+                    "edges": [edge.nr for edge in subdomain_data["edges"]],
                     **{
                         f"layer_{layer_idx}": [
-                            el.nr for el in domain_data.get(f"layer_{layer_idx}", [])
+                            el.nr for el in subdomain_data.get(f"layer_{layer_idx}", [])
                         ]
-                        for layer_idx in range(1, self.overlap + 1)
+                        for layer_idx in range(1, self.layers+ 1)
                     },
                 }
-                for coarse_el, domain_data in self.coarse_domains.items()
+                for subdomain, subdomain_data in self.subdomains.items()
             }
-            json.dump(coarse_domains_picklable, f, indent=4)
+            json.dump(subdomains_picklable, f, indent=4)
 
     # loading
     @classmethod
-    def load(cls, file_name: str = ""):
+    def load(
+        cls,
+        lx: float,
+        ly: float,
+        coarse_mesh_size: float,
+        refinement_levels: int,
+        layers: int,
+    ):
         """
         Load the mesh and metadata from files and return a TwoLevelMesh instance.
 
@@ -332,20 +340,25 @@ class TwoLevelMesh:
         Returns:
             TwoLevelMesh: Loaded TwoLevelMesh instance.
         """
-        obj = cls.__new__(cls)
-        obj._load_metadata(file_name)
-        obj._load_meshes(file_name)
-        obj._load_coarse_domains(file_name)
+        folder_name = cls.SAVE_STRING.format(
+            lx, ly, coarse_mesh_size, refinement_levels, layers
+        )
+        fp = DATA_DIR / folder_name
+        if fp.exists():
+            print(f"Loading TwoLevelMesh from {fp}...")
+            obj = cls.__new__(cls)
+            obj._load_metadata(fp)
+            obj._load_meshes(fp)
+            obj._load_subdomains(fp)
+        else:
+            raise FileNotFoundError(f"Metadata file {fp} does not exist.")
         return obj
 
-    def _load_metadata(self, file_name: str = ""):
+    def _load_metadata(self, fp: Path):
         """
         Load mesh and domain metadata from a JSON file.
-
-        Args:
-            file_name (str, optional): Name of the file to load the metadata. Defaults to "".
         """
-        metadata_path = DATA_DIR / (file_name + "metadata.json")
+        metadata_path = fp / "metadata.json"
         if not metadata_path.exists():
             raise FileNotFoundError(f"Metadata file {metadata_path} does not exist.")
         with open(metadata_path, "r") as f:
@@ -354,17 +367,14 @@ class TwoLevelMesh:
         self.ly = metadata["ly"]
         self.coarse_mesh_size = metadata["coarse_mesh_size"]
         self.refinement_levels = metadata["refinement_levels"]
-        self.overlap = metadata["overlap"]
+        self.layers= metadata["layers"]
 
-    def _load_meshes(self, file_name: str = ""):
+    def _load_meshes(self, fp: Path):
         """
         Load fine and coarse meshes from disk.
-
-        Args:
-            file_name (str, optional): Prefix for the mesh files. Defaults to "".
         """
-        fine_mesh_path = DATA_DIR / (file_name + "fine_mesh.vol")
-        coarse_mesh_path = DATA_DIR / (file_name + "coarse_mesh.vol")
+        fine_mesh_path = fp / "fine_mesh.vol"
+        coarse_mesh_path = fp / "coarse_mesh.vol"
         if not fine_mesh_path.exists() or not coarse_mesh_path.exists():
             raise FileNotFoundError(
                 f"Mesh files {fine_mesh_path} or {coarse_mesh_path} do not exist."
@@ -380,39 +390,68 @@ class TwoLevelMesh:
         print(f"\tNumber of vertices: {self.coarse_mesh.nv}")
         print(f"\tNumber of edges: {len(self.coarse_mesh.edges)}")
 
-    def _load_coarse_domains(self, file_name: str = ""):
+    def _load_subdomains(self, fp: Path):
         """
-        Load coarse domains from a file and reconstruct the mapping.
+        Load subdomains from a file and reconstruct the mapping.
 
         Args:
-            file_name (str, optional): Name of the file to load the coarse domains. Defaults to "".
+            file_name (str, optional): Name of the file to load the subdomains. Defaults to "".
         """
-        coarse_domains_path = DATA_DIR / (file_name + "coarse_domains.json")
-        if not coarse_domains_path.exists():
+        subdomains_path = fp / "subdomains.json"
+        if not subdomains_path.exists():
             raise FileNotFoundError(
-                f"Coarse domains file {coarse_domains_path} does not exist."
+                f"subdomains file {subdomains_path} does not exist."
             )
-        with open(coarse_domains_path, "r") as f:
-            self.coarse_domains = json.load(f)
+        with open(subdomains_path, "r") as f:
+            self.subdomains = json.load(f)
 
         # Convert keys back to elements
-        self.coarse_domains = {
-            self.coarse_mesh[ngs.ElementId(ngs.VOL, int(coarse_el))]: {
+        self.subdomains = {
+            self.coarse_mesh[ngs.ElementId(ngs.VOL, int(subdomain))]: {
                 "interior": [
                     self.fine_mesh[ngs.ElementId(ngs.VOL, el)]
-                    for el in domain_data["interior"]
+                    for el in subdomain_data["interior"]
                 ],
-                "edges": [self.fine_mesh.edges[edge] for edge in domain_data["edges"]],
+                "edges": [
+                    self.fine_mesh.edges[edge] for edge in subdomain_data["edges"]
+                ],
                 **{
                     f"layer_{layer_idx}": [
                         self.fine_mesh[ngs.ElementId(ngs.VOL, el)]
-                        for el in domain_data.get(f"layer_{layer_idx}", [])
+                        for el in subdomain_data.get(f"layer_{layer_idx}", [])
                     ]
-                    for layer_idx in range(1, self.overlap + 1)
+                    for layer_idx in range(1, self.layers+ 1)
                 },
             }
-            for coarse_el, domain_data in self.coarse_domains.items()
+            for subdomain, subdomain_data in self.subdomains.items()
         }
+
+    @property
+    def save_dir(self):
+        """
+        Directory where the mesh and subdomain data are saved.
+        """
+        folder_name = self.SAVE_STRING.format(
+            self.lx,
+            self.ly,
+            self.coarse_mesh_size,
+            self.refinement_levels,
+            self.layers,
+        )
+        return DATA_DIR / folder_name
+
+    @save_dir.setter
+    def save_dir(self, folder_name: str):
+        """
+        Set the folder where the mesh and subdomain data are saved.
+
+        Args:
+            folder_name (str): Name of the folder.
+        """
+        self._save_folder = DATA_DIR / folder_name
+        if not self._save_folder.exists():
+            self._save_folder.mkdir(parents=True, exist_ok=True)
+
 
     # plotting
     def plot_domains(
@@ -423,13 +462,13 @@ class TwoLevelMesh:
         fade_factor: float = 1.5,
     ):
         """
-        Visualize the coarse domains and optional overlap layers using matplotlib.
+        Visualize the subdomains and optional layers using matplotlib.
 
         Args:
             domains (list or int, optional): Which domains to plot. Defaults to 1.
-            plot_layers (bool, optional): Whether to plot overlap layers. Defaults to False.
+            plot_layers (bool, optional): Whether to plot layers. Defaults to False.
             opacity (float, optional): Opacity of the domain fill. Defaults to 0.9.
-            fade_factor (float, optional): Controls fading of overlap layers. Defaults to 1.5.
+            fade_factor (float, optional): Controls fading of layers. Defaults to 1.5.
 
         Returns:
             tuple: (figure, ax) Matplotlib figure and axis.
@@ -437,15 +476,15 @@ class TwoLevelMesh:
         domains_int_toggle = isinstance(domains, int)
         domains_list_toggle = isinstance(domains, list)
         figure, ax = plt.subplots(figsize=(8, 6))
-        for i, (coarse_el, domain_data) in enumerate(self.coarse_domains.items()):
-            domain_elements = domain_data["interior"]
+        for i, (subdomain, subdomain_data) in enumerate(self.subdomains.items()):
+            domain_elements = subdomain_data["interior"]
             if domains_int_toggle:
                 if i % domains != 0:
                     continue
             elif domains_list_toggle:
-                if coarse_el not in domains:
+                if subdomain not in domains:
                     continue
-            fillcolor = self.domain_colors[i % len(self.domain_colors)]
+            fillcolor = self.subdomain_colors[i % len(self.subdomain_colors)]
             for domain_el in domain_elements:
                 self.plot_element(
                     ax,
@@ -457,10 +496,10 @@ class TwoLevelMesh:
                     label="Coarse Element",
                 )
             if plot_layers:
-                for layer_idx in range(1, self.overlap + 1):
-                    layer_elements = domain_data.get(f"layer_{layer_idx}", [])
+                for layer_idx in range(1, self.layers+ 1):
+                    layer_elements = subdomain_data.get(f"layer_{layer_idx}", [])
                     alpha_value = opacity / (
-                        1 + (layer_idx / self.overlap) ** fade_factor
+                        1 + (layer_idx / self.layers) ** fade_factor
                     )
                     for layer_el in layer_elements:
                         self.plot_element(
@@ -470,7 +509,7 @@ class TwoLevelMesh:
                             fillcolor=fillcolor,
                             alpha=alpha_value,
                             edgecolor="black",
-                            label=f"Overlap Layer {layer_idx} Element",
+                            label=f"layersLayer {layer_idx} Element",
                         )
         return figure, ax
 
@@ -509,16 +548,16 @@ class TwoLevelMesh:
         ax.add_patch(polygon)
 
     @property
-    def domain_colors(self):
+    def subdomain_colors(self):
         """
         List of colors for plotting domains.
         """
-        if not hasattr(self, "_domain_colors"):
-            self._domain_colors = CUSTOM_COLORS_SIMPLE
-        return self._domain_colors
+        if not hasattr(self, "_subdomain_colors"):
+            self._subdomain_colors = CUSTOM_COLORS_SIMPLE
+        return self._subdomain_colors
 
-    @domain_colors.setter
-    def domain_colors(self, colors):
+    @subdomain_colors.setter
+    def subdomain_colors(self, colors):
         """
         Set custom colors for the domains.
 
@@ -527,12 +566,12 @@ class TwoLevelMesh:
         """
         if not isinstance(colors, list):
             raise ValueError("Domain colors must be a list.")
-        self._domain_colors = colors
+        self._subdomain_colors = colors
 
     # supporting methods
-    def _get_edges_on_coarse_domain_edge(self, coarse_edge, mesh_element):
+    def _get_edges_on_subdomain_edge(self, coarse_edge, mesh_element):
         """
-        Find all fine edges that lie on a given coarse mesh edge.
+        Find all fine edges that lie on a given subdomain (coarse mesh) edge.
 
         Args:
             coarse_edge: The coarse mesh edge.
@@ -623,10 +662,13 @@ if __name__ == "__main__":
     lx, ly = 1.0, 1.0
     coarse_mesh_size = 0.15
     refinement_levels = 2
-    overlap = 2
+    layers= 2
     two_mesh = TwoLevelMesh(
-        lx, ly, coarse_mesh_size, refinement_levels=refinement_levels, overlap=overlap
+        lx, ly, coarse_mesh_size, refinement_levels=refinement_levels, layers=layers
     )
-    two_mesh = TwoLevelMesh.load()
+    two_mesh.save()  # Save the mesh and subdomains
+    # two_mesh = TwoLevelMesh.load(
+    #     lx, ly, coarse_mesh_size, refinement_levels, layers
+    # )
     figure, ax = two_mesh.plot_domains(domains=7, plot_layers=True)
     plt.show()

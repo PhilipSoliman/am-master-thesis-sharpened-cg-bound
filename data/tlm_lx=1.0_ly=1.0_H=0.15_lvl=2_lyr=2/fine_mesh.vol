@@ -2566,9 +2566,9 @@ materials
 
 bcnames
 4
-1	floor
+1	bottom
 2	right
-3	lid
+3	top
 4	left
 
 
@@ -2586,7 +2586,7 @@ face_transparencies
 endmesh
 
 TextOutArchive
-864
+865
 -3
 19
 netgen::OCCGeometry
@@ -2687,8 +2687,8 @@ f
 f
 t
 t
-5
-floor
+6
+bottom
 f
 1e+99
 0
@@ -2706,7 +2706,7 @@ f
 t
 t
 3
-lid
+top
 f
 1e+99
 0
