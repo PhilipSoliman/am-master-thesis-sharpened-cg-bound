@@ -172,18 +172,26 @@ class Problem:
             raise ValueError(
                 "Finite element space has not been constructed yet. Call construct_fespace() first."
             )
+        # solution function with boundary conditions applied
         u = ngs.GridFunction(self.fes.fespace)
         for bname, data in self.boundary_values.items():
+            u_tmp = ngs.GridFunction(self.fes.fespace)
             value = data["value"]
             btype = data["type"]
             if btype == BoundaryType.DIRICHLET:
-                print(f"Setting Dirichlet condition on {bname.value} with value {value}")
-                u.Set(value, definedon=bname.value)
+                print(
+                    f"Setting Dirichlet condition on {bname.value} with value {value}"
+                )
+                u_tmp.Set(
+                    value, definedon=self.two_mesh.fine_mesh.Boundaries(bname.value)
+                )
+                u.vec.data += u_tmp.vec
             else:
                 raise ValueError(
                     f"Unsupported boundary condition type: {btype}. "
                     "Only Dirichlet conditions are supported."
                 )
+        # assemble rhs and stiffness matrix
         b = self._linear_form.Assemble()
         A = self._bilinear_form.Assemble()
 
@@ -202,9 +210,14 @@ class Problem:
             raise ValueError(
                 "Finite element space has not been constructed yet. Call construct_fespace() first."
             )
+        # homogenization 
         res = b.vec.CreateVector()
         res.data = b.vec - A.mat * u.vec
-        u.vec.data += A.mat.Inverse(self.fes.fespace.FreeDofs(), inverse="sparsecholesky") * res
+
+        # solve the system using sparse Cholesky factorization
+        u.vec.data += (
+            A.mat.Inverse(self.fes.fespace.FreeDofs(), inverse="sparsecholesky") * res
+        )
 
     def save_ngs_solution(self, sol: ngs.GridFunction, problem_name: str):
         """
@@ -270,15 +283,14 @@ if __name__ == "__main__":
     # construct bilinear and linear forms
     problem.set_bilinear_form(ngs.grad(u_h) * ngs.grad(v_h) * ngs.dx)
     problem.set_linear_form(
-        32 * (ngs.y * (1 - ngs.y) + ngs.x * (1 - ngs.x)) * v_h * ngs.dx
+        32 * (ngs.y * (ly - ngs.y) + ngs.x * (lx - ngs.x)) * v_h * ngs.dx
     )
 
     # assemble the forms
     u, b, A = problem.assemble()
-    print(len(u.vec.data))
 
     # direct solve
     problem.direct_ngs_solve(u, b, A)
 
     # save the solution
-    # problem.save_ngs_solution(u, "poisson")
+    problem.save_ngs_solution(u, "poisson")
