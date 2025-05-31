@@ -1,4 +1,5 @@
 import copy
+from enum import Enum
 import json
 
 import matplotlib.pyplot as plt
@@ -10,31 +11,28 @@ import numpy as np
 from matplotlib.axes import Axes
 from matplotlib.patches import Polygon
 
-from lib.utils import (
-    CUSTOM_COLORS_SIMPLE,
-    get_root,
-)
+from lib.utils import CUSTOM_COLORS_SIMPLE, get_root
 
-# create/obtain directories
 DATA_DIR = get_root() / "data"
-BOUNDARY_NAMES = [
-    "lid",
-    "floor",
-    "right",
-    "left",
-]
 
 
 def OCCRectangle(l, w):
     return occ.WorkPlane().Rectangle(l, w)
 
+class BoundaryNames(Enum):
+    """
+    Enum for boundary names used in the TwoLevelMesh class.
+    """
+    BOTTOM = "bottom"
+    RIGHT = "right"
+    TOP = "top"
+    LEFT = "left"
 
 class TwoLevelMesh:
     """
     TwoLevelMesh
     A class for generating, managing, and visualizing two-level conforming meshes (coarse and fine) for rectangular domains, with support for overlapping domain decomposition and mesh serialization.
     Attributes:
-        DOMAIN_COLORS (list): List of colors for domain visualization.
         lx (float): Length of the domain in the x-direction.
         ly (float): Length of the domain in the y-direction.
         coarse_mesh_size (float): Mesh size for the coarse mesh.
@@ -67,8 +65,6 @@ class TwoLevelMesh:
         - Save and load mesh and domain decomposition data.
         - Visualize mesh domains and overlaps for debugging or analysis.
     """
-
-    DOMAIN_COLORS = CUSTOM_COLORS_SIMPLE
 
     def __init__(
         self,
@@ -114,10 +110,10 @@ class TwoLevelMesh:
         face = domain.Face()
 
         # Set boundary labels (as before)
-        face.edges.Max(occ.Y).name = BOUNDARY_NAMES[0]
-        face.edges.Min(occ.Y).name = BOUNDARY_NAMES[1]
-        face.edges.Max(occ.X).name = BOUNDARY_NAMES[2]
-        face.edges.Min(occ.X).name = BOUNDARY_NAMES[3]
+        face.edges.Max(occ.Y).name = BoundaryNames.TOP.value
+        face.edges.Min(occ.Y).name = BoundaryNames.BOTTOM.value
+        face.edges.Max(occ.X).name = BoundaryNames.RIGHT.value
+        face.edges.Min(occ.X).name = BoundaryNames.LEFT.value
 
         geo = occ.OCCGeometry(face, dim=2)
 
@@ -194,25 +190,13 @@ class TwoLevelMesh:
         Returns:
             list: Fine mesh edges that lie on the coarse element's edges.
         """
-        # coerse_el_edge_dofs = set()
         coarse_domain_edges = set()
         for coarse_edge in coarse_el.edges:
-            coerse_el_edge_dofs = set()
             for el in interior_elements:
                 mesh_el = self.fine_mesh[el]
                 fine_edges = self._get_edges_on_coarse_domain_edge(coarse_edge, mesh_el)
                 coarse_domain_edges.update(fine_edges)
-                # for fine_edge in fine_edges:
-                #     v1, v2 = fine_mesh.edges[fine_edge.nr].vertices
 
-                # # get vertex DOFs
-                # coerse_el_edge_dofs.update(fes_fine.GetDofNrs(v1))
-                # coerse_el_edge_dofs.update(fes_fine.GetDofNrs(v2))
-
-                # # get edge coerse_el_edge_dofs
-                # coerse_el_edge_dofs.update(fes_fine.GetDofNrs(fine_edge))
-
-        # return coerse_el_edge_dofs
         return list(coarse_domain_edges)
 
     def extend_coarse_domains(self, layer_idx: int = 1):
@@ -462,7 +446,7 @@ class TwoLevelMesh:
             elif domains_list_toggle:
                 if coarse_el not in domains:
                     continue
-            fillcolor = self.DOMAIN_COLORS[i % len(self.DOMAIN_COLORS)]
+            fillcolor = self.domain_colors[i % len(self.domain_colors)]
             for domain_el in domain_elements:
                 self.plot_element(
                     ax,
@@ -525,6 +509,28 @@ class TwoLevelMesh:
         )
         ax.add_patch(polygon)
 
+    @property
+    def domain_colors(self):
+        """
+        List of colors for plotting domains.
+        """
+        if not hasattr(self, "_domain_colors"):
+            self._domain_colors = CUSTOM_COLORS_SIMPLE
+        return self._domain_colors
+
+    @domain_colors.setter
+    def domain_colors(self, colors):
+        """
+        Set custom colors for the domains.
+
+        Args:
+            colors (list): List of color strings.
+        """
+        if not isinstance(colors, list):
+            raise ValueError("Domain colors must be a list.")
+        self._domain_colors = colors
+
+    # supporting methods
     def _get_edges_on_coarse_domain_edge(self, coarse_edge, mesh_element):
         """
         Find all fine edges that lie on a given coarse mesh edge.
@@ -619,84 +625,9 @@ if __name__ == "__main__":
     coarse_mesh_size = 0.15
     refinement_levels = 2
     overlap = 2
-    # two_mesh = TwoLevelMesh(
-    #     lx, ly, coarse_mesh_size, refinement_levels=refinement_levels, overlap=overlap
-    # )
+    two_mesh = TwoLevelMesh(
+        lx, ly, coarse_mesh_size, refinement_levels=refinement_levels, overlap=overlap
+    )
     two_mesh = TwoLevelMesh.load()
     figure, ax = two_mesh.plot_domains(domains=7, plot_layers=True)
     plt.show()
-    # # construct finite element space
-    # fes_fine = ngs.H1(fine_mesh, order=1, dirichlet="lid|floor|right|left")
-
-    # # construct coarse domains
-    # coarse_dict = find_fine_elements_within_coarse_elements(coarse_mesh, fine_mesh)
-
-    # # get fine degrees of freedom (DOFs)
-    # fine_dofs = set()
-    # for el in fes_fine.Elements(ngs.VOL):
-    #     dofs = fes_fine.GetDofNrs(el)
-    #     fine_dofs.update(dofs)
-
-    # # get coarse degrees of freedom (DOFs)
-    # coarse_dofs = set()
-    # for coarse_v in coarse_mesh.vertices:
-    #     dofs = fes_fine.GetDofNrs(coarse_v)
-    #     coarse_dofs.update(dofs)
-    # fine_dofs -= coarse_dofs
-
-    # # find all fine DOFs that lie on a coarse edge
-    # edge_dofs = set()
-    # fine_edge_count = 0
-    # figure, ax = plt.subplots(figsize=(8, 6))
-    # for i, (coarse_el, fine_indices) in enumerate(coarse_dict.items()):
-    #     domain_elements = get_coarse_element_interior(
-    #         fine_mesh, coarse_el, fine_indices
-    #     )
-    #     edge_dofs.update(get_coarse_element_edge_dofs(fine_mesh, coarse_el))
-    #     neighbor_elements = extend_domain(fine_mesh, domain_elements)
-    #     second_layer_elements = extend_domain(fine_mesh, neighbor_elements + domain_elements)
-    #     if i % 8 == 0:
-    #         fillcolor = domain_colors[i % len(domain_colors)]
-    #         for el in domain_elements:
-    #             plot_element(
-    #                 ax,
-    #                 el,
-    #                 fine_mesh,
-    #                 fillcolor=fillcolor,
-    #                 alpha=0.7,
-    #                 edgecolor="black",
-    #                 label="Coarse Element",
-    #             )
-    #         for el in neighbor_elements:
-    #             plot_element(
-    #                 ax,
-    #                 el,
-    #                 fine_mesh,
-    #                 fillcolor=fillcolor,
-    #                 alpha=0.4,
-    #                 edgecolor="black",
-    #                 label="Overlap Element",
-    #             )
-    #         for el in second_layer_elements:
-    #             plot_element(
-    #                 ax,
-    #                 el,
-    #                 fine_mesh,
-    #                 fillcolor=fillcolor,
-    #                 alpha=0.2,
-    #                 edgecolor="black",
-    #                 label="Second Layer Element",
-    #             )
-
-    # # remove coarse nodes from edge DOFs
-    # edge_dofs -= coarse_dofs
-
-    # # remove edge DOFs from fine DOFs
-    # fine_dofs -= edge_dofs
-
-    # print("FE space:")
-    # print(f"\t#DOFs: {fes_fine.ndof}")
-    # print(f"\t#Fine DOFs: {len(fine_dofs)}")
-    # print(f"\t#Edge DOFs: {len(edge_dofs)}")
-    # print(f"\t#Coarse DOFs: {len(coarse_dofs)}")
-    # plt.show()
