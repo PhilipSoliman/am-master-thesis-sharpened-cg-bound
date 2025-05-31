@@ -78,6 +78,16 @@ class TwoLevelMesh:
         refinement_levels: int = 1,
         overlap: int = 0,
     ):
+        """
+        Initialize the TwoLevelMesh with domain size, mesh size, refinement, and overlap.
+
+        Args:
+            lx (float): Length of the domain in the x-direction.
+            ly (float): Length of the domain in the y-direction.
+            coarse_mesh_size (float): Mesh size for the coarse mesh.
+            refinement_levels (int, optional): Number of uniform refinements for the fine mesh. Defaults to 1.
+            overlap (int, optional): Number of overlap layers for domain decomposition. Defaults to 0.
+        """
         self.lx = lx
         self.ly = ly
         self.coarse_mesh_size = coarse_mesh_size
@@ -96,8 +106,8 @@ class TwoLevelMesh:
             coarse_mesh_size: Mesh size for the coarse mesh.
             refinement_levels: Number of uniform refinements for the fine mesh.
         Returns:
-            fine_mesh: Refined NGSolve mesh.
-            coarse_mesh: Original coarse NGSolve mesh.
+            fine_mesh (ngs.Mesh): Refined NGSolve mesh.
+            coarse_mesh (ngs.Mesh): Original coarse NGSolve mesh.
         """
         # Create rectangle geometry
         domain = OCCRectangle(self.lx, self.ly)
@@ -123,6 +133,12 @@ class TwoLevelMesh:
         return fine_mesh, coarse_mesh
 
     def get_coarse_domains(self):
+        """
+        Identify and return the mapping of coarse mesh elements to their corresponding fine mesh domains.
+
+        Returns:
+            dict: Mapping of coarse elements to their fine mesh interior elements and edges.
+        """
         coarse_domains = {}
         coarse_elements = self.coarse_mesh.Elements()
         interior_indices = np.arange(self.fine_mesh.ne)  # indices of fine elements
@@ -168,6 +184,16 @@ class TwoLevelMesh:
         return coarse_domains
 
     def get_coarse_domain_edges(self, coarse_el, interior_elements):
+        """
+        Find all fine mesh edges that lie on the edges of a given coarse mesh element.
+
+        Args:
+            coarse_el: The coarse mesh element.
+            interior_elements: List of fine mesh elements inside the coarse element.
+
+        Returns:
+            list: Fine mesh edges that lie on the coarse element's edges.
+        """
         # coerse_el_edge_dofs = set()
         coarse_domain_edges = set()
         for coarse_edge in coarse_el.edges:
@@ -190,6 +216,12 @@ class TwoLevelMesh:
         return list(coarse_domain_edges)
 
     def extend_coarse_domains(self, layer_idx: int = 1):
+        """
+        Extend the coarse domains by adding overlap layers of fine mesh elements.
+
+        Args:
+            layer_idx (int, optional): The new layer's index. Defaults to 1.
+        """
         for domain_data in self.coarse_domains.values():
             interior_edges = set()
             domain_elements = copy.copy(domain_data["interior"])
@@ -215,15 +247,22 @@ class TwoLevelMesh:
     # saving
     def save(self, file_name: str = ""):
         """
-        Save the mesh and metadata to files.
+        Save the mesh, metadata, and coarse domain information to disk.
+
         Args:
-            file_name: Name of the file to save the mesh and metadata.
+            file_name (str, optional): Name of the file to save the mesh and metadata. Defaults to "".
         """
         self._save_metadata(file_name)
         self._save_meshes(file_name)
         self._save_coarse_domains(file_name)
 
     def _save_metadata(self, file_name: str = ""):
+        """
+        Save mesh and domain metadata to a JSON file.
+
+        Args:
+            file_name (str, optional): Name of the file to save the metadata. Defaults to "".
+        """
         metadata = {
             "lx": self.lx,
             "ly": self.ly,
@@ -247,7 +286,6 @@ class TwoLevelMesh:
             - Prints information about the fine and coarse meshes (number of elements, vertices, and edges).
             - Saves the fine and coarse meshes to .vol files in the DATA_DIR directory.
             - If save_vtk is True, also saves the meshes in VTK format with the specified file name prefix.
-
         """
         print("Fine mesh loaded:")
         print(f"\tNumber of elements: {self.fine_mesh.ne}")
@@ -278,8 +316,9 @@ class TwoLevelMesh:
     def _save_coarse_domains(self, file_name: str = ""):
         """
         Save coarse domains to a file.
+
         Args:
-            file_name: Name of the file to save the coarse domains.
+            file_name (str, optional): Name of the file to save the coarse domains. Defaults to "".
         """
         coarse_domains_path = DATA_DIR / (file_name + "coarse_domains.json")
         with open(coarse_domains_path, "w") as f:
@@ -302,9 +341,13 @@ class TwoLevelMesh:
     @classmethod
     def load(cls, file_name: str = ""):
         """
-        Load the mesh and metadata from files.
+        Load the mesh and metadata from files and return a TwoLevelMesh instance.
+
         Args:
-            file_name: Name of the file to load the mesh and metadata.
+            file_name (str, optional): Name of the file to load the mesh and metadata. Defaults to "".
+
+        Returns:
+            TwoLevelMesh: Loaded TwoLevelMesh instance.
         """
         obj = cls.__new__(cls)
         obj._load_metadata(file_name)
@@ -313,6 +356,12 @@ class TwoLevelMesh:
         return obj
 
     def _load_metadata(self, file_name: str = ""):
+        """
+        Load mesh and domain metadata from a JSON file.
+
+        Args:
+            file_name (str, optional): Name of the file to load the metadata. Defaults to "".
+        """
         metadata_path = DATA_DIR / (file_name + "metadata.json")
         if not metadata_path.exists():
             raise FileNotFoundError(f"Metadata file {metadata_path} does not exist.")
@@ -325,6 +374,12 @@ class TwoLevelMesh:
         self.overlap = metadata["overlap"]
 
     def _load_meshes(self, file_name: str = ""):
+        """
+        Load fine and coarse meshes from disk.
+
+        Args:
+            file_name (str, optional): Prefix for the mesh files. Defaults to "".
+        """
         fine_mesh_path = DATA_DIR / (file_name + "fine_mesh.vol")
         coarse_mesh_path = DATA_DIR / (file_name + "coarse_mesh.vol")
         if not fine_mesh_path.exists() or not coarse_mesh_path.exists():
@@ -343,6 +398,12 @@ class TwoLevelMesh:
         print(f"\tNumber of edges: {len(self.coarse_mesh.edges)}")
 
     def _load_coarse_domains(self, file_name: str = ""):
+        """
+        Load coarse domains from a file and reconstruct the mapping.
+
+        Args:
+            file_name (str, optional): Name of the file to load the coarse domains. Defaults to "".
+        """
         coarse_domains_path = DATA_DIR / (file_name + "coarse_domains.json")
         if not coarse_domains_path.exists():
             raise FileNotFoundError(
@@ -378,6 +439,18 @@ class TwoLevelMesh:
         opacity: float = 0.9,
         fade_factor: float = 1.5,
     ):
+        """
+        Visualize the coarse domains and optional overlap layers using matplotlib.
+
+        Args:
+            domains (list or int, optional): Which domains to plot. Defaults to 1.
+            plot_layers (bool, optional): Whether to plot overlap layers. Defaults to False.
+            opacity (float, optional): Opacity of the domain fill. Defaults to 0.9.
+            fade_factor (float, optional): Controls fading of overlap layers. Defaults to 1.5.
+
+        Returns:
+            tuple: (figure, ax) Matplotlib figure and axis.
+        """
         domains_int_toggle = isinstance(domains, int)
         domains_list_toggle = isinstance(domains, list)
         figure, ax = plt.subplots(figsize=(8, 6))
@@ -429,14 +502,16 @@ class TwoLevelMesh:
         label=None,
     ):
         """
-        Plot a single element from the mesh.
+        Plot a single mesh element on a matplotlib axis.
+
         Args:
-            ax: Matplotlib axis to plot on.
+            ax (Axes): Matplotlib axis to plot on.
             element: ElementId of the element to plot.
             mesh: NGSolve mesh containing the element.
-            fillcolor: Color for the element.
-            edgecolor: Color for the element edges.
-            label: Label for the element (optional).
+            fillcolor (str, optional): Color for the element. Defaults to "blue".
+            edgecolor (str, optional): Color for the element edges. Defaults to "black".
+            alpha (float, optional): Opacity of the fill. Defaults to 1.0.
+            label (str, optional): Label for the element (optional).
         """
         vertices = [mesh[v].point for v in mesh[element].vertices]
         polygon = Polygon(
@@ -450,12 +525,16 @@ class TwoLevelMesh:
         )
         ax.add_patch(polygon)
 
-    # helper
     def _get_edges_on_coarse_domain_edge(self, coarse_edge, mesh_element):
         """
-        Find all fine edges that lie on coarse mesh edges.
+        Find all fine edges that lie on a given coarse mesh edge.
+
+        Args:
+            coarse_edge: The coarse mesh edge.
+            mesh_element: The fine mesh element.
+
         Returns:
-            fine_edges: set of fine edges that lie on coarse edges.
+            set: Fine edges that lie on the coarse edge.
         """
         fine_edges = set()
         vc_1, vc_2 = self.coarse_mesh.edges[coarse_edge.nr].vertices
@@ -484,6 +563,16 @@ class TwoLevelMesh:
 
     @staticmethod
     def _vectorized_point_in_triangle(points, a, b, c):
+        """
+        Vectorized check if points are inside the triangle defined by (a, b, c).
+
+        Args:
+            points (np.ndarray): Array of points to check (N, 2).
+            a, b, c (array-like): Triangle vertices.
+
+        Returns:
+            np.ndarray: Boolean mask of points inside the triangle.
+        """
         # Ensure points is (N, 2)
         points = np.asarray(points)
 
@@ -506,6 +595,15 @@ class TwoLevelMesh:
 
     @staticmethod
     def _vectorized_area(p1, p2, p3):
+        """
+        Compute the area of triangles defined by points p1, p2, p3.
+
+        Args:
+            p1, p2, p3 (np.ndarray): Arrays of triangle vertices (N, 2).
+
+        Returns:
+            np.ndarray: Areas of the triangles.
+        """
         return 0.5 * np.abs(
             (
                 p1[:, 0] * (p2[:, 1] - p3[:, 1])
