@@ -19,7 +19,7 @@ def OCCRectangle(l, w):
     return occ.WorkPlane().Rectangle(l, w)
 
 
-class BoundaryNames(Enum):
+class BoundaryName(Enum):
     """
     Enum for boundary names used in the TwoLevelMesh class.
     """
@@ -114,10 +114,10 @@ class TwoLevelMesh:
         face = domain.Face()
 
         # Set boundary labels (as before)
-        face.edges.Max(occ.Y).name = BoundaryNames.TOP.value
-        face.edges.Min(occ.Y).name = BoundaryNames.BOTTOM.value
-        face.edges.Max(occ.X).name = BoundaryNames.RIGHT.value
-        face.edges.Min(occ.X).name = BoundaryNames.LEFT.value
+        face.edges.Max(occ.Y).name = BoundaryName.TOP.value
+        face.edges.Min(occ.Y).name = BoundaryName.BOTTOM.value
+        face.edges.Max(occ.X).name = BoundaryName.RIGHT.value
+        face.edges.Min(occ.X).name = BoundaryName.LEFT.value
 
         geo = occ.OCCGeometry(face, dim=2)
 
