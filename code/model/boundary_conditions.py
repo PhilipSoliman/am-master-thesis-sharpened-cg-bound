@@ -41,7 +41,7 @@ class BoundaryConditions:
     MISSING_BC_ERROR = "Boundary conditions not set for all boundaries. Missing {0}."
 
     def __init__(self):
-        """Constructor for the BoundaryCondition class.
+        """Constructor for the BoundaryConditions class.
 
         Args:
             name (BoundaryName): The name of the boundary.
@@ -58,12 +58,6 @@ class BoundaryConditions:
         Args:
             conditions (list[BoundaryCondition]): List of boundary conditions.
         """
-        # store type and boundary name
-        if bc.value in self._boundary_kwargs:
-            self._boundary_kwargs[bc.type.value] += f"|{bc.name.value}"
-        else:
-            self._boundary_kwargs[bc.type.value] = f"{bc.name.value}"
-
         # check for previously defined bc
         old_bc = next((b for b in self._boundary_conditions if b.name == bc.name), None)
         if old_bc:
@@ -72,6 +66,12 @@ class BoundaryConditions:
         else:
             self._unset_boundaries.remove(bc.name)
 
+        # # store type and boundary name
+        # if bc.type.value in self._boundary_kwargs:
+        #     self._boundary_kwargs[bc.type.value] += f"|{bc.name.value}"
+        # else:
+        #     self._boundary_kwargs[bc.type.value] = f"{bc.name.value}"
+
         # save boundary condition
         self._boundary_conditions.append(bc)
 
@@ -79,7 +79,15 @@ class BoundaryConditions:
     def boundary_kwargs(self):
         if self._unset_boundaries != []:
             raise ValueError(self.MISSING_BC_ERROR.format(self._unset_boundaries))
-        return self._boundary_kwargs
+
+        boundary_kwargs = {}
+        for bc in self._boundary_conditions:
+            if bc.type.value in boundary_kwargs:
+                boundary_kwargs[bc.type.value] += f"|{bc.name.value}"
+            else:
+                boundary_kwargs[bc.type.value] = f"{bc.name.value}"
+
+        return boundary_kwargs
 
     def set_boundary_conditions_on_gfunc(
         self, u: ngs.GridFunction, fespace: ngs.FESpace, mesh: ngs.Mesh
@@ -111,6 +119,7 @@ class BoundaryConditions:
         width = max(widths)
         for name, btype, value in zip(self.names, self.btypes, self.values):
             out += f"\n\t{name.value:<{width}} {btype.value:<{width}} = {str(value):<{width}}"
+        out += f"\nBoundary kwargs = {self.boundary_kwargs}"
         return out
 
     @property
