@@ -1,0 +1,160 @@
+from enum import Enum
+
+import ngsolve as ngs
+from mesh import BoundaryName
+
+
+class BoundaryType(Enum):
+    """
+    BoundaryType
+    A class representing the type of boundary condition for a PDE problem.
+    """
+
+    DIRICHLET = "dirichlet"
+    NEUMANN = "neumann"
+    ROBIN = "robin"
+
+
+class BoundaryCondition:
+    """Class representing a boundary condition for a problem."""
+
+    def __init__(
+        self,
+        name: BoundaryName,
+        btype: BoundaryType,
+        value: float | ngs.CoefficientFunction,
+    ):
+        """Constructor for the BoundaryCondition class.
+
+        Args:
+            name (BoundaryName): The name of the boundary.
+            boundary_type (BoundaryType): The type of the boundary condition.
+        """
+        self.name = name
+        self.type = btype
+        self.value = value
+
+
+class BoundaryConditions:
+    """Class representing a boundary condition for a problem."""
+
+    MISSING_BC_ERROR = "Boundary conditions not set for all boundaries. Missing {0}."
+
+    def __init__(self):
+        """Constructor for the BoundaryCondition class.
+
+        Args:
+            name (BoundaryName): The name of the boundary.
+            boundary_type (BoundaryType): The type of the boundary condition.
+        """
+        self._boundary_conditions = []
+        self._boundary_kwargs = {}
+        self._unset_boundaries = [bname for bname in BoundaryName]
+
+    def set_boundary_condition(self, bc: BoundaryCondition):
+        """
+        Set the boundary conditions for the problem.
+
+        Args:
+            conditions (list[BoundaryCondition]): List of boundary conditions.
+        """
+        # store type and boundary name
+        if bc.value in self._boundary_kwargs:
+            self._boundary_kwargs[bc.type.value] += f"|{bc.name.value}"
+        else:
+            self._boundary_kwargs[bc.type.value] = f"{bc.name.value}"
+
+        self._boundary_conditions.append(bc)
+
+        self._unset_boundaries.remove(bc.name)
+
+    @property
+    def boundary_kwargs(self):
+        if self._unset_boundaries != []:
+            raise ValueError(self.MISSING_BC_ERROR.format(self._unset_boundaries))
+        return self._boundary_kwargs
+
+    def set_boundary_conditions_on_gfunc(
+        self, u: ngs.GridFunction, fespace: ngs.FESpace, mesh: ngs.Mesh
+    ):
+        for bc in self._boundary_conditions:
+            self.set_boundary_condition_on_gfunc(u, bc, fespace, mesh)
+
+    def set_boundary_condition_on_gfunc(
+        self,
+        u: ngs.GridFunction,
+        bc: BoundaryCondition,
+        fespace: ngs.FESpace,
+        mesh: ngs.Mesh,
+    ):
+        """Set a single boundary condition on a grid function."""
+        if bc.type == BoundaryType.DIRICHLET:
+            u_tmp = ngs.GridFunction(fespace)
+            u_tmp.Set(bc.value, definedon=mesh.Boundaries(bc.name.value))
+            u.vec.data += u_tmp.vec
+        else:
+            raise NotImplementedError(
+                f"Unsupported boundary condition type: {bc.type}. "
+                "Only Dirichlet conditions are supported."
+            )
+
+    def __repr__(self):
+        out = "Boundary Conditions:"
+        widths = [len(name.value) for name in self.names]
+        width = max(widths)
+        for name, btype, value in zip(self.names, self.btypes, self.values):
+            out += f"\n\t{name.value:<{width}} {btype.value:<{width}} = {str(value):<{width}}"
+        return out
+
+    @property
+    def names(self):
+        """Get the names of the boundaries."""
+        return [bc.name for bc in self._boundary_conditions]
+
+    @property
+    def btypes(self):
+        """Get the types of the boundaries."""
+        return [bc.type for bc in self._boundary_conditions]
+
+    @property
+    def values(self):
+        """Get the values of the boundaries."""
+        return [bc.value for bc in self._boundary_conditions]
+
+    @property
+    def num_bcs(self):
+        """Get the number of boundaries."""
+        return len(BoundaryName)
+
+class HomogeneousDirichlet(BoundaryConditions):
+
+    def __init__(self):
+        super().__init__()
+        self.set_boundary_condition(
+            BoundaryCondition(
+                BoundaryName.LEFT,
+                BoundaryType.DIRICHLET,
+                0.0,
+            )
+        )
+        self.set_boundary_condition(
+            BoundaryCondition(
+                BoundaryName.RIGHT,
+                BoundaryType.DIRICHLET,
+                0.0,
+            )
+        )
+        self.set_boundary_condition(
+            BoundaryCondition(
+                BoundaryName.BOTTOM,
+                BoundaryType.DIRICHLET,
+                0.0,
+            )
+        )
+        self.set_boundary_condition(
+            BoundaryCondition(
+                BoundaryName.TOP,
+                BoundaryType.DIRICHLET,
+                0.0,
+            )
+        )

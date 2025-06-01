@@ -1,8 +1,15 @@
+from copy import copy
 from enum import Enum
 from typing import Optional, Type
 
 import ngsolve as ngs
 import scipy.sparse as sp
+from boundary_conditions import (
+    BoundaryCondition,
+    BoundaryConditions,
+    BoundaryType,
+    HomogeneousDirichlet,
+)
 from coarse_space import CoarseSpace
 from mesh import BoundaryName, TwoLevelMesh
 from preconditioners import (
@@ -10,7 +17,7 @@ from preconditioners import (
     Preconditioner,
     TwoLevelSchwarzPreconditioner,
 )
-from problem import BoundaryType, Problem
+from problem import Problem
 from scipy.sparse.linalg import LinearOperator
 from scipy.sparse.linalg import cg as sp_cg
 
@@ -42,6 +49,7 @@ class DiffusionProblem(Problem):
         coarse_mesh_size=0.15,
         refinement_levels=2,
         layers=2,
+        bcs: BoundaryConditions = HomogeneousDirichlet(),
         coeff_func=CoeffFunc.INCLUSIONS,
         source_func=SourceFunc.CONSTANT,
     ):
@@ -61,13 +69,7 @@ class DiffusionProblem(Problem):
             two_mesh.save()
 
         # initialize the Problem with the TwoLevelMesh
-        super().__init__(two_mesh)
-
-        # set boundary conditions
-        self.set_boundary_condition(BoundaryName.LEFT, BoundaryType.DIRICHLET, 0.0)
-        self.set_boundary_condition(BoundaryName.RIGHT, BoundaryType.DIRICHLET, 0.0)
-        self.set_boundary_condition(BoundaryName.BOTTOM, BoundaryType.DIRICHLET, 0.0)
-        self.set_boundary_condition(BoundaryName.TOP, BoundaryType.DIRICHLET, 0.0)
+        super().__init__(two_mesh, bcs)
 
         # construct finite element space
         self.construct_fespace(order=1, discontinuous=False)
@@ -93,23 +95,15 @@ class DiffusionProblem(Problem):
         # assemble the system
         self.u, b, A = self.assemble()
 
+        # free dofs
+        free_dofs = self.fes.fespace.FreeDofs()
+
         # export to numpy arrays & sparse matrix
-        u_arr = self.u.vec.FV().NumPy()
-        b_arr = b.vec.FV().NumPy()
-        # TODO: need to take out boundary dofs
+        u_arr = copy(self.u.vec.FV().NumPy()[free_dofs])
+        b_arr = b.vec.FV().NumPy()[free_dofs]
         rows, cols, vals = A.mat.COO()
         A_sp = sp.csr_matrix((vals, (rows, cols)), shape=A.mat.shape)
-
-        # convert A to operator
-        tmp1 = b.vec.CreateVector()
-        tmp2 = b.vec.CreateVector()
-        # TODO: need to take out boundary dofs
-        def matvec(v):
-            tmp1.FV().NumPy()[:] = v
-            tmp2.data = A.mat * tmp1
-            return tmp2.FV().NumPy()
-
-        A_op = LinearOperator((A.mat.height, A.mat.width), matvec)
+        A_sp = A_sp[free_dofs, :][:, free_dofs]
 
         # get preconditioner
         M_op = None
@@ -133,9 +127,13 @@ class DiffusionProblem(Problem):
                 M_op = LinearOperator(A_sp.shape, lambda x: precond.apply(x))
 
         # solve system using (P)CG
-        u_arr[:], info = sp_cg(A_op, b_arr, x0=u_arr, M=M_op, rtol=rtol)
+        u_arr[:], info = sp_cg(A_sp, b_arr, x0=u_arr, M=M_op, rtol=rtol)
         if info != 0:
-            raise RuntimeError(f"Conjugate gradient solver did not converge. Number of iterations: {info}")
+            raise RuntimeError(
+                f"Conjugate gradient solver did not converge. Number of iterations: {info}"
+            )
+        else:
+            self.u.vec.FV().NumPy()[free_dofs] = u_arr
 
     ####################
     # source functions #
@@ -209,7 +207,9 @@ class DiffusionProblem(Problem):
 
 if __name__ == "__main__":
     # Example usage
-    diffusion_problem = DiffusionProblem(source_func=SourceFunc.PARABOLIC, coeff_func=CoeffFunc.CONSTANT)
+    diffusion_problem = DiffusionProblem(
+        source_func=SourceFunc.CONSTANT, coeff_func=CoeffFunc.CONSTANT
+    )
     diffusion_problem.solve(
         preconditioner=None,  # Replace with actual preconditioner if needed
         coarse_space=None,  # Replace with actual coarse space if needed

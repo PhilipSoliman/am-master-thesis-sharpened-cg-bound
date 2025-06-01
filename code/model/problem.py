@@ -4,23 +4,13 @@ from enum import Enum
 import matplotlib.pyplot as plt
 import ngsolve as ngs
 import numpy as np
+from boundary_conditions import BoundaryCondition, BoundaryConditions, BoundaryType, HomogeneousDirichlet
 from fespace import FESpace
 from mesh import BoundaryName, TwoLevelMesh
 
 
-class BoundaryType(Enum):
-    """
-    BoundaryType
-    A class representing the type of boundary condition for a PDE problem.
-    """
-
-    DIRICHLET = "dirichlet"
-    NEUMANN = "neumann"
-    ROBIN = "robin"
-
-
 class Problem:
-    def __init__(self, two_mesh: TwoLevelMesh):
+    def __init__(self, two_mesh: TwoLevelMesh, bcs: BoundaryConditions):
         """
         Initialize the problem with the given coefficient function, source function, and boundary conditions.
 
@@ -30,36 +20,11 @@ class Problem:
             boundary_conditions (dict): Dictionary containing boundary conditions for the problem.
         """
         self.two_mesh = two_mesh
-        self.num_bcs = len(BoundaryName)
-        self._num_bcs_set = 0
+        self.bcs = bcs
         self._linear_form = None
         self._linear_form_set = False
         self._bilinear_form = None
         self._bilinear_form_set = False
-        self.boundary_conditions = {}
-        self.boundary_values = {}
-
-    def set_boundary_condition(
-        self,
-        bname: BoundaryName,
-        btype: BoundaryType,
-        value: float | ngs.CoefficientFunction,
-    ):
-        """
-        Set the boundary conditions for the problem.
-
-        Args:
-            conditions (list[BoundaryCondition]): List of boundary conditions.
-        """
-        # store type and boundary name
-        if btype.value in self.boundary_conditions:
-            self.boundary_conditions[btype.value] += f"|{bname.value}"
-        else:
-            self.boundary_conditions[btype.value] = f"{bname.value}"
-
-        self.boundary_values[bname] = {"value": value, "type": btype}
-
-        self._num_bcs_set += 1
 
     def construct_fespace(self, order: int = 1, discontinuous: bool = False):
         """
@@ -72,17 +37,11 @@ class Problem:
         Returns:
             FESpace: The finite element space for the problem.
         """
-        if self.num_bcs_set != self.num_bcs:
-            raise ValueError(
-                f"Boundary conditions not set for all boundaries. "
-                f"Expected {self.num_bcs} but got {len(self.boundary_conditions)}."
-                f"Boundary conditions: {self.boundary_conditions}"
-            )
         self.fes = FESpace(
             self.two_mesh,
             order=order,
             discontinuous=discontinuous,
-            **self.boundary_conditions,
+            **self.bcs.boundary_kwargs,
         )
         self._linear_form = ngs.LinearForm(self.fes.fespace)
         self._bilinear_form = ngs.BilinearForm(self.fes.fespace, symmetric=True)
@@ -167,22 +126,12 @@ class Problem:
             raise ValueError(
                 "Linear or bilinear form has not been initialized. Call construct_fespace() first."
             )
-        # solution function with boundary conditions applied
+        # solution grid function
         u = ngs.GridFunction(self.fes.fespace)
-        for bname, data in self.boundary_values.items():
-            u_tmp = ngs.GridFunction(self.fes.fespace)
-            value = data["value"]
-            btype = data["type"]
-            if btype == BoundaryType.DIRICHLET:
-                u_tmp.Set(
-                    value, definedon=self.two_mesh.fine_mesh.Boundaries(bname.value)
-                )
-                u.vec.data += u_tmp.vec
-            else:
-                raise ValueError(
-                    f"Unsupported boundary condition type: {btype}. "
-                    "Only Dirichlet conditions are supported."
-                )
+
+        # set boundary conditions on the grid function
+        self.bcs.set_boundary_conditions_on_gfunc(u, self.fes.fespace, self.two_mesh.fine_mesh)
+
         # assemble rhs and stiffness matrix
         b = self._linear_form.Assemble()
         A = self._bilinear_form.Assemble()
@@ -228,11 +177,6 @@ class Problem:
         )
         vtk.Do()
 
-    @property
-    def num_bcs_set(self):
-        """Number of boundary conditions set."""
-        return self._num_bcs_set
-
 
 if __name__ == "__main__":
     # load mesh
@@ -248,14 +192,12 @@ if __name__ == "__main__":
         layers=layers,
     )
 
-    # construct finite element space
-    problem = Problem(two_mesh)
+    # define boundary conditions
+    bcs = HomogeneousDirichlet()
+    print(bcs) 
 
-    # set boundary conditions
-    problem.set_boundary_condition(BoundaryName.LEFT, BoundaryType.DIRICHLET, 1.0)
-    problem.set_boundary_condition(BoundaryName.RIGHT, BoundaryType.DIRICHLET, 0.0)
-    problem.set_boundary_condition(BoundaryName.BOTTOM, BoundaryType.DIRICHLET, 0.0)
-    problem.set_boundary_condition(BoundaryName.TOP, BoundaryType.DIRICHLET, 0.0)
+    # construct finite element space
+    problem = Problem(two_mesh, bcs)
 
     # construct finite element space
     problem.construct_fespace(order=1, discontinuous=False)
@@ -282,8 +224,8 @@ if __name__ == "__main__":
     plt.ylabel("Rows")
     plt.show()
 
-    # direct solve
-    problem.direct_ngs_solve(u, b, A)
+    # # direct solve
+    # problem.direct_ngs_solve(u, b, A)
 
-    # save the solution
-    problem.save_ngs_solution(u, "poisson")
+    # # save the solution
+    # problem.save_ngs_solution(u, "poisson")
