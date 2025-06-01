@@ -1,7 +1,7 @@
 import numpy as np
 import scipy.sparse as sp
 from coarse_space import CoarseSpace
-from fespace import FESpace
+from mesh import TwoLevelMesh
 
 
 class Preconditioner(object):
@@ -10,8 +10,8 @@ class Preconditioner(object):
 
 
 class OneLevelSchwarzPreconditioner(Preconditioner):
-    def __init__(self, fespace: FESpace, A: sp.csr_matrix):
-        self.fespace = fespace
+    def __init__(self, A: sp.csr_matrix, two_mesh: TwoLevelMesh):
+        self.two_mesh = two_mesh
         self.A = A
 
     def apply(self, x: np.ndarray):
@@ -22,8 +22,8 @@ class OneLevelSchwarzPreconditioner(Preconditioner):
 
 
 class TwoLevelSchwarzPreconditioner(OneLevelSchwarzPreconditioner):
-    def __init__(self, fespace: FESpace, A: sp.csr_matrix, coarse_space: CoarseSpace):
-        super().__init__(fespace, A)
+    def __init__(self, A: sp.csr_matrix, two_mesh: TwoLevelMesh, coarse_space: CoarseSpace):
+        super().__init__(A, two_mesh)
         self.coarse_space = coarse_space
 
     def apply(self, x: np.ndarray):

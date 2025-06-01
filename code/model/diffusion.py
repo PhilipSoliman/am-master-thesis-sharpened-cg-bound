@@ -29,7 +29,7 @@ class SourceFunc(Enum):
     PARABOLIC = "parabolic_source"
 
 
-class CoeffFunc(Enum):
+class CoefFunc(Enum):
     """Enumeration for coefficient functions used in the diffusion problem."""
 
     SINUSOIDAL = "sinusoidal_coefficient"
@@ -50,7 +50,7 @@ class DiffusionProblem(Problem):
         refinement_levels=2,
         layers=2,
         bcs: BoundaryConditions = HomogeneousDirichlet(),
-        coeff_func=CoeffFunc.INCLUSIONS,
+        coeff_func=CoefFunc.INCLUSIONS,
         source_func=SourceFunc.CONSTANT,
     ):
         try:
@@ -95,12 +95,16 @@ class DiffusionProblem(Problem):
         # assemble the system
         self.u, b, A = self.assemble()
 
+        # homogenization of the boundary conditions
+        res = b.vec.CreateVector()
+        res.data = b.vec - A.mat * self.u.vec
+
         # free dofs
         free_dofs = self.fes.fespace.FreeDofs()
 
         # export to numpy arrays & sparse matrix
         u_arr = copy(self.u.vec.FV().NumPy()[free_dofs])
-        b_arr = b.vec.FV().NumPy()[free_dofs]
+        res_arr = res.vec.FV().NumPy()[free_dofs]
         rows, cols, vals = A.mat.COO()
         A_sp = sp.csr_matrix((vals, (rows, cols)), shape=A.mat.shape)
         A_sp = A_sp[free_dofs, :][:, free_dofs]
@@ -111,14 +115,14 @@ class DiffusionProblem(Problem):
         if preconditioner is not None:
             if isinstance(preconditioner, type):
                 if preconditioner is OneLevelSchwarzPreconditioner:
-                    precond = OneLevelSchwarzPreconditioner(self.fes, A_sp)
+                    precond = OneLevelSchwarzPreconditioner(A_sp, self.two_mesh)
                 elif preconditioner is TwoLevelSchwarzPreconditioner:
                     if coarse_space is None:
                         raise ValueError(
                             "Coarse space must be provided for TwoLevelSchwarzPreconditioner."
                         )
                     precond = TwoLevelSchwarzPreconditioner(
-                        self.fes, A_sp, coarse_space
+                        A_sp, self.two_mesh, coarse_space
                     )
                 else:
                     raise ValueError(
@@ -127,7 +131,7 @@ class DiffusionProblem(Problem):
                 M_op = LinearOperator(A_sp.shape, lambda x: precond.apply(x))
 
         # solve system using (P)CG
-        u_arr[:], info = sp_cg(A_sp, b_arr, x0=u_arr, M=M_op, rtol=rtol)
+        u_arr[:], info = sp_cg(A_sp, res_arr, x0=u_arr, M=M_op, rtol=rtol)
         if info != 0:
             raise RuntimeError(
                 f"Conjugate gradient solver did not converge. Number of iterations: {info}"
@@ -208,7 +212,7 @@ class DiffusionProblem(Problem):
 if __name__ == "__main__":
     # Example usage
     diffusion_problem = DiffusionProblem(
-        source_func=SourceFunc.CONSTANT, coeff_func=CoeffFunc.CONSTANT
+        source_func=SourceFunc.CONSTANT, coeff_func=CoefFunc.CONSTANT
     )
     diffusion_problem.solve(
         preconditioner=None,  # Replace with actual preconditioner if needed
