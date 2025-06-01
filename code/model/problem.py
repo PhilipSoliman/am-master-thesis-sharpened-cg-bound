@@ -38,7 +38,6 @@ class Problem:
         self._bilinear_form_set = False
         self.boundary_conditions = {}
         self.boundary_values = {}
-        self.fes = None
 
     def set_boundary_condition(
         self,
@@ -95,7 +94,7 @@ class Problem:
         Returns:
             tuple: A tuple containing the trial and test functions.
         """
-        if self.fes is None:
+        if hasattr(self, "fes") is False:
             raise ValueError(
                 "Finite element space has not been constructed yet. Call construct_fespace() first."
             )
@@ -168,10 +167,6 @@ class Problem:
             raise ValueError(
                 "Linear or bilinear form has not been initialized. Call construct_fespace() first."
             )
-        if self.fes is None:
-            raise ValueError(
-                "Finite element space has not been constructed yet. Call construct_fespace() first."
-            )
         # solution function with boundary conditions applied
         u = ngs.GridFunction(self.fes.fespace)
         for bname, data in self.boundary_values.items():
@@ -179,9 +174,6 @@ class Problem:
             value = data["value"]
             btype = data["type"]
             if btype == BoundaryType.DIRICHLET:
-                print(
-                    f"Setting Dirichlet condition on {bname.value} with value {value}"
-                )
                 u_tmp.Set(
                     value, definedon=self.two_mesh.fine_mesh.Boundaries(bname.value)
                 )
@@ -206,10 +198,6 @@ class Problem:
             system (ngs.Matrix): The system matrix.
             load (ngs.Vector): The load vector.
         """
-        if self.fes is None:
-            raise ValueError(
-                "Finite element space has not been constructed yet. Call construct_fespace() first."
-            )
         # homogenization 
         res = b.vec.CreateVector()
         res.data = b.vec - A.mat * u.vec
@@ -219,29 +207,24 @@ class Problem:
             A.mat.Inverse(self.fes.fespace.FreeDofs(), inverse="sparsecholesky") * res
         )
 
-    def save_ngs_solution(self, sol: ngs.GridFunction, problem_name: str):
+    def save_ngs_functions(self, funcs: list[ngs.GridFunction], names: list[str], category: str):
         """
         Save the grid function solution to a file.
 
         Args:
             sol (ngs.GridFunction): The grid function containing the solution.
-            problem_name (str): The name of the problem (used for the filename).
+            name (str): The name of the problem (used for the filename).
         """
-        if self.fes is None:
-            raise ValueError(
-                "Finite element space has not been constructed yet. Call construct_fespace() first."
-            )
-
         # Get current date and time as a string
         now_str = datetime.now().strftime("%Y%m%d_%Hh%Mm%Ss")
-        fn = f"solution_{now_str}_{problem_name}"
+        fn = f"{category}_{now_str}"
         tlm_dir = self.two_mesh.save_dir
         vtk = ngs.VTKOutput(
             self.two_mesh.fine_mesh,
-            coefs=[sol],
-            names=[f"{problem_name}_solution"],
+            coefs=funcs,
+            names=names,
             filename=str(tlm_dir / fn),
-            subdivision=2,
+            # subdivision=2,
         )
         vtk.Do()
 
@@ -288,6 +271,16 @@ if __name__ == "__main__":
 
     # assemble the forms
     u, b, A = problem.assemble()
+
+    # plot the sparsity pattern of the stiffness matrix
+    import scipy.sparse as sp
+    rows, cols, vals = A.mat.COO()
+    A_sp = sp.csr_matrix((vals, (rows, cols)), shape=A.mat.shape)
+    plt.spy(A_sp.toarray(), markersize=1, aspect="equal")
+    plt.title("Sparsity pattern of the stiffness matrix")
+    plt.xlabel("Columns")
+    plt.ylabel("Rows")
+    plt.show()
 
     # direct solve
     problem.direct_ngs_solve(u, b, A)
