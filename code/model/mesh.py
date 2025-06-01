@@ -667,8 +667,8 @@ if __name__ == "__main__":
         lx, ly, coarse_mesh_size, refinement_levels=refinement_levels, layers=layers
     )
     two_mesh.save()  # Save the mesh and subdomains
-    # two_mesh = TwoLevelMesh.load(
-    #     lx, ly, coarse_mesh_size, refinement_levels, layers
-    # )
+    two_mesh = TwoLevelMesh.load(
+        lx, ly, coarse_mesh_size, refinement_levels, layers
+    )
     figure, ax = two_mesh.plot_domains(domains=7, plot_layers=True)
     plt.show()
