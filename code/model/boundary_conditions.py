@@ -64,9 +64,16 @@ class BoundaryConditions:
         else:
             self._boundary_kwargs[bc.type.value] = f"{bc.name.value}"
 
-        self._boundary_conditions.append(bc)
+        # check for previously defined bc
+        old_bc = next((b for b in self._boundary_conditions if b.name == bc.name), None)
+        if old_bc:
+            print("Replacing existing boundary condition on", bc.name.value)
+            self._boundary_conditions.remove(old_bc)
+        else:
+            self._unset_boundaries.remove(bc.name)
 
-        self._unset_boundaries.remove(bc.name)
+        # save boundary condition
+        self._boundary_conditions.append(bc)
 
     @property
     def boundary_kwargs(self):
@@ -117,7 +124,7 @@ class BoundaryConditions:
         return [bc.type for bc in self._boundary_conditions]
 
     @property
-    def values(self):
+    def values(self) -> list[float | ngs.CoefficientFunction]:
         """Get the values of the boundaries."""
         return [bc.value for bc in self._boundary_conditions]
 
@@ -125,6 +132,7 @@ class BoundaryConditions:
     def num_bcs(self):
         """Get the number of boundaries."""
         return len(BoundaryName)
+
 
 class HomogeneousDirichlet(BoundaryConditions):
 

@@ -194,6 +194,13 @@ if __name__ == "__main__":
 
     # define boundary conditions
     bcs = HomogeneousDirichlet()
+    bcs.set_boundary_condition(
+        BoundaryCondition(
+            name=BoundaryName.LEFT,
+            btype=BoundaryType.DIRICHLET,
+            value=ngs.x * (lx - ngs.x) * ngs.y * (ly - ngs.y),
+        )
+    )
     print(bcs) 
 
     # construct finite element space
