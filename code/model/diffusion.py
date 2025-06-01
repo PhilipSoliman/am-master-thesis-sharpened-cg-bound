@@ -1,9 +1,6 @@
-from copy import copy
 from enum import Enum
-from typing import Optional, Type
 
 import ngsolve as ngs
-import scipy.sparse as sp
 from boundary_conditions import (
     BoundaryCondition,
     BoundaryConditions,
@@ -18,8 +15,6 @@ from preconditioners import (
     TwoLevelSchwarzPreconditioner,
 )
 from problem import Problem
-from scipy.sparse.linalg import LinearOperator
-from scipy.sparse.linalg import cg as sp_cg
 
 
 class SourceFunc(Enum):
@@ -50,7 +45,7 @@ class DiffusionProblem(Problem):
         refinement_levels=2,
         layers=2,
         bcs: BoundaryConditions = HomogeneousDirichlet(),
-        coeff_func=CoefFunc.INCLUSIONS,
+        coef_func=CoefFunc.INCLUSIONS,
         source_func=SourceFunc.CONSTANT,
     ):
         try:
@@ -78,66 +73,13 @@ class DiffusionProblem(Problem):
         u_h, v_h = self.get_trial_and_test_functions()
 
         # construct bilinear and linear forms
-        self.coeff_func_name = coeff_func.value
-        self.coeff_func = getattr(self, self.coeff_func_name)()
-        self.set_bilinear_form(self.coeff_func * ngs.grad(u_h) * ngs.grad(v_h) * ngs.dx)
+        self.coef_func_name = coef_func.value
+        self.coef_func = getattr(self, self.coef_func_name)()
+        self.set_bilinear_form(self.coef_func * ngs.grad(u_h) * ngs.grad(v_h) * ngs.dx)
 
         self.source_func_name = source_func.value
         self.source_func = getattr(self, self.source_func_name)()
         self.set_linear_form(self.source_func * v_h * ngs.dx)
-
-    def solve(
-        self,
-        preconditioner: Optional[Type[Preconditioner]] = None,
-        coarse_space: Optional[CoarseSpace] = None,
-        rtol: float = 1e-8,
-    ):
-        # assemble the system
-        self.u, b, A = self.assemble()
-
-        # homogenization of the boundary conditions
-        res = b.vec.CreateVector()
-        res.data = b.vec - A.mat * self.u.vec
-
-        # free dofs
-        free_dofs = self.fes.fespace.FreeDofs()
-
-        # export to numpy arrays & sparse matrix
-        u_arr = copy(self.u.vec.FV().NumPy()[free_dofs])
-        res_arr = res.vec.FV().NumPy()[free_dofs]
-        rows, cols, vals = A.mat.COO()
-        A_sp = sp.csr_matrix((vals, (rows, cols)), shape=A.mat.shape)
-        A_sp = A_sp[free_dofs, :][:, free_dofs]
-
-        # get preconditioner
-        M_op = None
-        precond = None
-        if preconditioner is not None:
-            if isinstance(preconditioner, type):
-                if preconditioner is OneLevelSchwarzPreconditioner:
-                    precond = OneLevelSchwarzPreconditioner(A_sp, self.two_mesh)
-                elif preconditioner is TwoLevelSchwarzPreconditioner:
-                    if coarse_space is None:
-                        raise ValueError(
-                            "Coarse space must be provided for TwoLevelSchwarzPreconditioner."
-                        )
-                    precond = TwoLevelSchwarzPreconditioner(
-                        A_sp, self.two_mesh, coarse_space
-                    )
-                else:
-                    raise ValueError(
-                        f"Unknown preconditioner type: {preconditioner.__name__}"
-                    )
-                M_op = LinearOperator(A_sp.shape, lambda x: precond.apply(x))
-
-        # solve system using (P)CG
-        u_arr[:], info = sp_cg(A_sp, res_arr, x0=u_arr, M=M_op, rtol=rtol)
-        if info != 0:
-            raise RuntimeError(
-                f"Conjugate gradient solver did not converge. Number of iterations: {info}"
-            )
-        else:
-            self.u.vec.FV().NumPy()[free_dofs] = u_arr
 
     ####################
     # source functions #
@@ -187,7 +129,7 @@ class DiffusionProblem(Problem):
         h = ngs.specialcf.mesh_size
         contrast = 1e8
         all_coarse_vertices = set(self.two_mesh.coarse_mesh.vertices)
-        for subdomain, subdomain_data in self.two_mesh.subdomains.items():
+        for subdomain, _ in self.two_mesh.subdomains.items():
             mesh_e = self.two_mesh.fine_mesh[subdomain]
             vertices = set(mesh_e.vertices)
             all_coarse_vertices -= vertices
@@ -203,8 +145,8 @@ class DiffusionProblem(Problem):
     def save_functions(self):
         """Save the source and coefficient functions to vtk."""
         self.save_ngs_functions(
-            funcs=[self.source_func, self.coeff_func, self.u],
-            names=[self.source_func_name, self.coeff_func_name, "solution"],
+            funcs=[self.source_func, self.coef_func, self.u],
+            names=[self.source_func_name, self.coef_func_name, "solution"],
             category="diffusion",
         )
 
@@ -212,8 +154,9 @@ class DiffusionProblem(Problem):
 if __name__ == "__main__":
     # Example usage
     diffusion_problem = DiffusionProblem(
-        source_func=SourceFunc.CONSTANT, coeff_func=CoefFunc.CONSTANT
+        source_func=SourceFunc.PARABOLIC, coef_func=CoefFunc.CONSTANT
     )
+    print(diffusion_problem.bcs)
     diffusion_problem.solve(
         preconditioner=None,  # Replace with actual preconditioner if needed
         coarse_space=None,  # Replace with actual coarse space if needed

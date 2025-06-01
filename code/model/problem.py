@@ -1,12 +1,26 @@
+from copy import copy
 from datetime import datetime
-from enum import Enum
+from typing import Optional, Type
 
 import matplotlib.pyplot as plt
 import ngsolve as ngs
-import numpy as np
-from boundary_conditions import BoundaryCondition, BoundaryConditions, BoundaryType, HomogeneousDirichlet
+import scipy.sparse as sp
+from boundary_conditions import (
+    BoundaryCondition,
+    BoundaryConditions,
+    BoundaryType,
+    HomogeneousDirichlet,
+)
+from coarse_space import CoarseSpace
 from fespace import FESpace
 from mesh import BoundaryName, TwoLevelMesh
+from preconditioners import (
+    OneLevelSchwarzPreconditioner,
+    Preconditioner,
+    TwoLevelSchwarzPreconditioner,
+)
+from scipy.sparse.linalg import LinearOperator
+from scipy.sparse.linalg import cg as sp_cg
 
 
 class Problem:
@@ -130,7 +144,9 @@ class Problem:
         u = ngs.GridFunction(self.fes.fespace)
 
         # set boundary conditions on the grid function
-        self.bcs.set_boundary_conditions_on_gfunc(u, self.fes.fespace, self.two_mesh.fine_mesh)
+        self.bcs.set_boundary_conditions_on_gfunc(
+            u, self.fes.fespace, self.two_mesh.fine_mesh
+        )
 
         # assemble rhs and stiffness matrix
         b = self._linear_form.Assemble()
@@ -147,7 +163,7 @@ class Problem:
             system (ngs.Matrix): The system matrix.
             load (ngs.Vector): The load vector.
         """
-        # homogenization 
+        # homogenization
         res = b.vec.CreateVector()
         res.data = b.vec - A.mat * u.vec
 
@@ -156,7 +172,62 @@ class Problem:
             A.mat.Inverse(self.fes.fespace.FreeDofs(), inverse="sparsecholesky") * res
         )
 
-    def save_ngs_functions(self, funcs: list[ngs.GridFunction], names: list[str], category: str):
+    def solve(
+        self,
+        preconditioner: Optional[Type[Preconditioner]] = None,
+        coarse_space: Optional[CoarseSpace] = None,
+        rtol: float = 1e-8,
+    ):
+        # assemble the system
+        self.u, b, A = self.assemble()
+
+        # homogenization of the boundary conditions
+        res = b.vec.CreateVector()
+        res.data = b.vec - A.mat * self.u.vec
+
+        # free dofs
+        free_dofs = self.fes.fespace.FreeDofs()
+
+        # export to numpy arrays & sparse matrix
+        u_arr = copy(self.u.vec.FV().NumPy()[free_dofs])
+        res_arr = res.FV().NumPy()[free_dofs]
+        rows, cols, vals = A.mat.COO()
+        A_sp = sp.csr_matrix((vals, (rows, cols)), shape=A.mat.shape)
+        A_sp = A_sp[free_dofs, :][:, free_dofs]
+
+        # get preconditioner
+        M_op = None
+        precond = None
+        if preconditioner is not None:
+            if isinstance(preconditioner, type):
+                if preconditioner is OneLevelSchwarzPreconditioner:
+                    precond = OneLevelSchwarzPreconditioner(A_sp, self.two_mesh)
+                elif preconditioner is TwoLevelSchwarzPreconditioner:
+                    if coarse_space is None:
+                        raise ValueError(
+                            "Coarse space must be provided for TwoLevelSchwarzPreconditioner."
+                        )
+                    precond = TwoLevelSchwarzPreconditioner(
+                        A_sp, self.two_mesh, coarse_space
+                    )
+                else:
+                    raise ValueError(
+                        f"Unknown preconditioner type: {preconditioner.__name__}"
+                    )
+                M_op = LinearOperator(A_sp.shape, lambda x: precond.apply(x))
+
+        # solve system using (P)CG
+        u_arr[:], info = sp_cg(A_sp, res_arr, x0=u_arr, M=M_op, rtol=rtol)
+        if info != 0:
+            raise RuntimeError(
+                f"Conjugate gradient solver did not converge. Number of iterations: {info}"
+            )
+        else:
+            self.u.vec.FV().NumPy()[free_dofs] = u_arr
+
+    def save_ngs_functions(
+        self, funcs: list[ngs.GridFunction], names: list[str], category: str
+    ):
         """
         Save the grid function solution to a file.
 
@@ -198,10 +269,10 @@ if __name__ == "__main__":
         BoundaryCondition(
             name=BoundaryName.LEFT,
             btype=BoundaryType.DIRICHLET,
-            value=ngs.x * (lx - ngs.x) * ngs.y * (ly - ngs.y),
+            value= 32 * ngs.y * (ly - ngs.y),
         )
     )
-    print(bcs) 
+    print(bcs)
 
     # construct finite element space
     problem = Problem(two_mesh, bcs)
@@ -231,8 +302,11 @@ if __name__ == "__main__":
     plt.ylabel("Rows")
     plt.show()
 
-    # # direct solve
-    # problem.direct_ngs_solve(u, b, A)
+    # direct solve
+    problem.direct_ngs_solve(u, b, A)
+    problem.save_ngs_functions([u], ["solution"], "test_solution_direct")
+    
+    # cg solve
+    problem.solve()
+    problem.save_ngs_functions([problem.u], ["solution"], "test_solution_cg")
 
-    # # save the solution
-    # problem.save_ngs_solution(u, "poisson")
