@@ -93,9 +93,12 @@ class DiffusionProblem(Problem):
         # assemble the system
         self.u, b, A = self.assemble()
 
-        # export to numpy arrays
+        # export to numpy arrays & sparse matrix
         u_arr = self.u.vec.FV().NumPy()
         b_arr = b.vec.FV().NumPy()
+        # TODO: need to take out boundary dofs
+        rows, cols, vals = A.mat.COO()
+        A_sp = sp.csr_matrix((vals, (rows, cols)), shape=A.mat.shape)
 
         # convert A to operator
         tmp1 = b.vec.CreateVector()
@@ -112,9 +115,6 @@ class DiffusionProblem(Problem):
         M_op = None
         precond = None
         if preconditioner is not None:
-            raise NotImplementedError(
-                "The preconditioned CG solver is not implemented yet. "
-            )
             if isinstance(preconditioner, type):
                 if preconditioner is OneLevelSchwarzPreconditioner:
                     precond = OneLevelSchwarzPreconditioner(self.fes, A_sp)
