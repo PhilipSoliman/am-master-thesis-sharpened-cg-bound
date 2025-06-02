@@ -1,5 +1,6 @@
 from copy import copy
 from datetime import datetime
+from enum import Enum
 from typing import Optional, Type
 
 import matplotlib.pyplot as plt
@@ -19,12 +20,18 @@ from preconditioners import (
     Preconditioner,
     TwoLevelSchwarzPreconditioner,
 )
+from problem_type import ProblemType
 from scipy.sparse.linalg import LinearOperator
 from scipy.sparse.linalg import cg as sp_cg
 
 
 class Problem:
-    def __init__(self, two_mesh: TwoLevelMesh, bcs: BoundaryConditions):
+    def __init__(
+        self,
+        two_mesh: TwoLevelMesh,
+        bcs: BoundaryConditions,
+        ptype: Optional[ProblemType] = None,
+    ):
         """
         Initialize the problem with the given coefficient function, source function, and boundary conditions.
 
@@ -35,6 +42,7 @@ class Problem:
         """
         self.two_mesh = two_mesh
         self.bcs = bcs
+        self.ptype = ptype
         self._linear_form = None
         self._linear_form_set = False
         self._bilinear_form = None
@@ -127,19 +135,26 @@ class Problem:
         """
         Assemble the linear and bilinear forms.
         """
-        if not self._linear_form_set:
-            raise ValueError(
-                "Linear form has not been set. Call set_linear_form() first."
-            )
-        if not self._bilinear_form_set:
-            raise ValueError(
-                "Bilinear form has not been set. Call set_bilinear_form() first."
-            )
-
+        # check if linear and bilinear forms are instantiated on the finite element space
         if self._linear_form is None or self._bilinear_form is None:
             raise ValueError(
                 "Linear or bilinear form has not been initialized. Call construct_fespace() first."
             )
+
+        # check if problem type is set
+        if self.ptype is None:
+            if not self._linear_form_set:
+                raise ValueError(
+                    "Linear form has not been set. Call set_linear_form() first."
+                )
+            if not self._bilinear_form_set:
+                raise ValueError(
+                    "Bilinear form has not been set. Call set_bilinear_form() first."
+                )
+        else:
+            # TODO: Auto construct (bi-)linear forms using a (mix of) problem type(s)
+            pass
+
         # solution grid function
         u = ngs.GridFunction(self.fes.fespace)
 
@@ -269,7 +284,7 @@ if __name__ == "__main__":
         BoundaryCondition(
             name=BoundaryName.LEFT,
             btype=BoundaryType.DIRICHLET,
-            value= 32 * ngs.y * (ly - ngs.y),
+            value=32 * ngs.y * (ly - ngs.y),
         )
     )
     print(bcs)
@@ -294,6 +309,7 @@ if __name__ == "__main__":
 
     # plot the sparsity pattern of the stiffness matrix
     import scipy.sparse as sp
+
     rows, cols, vals = A.mat.COO()
     A_sp = sp.csr_matrix((vals, (rows, cols)), shape=A.mat.shape)
     plt.spy(A_sp.toarray(), markersize=1, aspect="equal")
@@ -305,8 +321,7 @@ if __name__ == "__main__":
     # direct solve
     problem.direct_ngs_solve(u, b, A)
     problem.save_ngs_functions([u], ["solution"], "test_solution_direct")
-    
+
     # cg solve
     problem.solve()
     problem.save_ngs_functions([problem.u], ["solution"], "test_solution_cg")
-
