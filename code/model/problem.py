@@ -175,7 +175,7 @@ class Problem:
     def solve(
         self,
         preconditioner: Optional[Type[Preconditioner]] = None,
-        coarse_space: Optional[CoarseSpace] = None,
+        coarse_space: Optional[Type[CoarseSpace]] = None,
         rtol: float = 1e-8,
     ):
         # assemble the system
@@ -193,7 +193,7 @@ class Problem:
         res_arr = res.FV().NumPy()[free_dofs]
         rows, cols, vals = A.mat.COO()
         A_sp = sp.csr_matrix((vals, (rows, cols)), shape=A.mat.shape)
-        A_sp = A_sp[free_dofs, :][:, free_dofs]
+        A_sp_f = A_sp[free_dofs, :][:, free_dofs]
 
         # get preconditioner
         M_op = None
@@ -201,23 +201,23 @@ class Problem:
         if preconditioner is not None:
             if isinstance(preconditioner, type):
                 if preconditioner is OneLevelSchwarzPreconditioner:
-                    precond = OneLevelSchwarzPreconditioner(A_sp, self.two_mesh)
+                    precond = OneLevelSchwarzPreconditioner(A_sp_f, self.fes)
                 elif preconditioner is TwoLevelSchwarzPreconditioner:
                     if coarse_space is None:
                         raise ValueError(
                             "Coarse space must be provided for TwoLevelSchwarzPreconditioner."
                         )
                     precond = TwoLevelSchwarzPreconditioner(
-                        A_sp, self.two_mesh, coarse_space
+                        A_sp_f, self.fes.fespace, self.two_mesh, coarse_space
                     )
                 else:
                     raise ValueError(
                         f"Unknown preconditioner type: {preconditioner.__name__}"
                     )
-                M_op = LinearOperator(A_sp.shape, lambda x: precond.apply(x))
+                M_op = LinearOperator(A_sp_f.shape, lambda x: precond.apply(x))
 
         # solve system using (P)CG
-        u_arr[:], info = sp_cg(A_sp, res_arr, x0=u_arr, M=M_op, rtol=rtol)
+        u_arr[:], info = sp_cg(A_sp_f, res_arr, x0=u_arr, M=M_op, rtol=rtol)
         if info != 0:
             raise RuntimeError(
                 f"Conjugate gradient solver did not converge. Number of iterations: {info}"

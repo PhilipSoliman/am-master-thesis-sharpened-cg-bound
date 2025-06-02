@@ -1,7 +1,10 @@
+from typing import Type
 import numpy as np
 import scipy.sparse as sp
 from coarse_space import CoarseSpace
+from fespace import FESpace
 from mesh import TwoLevelMesh
+from scipy.sparse.linalg import splu
 
 
 class Preconditioner(object):
@@ -10,21 +13,43 @@ class Preconditioner(object):
 
 
 class OneLevelSchwarzPreconditioner(Preconditioner):
-    def __init__(self, A: sp.csr_matrix, two_mesh: TwoLevelMesh):
-        self.two_mesh = two_mesh
-        self.A = A
+    def __init__(self, A: sp.csr_matrix, fespace: FESpace):
+        free_dofs = np.array(fespace.fespace.FreeDofs())
+
+        self.local_operators = []
+        for data in fespace.domain_dofs.values():
+            # get dofs on subdomain
+            subdomain_dofs = np.zeros(fespace.fespace.ndof)
+            subdomain_dofs[
+                data["interior"] + data["edges"] + data["coarse_nodes"] + data["layer"]
+            ] = True
+
+            # take only free dofs on subdomain
+            local_free_dofs = np.logical_and(free_dofs, subdomain_dofs)[free_dofs]
+
+            # create local operator for the subdomain
+            A_i = splu(A[local_free_dofs, :][:, local_free_dofs])
+
+            # store local free dofs and local operator
+            self.local_operators.append((local_free_dofs, A_i))
 
     def apply(self, x: np.ndarray):
-        # Implement the one-level Schwarz preconditioner application logic here
-        raise NotImplementedError(
-            "One-level Schwarz preconditioner application not implemented."
-        )
+        out = np.zeros_like(x, dtype=float)
+        for local_free_dofs, A_i in self.local_operators:
+            out[local_free_dofs] += A_i.solve(x[local_free_dofs])
+        return out
 
 
 class TwoLevelSchwarzPreconditioner(OneLevelSchwarzPreconditioner):
-    def __init__(self, A: sp.csr_matrix, two_mesh: TwoLevelMesh, coarse_space: CoarseSpace):
-        super().__init__(A, two_mesh)
-        self.coarse_space = coarse_space
+    def __init__(
+        self,
+        A: sp.csr_matrix,
+        fespace: FESpace,
+        two_mesh: TwoLevelMesh,
+        coarse_space: Type[CoarseSpace],
+    ):
+        super().__init__(A, fespace)
+        self.coarse_space = coarse_space(A, fespace, two_mesh)
 
     def apply(self, x: np.ndarray):
         x = super().apply(x)

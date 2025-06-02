@@ -158,9 +158,10 @@ if __name__ == "__main__":
     )
     print(diffusion_problem.bcs)
     diffusion_problem.solve(
-        preconditioner=None,  # Replace with actual preconditioner if needed
+        preconditioner=OneLevelSchwarzPreconditioner,  # Replace with actual preconditioner if needed
         coarse_space=None,  # Replace with actual coarse space if needed
         rtol=1e-8,
     )
+
     # Save the functions to vtk files
     diffusion_problem.save_functions()
