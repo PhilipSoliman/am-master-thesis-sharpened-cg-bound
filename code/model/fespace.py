@@ -48,11 +48,11 @@ class FESpace:
             - Removes edge and coarse node DOFs from the set of interior DOFs.
             - Stores the classified DOFs and prints a summary.
         """
-        # get fine degrees of freedom (DOFs)
-        interior = set()
+        # get all degrees of freedom (DOFs)
+        interior_dofs = set()
         for el in self.fespace.Elements():
             dofs = self.fespace.GetDofNrs(el)
-            interior.update(dofs)
+            interior_dofs.update(dofs)
 
         # calculate subdomain DOFs
         self.calculate_subdomain_dofs()
@@ -60,21 +60,18 @@ class FESpace:
         # remove coarse node DOFs from fine DOFs
         coarse_node_dofs = set()
         edge_dofs = set()
-        for domain, subdomain_data in self.domain_dofs.items():
+        for subdomain_data in self.domain_dofs.values():
             edge_dofs.update(subdomain_data["edges"])
             coarse_node_dofs.update(subdomain_data["coarse_nodes"])
 
-        # remove edge DOFs from interio DOFs
-        interior -= edge_dofs
-        interior -= coarse_node_dofs
+        # remove edge DOFs from interior DOFs
+        interior_dofs -= edge_dofs
+        interior_dofs -= coarse_node_dofs
 
         # save DOFS
-        self.interior_dofs = list(interior)
-        self.num_interior_dofs = len(self.interior_dofs)
-        self.edge_dofs = list(edge_dofs)
-        self.num_edge_dofs = len(self.edge_dofs)
-        self.coarse_node_dofs = list(coarse_node_dofs)
-        self.num_coarse_node_dofs = len(self.coarse_node_dofs)
+        self.num_interior_dofs = len(interior_dofs)
+        self.num_edge_dofs = len(edge_dofs)
+        self.num_coarse_node_dofs = len(coarse_node_dofs)
 
         print("FE space DOFS:")
         print(f"\t#total: {self.fespace.ndof}")
