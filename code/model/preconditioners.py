@@ -1,4 +1,5 @@
 from typing import Type
+
 import numpy as np
 import scipy.sparse as sp
 from coarse_space import CoarseSpace
@@ -28,12 +29,12 @@ class OneLevelSchwarzPreconditioner(Preconditioner):
             local_free_dofs = np.logical_and(free_dofs, subdomain_dofs)[free_dofs]
 
             # create local operator for the subdomain
-            A_i = splu(A[local_free_dofs, :][:, local_free_dofs])
+            A_i = splu(A[local_free_dofs, :][:, local_free_dofs].tocsc())
 
             # store local free dofs and local operator
             self.local_operators.append((local_free_dofs, A_i))
 
-    def apply(self, x: np.ndarray):
+    def apply(self, x: np.ndarray) -> np.ndarray:
         out = np.zeros_like(x, dtype=float)
         for local_free_dofs, A_i in self.local_operators:
             out[local_free_dofs] += A_i.solve(x[local_free_dofs])
@@ -50,7 +51,16 @@ class TwoLevelSchwarzPreconditioner(OneLevelSchwarzPreconditioner):
     ):
         super().__init__(A, fespace)
         self.coarse_space = coarse_space(A, fespace, two_mesh)
+        self.coarse_op = self.coarse_space.assemble_coarse_operator()
+        self.A_0_lu = splu(self.coarse_op @ A @ self.coarse_op.transpose())
 
     def apply(self, x: np.ndarray):
+        # First level.
         x = super().apply(x)
-        return self.coarse_space.apply(x)
+
+        # Second level.
+        x_0 = self.coarse_op @ x
+        y_0 = self.A_0_lu.solve(x_0)
+        x += self.coarse_op.transpose() @ y_0
+
+        return x
