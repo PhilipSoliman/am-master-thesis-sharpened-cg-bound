@@ -7,13 +7,9 @@ from boundary_conditions import (
     BoundaryType,
     HomogeneousDirichlet,
 )
-from coarse_space import CoarseSpace
+from coarse_space import GDSWCoarseSpace
 from mesh import BoundaryName, TwoLevelMesh
-from preconditioners import (
-    OneLevelSchwarzPreconditioner,
-    Preconditioner,
-    TwoLevelSchwarzPreconditioner,
-)
+from preconditioners import OneLevelSchwarzPreconditioner, TwoLevelSchwarzPreconditioner
 from problem import Problem
 
 
@@ -158,8 +154,8 @@ if __name__ == "__main__":
     )
     print(diffusion_problem.bcs)
     diffusion_problem.solve(
-        preconditioner=OneLevelSchwarzPreconditioner,  # Replace with actual preconditioner if needed
-        coarse_space=None,  # Replace with actual coarse space if needed
+        preconditioner=OneLevelSchwarzPreconditioner,
+        coarse_space=GDSWCoarseSpace,
         rtol=1e-8,
     )
 
