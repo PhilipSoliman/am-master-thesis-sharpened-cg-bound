@@ -23,46 +23,40 @@ class CoarseSpace(object):
         self.num_free_dofs = np.sum(self.fespace.fespace.FreeDofs())
         self.free_dofs_mask = np.array(self.fespace.fespace.FreeDofs()).astype(bool)
 
-        # get the null space basis and dimension
+        # collect all interface dofs
+        self.interface_dofs = set()
+        self.interface_dofs.update(fespace.coarse_node_dofs)
+        self.interface_dofs.update(fespace.edge_dofs)
+
+        # create a mask for free interface dofs
+        self.interface_dofs_mask = np.zeros(self.fespace.fespace.ndof, dtype=bool)
+        self.interface_dofs_mask[list(self.interface_dofs)] = True
+        self.interface_dofs_mask = np.logical_and(
+            self.free_dofs_mask, self.interface_dofs_mask
+        )[self.free_dofs_mask]
+
+        # null space basis and dimension
         self.null_space_dim = self._get_null_space_basis()
 
-        # get all connected components and meta info
-        self.all_interface_components_dofs = set()
-        self.interface_components_dofs = []
-        self.interface_dim, self.interface_dofs_mask = (
-            self._get_connected_components()
+        # all connected components
+        self.interface_components = self._get_connected_components()
+
+        # interface component dimension
+        self.interface_dim = len(self.interface_components) * self.null_space_dim
+
+        # print important meta information
+        print(
+            f"Coarse space initialized:"
+            f"\n\tproblem type: {self.ptype.value}"
+            f"\n\tfinite element space: {self.fespace.dimension}D "
+            f"\n\tfree dofs: {self.num_free_dofs}"
+            f"\n\tnull space dim: {self.null_space_dim}"
+            f"\n\tinterface components: {len(self.interface_components)}"
+            f"\n\tinterface dim: {self.interface_dim}"
         )
 
     def assemble_coarse_operator(self) -> sp.csc_matrix:
         raise NotImplementedError("This method should be implemented by subclasses.")
-
-    def _get_connected_components(self):
-        for data in self.fespace.domain_dofs.values():
-            # face components
-            if (subdomain_face_dofs := data.get("faces")) is not None:
-                self._get_face_components(subdomain_face_dofs)
-
-            # edge components
-            if (subdomain_coarse_nodes_dofs := data.get("edges")) is not None:
-                self._get_edge_components(subdomain_coarse_nodes_dofs)
-
-            # coarse node dofs
-            if (subdomain_coarse_nodes_dofs := data.get("coarse_nodes")) is not None:
-                self._get_coarse_components(subdomain_coarse_nodes_dofs)
-
-        # collect meta info about interface components
-        num_interface_components = len(self.interface_components_dofs)
-
-        # derive interface dimension
-        interface_dim = self.null_space_dim * num_interface_components
-
-        # mask for interface dofs
-        interface_dofs_mask = np.zeros(self.fespace.fespace.ndof, dtype=bool)
-        interface_dofs_mask[list(self.all_interface_components_dofs)] = True
-        interface_dofs_mask = np.logical_and(self.free_dofs_mask, interface_dofs_mask)[
-            self.free_dofs_mask
-        ]
-        return interface_dim, interface_dofs_mask
 
     def _get_null_space_basis(self):
         self.null_space_basis = np.array([])
@@ -78,39 +72,76 @@ class CoarseSpace(object):
             raise ValueError(f"Unsupported problem type: {self.ptype}")
         return null_space_dim
 
-    def _get_face_components(self, subdomain_face_dofs):
+    def _get_connected_components(self):
+        interface_components = []
+
+        # face components
+        if self.fespace.num_face_dofs > 0:
+            self._get_face_components(interface_components)
+
+        # edge components
+        if self.fespace.num_edge_dofs > 0:
+            self._get_edge_components(interface_components)
+
+        # coarse node components
+        if self.fespace.num_coarse_node_dofs > 0:
+            self._get_coarse_components(interface_components)
+
+        return interface_components
+
+    def _get_face_components(self, interface_components):
         raise NotImplementedError(
             "Face components are not implemented for this coarse space."
         )
 
-    def _get_edge_components(self, subdomain_edges_dofs):
-        for nr, coarse_edge_dofs in subdomain_edges_dofs.items():
-            edge_component = np.zeros(self.fespace.fespace.ndof)
-            edge_component[coarse_edge_dofs] = True
-            remaining_edge_dofs = list(
-                set(coarse_edge_dofs) - self.all_interface_components_dofs
-            )
-            edge_component[remaining_edge_dofs] = True
-            self.all_interface_components_dofs.update(remaining_edge_dofs)
+    def _get_edge_components(self, interface_components):
+        num_subdomain_edges = len(self.two_mesh.coarse_mesh.edges)
+        edge_nrs = set(range(num_subdomain_edges))
+        num_edge_components = 0
+        for data in self.fespace.domain_dofs.values():
+            for edge_nr, coarse_edge_dofs in data["edges"].items():
+                # check if edge_nr is not already processed
+                if int(edge_nr) not in edge_nrs:
+                    continue
 
-            edge_component_mask = np.logical_and(self.free_dofs_mask, edge_component)
-            if np.any(edge_component_mask):
-                print(f"coarse edge {nr} component dofs:", np.where(edge_component_mask)[0])
-                self.interface_components_dofs.append(edge_component_mask)
+                # create a mask for the coarse edge dofs
+                edge_component_mask = np.zeros(self.fespace.fespace.ndof)
+                edge_component_mask[coarse_edge_dofs] = True
 
-    def _get_coarse_components(self, subdomain_coarse_nodes_dofs):
-        coarse_node_dofs = np.zeros(self.fespace.fespace.ndof)
-        remaining_coarse_node_dofs = list(
-            set(subdomain_coarse_nodes_dofs) - self.all_interface_components_dofs
-        )
-        coarse_node_dofs[remaining_coarse_node_dofs] = True
-        self.all_interface_components_dofs.update(remaining_coarse_node_dofs)
+                # only add components if it contains free dofs
+                if np.any(edge_component_mask[self.free_dofs_mask]):
+                    interface_components.append(edge_component_mask)
+                    num_edge_components += 1
 
-        coarse_node_dofs_mask = np.logical_and(self.free_dofs_mask, coarse_node_dofs)
-        if np.any(coarse_node_dofs_mask):
-            print("coarse node component dofs:", np.where(coarse_node_dofs_mask)[0])
-            self.interface_components_dofs.append(coarse_node_dofs_mask)
+                # remove edge_nr from the list of edge nrs to process
+                edge_nrs.remove(int(edge_nr))
 
+
+
+        print(f"found {num_edge_components} edge components")
+
+    def _get_coarse_components(self, interface_components):
+        all_coarse_node_dofs = self.fespace.coarse_node_dofs.copy()
+        num_coarse_node_components = 0
+        for data in self.fespace.domain_dofs.values():
+            for coarse_node_dof in data["coarse_nodes"]:
+                # check if coarse node dof is not already processed
+                if coarse_node_dof not in all_coarse_node_dofs:
+                    continue
+
+                # create a mask for the coarse node dof
+                coarse_node_dofs_mask = np.zeros(self.fespace.fespace.ndof)
+                coarse_node_dofs_mask[coarse_node_dof] = True
+
+                # only add components if it contains free dofs
+                if np.any(coarse_node_dofs_mask[self.free_dofs_mask]):
+                    interface_components.append(coarse_node_dofs_mask)
+                    num_coarse_node_components += 1
+
+                # remove coarse node dof from the list of coarse node dofs to process
+                all_coarse_node_dofs.remove(coarse_node_dof)
+
+        print(f"found {num_coarse_node_components} coarse node components")
 
 class AMSCoarseSpace(CoarseSpace):
     def assemble_coarse_operator(self) -> sp.csc_matrix:
@@ -154,10 +185,10 @@ class GDSWCoarseSpace(CoarseSpace):
         )
         idxs = np.arange(ndofs)
         interface_index = 0
-        for interface_component_dofs in self.interface_components_dofs:
+        for interface_component in self.interface_components:
             # get dofs for the current interface component
             component_mask = np.logical_and(
-                self.free_dofs_mask, interface_component_dofs
+                self.free_dofs_mask, interface_component
             )
             for coord in range(self.fespace.dimension):
                 # get dofs for current coordinate coord
@@ -181,6 +212,7 @@ class GDSWCoarseSpace(CoarseSpace):
             # update the interface index for the next interface component with the null space dimension
             interface_index += self.null_space_dim
 
+        # restric the interface operator to the free and interface dofs
         self.interface_op = self.interface_op[self.free_dofs_mask, :][
             self.interface_dofs_mask, :
         ]

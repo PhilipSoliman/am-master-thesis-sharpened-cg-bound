@@ -67,19 +67,19 @@ class TwoLevelSchwarzPreconditioner(OneLevelSchwarzPreconditioner):
         super().__init__(A, fespace)
         self.coarse_space = coarse_space(A, fespace, two_mesh)
         self.coarse_op = self.coarse_space.assemble_coarse_operator()
-        # plt.spy(self.coarse_op.toarray(), markersize=1, aspect="equal")
-        # plt.title("Sparsity pattern of the coarse operator Phi")
-        # plt.xlabel("Columns")
-        # plt.ylabel("Rows")
-        # plt.show()
+        plt.spy(self.coarse_op.toarray(), markersize=1, aspect="equal")
+        plt.title("Sparsity pattern of the coarse operator Phi")
+        plt.xlabel("Columns")
+        plt.ylabel("Rows")
+        plt.show()
         rank = np.linalg.matrix_rank(self.coarse_op.toarray())
         print("Rank of coarse operator:", rank)
         A_0 = (self.coarse_op.transpose() @ (A @ self.coarse_op)).tocsc()
-        # plt.spy(A_0.toarray(), markersize=1, aspect="equal")
-        # plt.title("Sparsity pattern of the coarse operator A_0")
-        # plt.xlabel("Columns")
-        # plt.ylabel("Rows")
-        # plt.show()
+        plt.spy(A_0.toarray(), markersize=1, aspect="equal")
+        plt.title("Sparsity pattern of the coarse operator A_0")
+        plt.xlabel("Columns")
+        plt.ylabel("Rows")
+        plt.show()
         print("Shape of A_0:", A_0.shape)
         print("Rank of A_0:", np.linalg.matrix_rank(A_0.toarray()))
 
@@ -90,8 +90,8 @@ class TwoLevelSchwarzPreconditioner(OneLevelSchwarzPreconditioner):
         x = super().apply(x)
 
         # Second level.
-        x_0 = self.coarse_op @ x
+        x_0 = self.coarse_op.transpose() @ x
         y_0 = self.A_0_lu.solve(x_0)
-        x += self.coarse_op.transpose() @ y_0
+        x += self.coarse_op @ y_0
 
         return x

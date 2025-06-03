@@ -32,11 +32,11 @@ class FESpace:
         self.dimension = dim
         if dim == 1:
             self.fespace = ngs.H1(
-                two_mesh.fine_mesh, order=order, discontinuous=discontinuous, **bcs
+                two_mesh.fine_mesh, order=order, **bcs
             )
         elif dim == 2:
             self.fespace = ngs.VectorH1(
-                two_mesh.fine_mesh, order=order, discontinuous=discontinuous, **bcs
+                two_mesh.fine_mesh, order=order, **bcs
             )
         self.calculate_dofs()
         if self.fespace.ndof != (
@@ -58,36 +58,37 @@ class FESpace:
             - Stores the classified DOFs and prints a summary.
         """
         # get all degrees of freedom (DOFs)
-        interior_dofs = set()
+        self.interior_dofs = set()
         for el in self.fespace.Elements():
             dofs = self.fespace.GetDofNrs(el)
-            interior_dofs.update(dofs)
+            self.interior_dofs.update(dofs)
 
         # calculate subdomain DOFs
         self.calculate_subdomain_dofs()
 
         # remove coarse node DOFs from fine DOFs
-        coarse_node_dofs = set()
-        edge_dofs = set()
+        self.coarse_node_dofs = set()
+        self.edge_dofs = set()
         for subdomain_data in self.domain_dofs.values():
-            coarse_node_dofs.update(subdomain_data["coarse_nodes"])
+            self.coarse_node_dofs.update(subdomain_data["coarse_nodes"])
             for coarse_edge_dofs in subdomain_data["edges"].values():
-                edge_dofs.update(coarse_edge_dofs)
+                self.edge_dofs.update(coarse_edge_dofs)
 
         # remove edge DOFs from interior DOFs
-        interior_dofs -= edge_dofs
-        interior_dofs -= coarse_node_dofs
+        self.interior_dofs -= self.edge_dofs
+        self.interior_dofs -= self.coarse_node_dofs
 
         # save DOFS
-        self.num_interior_dofs = len(interior_dofs)
-        self.num_edge_dofs = len(edge_dofs)
-        self.num_coarse_node_dofs = len(coarse_node_dofs)
+        self.num_interior_dofs = len(self.interior_dofs)
+        self.num_edge_dofs = len(self.edge_dofs)
+        self.num_coarse_node_dofs = len(self.coarse_node_dofs)
+        self.num_face_dofs = 0  # Not used in this implementation
 
         print("FE space DOFS:")
         print(f"\t#total: {self.fespace.ndof}")
         print(f"\t#interior: {self.num_interior_dofs}")
         print(f"\t#edge: {self.num_edge_dofs}")
-        print(f"\t#coarse_node: {len(coarse_node_dofs)}")
+        print(f"\t#coarse_node: {self.num_coarse_node_dofs}")
 
     def calculate_subdomain_dofs(self):
         """
@@ -143,6 +144,14 @@ class FESpace:
                 "edges": subdomain_edge_dofs,
                 "layer": list(layer_dofs),
             }
+        # print domain DOFs
+        print("Domain DOFs:")
+        for subdomain, data in self.domain_dofs.items():
+            print(f"\t{subdomain}:")
+            print(f"\t\t#interior: {len(data['interior'])}")
+            print(f"\t\t#coarse_nodes: {len(data['coarse_nodes'])}")
+            print(f"\t\t#edges: {data['edges']}")
+            print(f"\t\t#layer: {len(data['layer'])}")
         return self.domain_dofs
 
     @property
