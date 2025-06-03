@@ -144,14 +144,6 @@ class FESpace:
                 "edges": subdomain_edge_dofs,
                 "layer": list(layer_dofs),
             }
-        # print domain DOFs
-        print("Domain DOFs:")
-        for subdomain, data in self.domain_dofs.items():
-            print(f"\t{subdomain}:")
-            print(f"\t\t#interior: {len(data['interior'])}")
-            print(f"\t\t#coarse_nodes: {len(data['coarse_nodes'])}")
-            print(f"\t\t#edges: {data['edges']}")
-            print(f"\t\t#layer: {len(data['layer'])}")
         return self.domain_dofs
 
     @property
@@ -173,7 +165,17 @@ class FESpace:
             ngs.TestFunction: The test function of the finite element space.
         """
         return self.fespace.TestFunction()
-
+    
+    def __repr__(self):
+        # print domain DOFs
+        repr_str = "Domain DOFs:\n"
+        for subdomain, data in self.domain_dofs.items():
+            repr_str += f"\t{subdomain.nr}:\n"
+            repr_str += f"\t\t#interior: {len(data['interior'])}\n"
+            repr_str += f"\t\t#coarse_nodes: {len(data['coarse_nodes'])}\n"
+            repr_str += f"\t\t#edges: {data['edges']}\n"
+            repr_str += f"\t\t#layer: {len(data['layer'])}\n"
+        return repr_str
 
 if __name__ == "__main__":
     """
@@ -191,3 +193,4 @@ if __name__ == "__main__":
         layers=layers,
     )
     fespace = FESpace(two_mesh, order=1, discontinuous=False)
+    print(fespace)

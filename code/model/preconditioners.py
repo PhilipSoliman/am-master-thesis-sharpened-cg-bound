@@ -7,7 +7,7 @@ from coarse_space import CoarseSpace
 from fespace import FESpace
 from matplotlib import pyplot as plt
 from mesh import TwoLevelMesh
-from scipy.sparse.linalg import splu
+from scipy.sparse.linalg import SuperLU, splu
 
 
 class Preconditioner(object):
@@ -27,26 +27,20 @@ class OneLevelSchwarzPreconditioner(Preconditioner):
             out[local_free_dofs] += A_i.solve(x[local_free_dofs])
         return out
 
-    def _get_local_operators(self, A: sp.csr_matrix):
+    def _get_local_operators(
+        self, A: sp.csr_matrix
+    ) -> list[tuple[np.ndarray, SuperLU]]:
         """Get local operators for each subdomain."""
         local_operators = []
-        for subdomain, subdomain_dofs in self.fespace.domain_dofs.items():
+        for subdomain_dofs in self.fespace.domain_dofs.values():
             # get dofs on subdomain
-            subdomain_mask = np.zeros(self.fespace.fespace.ndof)
+            subdomain_mask = np.zeros(self.fespace.fespace.ndof).astype(bool)
             subdomain_mask[self._get_all_subdomain_dofs(subdomain_dofs)] = True
-
-            print(f"Subdomain mask: {subdomain_mask}")
 
             # take only free dofs on subdomain
             local_free_dofs = subdomain_mask[self.free_dofs]
 
-            # create local operator for the subdomain
-            A_i = A[local_free_dofs, :][:, local_free_dofs].tocsc()
-            # print shape of A_i
-            print("Shape of A_i:", A_i.shape)
-            # print rank of A_i
-            rank = np.linalg.matrix_rank(A_i.toarray())
-            print("Rank of A_i:", rank)
+            # local operator for subdomain
             A_i = splu(A[local_free_dofs, :][:, local_free_dofs].tocsc())
 
             # store local free dofs and local operator
@@ -57,14 +51,17 @@ class OneLevelSchwarzPreconditioner(Preconditioner):
         """Get all subdomain dofs."""
         all_subdomain_dofs = set()
         for component_type, component in subdomain_dofs.items():
-            if component_type == "interior" or component_type == "coarse_nodes" or component_type == "layer":
+            if (
+                component_type == "interior"
+                or component_type == "coarse_nodes"
+                or component_type == "layer"
+            ):
                 all_subdomain_dofs.update(component)
             elif component_type == "edges":
                 for edge_nr, edge_dofs in component.items():
                     all_subdomain_dofs.update(edge_dofs)
             elif component_type == "face":
                 raise NotImplementedError("Face dofs are not implemented.")
-        print(all_subdomain_dofs)
         return list(all_subdomain_dofs)
 
 
@@ -79,21 +76,7 @@ class TwoLevelSchwarzPreconditioner(OneLevelSchwarzPreconditioner):
         super().__init__(A, fespace)
         self.coarse_space = coarse_space(A, fespace, two_mesh)
         self.coarse_op = self.coarse_space.assemble_coarse_operator()
-        # plt.spy(self.coarse_op.toarray(), markersize=1, aspect="equal")
-        # plt.title("Sparsity pattern of the coarse operator Phi")
-        # plt.xlabel("Columns")
-        # plt.ylabel("Rows")
-        # plt.show()
-        # rank = np.linalg.matrix_rank(self.coarse_op.toarray())
-        # print("Rank of coarse operator:", rank)
         A_0 = (self.coarse_op.transpose() @ (A @ self.coarse_op)).tocsc()
-        # plt.spy(A_0.toarray(), markersize=1, aspect="equal")
-        # plt.title("Sparsity pattern of the coarse operator A_0")
-        # plt.xlabel("Columns")
-        # plt.ylabel("Rows")
-        # plt.show()
-        # print("Shape of A_0:", A_0.shape)
-        # print("Rank of A_0:", np.linalg.matrix_rank(A_0.toarray()))
 
         self.A_0_lu = splu(A_0)
 
