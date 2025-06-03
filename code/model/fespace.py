@@ -10,7 +10,12 @@ class FESpace:
     """
 
     def __init__(
-        self, two_mesh: TwoLevelMesh, order: int = 1, discontinuous: bool = False, **bcs
+        self,
+        two_mesh: TwoLevelMesh,
+        order: int = 1,
+        discontinuous: bool = False,
+        dim: int = 1,
+        **bcs,
     ):
         """
         Initialize the finite element space for the given mesh.
@@ -24,11 +29,15 @@ class FESpace:
             ValueError: If the sum of classified DOFs does not match the total number of DOFs in the space.
         """
         self.two_mesh = two_mesh
-        if discontinuous:
-            self.fespace = ngs.H1(two_mesh.fine_mesh, order=order, discontinuous=True, **bcs)
-        else:
-            self.fespace = ngs.H1(two_mesh.fine_mesh, order=order, **bcs)
-
+        self.dimension = dim
+        if dim == 1:
+            self.fespace = ngs.H1(
+                two_mesh.fine_mesh, order=order, discontinuous=discontinuous, **bcs
+            )
+        elif dim == 2:
+            self.fespace = ngs.VectorH1(
+                two_mesh.fine_mesh, order=order, discontinuous=discontinuous, **bcs
+            )
         self.calculate_dofs()
         if self.fespace.ndof != (
             self.num_interior_dofs + self.num_edge_dofs + self.num_coarse_node_dofs
@@ -61,8 +70,9 @@ class FESpace:
         coarse_node_dofs = set()
         edge_dofs = set()
         for subdomain_data in self.domain_dofs.values():
-            edge_dofs.update(subdomain_data["edges"])
             coarse_node_dofs.update(subdomain_data["coarse_nodes"])
+            for coarse_edge_dofs in subdomain_data["edges"].values():
+                edge_dofs.update(coarse_edge_dofs)
 
         # remove edge DOFs from interior DOFs
         interior_dofs -= edge_dofs
@@ -99,18 +109,23 @@ class FESpace:
                 interior_dofs.update(dofs)
             interior_dofs -= coarse_node_dofs
 
-            subdomain_edge_dofs = set()
-            for e in subdomain_data["edges"]:
-                v1, v2 = self.two_mesh.fine_mesh.edges[e.nr].vertices
+            subdomain_edge_dofs = {}
+            all_subdomain_edge_dofs = set()
+            for coarse_edge_nr, fine_edges in subdomain_data["edges"].items():
+                coarse_edge_dofs = set()
+                for e in fine_edges:
+                    v1, v2 = self.two_mesh.fine_mesh.edges[e.nr].vertices
 
-                # get vertex DOFs
-                subdomain_edge_dofs.update(self.fespace.GetDofNrs(v1))
-                subdomain_edge_dofs.update(self.fespace.GetDofNrs(v2))
+                    # get vertex DOFs
+                    coarse_edge_dofs.update(self.fespace.GetDofNrs(v1))
+                    coarse_edge_dofs.update(self.fespace.GetDofNrs(v2))
 
-                # get edge subdomain_edge_dofs
-                subdomain_edge_dofs.update(self.fespace.GetDofNrs(e))
-            subdomain_edge_dofs -= coarse_node_dofs
-            interior_dofs -= subdomain_edge_dofs
+                    # get edge subdomain_edge_dofs
+                    coarse_edge_dofs.update(self.fespace.GetDofNrs(e))
+                coarse_edge_dofs -= coarse_node_dofs
+                interior_dofs -= coarse_edge_dofs
+                subdomain_edge_dofs[coarse_edge_nr] = list(coarse_edge_dofs)
+                all_subdomain_edge_dofs.update(coarse_edge_dofs)
 
             layer_dofs = set()
             for layer_idx in range(1, self.two_mesh.layers + 1):
@@ -118,20 +133,20 @@ class FESpace:
                 for el in layer_elements:
                     dofs = self.fespace.GetDofNrs(el)
                     layer_dofs.update(dofs)
-            layer_dofs -= subdomain_edge_dofs
+            layer_dofs -= all_subdomain_edge_dofs
             layer_dofs -= coarse_node_dofs
             layer_dofs -= interior_dofs
 
             self.domain_dofs[subdomain] = {
                 "interior": list(interior_dofs),
                 "coarse_nodes": list(coarse_node_dofs),
-                "edges": list(subdomain_edge_dofs),
+                "edges": subdomain_edge_dofs,
                 "layer": list(layer_dofs),
             }
         return self.domain_dofs
 
     @property
-    def u (self):
+    def u(self):
         """
         Get the trial function of the finite element space.
 
@@ -150,6 +165,7 @@ class FESpace:
         """
         return self.fespace.TestFunction()
 
+
 if __name__ == "__main__":
     """
     Example usage: Load a TwoLevelMesh and construct a FESpace on it.
@@ -157,12 +173,12 @@ if __name__ == "__main__":
     lx, ly = 1.0, 1.0
     coarse_mesh_size = 0.15
     refinement_levels = 2
-    layers= 2
+    layers = 2
     two_mesh = TwoLevelMesh.load(
         lx=lx,
         ly=ly,
         coarse_mesh_size=coarse_mesh_size,
         refinement_levels=refinement_levels,
-        layers=layers
+        layers=layers,
     )
     fespace = FESpace(two_mesh, order=1, discontinuous=False)

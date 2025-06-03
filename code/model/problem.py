@@ -223,7 +223,7 @@ class Problem:
                             "Coarse space must be provided for TwoLevelSchwarzPreconditioner."
                         )
                     precond = TwoLevelSchwarzPreconditioner(
-                        A_sp_f, self.fes.fespace, self.two_mesh, coarse_space
+                        A_sp_f, self.fes, self.two_mesh, coarse_space
                     )
                 else:
                     raise ValueError(

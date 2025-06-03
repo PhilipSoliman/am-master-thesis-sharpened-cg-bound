@@ -94,8 +94,8 @@ class TwoLevelMesh:
         self.refinement_levels = refinement_levels
         self.fine_mesh, self.coarse_mesh = self.create_conforming_meshes()
         self.subdomains = self.get_subdomains()
-        self.layers= layers
-        for layer_idx in range(1, layers+ 1):
+        self.layers = layers
+        for layer_idx in range(1, layers + 1):
             self.extend_subdomains(layer_idx=layer_idx)
 
     def create_conforming_meshes(self) -> tuple[ngs.Mesh, ngs.Mesh]:
@@ -183,7 +183,7 @@ class TwoLevelMesh:
             }
         return subdomains
 
-    def get_subdomain_domain_edges(self, subdomain, interior_elements):
+    def get_subdomain_domain_edges(self, subdomain, interior_elements) -> dict:
         """
         Find all fine mesh edges that lie on the edges of a given coarse mesh element.
 
@@ -192,16 +192,16 @@ class TwoLevelMesh:
             interior_elements: List of fine mesh elements inside the coarse element.
 
         Returns:
-            list: Fine mesh edges that lie on the coarse element's edges.
+            dict: Fine mesh edges that lie on the coarse element's edges.
         """
-        subdomain_edges = set()
+        subdomain_edges = {}
         for coarse_edge in subdomain.edges:
+            subdomain_edges[coarse_edge.nr] = []
             for el in interior_elements:
                 mesh_el = self.fine_mesh[el]
                 fine_edges = self._get_edges_on_subdomain_edge(coarse_edge, mesh_el)
-                subdomain_edges.update(fine_edges)
-
-        return list(subdomain_edges)
+                subdomain_edges[coarse_edge.nr] += fine_edges
+        return subdomain_edges
 
     def extend_subdomains(self, layer_idx: int = 1):
         """
@@ -309,12 +309,17 @@ class TwoLevelMesh:
             subdomains_picklable = {
                 int(subdomain.nr): {
                     "interior": [el.nr for el in subdomain_data["interior"]],
-                    "edges": [edge.nr for edge in subdomain_data["edges"]],
+                    "edges": {
+                        coarse_edge_nr: [
+                            edge.nr for edge in subdomain_data["edges"][coarse_edge_nr]
+                        ]
+                        for coarse_edge_nr in subdomain_data["edges"]
+                    },
                     **{
                         f"layer_{layer_idx}": [
                             el.nr for el in subdomain_data.get(f"layer_{layer_idx}", [])
                         ]
-                        for layer_idx in range(1, self.layers+ 1)
+                        for layer_idx in range(1, self.layers + 1)
                     },
                 }
                 for subdomain, subdomain_data in self.subdomains.items()
@@ -367,7 +372,7 @@ class TwoLevelMesh:
         self.ly = metadata["ly"]
         self.coarse_mesh_size = metadata["coarse_mesh_size"]
         self.refinement_levels = metadata["refinement_levels"]
-        self.layers= metadata["layers"]
+        self.layers = metadata["layers"]
 
     def _load_meshes(self, fp: Path):
         """
@@ -412,15 +417,15 @@ class TwoLevelMesh:
                     self.fine_mesh[ngs.ElementId(ngs.VOL, el)]
                     for el in subdomain_data["interior"]
                 ],
-                "edges": [
-                    self.fine_mesh.edges[edge] for edge in subdomain_data["edges"]
-                ],
+                "edges": {coarse_edge_nr: [
+                    self.fine_mesh.edges[edge] for edge in subdomain_data["edges"][coarse_edge_nr]
+                ] for coarse_edge_nr in subdomain_data["edges"]},
                 **{
                     f"layer_{layer_idx}": [
                         self.fine_mesh[ngs.ElementId(ngs.VOL, el)]
                         for el in subdomain_data.get(f"layer_{layer_idx}", [])
                     ]
-                    for layer_idx in range(1, self.layers+ 1)
+                    for layer_idx in range(1, self.layers + 1)
                 },
             }
             for subdomain, subdomain_data in self.subdomains.items()
@@ -451,7 +456,6 @@ class TwoLevelMesh:
         self._save_folder = DATA_DIR / folder_name
         if not self._save_folder.exists():
             self._save_folder.mkdir(parents=True, exist_ok=True)
-
 
     # plotting
     def plot_domains(
@@ -496,7 +500,7 @@ class TwoLevelMesh:
                     label="Coarse Element",
                 )
             if plot_layers:
-                for layer_idx in range(1, self.layers+ 1):
+                for layer_idx in range(1, self.layers + 1):
                     layer_elements = subdomain_data.get(f"layer_{layer_idx}", [])
                     alpha_value = opacity / (
                         1 + (layer_idx / self.layers) ** fade_factor
@@ -580,30 +584,59 @@ class TwoLevelMesh:
         Returns:
             set: Fine edges that lie on the coarse edge.
         """
-        fine_edges = set()
+        fine_edges = []
         vc_1, vc_2 = self.coarse_mesh.edges[coarse_edge.nr].vertices
         pc_1 = self.coarse_mesh.vertices[vc_1.nr].point
         pc_2 = self.coarse_mesh.vertices[vc_2.nr].point
-        edge_dir = np.array(pc_2) - np.array(pc_1)
-        edge_dir_3d = np.array((edge_dir[0], edge_dir[1], 0))  # Convert to 3D vector
-        edge_length = np.linalg.norm(edge_dir)
-        edge_dir /= edge_length  # Normalize the direction vector
+        # edge_dir = np.array(pc_2) - np.array(pc_1)
+        # edge_dir_3d = np.array((edge_dir[0], edge_dir[1], 0))  # Convert to 3D vector
+        # edge_length = np.linalg.norm(edge_dir)
+        # edge_dir /= edge_length  # Normalize the direction vector
+        # for fine_edge in mesh_element.edges:
+        #     print(f"Checking fine edge {fine_edge.nr} on coarse edge {coarse_edge.nr}")
+        #     vf_1, vf_2 = self.fine_mesh.edges[fine_edge.nr].vertices
+        #     print(f"Fine edge vertices: {vf_1.nr}, {vf_2.nr}")
+        #     pf_1 = self.fine_mesh.vertices[vf_1.nr].point
+        #     pf_2 = self.fine_mesh.vertices[vf_2.nr].point
+        #     print(f"Fine edge points: {pf_1}, {pf_2}")
+        #     fine_edge_dir = np.array(pf_2) - np.array(pf_1)
+        #     fine_edge_length = np.linalg.norm(fine_edge_dir)
+        #     fine_edge_dir /= fine_edge_length
+        #     # Check if the fine edge direction is parallel to the coarse edge direction
+        #     if np.allclose(fine_edge_dir, edge_dir, atol=1e-10):
+        #         # Check if the fine edge lies on the coarse edge
+        #         d_vec = np.array(pf_1 + (0,)) - np.array(pc_1 + (0,))
+        #         cross_vec = np.cross(edge_dir_3d, d_vec)
+        #         t = np.linalg.norm(cross_vec)  # Distance from coarse edge to fine edge
+        #         if np.isclose(t, 0, atol=1e-10):
+        #             fine_edges.add(fine_edge)
         for fine_edge in mesh_element.edges:
             vf_1, vf_2 = self.fine_mesh.edges[fine_edge.nr].vertices
             pf_1 = self.fine_mesh.vertices[vf_1.nr].point
             pf_2 = self.fine_mesh.vertices[vf_2.nr].point
-            fine_edge_dir = np.array(pf_2) - np.array(pf_1)
-            fine_edge_length = np.linalg.norm(fine_edge_dir)
-            fine_edge_dir /= fine_edge_length
-            # Check if the fine edge direction is parallel to the coarse edge direction
-            if np.allclose(fine_edge_dir, edge_dir, atol=1e-10):
-                # Check if the fine edge lies on the coarse edge
-                d_vec = np.array(pf_1 + (0,)) - np.array(pc_1 + (0,))
-                cross_vec = np.cross(edge_dir_3d, d_vec)
-                t = np.linalg.norm(cross_vec)  # Distance from coarse edge to fine edge
-                if np.isclose(t, 0, atol=1e-10):
-                    fine_edges.add(fine_edge)
+            p1_on_line = self._check_if_point_on_line(pf_1, pc_1, pc_2)
+            p2_on_line = self._check_if_point_on_line(pf_2, pc_1, pc_2)
+            if p1_on_line and p2_on_line:
+                fine_edges.append(fine_edge)
         return fine_edges
+    
+    @staticmethod
+    def _check_if_point_on_line(point, line_start, line_end) -> np.bool:
+        """
+        Check if a point is on a line segment defined by (line_start, line_end).
+
+        Args:
+            point (array-like): The point to check.
+            line_start (array-like): The start point of the line segment.
+            line_end (array-like): The end point of the line segment.
+
+        Returns:
+            bool: True if the point is on the line segment, False otherwise.
+        """
+        d1 = np.linalg.norm(np.array(point) - np.array(line_start))
+        d2 = np.linalg.norm(np.array(point) - np.array(line_end))
+        line_length = np.linalg.norm(np.array(line_end) - np.array(line_start))
+        return np.isclose(d1 + d2, line_length, atol=1e-9)
 
     @staticmethod
     def _vectorized_point_in_triangle(points, a, b, c):
@@ -662,13 +695,11 @@ if __name__ == "__main__":
     lx, ly = 1.0, 1.0
     coarse_mesh_size = 0.15
     refinement_levels = 2
-    layers= 2
+    layers = 2
     two_mesh = TwoLevelMesh(
         lx, ly, coarse_mesh_size, refinement_levels=refinement_levels, layers=layers
     )
     two_mesh.save()  # Save the mesh and subdomains
-    two_mesh = TwoLevelMesh.load(
-        lx, ly, coarse_mesh_size, refinement_levels, layers
-    )
+    two_mesh = TwoLevelMesh.load(lx, ly, coarse_mesh_size, refinement_levels, layers)
     figure, ax = two_mesh.plot_domains(domains=7, plot_layers=True)
     plt.show()
