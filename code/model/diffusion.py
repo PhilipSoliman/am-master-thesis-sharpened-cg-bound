@@ -130,7 +130,6 @@ class DiffusionProblem(Problem):
             vertices = set(mesh_e.vertices)
             all_coarse_vertices -= vertices
             if len(all_coarse_vertices) == 0:
-                print("No more coarse vertices left to process.")
                 return c
             for v in mesh_e.vertices:
                 p = self.two_mesh.fine_mesh[v].point
@@ -154,7 +153,7 @@ if __name__ == "__main__":
     )
     print(diffusion_problem.bcs)
     diffusion_problem.solve(
-        preconditioner=TwoLevelSchwarzPreconditioner,
+        preconditioner=OneLevelSchwarzPreconditioner,
         coarse_space=GDSWCoarseSpace,
         rtol=1e-8,
     )
