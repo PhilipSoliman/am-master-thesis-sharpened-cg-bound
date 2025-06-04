@@ -248,7 +248,6 @@ class TwoLevelMesh:
         Returns:
             dict: A dictionary mapping each coarse mesh element to its fine mesh elements.
         """
-        print("Finding connected components in the TwoLevelMesh...")
         connected_components = {}
 
         connected_components["coarse_nodes"] = []
