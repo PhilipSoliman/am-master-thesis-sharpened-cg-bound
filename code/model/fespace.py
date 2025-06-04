@@ -1,4 +1,5 @@
 import ngsolve as ngs
+import numpy as np
 from mesh import TwoLevelMesh
 
 
@@ -31,13 +32,9 @@ class FESpace:
         self.two_mesh = two_mesh
         self.dimension = dim
         if dim == 1:
-            self.fespace = ngs.H1(
-                two_mesh.fine_mesh, order=order, **bcs
-            )
+            self.fespace = ngs.H1(two_mesh.fine_mesh, order=order, **bcs)
         elif dim == 2:
-            self.fespace = ngs.VectorH1(
-                two_mesh.fine_mesh, order=order, **bcs
-            )
+            self.fespace = ngs.VectorH1(two_mesh.fine_mesh, order=order, **bcs)
         self.calculate_dofs()
         if self.fespace.ndof != (
             self.num_interior_dofs + self.num_edge_dofs + self.num_coarse_node_dofs
@@ -64,25 +61,29 @@ class FESpace:
             self.interior_dofs.update(dofs)
 
         # calculate subdomain DOFs
-        self.calculate_subdomain_dofs()
+        self.domain_dofs = self.calculate_subdomain_dofs()
 
         # remove coarse node DOFs from fine DOFs
-        self.coarse_node_dofs = set()
+        all_coarse_node_dofs = set()
         self.edge_dofs = set()
         for subdomain_data in self.domain_dofs.values():
-            self.coarse_node_dofs.update(subdomain_data["coarse_nodes"])
+            all_coarse_node_dofs.update(subdomain_data["coarse_nodes"])
             for coarse_edge_dofs in subdomain_data["edges"].values():
                 self.edge_dofs.update(coarse_edge_dofs)
 
         # remove edge DOFs from interior DOFs
         self.interior_dofs -= self.edge_dofs
-        self.interior_dofs -= self.coarse_node_dofs
+        self.interior_dofs -= set(all_coarse_node_dofs)
 
-        # save DOFS
+        # component dofs
+        self.free_coarse_node_dofs = self.get_free_coarse_node_dofs()
+        self.free_edge_component_dofs = self.get_free_edge_component_dofs()
+        self.free_face_component_dofs = self.get_free_face_component_dofs()
+
+        # meta info
         self.num_interior_dofs = len(self.interior_dofs)
         self.num_edge_dofs = len(self.edge_dofs)
-        self.num_coarse_node_dofs = len(self.coarse_node_dofs)
-        self.num_face_dofs = 0  # Not used in this implementation
+        self.num_coarse_node_dofs = len(all_coarse_node_dofs)
 
         print("FE space DOFS:")
         print(f"\t#total: {self.fespace.ndof}")
@@ -97,7 +98,7 @@ class FESpace:
         Returns:
             dict: Mapping from coarse elements to their classified DOFs.
         """
-        self.domain_dofs = {}
+        domain_dofs = {}
         for subdomain, subdomain_data in self.two_mesh.subdomains.items():
             coarse_node_dofs = set()
             for v in subdomain.vertices:
@@ -112,10 +113,10 @@ class FESpace:
 
             subdomain_edge_dofs = {}
             all_subdomain_edge_dofs = set()
-            for coarse_edge_nr, fine_edges in subdomain_data["edges"].items():
+            for coarse_edge, fine_edges in subdomain_data["edges"].items():
                 coarse_edge_dofs = set()
                 for e in fine_edges:
-                    v1, v2 = self.two_mesh.fine_mesh.edges[e.nr].vertices
+                    v1, v2 = self.two_mesh.fine_mesh[e].vertices
 
                     # get vertex DOFs
                     coarse_edge_dofs.update(self.fespace.GetDofNrs(v1))
@@ -125,7 +126,7 @@ class FESpace:
                     coarse_edge_dofs.update(self.fespace.GetDofNrs(e))
                 coarse_edge_dofs -= coarse_node_dofs
                 interior_dofs -= coarse_edge_dofs
-                subdomain_edge_dofs[coarse_edge_nr] = list(coarse_edge_dofs)
+                subdomain_edge_dofs[coarse_edge] = list(coarse_edge_dofs)
                 all_subdomain_edge_dofs.update(coarse_edge_dofs)
 
             layer_dofs = set()
@@ -138,13 +139,62 @@ class FESpace:
             layer_dofs -= coarse_node_dofs
             layer_dofs -= interior_dofs
 
-            self.domain_dofs[subdomain] = {
+            domain_dofs[subdomain] = {
                 "interior": list(interior_dofs),
                 "coarse_nodes": list(coarse_node_dofs),
                 "edges": subdomain_edge_dofs,
                 "layer": list(layer_dofs),
             }
-        return self.domain_dofs
+
+        return domain_dofs
+
+    def get_free_coarse_node_dofs(self):
+        """
+        Get the degrees of freedom (DOFs) associated with coarse nodes.
+
+        Returns:
+            list: A list of DOFs corresponding to coarse nodes.
+        """
+        coarse_node_dofs = set()
+        all_dofs = np.arange(self.fespace.ndof)
+        free_dofs = all_dofs[self.fespace.FreeDofs()]
+        for coarse_node in self.two_mesh.connected_components["coarse_nodes"]:
+            dof = self.fespace.GetDofNrs(coarse_node)
+            coarse_node_dofs.update(dof)
+
+        # filter coarse node dofs to only include free dofs
+        coarse_node_dofs = [d for d in coarse_node_dofs if d in free_dofs]
+        return list(coarse_node_dofs)
+
+    def get_free_edge_component_dofs(self):
+        edge_component_dofs = []
+        all_dofs = np.arange(self.fespace.ndof)
+        free_dofs = all_dofs[self.fespace.FreeDofs()]
+        for edge_component in self.two_mesh.connected_components["edges"]:
+            dofs = set()
+            for c in edge_component:
+                dofs.update(self.fespace.GetDofNrs(c))
+
+            # remove boundary dofs
+            dofs = [d for d in dofs if d in free_dofs]
+            if len(dofs) > 0:
+                edge_component_dofs.append(list(dofs))
+        return edge_component_dofs
+
+    def get_free_face_component_dofs(self):
+        face_component_dofs = []
+        all_dofs = np.arange(self.fespace.ndof)
+        free_dofs = all_dofs[self.fespace.FreeDofs()]
+        for face_component in self.two_mesh.connected_components["faces"]:
+            dofs = set()
+            for c in face_component:
+                dofs.update(self.fespace.GetDofNrs(c))
+            
+            # remove boundary dofs
+            dofs = [d for d in dofs if d in free_dofs]
+            if len(dofs) > 0:
+                face_component_dofs.append(list(dofs))
+        return face_component_dofs
 
     @property
     def u(self):
@@ -165,7 +215,7 @@ class FESpace:
             ngs.TestFunction: The test function of the finite element space.
         """
         return self.fespace.TestFunction()
-    
+
     def __repr__(self):
         # print domain DOFs
         repr_str = "Domain DOFs:\n"
@@ -176,6 +226,7 @@ class FESpace:
             repr_str += f"\t\t#edges: {data['edges']}\n"
             repr_str += f"\t\t#layer: {len(data['layer'])}\n"
         return repr_str
+
 
 if __name__ == "__main__":
     """
@@ -193,4 +244,4 @@ if __name__ == "__main__":
         layers=layers,
     )
     fespace = FESpace(two_mesh, order=1, discontinuous=False)
-    print(fespace)
+    # print(fespace)
