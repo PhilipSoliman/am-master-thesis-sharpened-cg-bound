@@ -43,6 +43,7 @@ class FESpace:
                 "Mismatch in number of DOFs: "
                 f"{self.fespace.ndof} != {self.num_interior_dofs} + {self.num_edge_dofs} + {self.num_coarse_node_dofs}"
             )
+            pass
 
     def calculate_dofs(self):
         """
@@ -64,26 +65,32 @@ class FESpace:
         self.domain_dofs = self.calculate_subdomain_dofs()
 
         # remove coarse node DOFs from fine DOFs
-        all_coarse_node_dofs = set()
+        self.coarse_node_dofs = set(
+            self.fespace.GetDofNrs(v)[0] for v in self.two_mesh.coarse_mesh.vertices
+        )
+        print(f"Coarse node DOFs: {self.coarse_node_dofs}")
         self.edge_dofs = set()
         for subdomain_data in self.domain_dofs.values():
-            all_coarse_node_dofs.update(subdomain_data["coarse_nodes"])
             for coarse_edge_dofs in subdomain_data["edges"].values():
-                self.edge_dofs.update(coarse_edge_dofs)
+                self.edge_dofs.update(coarse_edge_dofs["vertices"])
+                self.edge_dofs.update(coarse_edge_dofs["edges"])
 
         # remove edge DOFs from interior DOFs
         self.interior_dofs -= self.edge_dofs
-        self.interior_dofs -= set(all_coarse_node_dofs)
+        self.interior_dofs -= set(self.coarse_node_dofs)
 
         # component dofs
         self.free_coarse_node_dofs = self.get_free_coarse_node_dofs()
+        # print(f"Free coarse node DOFs: {self.free_coarse_node_dofs}")
         self.free_edge_component_dofs = self.get_free_edge_component_dofs()
+        # print(f"Free edge component DOFs: {self.free_edge_component_dofs}")
         self.free_face_component_dofs = self.get_free_face_component_dofs()
+        # print(f"Free face component DOFs: {self.free_face_component_dofs}")
 
         # meta info
         self.num_interior_dofs = len(self.interior_dofs)
         self.num_edge_dofs = len(self.edge_dofs)
-        self.num_coarse_node_dofs = len(all_coarse_node_dofs)
+        self.num_coarse_node_dofs = len(self.coarse_node_dofs)
 
         print("FE space DOFS:")
         print(f"\t#total: {self.fespace.ndof}")
@@ -114,20 +121,29 @@ class FESpace:
             subdomain_edge_dofs = {}
             all_subdomain_edge_dofs = set()
             for coarse_edge, fine_edges in subdomain_data["edges"].items():
-                coarse_edge_dofs = set()
+                subdomain_edge_dofs[coarse_edge] = {}
+                coarse_edge_fine_vertex_dofs = set()
+                coarse_edge_fine_edge_dofs = set()
                 for e in fine_edges:
                     v1, v2 = self.two_mesh.fine_mesh[e].vertices
 
                     # get vertex DOFs
-                    coarse_edge_dofs.update(self.fespace.GetDofNrs(v1))
-                    coarse_edge_dofs.update(self.fespace.GetDofNrs(v2))
+                    coarse_edge_fine_vertex_dofs.update(self.fespace.GetDofNrs(v1))
+                    coarse_edge_fine_vertex_dofs.update(self.fespace.GetDofNrs(v2))
 
-                    # get edge subdomain_edge_dofs
-                    coarse_edge_dofs.update(self.fespace.GetDofNrs(e))
-                coarse_edge_dofs -= coarse_node_dofs
-                interior_dofs -= coarse_edge_dofs
-                subdomain_edge_dofs[coarse_edge] = list(coarse_edge_dofs)
-                all_subdomain_edge_dofs.update(coarse_edge_dofs)
+                    # get edge subdomain_edge_fine_edge_dofs
+                    coarse_edge_fine_edge_dofs.update(self.fespace.GetDofNrs(e))
+                coarse_edge_fine_vertex_dofs -= coarse_node_dofs
+                interior_dofs -= coarse_edge_fine_vertex_dofs
+                interior_dofs -= coarse_edge_fine_edge_dofs
+                subdomain_edge_dofs[coarse_edge]["vertices"] = list(
+                    coarse_edge_fine_vertex_dofs
+                )
+                subdomain_edge_dofs[coarse_edge]["edges"] = list(
+                    coarse_edge_fine_edge_dofs
+                )
+                all_subdomain_edge_dofs.update(coarse_edge_fine_vertex_dofs)
+                all_subdomain_edge_dofs.update(coarse_edge_fine_edge_dofs)
 
             layer_dofs = set()
             for layer_idx in range(1, self.two_mesh.layers + 1):
@@ -145,7 +161,6 @@ class FESpace:
                 "edges": subdomain_edge_dofs,
                 "layer": list(layer_dofs),
             }
-
         return domain_dofs
 
     def get_free_coarse_node_dofs(self):
@@ -189,12 +204,30 @@ class FESpace:
             dofs = set()
             for c in face_component:
                 dofs.update(self.fespace.GetDofNrs(c))
-            
+
             # remove boundary dofs
             dofs = [d for d in dofs if d in free_dofs]
             if len(dofs) > 0:
                 face_component_dofs.append(list(dofs))
         return face_component_dofs
+
+    def get_gridfunc(self, vals):
+        """
+        Get the grid function representing the DOFs on the mesh.
+
+        Args:
+            vals (np.ndarray): The values to plot at each DOF.
+
+        Returns:
+            ngs.GridFunction: The grid function representing the DOFs on the mesh.
+        """
+        vals = np.asarray(vals, dtype=float).flatten()
+        assert len(vals) == self.fespace.ndof, (
+            f"Length of vals ({len(vals)}) does not match number of DOFs ({self.fespace.ndof})"
+        )
+        grid_function = ngs.GridFunction(self.fespace)
+        grid_function.vec.FV().NumPy()[:] = vals
+        return grid_function
 
     @property
     def u(self):
@@ -222,7 +255,7 @@ class FESpace:
         for subdomain, data in self.domain_dofs.items():
             repr_str += f"\t{subdomain.nr}:\n"
             repr_str += f"\t\t#interior: {len(data['interior'])}\n"
-            repr_str += f"\t\t#coarse_nodes: {len(data['coarse_nodes'])}\n"
+            repr_str += f"\t\t#coarse_nodes: {data['coarse_nodes']}\n"
             repr_str += f"\t\t#edges: {data['edges']}\n"
             repr_str += f"\t\t#layer: {len(data['layer'])}\n"
         return repr_str
@@ -244,4 +277,4 @@ if __name__ == "__main__":
         layers=layers,
     )
     fespace = FESpace(two_mesh, order=1, discontinuous=False)
-    # print(fespace)
+    print(fespace)

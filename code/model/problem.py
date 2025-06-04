@@ -213,6 +213,7 @@ class Problem:
         # get preconditioner
         M_op = None
         precond = None
+        coarse_op_gfuncs = {}
         if preconditioner is not None:
             if isinstance(preconditioner, type):
                 if preconditioner is OneLevelSchwarzPreconditioner:
@@ -225,6 +226,7 @@ class Problem:
                     precond = TwoLevelSchwarzPreconditioner(
                         A_sp_f, self.fes, self.two_mesh, coarse_space
                     )
+                    coarse_op_gfuncs = precond._get_coarse_operator_gfuncs()
                 else:
                     raise ValueError(
                         f"Unknown preconditioner type: {preconditioner.__name__}"
@@ -234,11 +236,21 @@ class Problem:
         # solve system using (P)CG
         u_arr[:], info = sp_cg(A_sp_f, res_arr, x0=u_arr, M=M_op, rtol=rtol)
         if info != 0:
-            raise RuntimeError(
+            print(
                 f"Conjugate gradient solver did not converge. Number of iterations: {info}"
             )
         else:
             self.u.vec.FV().NumPy()[free_dofs] = u_arr
+
+        # save coarse operator grid functions if available
+        gfuncs = []
+        names = []
+        for component_type, op_gfuncs in coarse_op_gfuncs.items():
+            for i, gfunc in enumerate(op_gfuncs):
+                gfuncs.append(gfunc)
+                names.append(f"{component_type}_{i}")
+        self.save_ngs_functions(gfuncs, names, "coarse_operators")
+
 
     def save_ngs_functions(
         self, funcs: list[ngs.GridFunction], names: list[str], category: str

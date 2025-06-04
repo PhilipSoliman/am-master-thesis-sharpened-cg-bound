@@ -59,7 +59,8 @@ class OneLevelSchwarzPreconditioner(Preconditioner):
                 all_subdomain_dofs.update(component)
             elif component_type == "edges":
                 for edge_nr, edge_dofs in component.items():
-                    all_subdomain_dofs.update(edge_dofs)
+                    all_subdomain_dofs.update(edge_dofs["vertices"])
+                    all_subdomain_dofs.update(edge_dofs["edges"])
             elif component_type == "face":
                 raise NotImplementedError("Face dofs are not implemented.")
         return list(all_subdomain_dofs)
@@ -77,7 +78,6 @@ class TwoLevelSchwarzPreconditioner(OneLevelSchwarzPreconditioner):
         self.coarse_space = coarse_space(A, fespace, two_mesh)
         self.coarse_op = self.coarse_space.assemble_coarse_operator()
         A_0 = (self.coarse_op.transpose() @ (A @ self.coarse_op)).tocsc()
-
         self.A_0_lu = splu(A_0)
 
     def apply(self, x: np.ndarray):
@@ -90,3 +90,25 @@ class TwoLevelSchwarzPreconditioner(OneLevelSchwarzPreconditioner):
         x += self.coarse_op @ y_0
 
         return x
+
+    def _get_coarse_operator_gfuncs(
+        self,
+    ):
+        coarse_op_gfuncs = {"edge": [], "coarse_node": []}
+        coarse_node_components = [0, 1]
+        for comp in coarse_node_components:
+            vals = np.zeros(self.fespace.fespace.ndof)
+            vals[self.free_dofs] = self.coarse_op[:, comp].toarray().flatten()
+            gfunc = self.coarse_space.fespace.get_gridfunc(vals)
+            coarse_op_gfuncs["coarse_node"].append(gfunc)
+        edge_components = [
+            self.coarse_space.num_coarse_node_components,
+            self.coarse_space.num_coarse_node_components + 1,
+        ]
+        for comp in edge_components:
+            vals = np.zeros(self.fespace.fespace.ndof)
+            vals[self.free_dofs] = self.coarse_op[:, comp].toarray().flatten()
+            gfunc = self.coarse_space.fespace.get_gridfunc(vals)
+            coarse_op_gfuncs["edge"].append(gfunc)
+
+        return coarse_op_gfuncs

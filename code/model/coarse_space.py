@@ -83,18 +83,17 @@ class CoarseSpace(object):
 
     def _get_connected_components(self):
         interface_components = []
-
-        # face components
-        if len(self.fespace.free_face_component_dofs) > 0:
-            self._get_face_components(interface_components)
+        # coarse node components
+        if len(self.fespace.free_coarse_node_dofs) > 0:
+            self._get_coarse_components(interface_components)
 
         # edge components
         if len(self.fespace.free_edge_component_dofs) > 0:
             self._get_edge_components(interface_components)
 
-        # coarse node components
-        if len(self.fespace.free_coarse_node_dofs) > 0:
-            self._get_coarse_components(interface_components)
+        # face components
+        if len(self.fespace.free_face_component_dofs) > 0:
+            self._get_face_components(interface_components)
 
         return interface_components
 
@@ -140,12 +139,14 @@ class GDSWCoarseSpace(CoarseSpace):
         # interior <- interface operator
         A_IGamma = self.A[~self.interface_dofs_mask, :][:, self.interface_dofs_mask]
 
-        # discrete harmonic extension
+        # discrete harmonic extension TODO: check if this is correct
         interior_op = -spsolve(A_II, (A_IGamma @ self.interface_op).tocsc())
 
         # fill the coarse operator
         coarse_op[~self.interface_dofs_mask, :] = interior_op
         coarse_op[self.interface_dofs_mask, :] = self.interface_op
+
+        # plot some coarse operator columns on the mesh
         return coarse_op
 
     def _assemble_interface_operator(self):
@@ -191,7 +192,6 @@ class GDSWCoarseSpace(CoarseSpace):
         self.interface_op = self.interface_op[self.free_dofs_mask, :][
             self.interface_dofs_mask, :
         ]
-
 
 class RGDSWCoarseSpace(CoarseSpace):
     def assemble_coarse_operator(self) -> sp.csc_matrix:

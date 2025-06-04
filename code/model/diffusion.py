@@ -56,7 +56,7 @@ class DiffusionProblem(Problem):
             print("Mesh file not found. Creating a new mesh.")
             two_mesh = TwoLevelMesh(lx, ly, coarse_mesh_size, refinement_levels, layers)
 
-            # save mesh for reuse
+            print("Saving newly created mesh to file...")
             two_mesh.save()
 
         # initialize the Problem with the TwoLevelMesh
@@ -149,7 +149,11 @@ class DiffusionProblem(Problem):
 if __name__ == "__main__":
     # Example usage
     diffusion_problem = DiffusionProblem(
-        source_func=SourceFunc.PARABOLIC, coef_func=CoefFunc.CONSTANT
+        coarse_mesh_size=0.4,
+        refinement_levels=3,
+        layers=1,
+        source_func=SourceFunc.PARABOLIC,
+        coef_func=CoefFunc.CONSTANT,
     )
     print(diffusion_problem.bcs)
     diffusion_problem.solve(
@@ -159,4 +163,4 @@ if __name__ == "__main__":
     )
 
     # Save the functions to vtk files
-    # diffusion_problem.save_functions()
+    diffusion_problem.save_functions()

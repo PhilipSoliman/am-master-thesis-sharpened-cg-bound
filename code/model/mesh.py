@@ -599,7 +599,7 @@ class TwoLevelMesh:
         else:
             raise ValueError("mesh_type must be 'fine' or 'coarse'.")
 
-        for el in mesh.Elements(ngs.VOL):
+        for el in mesh.Elements():
             self.plot_element(
                 ax,
                 el,
@@ -937,9 +937,9 @@ class TwoLevelMesh:
 # Example usage:
 if __name__ == "__main__":
     lx, ly = 1.0, 1.0
-    coarse_mesh_size = 0.15
-    refinement_levels = 2
-    layers = 2
+    coarse_mesh_size = 0.4
+    refinement_levels = 3
+    layers = 1
     # two_mesh = TwoLevelMesh(
     #     lx, ly, coarse_mesh_size, refinement_levels=refinement_levels, layers=layers
     # )
@@ -957,5 +957,5 @@ if __name__ == "__main__":
 
     # Plotting the domains
     figure, ax = plt.subplots(figsize=(8, 6))
-    two_mesh.plot_domains(ax, domains=7, plot_layers=True)
+    two_mesh.plot_domains(ax, domains=1, plot_layers=True)
     plt.show()
