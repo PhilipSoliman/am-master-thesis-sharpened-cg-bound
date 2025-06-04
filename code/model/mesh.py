@@ -123,7 +123,9 @@ class TwoLevelMesh:
         geo = occ.OCCGeometry(face, dim=2)
 
         # Generate coarse mesh
-        ngm_coarse = geo.GenerateMesh(minh=coarse_mesh_size, maxh=coarse_mesh_size)
+        ngm_coarse = geo.GenerateMesh(
+            minh=self.coarse_mesh_size, maxh=self.coarse_mesh_size
+        )
         coarse_mesh = ngs.Mesh(ngm_coarse)
 
         # Make a copy for the fine mesh and refine in-place
@@ -196,31 +198,12 @@ class TwoLevelMesh:
             dict: Fine mesh edges that lie on the coarse element's edges.
         """
         subdomain_edges = {}
-        # figure, ax = plt.subplots()
         for coarse_edge in subdomain.edges:
             subdomain_edges[coarse_edge.nr] = []
             for el in interior_elements:
                 mesh_el = self.fine_mesh[el]
-                # self.plot_element(
-                #     ax,
-                #     mesh_el,
-                #     self.fine_mesh,
-                #     fillcolor="lightgray",
-                #     edgecolor="black",
-                #     alpha=0.5,
-                # )
                 fine_edges = self._get_edges_on_subdomain_edge(coarse_edge, mesh_el)
                 subdomain_edges[coarse_edge.nr] += fine_edges
-            # self.plot_edges(
-            #     ax,
-            #     subdomain_edges[coarse_edge.nr],
-            #     self.fine_mesh,
-            #     color="green",
-            #     linewidth=2.0,
-            #     linestyle="--",
-            # )
-        # plt.show()
-        # exit()
         return subdomain_edges
 
     def get_connected_component_tree(self) -> dict:
@@ -543,7 +526,7 @@ class TwoLevelMesh:
                     for el in subdomain_data["interior"]
                 ],
                 "edges": {
-                    coarse_edge_nr: [
+                    int(coarse_edge_nr): [
                         self.fine_mesh.edges[edge_nr]
                         for edge_nr in subdomain_data["edges"][coarse_edge_nr]
                     ]
