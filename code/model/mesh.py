@@ -33,7 +33,7 @@ class BoundaryName(Enum):
 class TwoLevelMesh:
     """
     TwoLevelMesh
-    A class for generating, managing, and visualizing two-level conforming meshes (coarse and fine) for rectangular domains, with support for layersping domain decomposition and mesh serialization.
+    A class for generating, managing, and visualizing two-level conforming meshes (coarse and fine) for rectangular domains, with support for layering domain decomposition and mesh serialization.
     Attributes:
         lx (float): Length of the domain in the x-direction.
         ly (float): Length of the domain in the y-direction.
@@ -94,9 +94,10 @@ class TwoLevelMesh:
         self.refinement_levels = refinement_levels
         self.fine_mesh, self.coarse_mesh = self.create_conforming_meshes()
         self.subdomains = self.get_subdomains()
+        self.connected_components = self.get_connected_components()
         self.layers = layers
         for layer_idx in range(1, layers + 1):
-            self.extend_subdomains(layer_idx=layer_idx)
+            self.extend_subdomains(layer_idx)
 
     def create_conforming_meshes(self) -> tuple[ngs.Mesh, ngs.Mesh]:
         """
@@ -195,15 +196,138 @@ class TwoLevelMesh:
             dict: Fine mesh edges that lie on the coarse element's edges.
         """
         subdomain_edges = {}
+        # figure, ax = plt.subplots()
         for coarse_edge in subdomain.edges:
             subdomain_edges[coarse_edge.nr] = []
             for el in interior_elements:
                 mesh_el = self.fine_mesh[el]
+                # self.plot_element(
+                #     ax,
+                #     mesh_el,
+                #     self.fine_mesh,
+                #     fillcolor="lightgray",
+                #     edgecolor="black",
+                #     alpha=0.5,
+                # )
                 fine_edges = self._get_edges_on_subdomain_edge(coarse_edge, mesh_el)
                 subdomain_edges[coarse_edge.nr] += fine_edges
+            # self.plot_edges(
+            #     ax,
+            #     subdomain_edges[coarse_edge.nr],
+            #     self.fine_mesh,
+            #     color="green",
+            #     linewidth=2.0,
+            #     linestyle="--",
+            # )
+        # plt.show()
+        # exit()
         return subdomain_edges
 
-    def extend_subdomains(self, layer_idx: int = 1):
+    def get_connected_component_tree(self) -> dict:
+        """
+        Finds the tree of connected components in the fine mesh based on the coarse mesh subdomains.
+
+        Note a 2D mesh does not have faces so
+        Returns:
+            dict: A dictionary with the following structure:
+                {
+                    coarse_node_i1: {
+                        fine_edge_j1 : [
+                                fine_face_k1,
+                                fine_face_k2,
+                                ...,
+                                fine_face_kn
+                            ],
+                        fine_edge_j2 : [...],
+                        ...
+                        fine_edge_jm : [...],
+                    }
+                    coarse_node_i2: {...},
+                    ...,
+                    coarse_node_in: {...}
+                }
+        """
+        # TODO: implement this, useful for RGDSW coarse space.
+        raise NotImplementedError(
+            "get_connected_component_tree is not implemented for TwoLevelMesh."
+        )
+        return dict()
+
+    def get_connected_components(self) -> dict:
+        """
+        Finds all the connected components in the fine mesh based on the coarse mesh subdomains.
+
+        That is,
+        1) each coarse node,
+        2) for each subdomain edge all fine edges and fine vertices that belong to it (except for those vertices belonging to 1)
+        3) for each subdomain face all fine faces, fine edges, fine vertices that belong to it (except for those belonging to 1 & 2)
+
+        Returns:
+            dict: A dictionary mapping each coarse mesh element to its fine mesh elements.
+        """
+        connected_components = {}
+
+        connected_components["coarse_nodes"] = []
+        coarse_nodes_processed = set()
+
+        connected_components["edges"] = []
+        subdomain_edges_processed = set()
+
+        # NOTE: this code is commented out until 3D meshes are implemented
+        connected_components["faces"] = []
+        subdomain_faces_processed = set()
+
+        # figure, ax = plt.subplots()
+        for subdomain, subdomain_data in self.subdomains.items():
+            # coarse nodes
+            subdomain_coarse_nodes = subdomain.vertices
+            for subdomain_coarse_node in subdomain_coarse_nodes:
+                if subdomain_coarse_node not in coarse_nodes_processed:
+                    connected_components["coarse_nodes"].append(subdomain_coarse_node)
+                    coarse_nodes_processed.add(subdomain_coarse_node)
+
+            # subdomain edges
+            for subdomain_edge, fine_edges in subdomain_data["edges"].items():
+                # add fine edges
+                subdomain_edge_components = set(fine_edges)
+                for fine_edge in fine_edges:
+                    # add fine vertices
+                    for vertex in self.fine_mesh[fine_edge].vertices:
+                        # coarse nodes are not added to edges
+                        if vertex not in coarse_nodes_processed:
+                            subdomain_edge_components.add(vertex)
+
+                if subdomain_edge not in subdomain_edges_processed:
+                    connected_components["edges"].append(
+                        list(subdomain_edge_components)
+                    )
+                    subdomain_edges_processed.add(subdomain_edge)
+
+                # NOTE: this code is commented out until 3D meshes are implemented
+                # # faces
+                # if (subdomain_faces := getattr(subdomain, "faces")) is not None:
+                #     for subdomain_face, fine_faces in subdomain_faces.items():
+                #         subdomain_face_components = set()
+                #         subdomain_faces.remove(subdomain_face)
+                #         if len(subdomain_faces) == 0:
+                #             break
+                #         for fine_face in fine_faces:
+                #             # add face
+                #             subdomain_face_components.add(fine_face)
+
+                #             # add edges
+                #             for edge in fine_face.edges:
+                #                 if edge not in subdomain_edge_components:
+                #                     subdomain_face_components.add(edge)
+
+                #             # add vertices
+                #             for vertex in fine_face.vertices:
+                #                 if vertex not in coarse_nodes:
+                #                     subdomain_face_components.add(vertex)
+
+        return connected_components
+
+    def extend_subdomains(self, layer_idx):
         """
         Extend the subdomains by adding layers of fine mesh elements.
 
@@ -355,6 +479,7 @@ class TwoLevelMesh:
             obj._load_metadata(fp)
             obj._load_meshes(fp)
             obj._load_subdomains(fp)
+            setattr(obj, "connected_components", obj.get_connected_components())
         else:
             raise FileNotFoundError(f"Metadata file {fp} does not exist.")
         return obj
@@ -417,9 +542,13 @@ class TwoLevelMesh:
                     self.fine_mesh[ngs.ElementId(ngs.VOL, el)]
                     for el in subdomain_data["interior"]
                 ],
-                "edges": {coarse_edge_nr: [
-                    self.fine_mesh.edges[edge] for edge in subdomain_data["edges"][coarse_edge_nr]
-                ] for coarse_edge_nr in subdomain_data["edges"]},
+                "edges": {
+                    coarse_edge_nr: [
+                        self.fine_mesh.edges[edge_nr]
+                        for edge_nr in subdomain_data["edges"][coarse_edge_nr]
+                    ]
+                    for coarse_edge_nr in subdomain_data["edges"]
+                },
                 **{
                     f"layer_{layer_idx}": [
                         self.fine_mesh[ngs.ElementId(ngs.VOL, el)]
@@ -458,8 +587,46 @@ class TwoLevelMesh:
             self._save_folder.mkdir(parents=True, exist_ok=True)
 
     # plotting
+    def plot_mesh(self, ax: Axes, mesh_type: str = "fine"):
+        """
+        Plot the fine or coarse mesh using matplotlib.
+
+        Args:
+            mesh_type (str, optional): Type of mesh to plot ('fine' or 'coarse'). Defaults to 'fine'.
+
+        Returns:
+            tuple: (figure, ax) Matplotlib figure and axis.
+        """
+        if mesh_type == "fine":
+            mesh = self.fine_mesh
+            linewidth = 1.0
+            alpha = 1.0
+            fillcolor = "lightgray"
+            edgecolor = "black"
+        elif mesh_type == "coarse":
+            mesh = self.coarse_mesh
+            linewidth = 2.0
+            alpha = 0.5
+            fillcolor = "lightblue"
+            edgecolor = "darkblue"
+        else:
+            raise ValueError("mesh_type must be 'fine' or 'coarse'.")
+
+        for el in mesh.Elements(ngs.VOL):
+            self.plot_element(
+                ax,
+                el,
+                mesh,
+                fillcolor=fillcolor,
+                edgecolor=edgecolor,
+                alpha=alpha,
+                linewidth=linewidth,
+            )
+        return ax
+
     def plot_domains(
         self,
+        ax: Axes,
         domains: list | int = 1,
         plot_layers: bool = False,
         opacity: float = 0.9,
@@ -479,14 +646,13 @@ class TwoLevelMesh:
         """
         domains_int_toggle = isinstance(domains, int)
         domains_list_toggle = isinstance(domains, list)
-        figure, ax = plt.subplots(figsize=(8, 6))
         for i, (subdomain, subdomain_data) in enumerate(self.subdomains.items()):
             domain_elements = subdomain_data["interior"]
             if domains_int_toggle:
                 if i % domains != 0:
                     continue
             elif domains_list_toggle:
-                if subdomain not in domains:
+                if subdomain.nr not in domains:
                     continue
             fillcolor = self.subdomain_colors[i % len(self.subdomain_colors)]
             for domain_el in domain_elements:
@@ -515,17 +681,67 @@ class TwoLevelMesh:
                             edgecolor="black",
                             label=f"layersLayer {layer_idx} Element",
                         )
-        return figure, ax
+        return ax
+
+    def plot_connected_components(self, ax: Axes):
+        """
+        Plot the connected components of the fine mesh based on the coarse mesh subdomains.
+
+        Args:
+            ax (Axes): Matplotlib axis to plot on.
+
+        Returns:
+            Axes: The matplotlib axis with the plotted connected components.
+        """
+        # coarse nodes (correspond to fine vertices)
+
+        self.plot_vertices(
+            ax,
+            self.connected_components["coarse_nodes"],
+            self.fine_mesh,
+            color="red",
+            marker="o",
+            markersize=20,
+        )
+
+        # edges
+        for components in self.connected_components["edges"]:
+            for component in components:
+                mesh_comp = self.fine_mesh[component]
+                try:  # edge component
+                    _ = mesh_comp.vertices
+                    self.plot_edges(
+                        ax,
+                        [mesh_comp],
+                        self.fine_mesh,
+                        color="blue",
+                        linewidth=1.5,
+                        linestyle="-",
+                    )
+                except TypeError:  # vertex component
+                    self.plot_vertices(
+                        ax,
+                        [component],
+                        self.fine_mesh,
+                        color="green",
+                        marker="x",
+                        markersize=15,
+                    )
+
+        # faces
+        for face_component in self.connected_components["faces"]:
+            for face in face_component:
+                raise NotImplementedError(
+                    "Plotting connected components for faces is not implemented yet."
+                )
+        return ax
 
     @staticmethod
     def plot_element(
         ax: Axes,
         element,
         mesh,
-        fillcolor="blue",
-        edgecolor="black",
-        alpha=1.0,
-        label=None,
+        **kwargs,
     ):
         """
         Plot a single mesh element on a matplotlib axis.
@@ -543,13 +759,76 @@ class TwoLevelMesh:
         polygon = Polygon(
             vertices,
             closed=True,
-            fill=True if fillcolor else False,
-            facecolor=fillcolor,
-            edgecolor=edgecolor,
-            label=label,
-            alpha=alpha,
+            fill=True if kwargs.get("fillcolor") else False,
+            facecolor=kwargs.get("fillcolor", "blue"),
+            edgecolor=kwargs.get("edgecolor", "black"),
+            label=kwargs.get("label"),
+            alpha=kwargs.get("alpha", 1.0),
+            linewidth=kwargs.get("linewidth", 1.5),
+            zorder=kwargs.get("zorder", 1.0),
         )
         ax.add_patch(polygon)
+
+    @staticmethod
+    def plot_edges(
+        ax: Axes,
+        edges: list,
+        mesh,
+        **kwargs,
+    ):
+        """
+        Plot a single mesh edge on a matplotlib axis.
+
+        Args:
+            ax (Axes): Matplotlib axis to plot on.
+            edge: EdgeId of the edge to plot.
+            mesh: NGSolve mesh containing the edge.
+            color (str, optional): Color for the edge. Defaults to "black".
+            linewidth (float, optional): Width of the edge line. Defaults to 1.5.
+            linestyle (str, optional): Style of the edge line. Defaults to "-".
+            label (str, optional): Label for the edge (optional).
+        """
+        for edge in edges:
+            vertices = [mesh[v].point for v in mesh[edge].vertices]
+            ax.plot(
+                [v[0] for v in vertices],
+                [v[1] for v in vertices],
+                color=kwargs.get("color", "black"),
+                linewidth=kwargs.get("linewidth", 1.5),
+                linestyle=kwargs.get("linestyle", "-"),
+                label=kwargs.get("label"),
+                zorder=kwargs.get("zorder", 2.0),
+            )
+
+    @staticmethod
+    def plot_vertices(
+        ax: Axes,
+        vertices: list,
+        mesh,
+        **kwargs,
+    ):
+        """
+        Plot a single mesh node on a matplotlib axis.
+
+        Args:
+            ax (Axes): Matplotlib axis to plot on.
+            node: NodeId of the node to plot.
+            mesh: NGSolve mesh containing the node.
+            color (str, optional): Color for the node. Defaults to "red".
+            marker (str, optional): Marker style for the node. Defaults to "o".
+            markersize (int, optional): Size of the marker. Defaults to 5.
+            label (str, optional): Label for the node (optional).
+        """
+        coarse_node_coords = np.array([mesh.vertices[v.nr].point for v in vertices])
+        ax.scatter(
+            coarse_node_coords[:, 0],
+            coarse_node_coords[:, 1],
+            color=kwargs.get("color", "red"),
+            marker=kwargs.get("marker", "o"),
+            s=kwargs.get("markersize", 5),
+            label=kwargs.get("label"),
+            zorder=kwargs.get("zorder", 3.0),
+        )
 
     @property
     def subdomain_colors(self):
@@ -588,28 +867,6 @@ class TwoLevelMesh:
         vc_1, vc_2 = self.coarse_mesh.edges[coarse_edge.nr].vertices
         pc_1 = self.coarse_mesh.vertices[vc_1.nr].point
         pc_2 = self.coarse_mesh.vertices[vc_2.nr].point
-        # edge_dir = np.array(pc_2) - np.array(pc_1)
-        # edge_dir_3d = np.array((edge_dir[0], edge_dir[1], 0))  # Convert to 3D vector
-        # edge_length = np.linalg.norm(edge_dir)
-        # edge_dir /= edge_length  # Normalize the direction vector
-        # for fine_edge in mesh_element.edges:
-        #     print(f"Checking fine edge {fine_edge.nr} on coarse edge {coarse_edge.nr}")
-        #     vf_1, vf_2 = self.fine_mesh.edges[fine_edge.nr].vertices
-        #     print(f"Fine edge vertices: {vf_1.nr}, {vf_2.nr}")
-        #     pf_1 = self.fine_mesh.vertices[vf_1.nr].point
-        #     pf_2 = self.fine_mesh.vertices[vf_2.nr].point
-        #     print(f"Fine edge points: {pf_1}, {pf_2}")
-        #     fine_edge_dir = np.array(pf_2) - np.array(pf_1)
-        #     fine_edge_length = np.linalg.norm(fine_edge_dir)
-        #     fine_edge_dir /= fine_edge_length
-        #     # Check if the fine edge direction is parallel to the coarse edge direction
-        #     if np.allclose(fine_edge_dir, edge_dir, atol=1e-10):
-        #         # Check if the fine edge lies on the coarse edge
-        #         d_vec = np.array(pf_1 + (0,)) - np.array(pc_1 + (0,))
-        #         cross_vec = np.cross(edge_dir_3d, d_vec)
-        #         t = np.linalg.norm(cross_vec)  # Distance from coarse edge to fine edge
-        #         if np.isclose(t, 0, atol=1e-10):
-        #             fine_edges.add(fine_edge)
         for fine_edge in mesh_element.edges:
             vf_1, vf_2 = self.fine_mesh.edges[fine_edge.nr].vertices
             pf_1 = self.fine_mesh.vertices[vf_1.nr].point
@@ -619,7 +876,7 @@ class TwoLevelMesh:
             if p1_on_line and p2_on_line:
                 fine_edges.append(fine_edge)
         return fine_edges
-    
+
     @staticmethod
     def _check_if_point_on_line(point, line_start, line_end) -> np.bool:
         """
@@ -699,7 +956,22 @@ if __name__ == "__main__":
     two_mesh = TwoLevelMesh(
         lx, ly, coarse_mesh_size, refinement_levels=refinement_levels, layers=layers
     )
-    two_mesh.save()  # Save the mesh and subdomains
-    two_mesh = TwoLevelMesh.load(lx, ly, coarse_mesh_size, refinement_levels, layers)
-    figure, ax = two_mesh.plot_domains(domains=7, plot_layers=True)
+    # two_mesh.save()  # Save the mesh and subdomains
+    # two_mesh = TwoLevelMesh.load(lx, ly, coarse_mesh_size, refinement_levels, layers)
+
+    # Plotting the meshes
+    figure, ax = plt.subplots(figsize=(8, 6))
+    two_mesh.plot_mesh(ax, mesh_type="fine")
+    two_mesh.plot_mesh(ax, mesh_type="coarse")
+
+    # getting connected components
+    figure, ax = plt.subplots(figsize=(8, 6))
+    components = two_mesh.get_connected_components()
+    num_components = len(components["edges"]) + len(components["coarse_nodes"])
+    print(f"Number of connected components: {num_components}")
+    two_mesh.plot_connected_components(ax)
+
+    # Plotting the domains
+    figure, ax = plt.subplots(figsize=(8, 6))
+    two_mesh.plot_domains(ax, domains=7, plot_layers=True)
     plt.show()
