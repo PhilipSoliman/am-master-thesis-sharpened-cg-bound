@@ -199,11 +199,11 @@ class TwoLevelMesh:
         """
         subdomain_edges = {}
         for coarse_edge in subdomain.edges:
-            subdomain_edges[coarse_edge.nr] = []
+            subdomain_edges[coarse_edge] = []
             for el in interior_elements:
                 mesh_el = self.fine_mesh[el]
                 fine_edges = self._get_edges_on_subdomain_edge(coarse_edge, mesh_el)
-                subdomain_edges[coarse_edge.nr] += fine_edges
+                subdomain_edges[coarse_edge] += fine_edges
         return subdomain_edges
 
     def get_connected_component_tree(self) -> dict:
@@ -248,6 +248,7 @@ class TwoLevelMesh:
         Returns:
             dict: A dictionary mapping each coarse mesh element to its fine mesh elements.
         """
+        print("Finding connected components in the TwoLevelMesh...")
         connected_components = {}
 
         connected_components["coarse_nodes"] = []
@@ -417,10 +418,10 @@ class TwoLevelMesh:
                 int(subdomain.nr): {
                     "interior": [el.nr for el in subdomain_data["interior"]],
                     "edges": {
-                        coarse_edge_nr: [
-                            edge.nr for edge in subdomain_data["edges"][coarse_edge_nr]
+                        int(coarse_edge.nr): [
+                            edge.nr for edge in subdomain_data["edges"][coarse_edge]
                         ]
-                        for coarse_edge_nr in subdomain_data["edges"]
+                        for coarse_edge in subdomain_data["edges"]
                     },
                     **{
                         f"layer_{layer_idx}": [
@@ -461,7 +462,10 @@ class TwoLevelMesh:
             obj = cls.__new__(cls)
             obj._load_metadata(fp)
             obj._load_meshes(fp)
-            obj._load_subdomains(fp)
+            # obj._load_subdomains(fp) # TODO: fix this
+            setattr(obj, "subdomains", obj.get_subdomains())
+            for layer_idx in range(1, obj.layers + 1):
+                obj.extend_subdomains(layer_idx)
             setattr(obj, "connected_components", obj.get_connected_components())
         else:
             raise FileNotFoundError(f"Metadata file {fp} does not exist.")
@@ -510,6 +514,7 @@ class TwoLevelMesh:
         Args:
             file_name (str, optional): Name of the file to load the subdomains. Defaults to "".
         """
+        # TODO: FIX SUBDOMAINS LOADING
         subdomains_path = fp / "subdomains.json"
         if not subdomains_path.exists():
             raise FileNotFoundError(
@@ -526,7 +531,7 @@ class TwoLevelMesh:
                     for el in subdomain_data["interior"]
                 ],
                 "edges": {
-                    int(coarse_edge_nr): [
+                    self.coarse_mesh.edges[int(coarse_edge_nr)]: [
                         self.fine_mesh.edges[edge_nr]
                         for edge_nr in subdomain_data["edges"][coarse_edge_nr]
                     ]
@@ -936,11 +941,11 @@ if __name__ == "__main__":
     coarse_mesh_size = 0.15
     refinement_levels = 2
     layers = 2
-    two_mesh = TwoLevelMesh(
-        lx, ly, coarse_mesh_size, refinement_levels=refinement_levels, layers=layers
-    )
+    # two_mesh = TwoLevelMesh(
+    #     lx, ly, coarse_mesh_size, refinement_levels=refinement_levels, layers=layers
+    # )
     # two_mesh.save()  # Save the mesh and subdomains
-    # two_mesh = TwoLevelMesh.load(lx, ly, coarse_mesh_size, refinement_levels, layers)
+    two_mesh = TwoLevelMesh.load(lx, ly, coarse_mesh_size, refinement_levels, layers)
 
     # Plotting the meshes
     figure, ax = plt.subplots(figsize=(8, 6))
@@ -949,9 +954,6 @@ if __name__ == "__main__":
 
     # getting connected components
     figure, ax = plt.subplots(figsize=(8, 6))
-    components = two_mesh.get_connected_components()
-    num_components = len(components["edges"]) + len(components["coarse_nodes"])
-    print(f"Number of connected components: {num_components}")
     two_mesh.plot_connected_components(ax)
 
     # Plotting the domains
