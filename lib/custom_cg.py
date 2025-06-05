@@ -1,6 +1,8 @@
 from ctypes import CDLL, POINTER, byref, c_bool, c_double, c_int
+from typing import Optional
 
 import numpy as np
+from scipy.sparse.linalg import LinearOperator, aslinearoperator
 
 from lib.utils import get_root
 
@@ -26,11 +28,13 @@ class CustomCG:
         b: np.ndarray,
         x_0: np.ndarray,
         tol: float = 1e-6,
-        maxiter=100,
+        maxiter: Optional[int] = None,
     ):
         # system
         self.A = A
         self.b = b
+        self.n = len(b)
+        self.maxiter = maxiter if maxiter is not None else self.n * 10
 
         # initial guess
         self.x_0 = x_0
@@ -41,13 +45,13 @@ class CustomCG:
 
         # convergence criteria
         self.tol = tol
-        self.maxiter = maxiter
 
         # solution
         self.x_m = np.zeros_like(x_0)
 
         # intermediate results
         self.x_i = np.zeros((self.maxiter + 1, self.A.shape[0]), dtype=np.float64)
+        self.r_i = np.array([])
 
         # exact solution
         self.x_exact = np.zeros_like(x_0)
@@ -57,8 +61,8 @@ class CustomCG:
         self.niters = 0
 
         # cg coefficients
-        self.alpha = np.zeros(maxiter, dtype=np.float64)
-        self.beta = np.zeros(maxiter, dtype=np.float64)
+        self.alpha = np.zeros(self.maxiter, dtype=np.float64)
+        self.beta = np.zeros(self.maxiter, dtype=np.float64)
 
         # A eigen spectrum
         self.eigenvalues = np.zeros(A.shape[0], dtype=np.float64)
@@ -153,7 +157,7 @@ class CustomCG:
         # save iterates
         if save_iterates:
             self.x_i = np.ctypeslib.as_array(iterates).reshape(
-                (self.maxiter + 1, self.A.shape[0])
+                (self.maxiter + 1, self.n)
             )[: self.niters + 1]
             self.x_i[0] = x_0
 
@@ -164,6 +168,81 @@ class CustomCG:
             )[: self.niters]
 
         return x, success
+
+    def sparse_solve(
+        self,
+        M: Optional[LinearOperator] = None,
+        save_iterates: bool = False,
+        save_coefficients: bool = False,
+        save_residuals: bool = False,
+    ) -> tuple[np.ndarray, int]:
+        # complex dot product
+        dotprod = np.vdot if np.iscomplexobj(self.x_0) else np.dot
+
+        # matrix-vector product with A
+        A = aslinearoperator(self.A)
+        matvec = A.matvec
+
+        # preconditioner matrix-vector product
+        if M is None:
+            M = LinearOperator(self.A.shape, lambda x: x)
+        psolve = M.matvec
+
+        # initial guess
+        x = self.x_0.copy()
+
+        # initial residual
+        r = self.b - matvec(self.x_0) if self.x_0.any() else self.b.copy()
+        rho_prev, p = None, None
+
+        # historic
+        x_i = [x]
+        r_i = [np.linalg.norm(r)]
+        alphas = []
+        betas = []
+
+        # main loop
+        iteration = -1  # Ensure iteration is always defined
+        for iteration in range(self.maxiter):
+            if np.linalg.norm(r) < self.tol:
+                break
+            z = psolve(r)
+            rho_cur = dotprod(r, z)
+            if iteration > 0:
+                beta = rho_cur / rho_prev
+                p *= beta
+                p += z
+                if save_coefficients:
+                    betas.append(beta)
+            else:
+                p = np.empty_like(r)
+                p[:] = z[:]
+
+            q = matvec(p)
+            alpha = rho_cur / dotprod(p, q)
+            x += alpha * p
+            r -= alpha * q
+            if save_coefficients:
+                r_i.append(np.linalg.norm(r))
+            rho_prev = rho_cur
+
+            if save_iterates:
+                x_i.append(x)
+
+            if save_coefficients:
+                alphas.append(alpha)
+                    
+        if save_iterates:
+            self.x_i = np.array(x_i)
+        if save_residuals:
+            self.r_i = np.array(r_i)
+        if save_coefficients:
+            self.alpha = np.array(alphas)
+            self.beta = np.array(betas)
+
+        if iteration == self.maxiter - 1:
+            return x, self.maxiter
+        return x, 0
 
     def cg_polynomial(
         self,
@@ -262,11 +341,12 @@ class CustomCG:
         return np.sqrt(np.sum(eps * (self.A @ eps.T).T, axis=1))
 
     def calculate_residuals(self) -> np.ndarray:
-        if self.x_i is None:
+        r_i = np.array([])
+        if np.any(self.x_i):
+            r_i = self.b - (self.A @ self.x_i[:self.niters+1,:].T).T
+        else:
             raise ValueError("No iterates saved")
-
-        # calculate residuals
-        return self.b - (self.A @ self.x_i.T).T
+        return r_i.flatten()
 
     def calculate_iteration_upperbound(self) -> int:
         return CustomCG.calculate_iteration_upperbound_static(

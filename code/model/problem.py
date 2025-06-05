@@ -22,7 +22,8 @@ from preconditioners import (
 )
 from problem_type import ProblemType
 from scipy.sparse.linalg import LinearOperator
-from scipy.sparse.linalg import cg as sp_cg
+
+from lib.custom_cg import CustomCG
 
 
 class Problem:
@@ -192,6 +193,7 @@ class Problem:
         preconditioner: Optional[Type[Preconditioner]] = None,
         coarse_space: Optional[Type[CoarseSpace]] = None,
         rtol: float = 1e-8,
+        save_cg_info: bool = False,
         save_coarse_gfuncs: bool = False,
     ):
         # assemble the system
@@ -214,7 +216,7 @@ class Problem:
         # get preconditioner
         M_op = None
         precond = None
-        coarse_op_gfuncs = {}
+        restriction_op_gfuncs = {}
         if preconditioner is not None:
             if isinstance(preconditioner, type):
                 if preconditioner is OneLevelSchwarzPreconditioner:
@@ -227,15 +229,24 @@ class Problem:
                     precond = TwoLevelSchwarzPreconditioner(
                         A_sp_f, self.fes, self.two_mesh, coarse_space
                     )
-                    coarse_op_gfuncs = precond._get_coarse_operator_gfuncs()
+                    restriction_op_gfuncs = precond.get_restriction_operator_bases()
                 else:
                     raise ValueError(
                         f"Unknown preconditioner type: {preconditioner.__name__}"
                     )
                 M_op = LinearOperator(A_sp_f.shape, lambda x: precond.apply(x))
+        self.precond_name = precond.name if precond is not None else "None"
 
         # solve system using (P)CG
-        u_arr[:], info = sp_cg(A_sp_f, res_arr, x0=u_arr, M=M_op, rtol=rtol)
+        custom_cg = CustomCG(
+            A_sp_f,
+            res_arr,
+            u_arr,
+            tol=rtol,
+        )
+        u_arr[:], info = custom_cg.sparse_solve(
+            M=M_op, save_coefficients=save_cg_info, save_residuals=save_cg_info
+        )
         if info != 0:
             print(
                 f"Conjugate gradient solver did not converge. Number of iterations: {info}"
@@ -243,15 +254,19 @@ class Problem:
         else:
             self.u.vec.FV().NumPy()[free_dofs] = u_arr
 
+        # save cg coefficients if requested
+        if save_cg_info:
+            self.cg_alpha, self.cg_beta = custom_cg.alpha, custom_cg.beta
+            self.cg_residuals = custom_cg.r_i
+
         # save coarse operator grid functions if available
         if save_coarse_gfuncs and coarse_space is not None:
             gfuncs = []
             names = []
-            for component_type, op_gfuncs in coarse_op_gfuncs.items():
-                for i, gfunc in enumerate(op_gfuncs):
-                    gfuncs.append(gfunc)
-                    names.append(f"{component_type}_{i}")
-            self.save_ngs_functions(gfuncs, names, "coarse_operators")
+            for basis, basis_gfunc in restriction_op_gfuncs.items():
+                names.append(basis)
+                gfuncs.append(basis_gfunc)
+            self.save_ngs_functions(gfuncs, names, "restriction_operators")
 
     def save_ngs_functions(
         self, funcs: list[ngs.GridFunction], names: list[str], category: str
