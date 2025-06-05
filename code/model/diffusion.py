@@ -149,11 +149,11 @@ class DiffusionProblem(Problem):
 if __name__ == "__main__":
     # Example usage
     source_func = SourceFunc.PARABOLIC
-    coef_func = CoefFunc.CONSTANT
+    coef_func = CoefFunc.INCLUSIONS
     diffusion_problem = DiffusionProblem(
-        coarse_mesh_size=0.5,
-        refinement_levels=3,
-        layers=1,
+        coarse_mesh_size=0.15,
+        refinement_levels=2,
+        layers=2,
         source_func=source_func,
         coef_func=coef_func,
     )
@@ -163,9 +163,9 @@ if __name__ == "__main__":
     get_cg_info = True
     diffusion_problem.solve(
         preconditioner=TwoLevelSchwarzPreconditioner,
-        coarse_space=Q1CoarseSpace,
+        coarse_space=GDSWCoarseSpace,
         rtol=1e-8,
-        save_cg_info=True,
+        save_cg_info=get_cg_info,
         save_coarse_bases=True,
     )
 
