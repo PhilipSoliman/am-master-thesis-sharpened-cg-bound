@@ -77,8 +77,8 @@ class TwoLevelSchwarzPreconditioner(OneLevelSchwarzPreconditioner):
         super().__init__(A, fespace)
         self.coarse_space = coarse_space(A, fespace, two_mesh)
         self.coarse_op = self.coarse_space.assemble_coarse_operator()
-        A_0 = (self.coarse_op.transpose() @ (A @ self.coarse_op)).tocsc()
-        self.A_0_lu = splu(A_0)
+        A_0 = (self.coarse_op.transpose() @ (A @ self.coarse_op))
+        self.A_0_lu = splu(A_0.tocsc())
 
     def apply(self, x: np.ndarray):
         # First level.

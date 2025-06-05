@@ -139,14 +139,12 @@ class GDSWCoarseSpace(CoarseSpace):
         # interior <- interface operator
         A_IGamma = self.A[~self.interface_dofs_mask, :][:, self.interface_dofs_mask]
 
-        # discrete harmonic extension TODO: check if this is correct
+        # discrete harmonic extension 
         interior_op = -spsolve(A_II, (A_IGamma @ self.interface_op).tocsc())
 
         # fill the coarse operator
         coarse_op[~self.interface_dofs_mask, :] = interior_op
         coarse_op[self.interface_dofs_mask, :] = self.interface_op
-
-        # plot some coarse operator columns on the mesh
         return coarse_op
 
     def _assemble_interface_operator(self):
