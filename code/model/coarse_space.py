@@ -118,6 +118,7 @@ class CoarseSpace(object):
             coarse_node_dofs_mask[coarse_dof] = True
             interface_components.append(coarse_node_dofs_mask)
 
+
 class AMSCoarseSpace(CoarseSpace):
     def assemble_coarse_operator(self) -> sp.csc_matrix:
         # Implement the AMS coarse space application logic here
@@ -139,7 +140,7 @@ class GDSWCoarseSpace(CoarseSpace):
         # interior <- interface operator
         A_IGamma = self.A[~self.interface_dofs_mask, :][:, self.interface_dofs_mask]
 
-        # discrete harmonic extension 
+        # discrete harmonic extension
         interior_op = -spsolve(A_II, (A_IGamma @ self.interface_op).tocsc())
 
         # fill the coarse operator
@@ -153,24 +154,28 @@ class GDSWCoarseSpace(CoarseSpace):
         Note: for problems with multiple dimensions, coordinate dofs corresponding to one node are spaced by
         ndofs (so if ndof = 8, then dofs for node 0 are 0, 8, 16, ...).
         """
+        # NOTE: NGSolve stores coordinate dofs corresponding to one node spaced by ndofs / dimension
         ndofs = self.fespace.fespace.ndof
+        coord_diff = ndofs // self.fespace.dimension
+        idxs = np.arange(ndofs)
         self.interface_op = sp.csc_matrix(
             (ndofs, self.interface_dim),
             dtype=float,
         )
-        idxs = np.arange(ndofs)
         interface_index = 0
         for interface_component in self.interface_components:
             # get dofs for the current interface component
-            component_mask = np.logical_and(self.free_dofs_mask, interface_component)
             for coord in range(self.fespace.dimension):
                 # get dofs for current coordinate coord
                 coord_idxs_mask = np.logical_and(
-                    coord < idxs[component_mask],
-                    idxs[component_mask] < (coord + 1) * ndofs,
+                    coord < idxs[interface_component],
+                    idxs[interface_component]
+                    < (coord + 1)
+                    * coord_diff,  
                 )
+
                 # get indices of dofs for the current coordinate
-                component_coord_idxs = idxs[component_mask][coord_idxs_mask]
+                component_coord_idxs = idxs[interface_component][coord_idxs_mask]
 
                 # get the adjusted component coordinate mask
                 component_coord_mask = np.zeros(ndofs, dtype=bool)
@@ -190,6 +195,7 @@ class GDSWCoarseSpace(CoarseSpace):
         self.interface_op = self.interface_op[self.free_dofs_mask, :][
             self.interface_dofs_mask, :
         ]
+
 
 class RGDSWCoarseSpace(CoarseSpace):
     def assemble_coarse_operator(self) -> sp.csc_matrix:
