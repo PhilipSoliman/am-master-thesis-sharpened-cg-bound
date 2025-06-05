@@ -1,6 +1,7 @@
 from pprint import pprint
 from typing import Type
 
+import ngsolve as ngs
 import numpy as np
 import scipy.sparse as sp
 from coarse_space import CoarseSpace
@@ -20,6 +21,7 @@ class OneLevelSchwarzPreconditioner(Preconditioner):
         self.free_dofs = np.array(fespace.fespace.FreeDofs()).astype(bool)
         self.fespace = fespace
         self.local_operators = self._get_local_operators(A)
+        self.name = "1-level Schwarz preconditioner"
 
     def apply(self, x: np.ndarray) -> np.ndarray:
         out = np.zeros_like(x, dtype=float)
@@ -65,6 +67,9 @@ class OneLevelSchwarzPreconditioner(Preconditioner):
                 raise NotImplementedError("Face dofs are not implemented.")
         return list(all_subdomain_dofs)
 
+    def __str__(self):
+        return self.name
+
 
 class TwoLevelSchwarzPreconditioner(OneLevelSchwarzPreconditioner):
     def __init__(
@@ -76,39 +81,19 @@ class TwoLevelSchwarzPreconditioner(OneLevelSchwarzPreconditioner):
     ):
         super().__init__(A, fespace)
         self.coarse_space = coarse_space(A, fespace, two_mesh)
-        self.coarse_op = self.coarse_space.assemble_coarse_operator()
-        A_0 = (self.coarse_op.transpose() @ (A @ self.coarse_op))
-        self.A_0_lu = splu(A_0.tocsc())
+        self.name = f"2-level Schwarz preconditioner with {self.coarse_space}"
+        self.coarse_op = self.coarse_space.assemble_coarse_operator(A)
 
     def apply(self, x: np.ndarray):
         # First level.
         x = super().apply(x)
 
         # Second level.
-        x_0 = self.coarse_op.transpose() @ x
-        y_0 = self.A_0_lu.solve(x_0)
-        x += self.coarse_op @ y_0
+        x_0 = self.coarse_space.restriction_operator.transpose() @ x
+        y_0 = splu(self.coarse_op.tocsc()).solve(x_0)
+        x += self.coarse_space.restriction_operator @ y_0
 
         return x
 
-    def _get_coarse_operator_gfuncs(self):
-        coarse_op_gfuncs = {"edge": [], "coarse_node": []}
-
-        # get coarse operator grid functions for coarse nodes
-        for comp in range(self.coarse_space.num_coarse_node_components):
-            vals = np.zeros(self.fespace.fespace.ndof)
-            vals[self.free_dofs] = self.coarse_op[:, comp].toarray().flatten()
-            gfunc = self.coarse_space.fespace.get_gridfunc(vals)
-            coarse_op_gfuncs["coarse_node"].append(gfunc)
-
-        # ... and for edges
-        for comp in range(
-            self.coarse_space.num_coarse_node_components,
-            self.coarse_space.num_edge_components,
-        ):
-            vals = np.zeros(self.fespace.fespace.ndof)
-            vals[self.free_dofs] = self.coarse_op[:, comp].toarray().flatten()
-            gfunc = self.coarse_space.fespace.get_gridfunc(vals)
-            coarse_op_gfuncs["edge"].append(gfunc)
-
-        return coarse_op_gfuncs
+    def get_restriction_operator_bases(self) -> dict[str, ngs.GridFunction]:
+        return self.coarse_space.get_restriction_operator_bases()
