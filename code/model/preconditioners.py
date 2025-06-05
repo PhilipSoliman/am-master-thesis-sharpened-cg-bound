@@ -91,21 +91,21 @@ class TwoLevelSchwarzPreconditioner(OneLevelSchwarzPreconditioner):
 
         return x
 
-    def _get_coarse_operator_gfuncs(
-        self,
-    ):
+    def _get_coarse_operator_gfuncs(self):
         coarse_op_gfuncs = {"edge": [], "coarse_node": []}
-        coarse_node_components = [0, 1]
-        for comp in coarse_node_components:
+
+        # get coarse operator grid functions for coarse nodes
+        for comp in range(self.coarse_space.num_coarse_node_components):
             vals = np.zeros(self.fespace.fespace.ndof)
             vals[self.free_dofs] = self.coarse_op[:, comp].toarray().flatten()
             gfunc = self.coarse_space.fespace.get_gridfunc(vals)
             coarse_op_gfuncs["coarse_node"].append(gfunc)
-        edge_components = [
+
+        # ... and for edges
+        for comp in range(
             self.coarse_space.num_coarse_node_components,
-            self.coarse_space.num_coarse_node_components + 1,
-        ]
-        for comp in edge_components:
+            self.coarse_space.num_edge_components,
+        ):
             vals = np.zeros(self.fespace.fespace.ndof)
             vals[self.free_dofs] = self.coarse_op[:, comp].toarray().flatten()
             gfunc = self.coarse_space.fespace.get_gridfunc(vals)
