@@ -1,5 +1,6 @@
 import ngsolve as ngs
 import numpy as np
+import scipy.sparse as sp
 from mesh import TwoLevelMesh
 
 
@@ -33,8 +34,10 @@ class FESpace:
         self.dimension = dim
         if dim == 1:
             self.fespace = ngs.H1(two_mesh.fine_mesh, order=order, **bcs)
+            self.coarse_fespace = ngs.H1(two_mesh.coarse_mesh, order=order, **bcs)
         elif dim == 2:
             self.fespace = ngs.VectorH1(two_mesh.fine_mesh, order=order, **bcs)
+            self.coarse_fespace = ngs.VectorH1(two_mesh.coarse_mesh, order=order, **bcs)
         self.calculate_dofs()
         if self.fespace.ndof != (
             self.num_interior_dofs + self.num_edge_dofs + self.num_coarse_node_dofs
@@ -44,6 +47,8 @@ class FESpace:
                 f"{self.fespace.ndof} != {self.num_interior_dofs} + {self.num_edge_dofs} + {self.num_coarse_node_dofs}"
             )
             pass
+
+        # self.prolongation_operator = self.get_prolongation_operator()
 
     def calculate_dofs(self):
         """
@@ -68,7 +73,6 @@ class FESpace:
         self.coarse_node_dofs = set(
             self.fespace.GetDofNrs(v)[0] for v in self.two_mesh.coarse_mesh.vertices
         )
-        print(f"Coarse node DOFs: {self.coarse_node_dofs}")
         self.edge_dofs = set()
         for subdomain_data in self.domain_dofs.values():
             for coarse_edge_dofs in subdomain_data["edges"].values():
@@ -211,6 +215,21 @@ class FESpace:
                 face_component_dofs.append(list(dofs))
         return face_component_dofs
 
+    def get_prolongation_operator(self):
+        """
+        Get the prolongation operator for the finite element space.
+
+        Returns:
+            ngs.ProlongationOperator: The prolongation operator for the finite element space.
+        """
+        prolongation_operator = self.coarse_fespace.Prolongation().Operator(1)
+        for level_idx in range(1, self.two_mesh.refinement_levels):
+            prolongation_operator = (
+                self.coarse_fespace.Prolongation().Operator(level_idx + 1)
+                @ prolongation_operator
+            )
+        return sp.csc_matrix(prolongation_operator.ToDense().NumPy())
+
     def get_gridfunc(self, vals):
         """
         Get the grid function representing the DOFs on the mesh.
@@ -222,9 +241,9 @@ class FESpace:
             ngs.GridFunction: The grid function representing the DOFs on the mesh.
         """
         vals = np.asarray(vals, dtype=float).flatten()
-        assert len(vals) == self.fespace.ndof, (
-            f"Length of vals ({len(vals)}) does not match number of DOFs ({self.fespace.ndof})"
-        )
+        assert (
+            len(vals) == self.fespace.ndof
+        ), f"Length of vals ({len(vals)}) does not match number of DOFs ({self.fespace.ndof})"
         grid_function = ngs.GridFunction(self.fespace)
         grid_function.vec.FV().NumPy()[:] = vals
         return grid_function
@@ -266,9 +285,9 @@ if __name__ == "__main__":
     Example usage: Load a TwoLevelMesh and construct a FESpace on it.
     """
     lx, ly = 1.0, 1.0
-    coarse_mesh_size = 0.15
-    refinement_levels = 2
-    layers = 2
+    coarse_mesh_size = 0.4
+    refinement_levels = 3
+    layers = 1
     two_mesh = TwoLevelMesh.load(
         lx=lx,
         ly=ly,
@@ -277,4 +296,4 @@ if __name__ == "__main__":
         layers=layers,
     )
     fespace = FESpace(two_mesh, order=1, discontinuous=False)
-    print(fespace)
+    # print(fespace)
