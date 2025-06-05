@@ -1,11 +1,12 @@
 from copy import copy
 
+import ngsolve as ngs
 import numpy as np
 import scipy.sparse as sp
 from fespace import FESpace
 from mesh import TwoLevelMesh
 from problem_type import ProblemType
-from scipy.sparse.linalg import splu, spsolve
+from scipy.sparse.linalg import SuperLU, splu, spsolve
 
 
 class CoarseSpace(object):
@@ -22,6 +23,49 @@ class CoarseSpace(object):
         self.ptype = ptype
         self.num_free_dofs = np.sum(self.fespace.fespace.FreeDofs())
         self.free_dofs_mask = np.array(self.fespace.fespace.FreeDofs()).astype(bool)
+
+        # name
+        self.name = "coarse space"  # to be overridden by subclasses
+
+    def assemble_coarse_operator(self, A: sp.csr_matrix) -> sp.csc_matrix:
+        if not hasattr(self, "restriction_operator"):
+            self.restriction_operator = self.assemble_restriction_operator()
+        return self.restriction_operator.transpose() @ (A @ self.restriction_operator)
+
+    def assemble_restriction_operator(self) -> sp.csc_matrix:
+        raise NotImplementedError("This method should be implemented by subclasses.")
+
+    def get_restriction_operator_bases(self) -> dict[str, ngs.GridFunction]:
+        if (
+            restriction_operator := getattr(self, "restriction_operator", None)
+        ) is not None:
+            num_bases = restriction_operator.shape[1]
+            bases = {}
+            for i in range(num_bases):
+                vals = np.zeros(self.fespace.fespace.ndof)
+                vals[self.free_dofs_mask] = (
+                    restriction_operator[:, i].toarray().flatten()
+                )
+                gfunc = self.fespace.get_gridfunc(vals)
+                bases[f"restriction_basis_{i}"] = gfunc
+            return bases
+        else:
+            raise ValueError("Restriction operator is not assembled yet.")
+
+    def __str__(self):
+        return self.name
+
+
+class AMSCoarseSpace(CoarseSpace):
+    def assemble_restriction_operator(self) -> sp.csc_matrix:
+        # Implement the AMS coarse space application logic here
+        raise NotImplementedError("AMS coarse space application not implemented.")
+
+
+class GDSWCoarseSpace(CoarseSpace):
+    def __init__(self, A: sp.csr_matrix, fespace: FESpace, two_mesh: TwoLevelMesh):
+        super().__init__(A, fespace, two_mesh)
+        self.name = "GDSW coarse space"
 
         # collect all interface dofs
         self.interface_dofs = []
@@ -64,8 +108,8 @@ class CoarseSpace(object):
             f"\n\tinterface dim: {self.interface_dim}"
         )
 
-    def assemble_coarse_operator(self) -> sp.csc_matrix:
-        raise NotImplementedError("This method should be implemented by subclasses.")
+        # assemble the interface operator
+        self.assemble_restriction_operator()
 
     def _get_null_space_basis(self):
         self.null_space_basis = np.array([])
@@ -118,21 +162,14 @@ class CoarseSpace(object):
             coarse_node_dofs_mask[coarse_dof] = True
             interface_components.append(coarse_node_dofs_mask)
 
+    def assemble_restriction_operator(self) -> sp.csc_matrix:
+        # get the interface operator
+        interface_operator = self._assemble_interface_operator()
 
-class AMSCoarseSpace(CoarseSpace):
-    def assemble_coarse_operator(self) -> sp.csc_matrix:
-        # Implement the AMS coarse space application logic here
-        raise NotImplementedError("AMS coarse space application not implemented.")
-
-
-class GDSWCoarseSpace(CoarseSpace):
-    def __init__(self, A: sp.csr_matrix, fespace: FESpace, two_mesh: TwoLevelMesh):
-        super().__init__(A, fespace, two_mesh)
-        self._assemble_interface_operator()
-
-    def assemble_coarse_operator(self) -> sp.csc_matrix:
-        # Assemble the coarse operator A0
-        coarse_op = sp.csc_matrix((self.num_free_dofs, self.interface_dim), dtype=float)
+        # create the restriction operator
+        restriction_operator = sp.csc_matrix(
+            (self.num_free_dofs, self.interface_dim), dtype=float
+        )
 
         # interior operator
         A_II = self.A[~self.interface_dofs_mask, :][:, ~self.interface_dofs_mask]
@@ -141,12 +178,12 @@ class GDSWCoarseSpace(CoarseSpace):
         A_IGamma = self.A[~self.interface_dofs_mask, :][:, self.interface_dofs_mask]
 
         # discrete harmonic extension
-        interior_op = -spsolve(A_II, (A_IGamma @ self.interface_op).tocsc())
+        interior_op = -spsolve(A_II, (A_IGamma @ interface_operator).tocsc())
 
         # fill the coarse operator
-        coarse_op[~self.interface_dofs_mask, :] = interior_op
-        coarse_op[self.interface_dofs_mask, :] = self.interface_op
-        return coarse_op
+        restriction_operator[~self.interface_dofs_mask, :] = interior_op
+        restriction_operator[self.interface_dofs_mask, :] = interface_operator
+        return restriction_operator
 
     def _assemble_interface_operator(self):
         """
@@ -158,7 +195,7 @@ class GDSWCoarseSpace(CoarseSpace):
         ndofs = self.fespace.fespace.ndof
         coord_diff = ndofs // self.fespace.dimension
         idxs = np.arange(ndofs)
-        self.interface_op = sp.csc_matrix(
+        interface_operator = sp.csc_matrix(
             (ndofs, self.interface_dim),
             dtype=float,
         )
@@ -169,9 +206,7 @@ class GDSWCoarseSpace(CoarseSpace):
                 # get dofs for current coordinate coord
                 coord_idxs_mask = np.logical_and(
                     coord < idxs[interface_component],
-                    idxs[interface_component]
-                    < (coord + 1)
-                    * coord_diff,  
+                    idxs[interface_component] < (coord + 1) * coord_diff,
                 )
 
                 # get indices of dofs for the current coordinate
@@ -183,7 +218,7 @@ class GDSWCoarseSpace(CoarseSpace):
                 component_coord_mask = component_coord_mask
 
                 # fill the interface operator with the null space basis for the current coordinate
-                self.interface_op[
+                interface_operator[
                     component_coord_mask,
                     interface_index : interface_index + self.null_space_dim,
                 ] = self.null_space_basis[coord, :]
@@ -192,12 +227,23 @@ class GDSWCoarseSpace(CoarseSpace):
             interface_index += self.null_space_dim
 
         # restric the interface operator to the free and interface dofs
-        self.interface_op = self.interface_op[self.free_dofs_mask, :][
-            self.interface_dofs_mask, :
-        ]
+        return interface_operator[self.free_dofs_mask, :][self.interface_dofs_mask, :]
+
+    def __str__(self):
+        return self.name
 
 
 class RGDSWCoarseSpace(CoarseSpace):
-    def assemble_coarse_operator(self) -> sp.csc_matrix:
+    def assemble_restriction_operator(self) -> sp.csc_matrix:
         # Implement the RGDSW coarse space application logic here
         raise NotImplementedError("RGDSW coarse space application not implemented.")
+
+
+class Q1CoarseSpace(CoarseSpace):
+    def __init__(self, A: sp.csr_matrix, fespace: FESpace, two_mesh: TwoLevelMesh):
+        super().__init__(A, fespace, two_mesh)
+        self.name = "Q1 coarse space"
+        self.restriction_operator = self.assemble_restriction_operator()
+
+    def assemble_restriction_operator(self) -> sp.csc_matrix:
+        return self.fespace.prolongation_operator[self.free_dofs_mask, :]
