@@ -47,7 +47,7 @@ class CoarseSpace(object):
                     restriction_operator[:, i].toarray().flatten()
                 )
                 gfunc = self.fespace.get_gridfunc(vals)
-                bases[f"restriction_basis_{i}"] = gfunc
+                bases[f"coarse_basis_{i}"] = gfunc
             return bases
         else:
             raise ValueError("Restriction operator is not assembled yet.")

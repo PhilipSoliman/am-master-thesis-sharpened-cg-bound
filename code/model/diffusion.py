@@ -166,7 +166,7 @@ if __name__ == "__main__":
         coarse_space=Q1CoarseSpace,
         rtol=1e-8,
         save_cg_info=True,
-        save_coarse_gfuncs=False,
+        save_coarse_bases=True,
     )
 
     # Save the functions to vtk files

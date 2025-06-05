@@ -194,7 +194,7 @@ class Problem:
         coarse_space: Optional[Type[CoarseSpace]] = None,
         rtol: float = 1e-8,
         save_cg_info: bool = False,
-        save_coarse_gfuncs: bool = False,
+        save_coarse_bases: bool = False,
     ):
         # assemble the system
         self.u, b, A = self.assemble()
@@ -216,7 +216,7 @@ class Problem:
         # get preconditioner
         M_op = None
         precond = None
-        restriction_op_gfuncs = {}
+        coarse_space_bases = {}
         if preconditioner is not None:
             if isinstance(preconditioner, type):
                 if preconditioner is OneLevelSchwarzPreconditioner:
@@ -229,7 +229,7 @@ class Problem:
                     precond = TwoLevelSchwarzPreconditioner(
                         A_sp_f, self.fes, self.two_mesh, coarse_space
                     )
-                    restriction_op_gfuncs = precond.get_restriction_operator_bases()
+                    coarse_space_bases = precond.get_restriction_operator_bases()
                 else:
                     raise ValueError(
                         f"Unknown preconditioner type: {preconditioner.__name__}"
@@ -260,13 +260,13 @@ class Problem:
             self.cg_residuals = custom_cg.r_i
 
         # save coarse operator grid functions if available
-        if save_coarse_gfuncs and coarse_space is not None:
+        if save_coarse_bases and coarse_space is not None:
             gfuncs = []
             names = []
-            for basis, basis_gfunc in restriction_op_gfuncs.items():
+            for basis, basis_gfunc in coarse_space_bases.items():
                 names.append(basis)
                 gfuncs.append(basis_gfunc)
-            self.save_ngs_functions(gfuncs, names, "restriction_operators")
+            self.save_ngs_functions(gfuncs, names, "coarse_bases")
 
     def save_ngs_functions(
         self, funcs: list[ngs.GridFunction], names: list[str], category: str
