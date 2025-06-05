@@ -339,6 +339,15 @@ class TwoLevelMesh:
                             layer_elements.update(mesh_e.elements)
             subdomain_data[f"layer_{layer_idx}"] = list(layer_elements)
 
+    # in-plca mesh refinement
+    def refine_coarse_mesh(self):
+        """
+        Refine the coarse mesh in-place to create a fine mesh that can be used for the fespace construction 
+        and obtaining the prolongation operator
+        """
+        for _ in range(self.refinement_levels):
+            self.coarse_mesh.Refine()
+        
     # saving
     def save(self):
         """
@@ -937,7 +946,7 @@ class TwoLevelMesh:
 # Example usage:
 if __name__ == "__main__":
     lx, ly = 1.0, 1.0
-    coarse_mesh_size = 0.4
+    coarse_mesh_size = 0.5
     refinement_levels = 3
     layers = 1
     # two_mesh = TwoLevelMesh(
