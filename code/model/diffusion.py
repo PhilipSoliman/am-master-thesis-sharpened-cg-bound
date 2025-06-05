@@ -7,7 +7,7 @@ from boundary_conditions import (
     BoundaryType,
     HomogeneousDirichlet,
 )
-from coarse_space import GDSWCoarseSpace
+from coarse_space import GDSWCoarseSpace, Q1CoarseSpace
 from mesh import BoundaryName, TwoLevelMesh
 from preconditioners import OneLevelSchwarzPreconditioner, TwoLevelSchwarzPreconditioner
 from problem import Problem
@@ -148,19 +148,62 @@ class DiffusionProblem(Problem):
 
 if __name__ == "__main__":
     # Example usage
+    source_func = SourceFunc.PARABOLIC
+    coef_func = CoefFunc.CONSTANT
     diffusion_problem = DiffusionProblem(
-        coarse_mesh_size=0.4,
+        coarse_mesh_size=0.5,
         refinement_levels=3,
         layers=1,
-        source_func=SourceFunc.PARABOLIC,
-        coef_func=CoefFunc.CONSTANT,
+        source_func=source_func,
+        coef_func=coef_func,
     )
     print(diffusion_problem.bcs)
+
+    # solve problem
+    get_cg_info = True
     diffusion_problem.solve(
         preconditioner=TwoLevelSchwarzPreconditioner,
-        coarse_space=GDSWCoarseSpace,
+        coarse_space=Q1CoarseSpace,
         rtol=1e-8,
+        save_cg_info=True,
+        save_coarse_gfuncs=False,
     )
 
     # Save the functions to vtk files
-    diffusion_problem.save_functions()
+    # diffusion_problem.save_functions()
+
+    # plot cg coefficients
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    from lib.utils import set_mpl_cycler, set_mpl_style
+
+    set_mpl_style()
+    set_mpl_cycler(colors=True, lines=True)
+    if get_cg_info:
+        figure, ax = plt.subplots(1, 2, figsize=(8, 4), squeeze=True)
+        ax[0].plot(diffusion_problem.cg_alpha, label=r"$\alpha$")
+        ax[0].plot(diffusion_problem.cg_beta, label=r"$\beta$")
+        ax[0].set_xlabel("Iteration")
+        ax[0].set_ylabel("Coefficient Value")
+        ax[0].legend()
+        if np.any(diffusion_problem.cg_alpha < 0):
+            print(
+                "Warning: Negative alpha values detected. This may indicate an issue with the preconditioner."
+            )
+        ax[1].plot(diffusion_problem.cg_residuals / diffusion_problem.cg_residuals[0])
+        ax[1].set_xlabel("Iteration")
+        ax[1].set_ylabel(r"$\frac{||r_m||_2}{||r_0||_2}$")
+        ax[1].set_yscale("log")
+
+        plt.suptitle(
+            f"CG convergence ("
+            + r"$\mathcal{C}$"
+            + f" = {coef_func.name}, "
+            + r"$f$"
+            + f" = {source_func.name}, "
+            + r"$M^{-1}$"
+            + f" = {diffusion_problem.precond_name})"
+        )
+        plt.tight_layout()
+        plt.show()
