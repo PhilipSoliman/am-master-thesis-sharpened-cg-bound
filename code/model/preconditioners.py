@@ -86,14 +86,14 @@ class TwoLevelSchwarzPreconditioner(OneLevelSchwarzPreconditioner):
 
     def apply(self, x: np.ndarray):
         # First level.
-        x = super().apply(x)
+        x_first_level = super().apply(x)
 
         # Second level.
         x_0 = self.coarse_space.restriction_operator.transpose() @ x
         y_0 = splu(self.coarse_op.tocsc()).solve(x_0)
-        x += self.coarse_space.restriction_operator @ y_0
+        x_second_level = self.coarse_space.restriction_operator @ y_0
 
-        return x
+        return x_first_level + x_second_level
 
     def get_restriction_operator_bases(self) -> dict[str, ngs.GridFunction]:
         return self.coarse_space.get_restriction_operator_bases()
