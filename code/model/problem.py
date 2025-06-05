@@ -192,6 +192,7 @@ class Problem:
         preconditioner: Optional[Type[Preconditioner]] = None,
         coarse_space: Optional[Type[CoarseSpace]] = None,
         rtol: float = 1e-8,
+        save_coarse_gfuncs: bool = False,
     ):
         # assemble the system
         self.u, b, A = self.assemble()
@@ -243,14 +244,14 @@ class Problem:
             self.u.vec.FV().NumPy()[free_dofs] = u_arr
 
         # save coarse operator grid functions if available
-        gfuncs = []
-        names = []
-        for component_type, op_gfuncs in coarse_op_gfuncs.items():
-            for i, gfunc in enumerate(op_gfuncs):
-                gfuncs.append(gfunc)
-                names.append(f"{component_type}_{i}")
-        self.save_ngs_functions(gfuncs, names, "coarse_operators")
-
+        if save_coarse_gfuncs and coarse_space is not None:
+            gfuncs = []
+            names = []
+            for component_type, op_gfuncs in coarse_op_gfuncs.items():
+                for i, gfunc in enumerate(op_gfuncs):
+                    gfuncs.append(gfunc)
+                    names.append(f"{component_type}_{i}")
+            self.save_ngs_functions(gfuncs, names, "coarse_operators")
 
     def save_ngs_functions(
         self, funcs: list[ngs.GridFunction], names: list[str], category: str
@@ -271,7 +272,6 @@ class Problem:
             coefs=funcs,
             names=names,
             filename=str(tlm_dir / fn),
-            # subdivision=2,
         )
         vtk.Do()
 
