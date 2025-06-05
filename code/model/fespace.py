@@ -32,12 +32,11 @@ class FESpace:
         """
         self.two_mesh = two_mesh
         self.dimension = dim
+
         if dim == 1:
             self.fespace = ngs.H1(two_mesh.fine_mesh, order=order, **bcs)
-            self.coarse_fespace = ngs.H1(two_mesh.coarse_mesh, order=order, **bcs)
         elif dim == 2:
             self.fespace = ngs.VectorH1(two_mesh.fine_mesh, order=order, **bcs)
-            self.coarse_fespace = ngs.VectorH1(two_mesh.coarse_mesh, order=order, **bcs)
         self.calculate_dofs()
         if self.fespace.ndof != (
             self.num_interior_dofs + self.num_edge_dofs + self.num_coarse_node_dofs
@@ -46,9 +45,16 @@ class FESpace:
                 "Mismatch in number of DOFs: "
                 f"{self.fespace.ndof} != {self.num_interior_dofs} + {self.num_edge_dofs} + {self.num_coarse_node_dofs}"
             )
-            pass
 
-        # self.prolongation_operator = self.get_prolongation_operator()
+        # now reconstruct the fininite element space for the refined coarse space
+        two_mesh.refine_coarse_mesh()
+        if dim == 1:
+            self.fespace = ngs.H1(two_mesh.coarse_mesh, order=order, **bcs)
+        elif dim == 2:
+            self.fespace = ngs.VectorH1(two_mesh.coarse_mesh, order=order, **bcs)
+
+        # construct the prolongation operator
+        self.prolongation_operator = self.get_prolongation_operator()
 
     def calculate_dofs(self):
         """
@@ -222,10 +228,10 @@ class FESpace:
         Returns:
             ngs.ProlongationOperator: The prolongation operator for the finite element space.
         """
-        prolongation_operator = self.coarse_fespace.Prolongation().Operator(1)
+        prolongation_operator = self.fespace.Prolongation().Operator(1)
         for level_idx in range(1, self.two_mesh.refinement_levels):
             prolongation_operator = (
-                self.coarse_fespace.Prolongation().Operator(level_idx + 1)
+                self.fespace.Prolongation().Operator(level_idx + 1)
                 @ prolongation_operator
             )
         return sp.csc_matrix(prolongation_operator.ToDense().NumPy())
