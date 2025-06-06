@@ -69,6 +69,12 @@ class TwoLevelMesh:
     """
 
     SAVE_STRING = "tlm_lx={0:.1f}_ly={1:.1f}_H={2:.2f}_lvl={3:.0f}_lyr={4:.0f}"
+    ZORDERS = {
+        "elements": 1.0,
+        "layers": 1.5,
+        "edges": 2.0,
+        "vertices": 3.0,
+    }
 
     def __init__(
         self,
@@ -210,31 +216,50 @@ class TwoLevelMesh:
         """
         Finds the tree of connected components in the fine mesh based on the coarse mesh subdomains.
 
-        Note a 2D mesh does not have faces so
+        Note a 2D mesh does not have faces so the fine edge lists will be empty.
         Returns:
             dict: A dictionary with the following structure:
                 {
                     coarse_node_i1: {
-                        fine_edge_j1 : [
-                                fine_face_k1,
-                                fine_face_k2,
-                                ...,
-                                fine_face_kn
-                            ],
-                        fine_edge_j2 : [...],
-                        ...
-                        fine_edge_jm : [...],
+                        coarse_edge_j1:{
+                            "fine_edges": [fine_edge_1, fine_edge_2, ...],
+                            "fine_vertices": [fine_vertex_1, fine_vertex_2, ...],
+                            coarse_face_k1: {
+                                "fine_faces": [fine_face_1, fine_face_2, ...],
+                                "fine_edges": [fine_edge_1, fine_edge_2, ...],
+                                "fine_vertices": [fine_vertex_1, fine_vertex_2, ...]
+                            },
+                        },
+                        coarse_edge_j2:{...},
+                        ...,
+                        coarse_edge_jm:{...},
                     }
                     coarse_node_i2: {...},
                     ...,
                     coarse_node_in: {...}
                 }
         """
-        # TODO: implement this, useful for RGDSW coarse space.
-        raise NotImplementedError(
-            "get_connected_component_tree is not implemented for TwoLevelMesh."
-        )
-        return dict()
+        component_tree = {}
+        all_coarse_nodes = set(self.coarse_mesh.vertices)
+        for coarse_node in all_coarse_nodes:
+            component_tree[coarse_node] = {}
+        
+        for subdomain, subdomain_data in self.subdomains.items():
+            for coarse_node in subdomain.vertices:
+                for coarse_edge in self.coarse_mesh[coarse_node].edges:
+                    if (coarse_edge_d := component_tree[coarse_node].get(coarse_edge, None)) is None:
+                        component_tree[coarse_node][coarse_edge] = {}
+                        coarse_edge_d = component_tree[coarse_node][coarse_edge] 
+                    if (fine_edges := subdomain_data["edges"].get(coarse_edge, None)) is not None:
+                        coarse_edge_d["fine_edges"] = fine_edges
+                        edge_vertices = set()
+                        for fine_edge in fine_edges:
+                            for vertex in self.fine_mesh[fine_edge].vertices:
+                                if vertex not in all_coarse_nodes:
+                                    edge_vertices.add(vertex)
+                        coarse_edge_d["fine_vertices"] = list(edge_vertices)
+            
+        return component_tree
 
     def get_connected_components(self) -> dict:
         """
@@ -643,6 +668,17 @@ class TwoLevelMesh:
         domains_int_toggle = isinstance(domains, int)
         domains_list_toggle = isinstance(domains, list)
         for i, (subdomain, subdomain_data) in enumerate(self.subdomains.items()):
+            #plot coarse mesh element without fill and thick border
+            self.plot_element(
+                ax,
+                subdomain,
+                self.coarse_mesh,
+                fillcolor=None,
+                edgecolor="black",
+                alpha=1.0,
+                linewidth=2.0,
+                zorder=TwoLevelMesh.ZORDERS["edges"] + 0.1,
+            )
             domain_elements = subdomain_data["interior"]
             if domains_int_toggle:
                 if i % domains != 0:
@@ -659,23 +695,23 @@ class TwoLevelMesh:
                     fillcolor=fillcolor,
                     alpha=opacity,
                     edgecolor="black",
-                    label="Coarse Element",
                 )
             if plot_layers:
                 for layer_idx in range(1, self.layers + 1):
                     layer_elements = subdomain_data.get(f"layer_{layer_idx}", [])
                     alpha_value = opacity / (
                         1 + (layer_idx / self.layers) ** fade_factor
-                    )
+                    ) / 4
                     for layer_el in layer_elements:
                         self.plot_element(
                             ax,
                             layer_el,
                             self.fine_mesh,
-                            fillcolor=fillcolor,
+                            fillcolor="black",
                             alpha=alpha_value,
                             edgecolor="black",
                             label=f"layersLayer {layer_idx} Element",
+                            zorder=TwoLevelMesh.ZORDERS["layers"],
                         )
         return ax
 
@@ -761,7 +797,7 @@ class TwoLevelMesh:
             label=kwargs.get("label"),
             alpha=kwargs.get("alpha", 1.0),
             linewidth=kwargs.get("linewidth", 1.5),
-            zorder=kwargs.get("zorder", 1.0),
+            zorder=kwargs.get("zorder", TwoLevelMesh.ZORDERS["elements"]),
         )
         ax.add_patch(polygon)
 
@@ -793,7 +829,7 @@ class TwoLevelMesh:
                 linewidth=kwargs.get("linewidth", 1.5),
                 linestyle=kwargs.get("linestyle", "-"),
                 label=kwargs.get("label"),
-                zorder=kwargs.get("zorder", 2.0),
+                zorder=kwargs.get("zorder", TwoLevelMesh.ZORDERS["edges"]),
             )
 
     @staticmethod
@@ -823,7 +859,7 @@ class TwoLevelMesh:
             marker=kwargs.get("marker", "o"),
             s=kwargs.get("markersize", 5),
             label=kwargs.get("label"),
-            zorder=kwargs.get("zorder", 3.0),
+            zorder=kwargs.get("zorder", TwoLevelMesh.ZORDERS["vertices"]),
         )
 
     @property
@@ -946,9 +982,9 @@ class TwoLevelMesh:
 # Example usage:
 if __name__ == "__main__":
     lx, ly = 1.0, 1.0
-    coarse_mesh_size = 0.5
-    refinement_levels = 3
-    layers = 1
+    coarse_mesh_size = 0.15
+    refinement_levels = 2
+    layers = 2
     # two_mesh = TwoLevelMesh(
     #     lx, ly, coarse_mesh_size, refinement_levels=refinement_levels, layers=layers
     # )
