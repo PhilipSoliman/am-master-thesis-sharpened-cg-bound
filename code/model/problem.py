@@ -244,12 +244,12 @@ class Problem:
             u_arr,
             tol=rtol,
         )
-        u_arr[:], info = custom_cg.sparse_solve(
-            M=M_op, save_coefficients=save_cg_info, save_residuals=save_cg_info
+        u_arr[:], success = custom_cg.sparse_solve(
+            M=M_op, save_residuals=save_cg_info
         )
-        if info != 0:
+        if not success:
             print(
-                f"Conjugate gradient solver did not converge. Number of iterations: {info}"
+                f"Conjugate gradient solver did not converge. Number of iterations: {custom_cg.niters}"
             )
         else:
             self.u.vec.FV().NumPy()[free_dofs] = u_arr

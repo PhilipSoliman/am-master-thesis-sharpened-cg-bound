@@ -7,7 +7,7 @@
 extern "C"
 {
    // CG: main function
-   bool custom_cg(double *Af, double *b, double *x, double *x_m, double *alpha, double *beta, const int size, int &niters, const int max_iter, const double tol, const bool save_iterates, double *iterates, const bool safe_search_directions, double *search_directions, const bool exact_convergence, double *x_exact);
+   bool custom_cg(double *Af, double *b, double *x, double *x_m, double *alpha, double *beta, const int size, int &niters, const int max_iter, const double tol, const bool save_residuals, double *residuals, const bool exact_convergence, double *x_exact, double *errors);
 
    // CG: supporting functions
    void residual(double **A, double *b, double *x, double *r, const int n);
@@ -32,7 +32,7 @@ extern "C"
    void TEST();
 }
 
-bool custom_cg(double *Af, double *b, double *x, double *x_m, double *alpha, double *beta, const int size, int &niters, const int max_iter, const double tol, const bool save_iterates, double *iterates, const bool safe_search_directions, double *search_directions, const bool exact_convergence, double *x_exact)
+bool custom_cg(double *Af, double *b, double *x, double *x_m, double *alpha, double *beta, const int size, int &niters, const int max_iter, const double tol, const bool save_residuals, double *residuals, const bool exact_convergence, double *x_exact, double *errors)
 {
    // convert Af to A
    double **A = (double **)malloc(size * sizeof(double *));
@@ -45,7 +45,7 @@ bool custom_cg(double *Af, double *b, double *x, double *x_m, double *alpha, dou
       }
    }
 
-   // succes flag
+   // success flag
    bool success = false;
 
    // residual vectors
@@ -75,6 +75,10 @@ bool custom_cg(double *Af, double *b, double *x, double *x_m, double *alpha, dou
       // precompute r_dot_r
       double r_dot_r;
       dot_product(r, r, r_dot_r, size);
+      if (save_residuals)
+      {
+         residuals[j] = sqrt(r_dot_r);
+      }
 
       // check for convergence
       if (exact_convergence)
@@ -83,7 +87,8 @@ bool custom_cg(double *Af, double *b, double *x, double *x_m, double *alpha, dou
          subtract(x_exact, x_m, em, size);
          double em_dot_em;
          dot_product(em, em, em_dot_em, size);
-         double e_ratio = sqrt(em_dot_em)/e0_norm;
+         errors[j] = sqrt(em_dot_em);
+         double e_ratio = sqrt(em_dot_em) / e0_norm;
          if (e_ratio < tol)
          {
             success = true;
@@ -92,7 +97,7 @@ bool custom_cg(double *Af, double *b, double *x, double *x_m, double *alpha, dou
       }
       else
       {
-         double r_ratio = sqrt(r_dot_r)/r0_norm;
+         double r_ratio = sqrt(r_dot_r) / r0_norm;
          if (r_ratio < tol)
          {
             success = true;
@@ -108,10 +113,6 @@ bool custom_cg(double *Af, double *b, double *x, double *x_m, double *alpha, dou
       alpha[j] = alpha_j;
 
       solution_update(x_m, p, alpha_j, size);
-      if (save_iterates)
-      {
-         std::copy(x_m, x_m + size, iterates + (j + 1) * size);
-      }
 
       residual_update(r, alpha_j, Ap, r_m, size);
 
@@ -119,17 +120,10 @@ bool custom_cg(double *Af, double *b, double *x, double *x_m, double *alpha, dou
       beta_update(r_dot_r, r_m, beta_j, size);
       beta[j] = beta_j;
 
-      // safe search directions
-      if (safe_search_directions)
-      {
-         std::copy(p, p + size, search_directions + j * size);
-      }
-
       search_direction_update(p, r_m, beta_j, size);
 
       // update residual
       std::copy(r_m, r_m + size, r);
-      // TODO: use characteristic polynomial to compute estimate of condition number of A
    }
 
    // free memory

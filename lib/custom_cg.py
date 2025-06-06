@@ -2,6 +2,7 @@ from ctypes import CDLL, POINTER, byref, c_bool, c_double, c_int
 from typing import Optional
 
 import numpy as np
+from numba import njit
 from scipy.sparse.linalg import LinearOperator, aslinearoperator
 
 from lib.utils import get_root
@@ -41,45 +42,45 @@ class CustomCG:
 
         # initial residual
         self.r_0 = b - A @ x_0
-        self.rho_0 = -1.0  # initial residual in the eigenbasis of A
+        self.rho_0 = np.array([], dtype=np.float64)
 
         # convergence criteria
         self.tol = tol
 
-        # solution
-        self.x_m = np.zeros_like(x_0)
-
-        # intermediate results
-        self.x_i = np.zeros((self.maxiter + 1, self.A.shape[0]), dtype=np.float64)
-        self.r_i = np.array([])
+        # residuals
+        self.r_i = np.array([], dtype=np.float64)
 
         # exact solution
-        self.x_exact = np.zeros_like(x_0)
+        self.x_exact = np.array([])
         self.exact_convergence = False
+        self.e_i = np.array([], dtype=np.float64)
 
         # number of iterations required
         self.niters = 0
 
         # cg coefficients
-        self.alpha = np.zeros(self.maxiter, dtype=np.float64)
-        self.beta = np.zeros(self.maxiter, dtype=np.float64)
+        self.alpha = np.zeros([], dtype=np.float64)
+        self.beta = np.zeros([], dtype=np.float64)
 
         # A eigen spectrum
-        self.eigenvalues = np.zeros(A.shape[0], dtype=np.float64)
-        self.eigenvectors = np.zeros(A.shape, dtype=np.float64)
-
-        # search directions
-        self.search_directions = np.zeros((self.maxiter, A.shape[0]), dtype=np.float64)
+        self.eigenvalues = np.array([], dtype=np.float64)
+        self.eigenvectors = np.array([], dtype=np.float64)
 
         # polynomial coefficients
         self.residual_polynomials_coefficients = []
 
     def solve(
         self,
-        save_iterates: bool = False,
-        save_search_directions: bool = False,
+        save_residuals: bool = False,
         x_exact: np.ndarray = np.array([]),
     ) -> tuple[np.ndarray, bool]:
+        # instantiate arrays for coefficients and iterates
+        alpha = np.zeros(self.maxiter, dtype=np.float64)
+        beta = np.zeros(self.maxiter, dtype=np.float64)
+        r_i = np.zeros(self.maxiter + 1, dtype=np.float64)
+        x_m = np.zeros_like(self.x_0)
+        e_i = np.zeros(self.maxiter + 1, dtype=np.float64)
+
         # convert to c types
         n = c_int(self.A.shape[0])
         tol = c_double(self.tol)
@@ -87,20 +88,17 @@ class CustomCG:
         A = self.A.flatten().astype(c_double)
         b = self.b.astype(c_double)
         x_0 = self.x_0.astype(c_double)
-        alpha = self.alpha.astype(c_double)
-        beta = self.beta.astype(c_double)
+        x_m = x_m.astype(c_double)
+        alpha = alpha.astype(c_double)
+        beta = beta.astype(c_double)
         niters = c_int(0)
-        save_iterates_c = c_bool(save_iterates)
-        iterates = self.x_i.flatten().astype(c_double)
-        search_directions = self.search_directions.flatten().astype(c_double)
+        residuals = r_i.flatten().astype(c_double)
+        self.x_exact = x_exact
         x_exact = x_exact.astype(c_double)
         if x_exact.size > 0:
-            self.x_exact = x_exact
             self.exact_convergence = True
         exact_convergence = c_bool(self.exact_convergence)
-
-        # allocate memory for solution
-        x = np.zeros_like(self.x_0).astype(c_double)
+        e_i = e_i.astype(c_double)
 
         # set function signature
         custom_cg_lib.custom_cg.argtypes = [
@@ -114,12 +112,11 @@ class CustomCG:
             POINTER(c_int),  # niters
             c_int,  # maxiter
             c_double,  # tol
-            c_bool,  # save_iterates
-            POINTER(c_double),  # iterates
-            c_bool,  # safe_search_directions
-            POINTER(c_double),  # P
+            c_bool,  # save_residuals
+            POINTER(c_double),  # residuals
             c_bool,  # exact_convergence
             POINTER(c_double),  # x_exact
+            POINTER(c_double),  # e_i
         ]
         custom_cg_lib.custom_cg.restype = c_bool
 
@@ -128,24 +125,22 @@ class CustomCG:
             A.ctypes.data_as(POINTER(c_double)),
             b.ctypes.data_as(POINTER(c_double)),
             x_0.ctypes.data_as(POINTER(c_double)),
-            x.ctypes.data_as(POINTER(c_double)),
+            x_m.ctypes.data_as(POINTER(c_double)),
             alpha.ctypes.data_as(POINTER(c_double)),
             beta.ctypes.data_as(POINTER(c_double)),
             n,
             byref(niters),
             maxiter,
             tol,
-            save_iterates_c,
-            iterates.ctypes.data_as(POINTER(c_double)),
-            c_bool(save_search_directions),
-            search_directions.ctypes.data_as(POINTER(c_double)),
+            c_bool(save_residuals),
+            residuals.ctypes.data_as(POINTER(c_double)),
             exact_convergence,
             x_exact.ctypes.data_as(POINTER(c_double)),
+            e_i.ctypes.data_as(POINTER(c_double)),
         )
 
-        # save solution
-        x = np.ctypeslib.as_array(x)
-        self.x_m = x
+        # solution
+        x_m = np.ctypeslib.as_array(x_m)
 
         # save number of iterations
         self.niters = int(niters.value)
@@ -154,26 +149,19 @@ class CustomCG:
         self.alpha = np.ctypeslib.as_array(alpha)[: self.niters]
         self.beta = np.ctypeslib.as_array(beta)[: (self.niters - 1)]
 
-        # save iterates
-        if save_iterates:
-            self.x_i = np.ctypeslib.as_array(iterates).reshape(
-                (self.maxiter + 1, self.n)
-            )[: self.niters + 1]
-            self.x_i[0] = x_0
+        # save residuals
+        if save_residuals:
+            self.r_i = np.ctypeslib.as_array(residuals)[: (self.niters + 1)]
 
-        # save search directions
-        if save_search_directions:
-            self.search_directions = np.ctypeslib.as_array(search_directions).reshape(
-                (self.maxiter, self.A.shape[0])
-            )[: self.niters]
+        # save errors
+        if self.exact_convergence:
+            self.e_i = np.ctypeslib.as_array(e_i)[: (self.niters + 1)]
 
-        return x, success
+        return x_m, success
 
     def sparse_solve(
         self,
         M: Optional[LinearOperator] = None,
-        save_iterates: bool = False,
-        save_coefficients: bool = False,
         save_residuals: bool = False,
     ) -> tuple[np.ndarray, int]:
         # complex dot product
@@ -196,24 +184,24 @@ class CustomCG:
         rho_prev, p = None, None
 
         # historic
-        x_i = [x]
         r_i = [np.linalg.norm(r)]
         alphas = []
         betas = []
 
         # main loop
         iteration = -1  # Ensure iteration is always defined
+        success = False
         for iteration in range(self.maxiter):
             if np.linalg.norm(r) < self.tol:
+                success = True
                 break
             z = psolve(r)
             rho_cur = dotprod(r, z)
             if iteration > 0:
-                beta = rho_cur / rho_prev
-                p *= beta
-                p += z
-                if save_coefficients:
-                    betas.append(beta)
+                beta = rho_cur / rho_prev  # type: ignore
+                p *= beta  # type: ignore
+                p += z  # type: ignore
+                betas.append(beta)
             else:
                 p = np.empty_like(r)
                 p[:] = z[:]
@@ -222,27 +210,31 @@ class CustomCG:
             alpha = rho_cur / dotprod(p, q)
             x += alpha * p
             r -= alpha * q
-            if save_coefficients:
+            if save_residuals:
                 r_i.append(np.linalg.norm(r))
             rho_prev = rho_cur
+            alphas.append(alpha)
 
-            if save_iterates:
-                x_i.append(x)
-
-            if save_coefficients:
-                alphas.append(alpha)
-                    
-        if save_iterates:
-            self.x_i = np.array(x_i)
         if save_residuals:
             self.r_i = np.array(r_i)
-        if save_coefficients:
-            self.alpha = np.array(alphas)
-            self.beta = np.array(betas)
 
-        if iteration == self.maxiter - 1:
-            return x, self.maxiter
-        return x, 0
+        self.alpha = np.array(alphas)
+        self.beta = np.array(betas)
+        self.niters = iteration
+
+        return x, success
+
+    def get_relative_errors(self) -> np.ndarray:
+        if np.any(self.e_i):
+            return self.e_i / self.e_i[0]
+        else:
+            raise ValueError("No errors saved")
+
+    def get_relative_residuals(self) -> np.ndarray:
+        if np.any(self.r_i):
+            return self.r_i / self.r_i[0]
+        else:
+            raise ValueError("No residuals saved")
 
     def cg_polynomial(
         self,
@@ -332,22 +324,6 @@ class CustomCG:
         return e
 
     # helper
-    def calculate_errors(self, x_exact: np.ndarray) -> np.ndarray:
-        if self.x_i is None:
-            raise ValueError("No iterates saved")
-
-        # calculate A-norm errors
-        eps = x_exact - self.x_i
-        return np.sqrt(np.sum(eps * (self.A @ eps.T).T, axis=1))
-
-    def calculate_residuals(self) -> np.ndarray:
-        r_i = np.array([])
-        if np.any(self.x_i):
-            r_i = self.b - (self.A @ self.x_i[:self.niters+1,:].T).T
-        else:
-            raise ValueError("No iterates saved")
-        return r_i.flatten()
-
     def calculate_iteration_upperbound(self) -> int:
         return CustomCG.calculate_iteration_upperbound_static(
             cond=np.linalg.cond(self.A),
@@ -420,47 +396,6 @@ class CustomCG:
                 exact_convergence=exact_convergence,
             )
         return sum(degrees)
-
-    # make properties
-    @property
-    def A(self):
-        return self._A
-
-    @A.setter
-    def A(self, A):
-        self._A = A
-
-    @property
-    def b(self):
-        return self._b
-
-    @b.setter
-    def b(self, b):
-        self._b = b
-
-    @property
-    def x_0(self):
-        return self._x_0
-
-    @x_0.setter
-    def x_0(self, x_0):
-        self._x_0 = x_0
-
-    @property
-    def tol(self):
-        return self._tol
-
-    @tol.setter
-    def tol(self, tol):
-        self._tol = tol
-
-    @property
-    def maxiter(self):
-        return self._maxiter
-
-    @maxiter.setter
-    def maxiter(self, maxiter):
-        self._maxiter = maxiter
 
 
 if __name__ == "__main__":
