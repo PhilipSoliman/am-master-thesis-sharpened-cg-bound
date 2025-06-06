@@ -85,10 +85,10 @@ class TwoLevelSchwarzPreconditioner(OneLevelSchwarzPreconditioner):
         self.coarse_op = self.coarse_space.assemble_coarse_operator(A)
 
     def apply(self, x: np.ndarray):
-        # First level.
+        # first level
         x_first_level = super().apply(x)
 
-        # Second level.
+        # second level
         x_0 = self.coarse_space.restriction_operator.transpose() @ x
         y_0 = splu(self.coarse_op.tocsc()).solve(x_0)
         x_second_level = self.coarse_space.restriction_operator @ y_0
