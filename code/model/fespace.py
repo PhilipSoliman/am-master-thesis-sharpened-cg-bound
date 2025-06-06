@@ -66,6 +66,10 @@ class FESpace:
             - Removes edge and coarse node DOFs from the set of interior DOFs.
             - Stores the classified DOFs and prints a summary.
         """
+        # free DOFs mask
+        self.free_dofs_mask = np.array(self.fespace.FreeDofs()).astype(bool)
+        self.num_free_dofs = np.sum(self.free_dofs_mask)
+
         # get all degrees of freedom (DOFs)
         self.interior_dofs = set()
         for el in self.fespace.Elements():
@@ -91,11 +95,25 @@ class FESpace:
 
         # component dofs
         self.free_coarse_node_dofs = self.get_free_coarse_node_dofs()
-        # print(f"Free coarse node DOFs: {self.free_coarse_node_dofs}")
         self.free_edge_component_dofs = self.get_free_edge_component_dofs()
-        # print(f"Free edge component DOFs: {self.free_edge_component_dofs}")
         self.free_face_component_dofs = self.get_free_face_component_dofs()
-        # print(f"Free face component DOFs: {self.free_face_component_dofs}")
+        self.free_component_tree_dofs, self.edge_component_multiplicities = (
+            self.get_free_component_tree_dofs()
+        )
+
+        # create a mask for free interface dofs
+        interface_dofs = []
+        for component_dofs in self.free_coarse_node_dofs:
+            interface_dofs.extend(component_dofs)
+        for component_dofs in self.free_edge_component_dofs:
+            interface_dofs.extend(component_dofs)
+        for component_dofs in self.free_face_component_dofs:
+            interface_dofs.extend(component_dofs)
+        self.interface_dofs_mask = np.zeros(self.fespace.ndof, dtype=bool)
+        self.interface_dofs_mask[list(interface_dofs)] = True
+        self.interface_dofs_mask = np.logical_and(
+            self.free_dofs_mask, self.interface_dofs_mask
+        )[self.free_dofs_mask]
 
         # meta info
         self.num_interior_dofs = len(self.interior_dofs)
@@ -180,16 +198,17 @@ class FESpace:
         Returns:
             list: A list of DOFs corresponding to coarse nodes.
         """
-        coarse_node_dofs = set()
+        coarse_node_dofs = []
         all_dofs = np.arange(self.fespace.ndof)
         free_dofs = all_dofs[self.fespace.FreeDofs()]
         for coarse_node in self.two_mesh.connected_components["coarse_nodes"]:
-            dof = self.fespace.GetDofNrs(coarse_node)
-            coarse_node_dofs.update(dof)
+            dofs = set(self.fespace.GetDofNrs(coarse_node))
+            dofs = dofs.intersection(free_dofs)
+            if len(dofs) > 0:
+                coarse_node_dofs.append(list(dofs))
 
         # filter coarse node dofs to only include free dofs
-        coarse_node_dofs = [d for d in coarse_node_dofs if d in free_dofs]
-        return list(coarse_node_dofs)
+        return coarse_node_dofs
 
     def get_free_edge_component_dofs(self):
         edge_component_dofs = []
@@ -220,6 +239,55 @@ class FESpace:
             if len(dofs) > 0:
                 face_component_dofs.append(list(dofs))
         return face_component_dofs
+
+    def get_free_component_tree_dofs(self):
+        """
+        Traverse the connected component tree and collect all DOFs associated with free
+        coarse nodes also keep track of how many times a connected edge component appears
+        (its multiplicity).
+
+        The result is a dictionary very similar to the component tree, only now it looks like this:
+        {
+            coarse_node_i1: {
+                "dof": int, # DOF of the coarse node
+                coarse_edge_j1: [dof1, dof2, ...], # DOFs of the coarse edge
+                coarse_edge_j2: {...}
+                ...
+                coarse_edge_jk: {...}
+            },
+            coarse_node_i2: {
+                coarse_edge_j1: {...},
+                ...
+            },
+        })
+        """
+        free_component_tree_dofs = {}
+        edge_component_multiplicity = {}
+        component_tree = self.two_mesh.get_connected_component_tree()
+        for coarse_node, coarse_edges in component_tree.items():
+            coarse_node_dofs = list(self.fespace.GetDofNrs(coarse_node))
+            if coarse_node_dofs in self.free_coarse_node_dofs:
+                free_component_tree_dofs[coarse_node] = {"node": coarse_node_dofs}
+            else:
+                continue  # skip coarse nodes without free DOFs
+
+            # treat coarse edges
+            free_component_tree_dofs[coarse_node]["edges"] = {}
+            for coarse_edge, edge_components in coarse_edges.items():
+                # increment the multiplicity of the coarse edge component
+                edge_component_multiplicity[coarse_edge] = (
+                    edge_component_multiplicity.get(coarse_edge, 0) + 1
+                )
+                # save all DOFs of the edge component
+                dofs = []
+                for edge in edge_components["fine_edges"]:
+                    edge_dofs = list(self.fespace.GetDofNrs(edge))
+                    dofs.extend(edge_dofs)
+                for vertex in edge_components["fine_vertices"]:
+                    vertex_dofs = list(self.fespace.GetDofNrs(vertex))
+                    dofs.extend(vertex_dofs)
+                free_component_tree_dofs[coarse_node]["edges"][coarse_edge] = dofs
+        return free_component_tree_dofs, edge_component_multiplicity
 
     def get_prolongation_operator(self):
         """
