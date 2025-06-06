@@ -80,8 +80,8 @@ class Problem:
             raise ValueError(
                 "Finite element space has not been constructed yet. Call construct_fespace() first."
             )
-        u = self.fes.u
-        v = self.fes.v
+        u = self.fes.u # type: ignore
+        v = self.fes.v # type: ignore
         return u, v
 
     @property
