@@ -99,7 +99,7 @@ for i, A in enumerate(As):
     # solve cg for each matrix
     custom_cg = CustomCG(A, b, x0)
     x, success = custom_cg.solve(
-        save_iterates=True, save_search_directions=False, x_exact=x_exact
+        save_residuals=True, x_exact=x_exact
     )
 
     # upperbound for the number of iterations
@@ -207,10 +207,9 @@ for i, A in enumerate(As):
     # calculate resiudals
     ax = axs[i, 1]
     ax_sep = axs_seperate[i][0, 1]
-    residuals = custom_cg.calculate_residuals()
-    residuals_norm = np.linalg.norm(residuals, axis=1)
-    ax.semilogy(residuals_norm/r0_norm, label="residual  ratio")
-    ax_sep.semilogy(residuals_norm/r0_norm, label="residual norm ratio")
+    rel_residuals = custom_cg.get_relative_residuals()
+    ax.semilogy(rel_residuals, label="residual  ratio")
+    ax_sep.semilogy(rel_residuals, label="residual norm ratio")
     ax.set_xlabel(r"$\mathbf{m}$")
     ax_sep.set_xlabel(r"$\mathbf{m}$")
     ax.set_ylabel(r"$\mathbf{||r_m||_2/||r_0||_2}$")
@@ -228,7 +227,7 @@ for i, A in enumerate(As):
 
     # print meta information
     print(
-        f"#clusters: {CLUSTER_COUNTS[i]}, spread: {CLUSTER_SPREAD}, m_th: {iteration_upperbound}, ||r_m||/||r_0|| = {residuals_norm[-1]/r0_norm:.2e}"
+        f"#clusters: {CLUSTER_COUNTS[i]}, spread: {CLUSTER_SPREAD}, m_th: {iteration_upperbound}, ||r_m||/||r_0|| = {rel_residuals[-1]:.2e}"
     )
 
 
