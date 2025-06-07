@@ -1,10 +1,15 @@
+import warnings
+
 import ngsolve as ngs
 import numpy as np
 import scipy.sparse as sp
 from fespace import FESpace
 from mesh import TwoLevelMesh
 from problem_type import ProblemType
+from scipy.sparse import SparseEfficiencyWarning
 from scipy.sparse.linalg import spsolve
+
+warnings.simplefilter("ignore", SparseEfficiencyWarning)
 
 
 class CoarseSpace(object):
@@ -19,16 +24,7 @@ class CoarseSpace(object):
         self.A = A
         self.two_mesh = two_mesh
         self.ptype = ptype
-
-        self.name = "base coarse space"  # to be overridden by subclasses
-
-        # print important meta information
-        print(
-            f"Coarse space initialized:"
-            f"\n\tproblem type: {self.ptype.value}"
-            f"\n\tfinite element space: {self.fespace.dimension}D "
-            f"\n\tfree dofs: {self.fespace.num_free_dofs}"
-        )
+        self.name = "Coarse space (base)"  # to be overridden by subclasses
 
     def assemble_coarse_operator(self, A: sp.csr_matrix) -> sp.csc_matrix:
         if not hasattr(self, "restriction_operator"):
@@ -58,15 +54,41 @@ class CoarseSpace(object):
     def __str__(self):
         return self.name
 
+    def _print_init_string(self):
+        """
+        Initialize string representation of the coarse space.
+        """
+        print(
+            f"{self.name} initialized:"
+            f"\n\tproblem type: {self.ptype.value}"
+            f"\n\tfinite element space: {self.fespace.dimension}D "
+            f"\n\tfree dofs: {self.fespace.num_free_dofs}"
+            f"{self._meta_info()}"
+        )
+
+    def _meta_info(self) -> str:
+        """
+        Return a string with meta information about the coarse space.
+        This method can be overridden by subclasses to provide more specific information.
+        """
+        raise NotImplementedError(
+            "This method should be implemented by subclasses to provide meta information."
+        )
+
 
 class Q1CoarseSpace(CoarseSpace):
     def __init__(self, A: sp.csr_matrix, fespace: FESpace, two_mesh: TwoLevelMesh):
         super().__init__(A, fespace, two_mesh)
         self.name = "Q1 coarse space"
         self.restriction_operator = self.assemble_restriction_operator()
+        self.coarse_dimension = self.restriction_operator.shape[1]  # type: ignore
+        self._print_init_string()
 
     def assemble_restriction_operator(self) -> sp.csc_matrix:
         return self.fespace.prolongation_operator[self.fespace.free_dofs_mask, :]
+
+    def _meta_info(self) -> str:
+        return f"\n\tcoarse dimension: {self.coarse_dimension}"
 
 
 class GDSWCoarseSpace(CoarseSpace):
@@ -89,16 +111,8 @@ class GDSWCoarseSpace(CoarseSpace):
         # interface component dimension
         self.interface_dimension = len(self.interface_components) * self.null_space_dim
 
-        # print important meta information
-        print(
-            f"GDSW coarse space initialized:"
-            f"\n\tnull space dim: {self.null_space_dim}"
-            f"\n\tinterface components: {len(self.interface_components)}"
-            f"\n\t\tcoarse node components: {self.num_coarse_node_components}"
-            f"\n\t\tedge components: {self.num_edge_components}"
-            f"\n\t\tface components: {self.num_face_components}"
-            f"\n\tinterface dim: {self.interface_dimension}"
-        )
+        # print initialization information
+        self._print_init_string()
 
     def assemble_restriction_operator(self) -> sp.csc_matrix:
         # get the interface operator
@@ -122,7 +136,7 @@ class GDSWCoarseSpace(CoarseSpace):
         # discrete harmonic extension
         interior_op = -spsolve(A_II.tocsc(), (A_IGamma @ interface_operator).tocsc())
 
-        # fill the coarse operator #TODO: find more efficient way to do this
+        # fill the coarse operator #TODO: find more efficient way to construct the restriction operator
         restriction_operator[~self.fespace.interface_dofs_mask, :] = interior_op.tocsc()
         restriction_operator[self.fespace.interface_dofs_mask, :] = interface_operator
         return restriction_operator
@@ -133,38 +147,15 @@ class GDSWCoarseSpace(CoarseSpace):
         Note: for problems with multiple dimensions, coordinate dofs corresponding to one node are spaced by
         ndofs (so if ndof = 8, then dofs for node 0 are 0, 8, 16, ...).
         """
-        # NOTE: NGSolve stores coordinate dofs corresponding to one node spaced by ndofs / dimension
-        ndofs = self.fespace.fespace.ndof
-        coord_diff = ndofs // self.fespace.dimension
-        idxs = np.arange(ndofs)
         interface_operator = sp.csc_matrix(
-            (ndofs, self.interface_dimension),
+            (self.fespace.fespace.ndof, self.interface_dimension),
             dtype=float,
         )
         interface_index = 0
         for interface_component in self.interface_components:
-            # get dofs for the current interface component
-            for coord in range(self.fespace.dimension):
-                # get dofs for current coordinate coord
-                coord_idxs_mask = np.logical_and(
-                    coord < idxs[interface_component],
-                    idxs[interface_component] < (coord + 1) * coord_diff,
-                )
-
-                # get indices of dofs for the current coordinate
-                component_coord_idxs = idxs[interface_component][coord_idxs_mask]
-
-                # get the adjusted component coordinate mask
-                component_coord_mask = np.zeros(ndofs, dtype=bool)
-                component_coord_mask[component_coord_idxs] = True
-                component_coord_mask = component_coord_mask
-
-                # fill the interface operator with the null space basis for the current coordinate
-                # TODO: perform this construction LIL sparse matrix for better performance
-                interface_operator[
-                    component_coord_mask,
-                    interface_index : interface_index + self.null_space_dim,
-                ] = self.null_space_basis[coord, :]
+            self._restrict_null_space_to_interface_component(
+                interface_operator, interface_component, interface_index
+            )
 
             # update the interface index for the next interface component with the null space dimension
             interface_index += self.null_space_dim
@@ -173,6 +164,47 @@ class GDSWCoarseSpace(CoarseSpace):
         return interface_operator[self.fespace.free_dofs_mask, :][
             self.fespace.interface_dofs_mask, :
         ]
+
+    def _restrict_null_space_to_interface_component(
+        self,
+        interface_operator: sp.csc_matrix,
+        interface_component: list[int],
+        interface_index: int,
+        partition_of_unity: int | np.ndarray = 1,
+    ):
+        """
+        Restrict the null space to the interface operator for the given interface component and for all problem coordinates.
+        """
+        # indices of all dofs
+        ndofs = self.fespace.fespace.ndof
+        idxs = np.arange(ndofs)
+        coord_diff = ndofs // self.fespace.dimension
+
+        # NOTE: NGSolve stores coordinate dofs corresponding to one node spaced by ndofs / dimension
+        for coord in range(self.fespace.dimension):
+            # get dofs for current coordinate coord
+            coord_idxs_mask = np.logical_and(
+                coord < idxs[interface_component],
+                idxs[interface_component] < (coord + 1) * coord_diff,
+            )
+
+            # get indices of dofs for the current coordinate
+            component_coord_idxs = idxs[interface_component][coord_idxs_mask]
+
+            # get the adjusted component coordinate mask
+            component_coord_mask = np.zeros(ndofs, dtype=bool)
+            component_coord_mask[component_coord_idxs] = True
+            component_coord_mask = component_coord_mask
+
+            # fill the interface operator with the null space basis for the current coordinate
+            # TODO: perform this construction with LIL sparse matrix for better performance
+            interface_operator[
+                component_coord_mask,
+                interface_index : interface_index + self.null_space_dim,
+            ] = self.null_space_basis[coord, :]
+
+        # apply partition of unity (rowwise) and return
+        interface_operator[interface_component, :] *= partition_of_unity
 
     def _get_null_space_basis(self):
         self.null_space_basis = np.array([])
@@ -222,6 +254,15 @@ class GDSWCoarseSpace(CoarseSpace):
             coarse_node_dofs_mask[coarse_dofs] = True
             interface_components.append(coarse_node_dofs_mask)
 
+    def _meta_info(self) -> str:
+        return (
+            f"\n\tnull space dim: {self.null_space_dim}"
+            f"\n\tinterface dim: {self.interface_dimension}"
+            f"\n\t\tcoarse node components: {self.num_coarse_node_components}"
+            f"\n\t\tedge components: {self.num_edge_components}"
+            f"\n\t\tface components: {self.num_face_components}"
+        )
+
 
 class RGDSWCoarseSpace(GDSWCoarseSpace):
     def __init__(self, A: sp.csr_matrix, fespace: FESpace, two_mesh: TwoLevelMesh):
@@ -240,79 +281,28 @@ class RGDSWCoarseSpace(GDSWCoarseSpace):
         if self.interface_dimension == 0:
             raise ValueError("No RGDSW components with coarse node ancestors found")
 
-        # print important meta information
-        print(
-            f"GDSW coarse space initialized:"
-            f"\n\tnull space dim: {self.null_space_dim}"
-            f"\n\tinterface components: {len(self.component_tree_dofs)}"
-            f"\n\tinterface dim: {self.interface_dimension}"
-        )
+        # print initialization information
+        self._print_init_string()
 
     def _assemble_interface_operator(self):
         ndofs = self.fespace.fespace.ndof
-        coord_diff = ndofs // self.fespace.dimension
-        idxs = np.arange(ndofs)
         interface_operator = sp.csc_matrix(
             (ndofs, self.interface_dimension),
             dtype=float,
         )
         interface_index = 0
-        for coarse_node, component_dofs in self.component_tree_dofs.items():
+        for component_dofs in self.component_tree_dofs.values():
             node_dofs = component_dofs["node"]
             edge_components = component_dofs["edges"]
-            for coord in range(self.fespace.dimension):
-                ################
-                # coarse nodes #
-                ################
-                # get coarse dofs for current coordinate coord
-                node_coord_idxs_mask = np.logical_and(
-                    coord < idxs[node_dofs],
-                    idxs[node_dofs] < (coord + 1) * coord_diff,
+            self._restrict_null_space_to_interface_component(
+                interface_operator, node_dofs, interface_index
+            )
+
+            for edge, edge_dofs in edge_components.items():
+                multiplicity = self.edge_component_multiplicities[edge]
+                self._restrict_null_space_to_interface_component(
+                    interface_operator, edge_dofs, interface_index, 1 / multiplicity
                 )
-
-                # get indices of dofs for the current coordinate
-                component_coord_idxs = idxs[node_dofs][node_coord_idxs_mask]
-
-                # get the adjusted component coordinate mask
-                component_coord_mask = np.zeros(ndofs, dtype=bool)
-                component_coord_mask[component_coord_idxs] = True
-                component_coord_mask = component_coord_mask
-
-                interface_operator[
-                    component_coord_mask,
-                    interface_index : interface_index + self.null_space_dim,
-                ] = self.null_space_basis[coord, :]
-
-                for edge, edge_dofs in edge_components.items():
-                    ##############
-                    # edge nodes #
-                    ##############
-                    # get multiplicity for the current edge
-                    multiplicity = self.edge_component_multiplicities[edge]
-
-                    # get dofs for current coordinate coord
-                    coord_idxs_mask = np.logical_and(
-                        coord < idxs[edge_dofs],
-                        idxs[edge_dofs] < (coord + 1) * coord_diff,
-                    )
-
-                    # get indices of dofs for the current coordinate
-                    component_coord_idxs = idxs[edge_dofs][coord_idxs_mask]
-
-                    # get the adjusted component coordinate mask
-                    component_coord_mask = np.zeros(ndofs, dtype=bool)
-                    component_coord_mask[component_coord_idxs] = True
-                    component_coord_mask = component_coord_mask
-
-                    # fill the interface operator with the null space basis for the current coordinate
-                    # TODO: perform this construction LIL sparse matrix for better performance
-                    interface_operator[
-                        component_coord_mask,
-                        interface_index : interface_index + self.null_space_dim,
-                    ] = (
-                        self.null_space_basis[coord, :]
-                        / multiplicity  # divide by multiplicity (a.k.k. Option 1 RGDSW, 2017)
-                    )
 
             # update the interface index for the next interface component with the null space dimension
             interface_index += self.null_space_dim
@@ -322,8 +312,18 @@ class RGDSWCoarseSpace(GDSWCoarseSpace):
             self.fespace.interface_dofs_mask, :
         ]
 
+    def _meta_info(self) -> str:
+        return (
+            f"\n\tnull space dim: {self.null_space_dim}"
+            f"\n\tinterface dim: {self.interface_dimension}"
+        )
+
 
 class AMSCoarseSpace(GDSWCoarseSpace):
+    def __init__(self, A: sp.csr_matrix, fespace: FESpace, two_mesh: TwoLevelMesh):
+        super().__init__(A, fespace, two_mesh)
+        self.name = "AMS coarse space"
+
     def assemble_restriction_operator(self) -> sp.csc_matrix:
         # Implement the AMS coarse space application logic here
         raise NotImplementedError("AMS coarse space application not implemented.")
