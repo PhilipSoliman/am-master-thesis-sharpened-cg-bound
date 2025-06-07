@@ -2,14 +2,13 @@ from ctypes import CDLL, POINTER, byref, c_bool, c_double, c_int
 from typing import Optional
 
 import numpy as np
-from numba import njit
 from scipy.sparse.linalg import LinearOperator, aslinearoperator
 from tqdm import trange
 
 from lib.utils import get_root
 
 # constants
-DLL_FOLDER = "lib/clib"
+DLL_FOLDER = "lib/solvers/clib"
 DLL_NAME = "custom_cg.so"
 
 # path to root directory

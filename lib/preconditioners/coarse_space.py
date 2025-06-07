@@ -3,11 +3,12 @@ import warnings
 import ngsolve as ngs
 import numpy as np
 import scipy.sparse as sp
-from fespace import FESpace
-from mesh import TwoLevelMesh
-from problem_type import ProblemType
 from scipy.sparse import SparseEfficiencyWarning
 from scipy.sparse.linalg import spsolve
+
+from ..fespace import FESpace
+from ..meshes import TwoLevelMesh
+from ..problem_type import ProblemType
 
 warnings.simplefilter("ignore", SparseEfficiencyWarning)
 

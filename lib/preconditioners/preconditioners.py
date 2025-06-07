@@ -1,14 +1,13 @@
-from pprint import pprint
 from typing import Type
 
 import ngsolve as ngs
 import numpy as np
 import scipy.sparse as sp
-from coarse_space import CoarseSpace
-from fespace import FESpace
-from matplotlib import pyplot as plt
-from mesh import TwoLevelMesh
 from scipy.sparse.linalg import SuperLU, splu
+
+from ..fespace import FESpace
+from ..meshes import TwoLevelMesh
+from ..preconditioners import CoarseSpace
 
 
 class Preconditioner(object):

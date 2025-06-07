@@ -1,29 +1,28 @@
 from copy import copy
 from datetime import datetime
-from enum import Enum
 from typing import Optional, Type
 
 import matplotlib.pyplot as plt
 import ngsolve as ngs
 import scipy.sparse as sp
-from boundary_conditions import (
+from scipy.sparse.linalg import LinearOperator
+
+from ..boundary_conditions import (
     BoundaryCondition,
     BoundaryConditions,
     BoundaryType,
     HomogeneousDirichlet,
 )
-from coarse_space import CoarseSpace
-from fespace import FESpace
-from mesh import BoundaryName, TwoLevelMesh
-from preconditioners import (
+from ..fespace import FESpace
+from ..meshes import BoundaryName, TwoLevelMesh
+from ..preconditioners import (
+    CoarseSpace,
     OneLevelSchwarzPreconditioner,
     Preconditioner,
     TwoLevelSchwarzPreconditioner,
 )
-from problem_type import ProblemType
-from scipy.sparse.linalg import LinearOperator
-
-from lib.custom_cg import CustomCG
+from ..problem_type import ProblemType
+from ..solvers import CustomCG
 
 
 class Problem:
@@ -168,14 +167,12 @@ class Problem:
                     "For diffusion problem type, gfuncs must be provided with two grid functions."
                     "One for coefficient function and one for source function."
                 )
-            
+
             # get trial and test functions
             u_h, v_h = self.get_trial_and_test_functions()
 
             # construct bilinear and linear forms
-            self.set_bilinear_form(
-                gfuncs[0] * ngs.grad(u_h) * ngs.grad(v_h) * ngs.dx
-            )
+            self.set_bilinear_form(gfuncs[0] * ngs.grad(u_h) * ngs.grad(v_h) * ngs.dx)
             self.set_linear_form(gfuncs[1] * v_h * ngs.dx)
         elif self.ptype == ProblemType.NAVIER_STOKES:
             raise NotImplementedError(
@@ -275,9 +272,7 @@ class Problem:
             u_arr,
             tol=rtol,
         )
-        print(f"Solving system:"
-            f"\n\tpreconditioner: {self.precond_name}"
-        )
+        print(f"Solving system:" f"\n\tpreconditioner: {self.precond_name}")
         u_arr[:], success = custom_cg.sparse_solve(M=M_op, save_residuals=save_cg_info)
         if not success:
             print(
@@ -292,7 +287,9 @@ class Problem:
             self.cg_residuals = custom_cg.get_relative_residuals()
             self.cg_precond_residuals = None
             if precond is not None:
-                self.cg_precond_residuals = custom_cg.get_relative_preconditioned_residuals()
+                self.cg_precond_residuals = (
+                    custom_cg.get_relative_preconditioned_residuals()
+                )
 
         # save coarse operator grid functions if available
         if save_coarse_bases and coarse_space is not None:

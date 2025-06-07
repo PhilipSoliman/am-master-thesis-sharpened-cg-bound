@@ -1,8 +1,9 @@
 from enum import Enum
 
 import ngsolve as ngs
-from problem_type import ProblemType
-from mesh import BoundaryName
+
+from ..meshes import BoundaryName
+from ..problem_type import ProblemType
 
 
 class BoundaryType(Enum):
@@ -105,7 +106,9 @@ class BoundaryConditions:
             if len(bc.values) > 1:
                 for component, value in bc.values.items():
                     u_tmp.components[0].Set(
-                        value, definedon=mesh.Boundaries(bc.name.value), component=component
+                        value,
+                        definedon=mesh.Boundaries(bc.name.value),
+                        component=component,
                     )
             else:
                 u_tmp.Set(bc.values[0], definedon=mesh.Boundaries(bc.name.value))
@@ -160,7 +163,7 @@ class HomogeneousDirichlet(BoundaryConditions):
         if ptype == ProblemType.DIFFUSION:
             values = {0: 0.0}
         elif ptype == ProblemType.NAVIER_STOKES:
-            values = {0: 0.0, 1: 0.0} # u_x = 0.0, u_y = 0.0
+            values = {0: 0.0, 1: 0.0}  # u_x = 0.0, u_y = 0.0
         for bname in BoundaryName:
             self.set_boundary_condition(
                 BoundaryCondition(

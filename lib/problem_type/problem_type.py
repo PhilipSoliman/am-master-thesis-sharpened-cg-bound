@@ -26,35 +26,35 @@ class ProblemType(Enum):
         for fespace, order, dim in zip(self.fespaces, self.orders, self.dimensions):
             repr_str += f"\n\t{fespace.__name__} (Order: {order}, Dimension: {dim})"
         return repr_str
-    
+
     @property
     def title(self) -> str:
         """
         Get the title of the problem type.
         """
         return self._title
-    
+
     @property
     def fespaces(self) -> list:
         """
         Get the finite element spaces associated with the problem type.
         """
         return self._fespaces
-    
+
     @property
     def orders(self) -> list:
         """
         Get the orders of the finite element spaces associated with the problem type.
         """
         return self._orders
-    
+
     @property
     def dimensions(self) -> list:
         """
         Get the dimensions of the finite element spaces associated with the problem type.
         """
         return self._dimensions
-    
+
     @title.setter
     def title(self, value: str):
         """

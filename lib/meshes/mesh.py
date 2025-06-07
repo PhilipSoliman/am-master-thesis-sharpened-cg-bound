@@ -11,7 +11,7 @@ import numpy as np
 from matplotlib.axes import Axes
 from matplotlib.patches import Polygon
 
-from lib.utils import CUSTOM_COLORS_SIMPLE, get_root
+from ..utils import CUSTOM_COLORS_SIMPLE, get_root
 
 DATA_DIR = get_root() / "data"
 

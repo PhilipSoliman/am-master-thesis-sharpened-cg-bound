@@ -1,23 +1,12 @@
 from enum import Enum
-from typing import Type
 
 import ngsolve as ngs
-from boundary_conditions import (
-    BoundaryCondition,
-    BoundaryConditions,
-    BoundaryType,
-    HomogeneousDirichlet,
-)
-from coarse_space import (
-    AMSCoarseSpace,
-    GDSWCoarseSpace,
-    Q1CoarseSpace,
-    RGDSWCoarseSpace,
-)
-from mesh import BoundaryName, TwoLevelMesh
-from preconditioners import OneLevelSchwarzPreconditioner, TwoLevelSchwarzPreconditioner
-from problem import Problem
-from problem_type import ProblemType
+
+from ..boundary_conditions import BoundaryConditions, HomogeneousDirichlet
+from ..meshes import TwoLevelMesh
+from ..preconditioners import AMSCoarseSpace, TwoLevelSchwarzPreconditioner
+from ..problem_type import ProblemType
+from .problem import Problem
 
 
 class SourceFunc(Enum):
@@ -42,7 +31,7 @@ class DiffusionProblem(Problem):
 
     def __init__(
         self,
-        boundary_conditions,
+        boundary_conditions: BoundaryConditions,
         lx=1.0,
         ly=1.0,
         coarse_mesh_size=0.15,
@@ -199,7 +188,9 @@ if __name__ == "__main__":
         # plot residuals and preconditioned residuals
         ax[1].plot(diffusion_problem.cg_residuals, label=r"$||r_m||_2 / ||r_0||_2$")
         if diffusion_problem.cg_precond_residuals is not None:
-            ax[1].plot(diffusion_problem.cg_precond_residuals,label=r"$||z_m||_2 / ||z_0||_2$")
+            ax[1].plot(
+                diffusion_problem.cg_precond_residuals, label=r"$||z_m||_2 / ||z_0||_2$"
+            )
         ax[1].set_xlabel("Iteration")
         ax[1].set_ylabel("Relative residuals")
         ax[1].set_yscale("log")
