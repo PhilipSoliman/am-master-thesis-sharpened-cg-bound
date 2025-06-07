@@ -1,6 +1,7 @@
 from enum import Enum
 
 import ngsolve as ngs
+from problem_type import ProblemType
 from mesh import BoundaryName
 
 
@@ -22,17 +23,20 @@ class BoundaryCondition:
         self,
         name: BoundaryName,
         btype: BoundaryType,
-        value: float | ngs.CoefficientFunction,
+        values: dict[int, float | ngs.CoefficientFunction],
     ):
         """Constructor for the BoundaryCondition class.
 
         Args:
             name (BoundaryName): The name of the boundary.
             boundary_type (BoundaryType): The type of the boundary condition.
+            values (dict[int, float | ngs.CoefficientFunction]): The values of the boundary condition.
+                The keys are the component indices, and the values are the corresponding values.
+                For example, {0: 1.0, 1: 2.0} means that component 0 has a value of 1.0 and component 1 has a value of 2.0.
         """
         self.name = name
         self.type = btype
-        self.value = value
+        self.values = values
 
 
 class BoundaryConditions:
@@ -70,8 +74,8 @@ class BoundaryConditions:
 
     @property
     def boundary_kwargs(self):
-        if self._unset_boundaries != []:
-            raise ValueError(self.MISSING_BC_ERROR.format(self._unset_boundaries))
+        # if self._unset_boundaries != []:
+        #     raise ValueError(self.MISSING_BC_ERROR.format(self._unset_boundaries))
 
         boundary_kwargs = {}
         for bc in self._boundary_conditions:
@@ -98,7 +102,13 @@ class BoundaryConditions:
         """Set a single boundary condition on a grid function."""
         if bc.type == BoundaryType.DIRICHLET:
             u_tmp = ngs.GridFunction(fespace)
-            u_tmp.Set(bc.value, definedon=mesh.Boundaries(bc.name.value))
+            if len(bc.values) > 1:
+                for component, value in bc.values.items():
+                    u_tmp.components[0].Set(
+                        value, definedon=mesh.Boundaries(bc.name.value), component=component
+                    )
+            else:
+                u_tmp.Set(bc.values[0], definedon=mesh.Boundaries(bc.name.value))
             u.vec.data += u_tmp.vec
         else:
             raise NotImplementedError(
@@ -126,9 +136,15 @@ class BoundaryConditions:
         return [bc.type for bc in self._boundary_conditions]
 
     @property
-    def values(self) -> list[float | ngs.CoefficientFunction]:
+    def values(self) -> list[str]:
         """Get the values of the boundaries."""
-        return [bc.value for bc in self._boundary_conditions]
+        out = []
+        for bc in self._boundary_conditions:
+            comp_str = ", ".join(
+                f"comp {component}: {value}" for component, value in bc.values.items()
+            )
+            out.append(comp_str)
+        return out
 
     @property
     def num_bcs(self):
@@ -138,13 +154,18 @@ class BoundaryConditions:
 
 class HomogeneousDirichlet(BoundaryConditions):
 
-    def __init__(self):
+    def __init__(self, ptype: ProblemType):
         super().__init__()
+        values = {}
+        if ptype == ProblemType.DIFFUSION:
+            values = {0: 0.0}
+        elif ptype == ProblemType.NAVIER_STOKES:
+            values = {0: 0.0, 1: 0.0} # u_x = 0.0, u_y = 0.0
         for bname in BoundaryName:
             self.set_boundary_condition(
                 BoundaryCondition(
                     bname,
                     BoundaryType.DIRICHLET,
-                    0.0,
+                    values,
                 )
             )

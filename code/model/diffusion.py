@@ -1,4 +1,5 @@
 from enum import Enum
+from typing import Type
 
 import ngsolve as ngs
 from boundary_conditions import (
@@ -36,12 +37,12 @@ class DiffusionProblem(Problem):
 
     def __init__(
         self,
+        boundary_conditions,
         lx=1.0,
         ly=1.0,
         coarse_mesh_size=0.15,
         refinement_levels=2,
         layers=2,
-        bcs: BoundaryConditions = HomogeneousDirichlet(),
         coef_func=CoefFunc.INCLUSIONS,
         source_func=SourceFunc.CONSTANT,
     ):
@@ -61,22 +62,21 @@ class DiffusionProblem(Problem):
             two_mesh.save()
 
         # initialize the Problem with the TwoLevelMesh
-        super().__init__(ProblemType.DIFFUSION, two_mesh, bcs)
+        ptype = ProblemType.DIFFUSION
+        self.boundary_conditions = boundary_conditions
+        super().__init__(two_mesh, [boundary_conditions], ptype)
 
         # construct finite element space
         self.construct_fespace()
 
-        # get trial and test functions
-        u_h, v_h = self.get_trial_and_test_functions()
-
-        # construct bilinear and linear forms
+        # get coefficient and source functions
         self.coef_func_name = coef_func.value
         self.coef_func = getattr(self, self.coef_func_name)()
-        self.set_bilinear_form(self.coef_func * ngs.grad(u_h) * ngs.grad(v_h) * ngs.dx)
-
         self.source_func_name = source_func.value
         self.source_func = getattr(self, self.source_func_name)()
-        self.set_linear_form(self.source_func * v_h * ngs.dx)
+
+    def assemble(self, gfuncs=None):
+        return super().assemble(gfuncs=[self.coef_func, self.source_func])
 
     ####################
     # source functions #
@@ -152,13 +152,14 @@ if __name__ == "__main__":
     source_func = SourceFunc.PARABOLIC
     coef_func = CoefFunc.INCLUSIONS
     diffusion_problem = DiffusionProblem(
+        HomogeneousDirichlet(ProblemType.DIFFUSION),
         coarse_mesh_size=0.15,
         refinement_levels=2,
         layers=2,
         source_func=source_func,
         coef_func=coef_func,
     )
-    print(diffusion_problem.bcs)
+    print(diffusion_problem.boundary_conditions)
 
     # solve problem
     get_cg_info = True

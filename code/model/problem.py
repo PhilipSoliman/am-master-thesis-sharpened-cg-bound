@@ -29,9 +29,9 @@ from lib.custom_cg import CustomCG
 class Problem:
     def __init__(
         self,
-        ptype: ProblemType,
         two_mesh: TwoLevelMesh,
-        bcs: BoundaryConditions,
+        bcs: list[BoundaryConditions],
+        ptype: ProblemType = ProblemType.CUSTOM,
     ):
         """
         Initialize the problem with the given coefficient function, source function, and boundary conditions.
@@ -42,24 +42,38 @@ class Problem:
             boundary_conditions (dict): Dictionary containing boundary conditions for the problem.
         """
         self.two_mesh = two_mesh
-        self.bcs = bcs
+        self.boundary_conditions = bcs
         self.ptype = ptype
         self._linear_form = None
         self._linear_form_set = False
         self._bilinear_form = None
         self._bilinear_form_set = False
 
-    def construct_fespace(self):
+    def construct_fespace(
+        self,
+        fespaces: Optional[list] = None,
+        orders: Optional[list] = None,
+        dimensions: Optional[list] = None,
+    ):
         """
         Construct the finite element space for the problem.
 
         Returns:
             FESpace: The finite element space for the problem.
         """
+        if self.ptype == ProblemType.CUSTOM:
+            if fespaces is None or orders is None or dimensions is None:
+                raise ValueError(
+                    "For custom problem type, fespaces, orders, and dimensions must be provided."
+                )
+            self.ptype.fespaces = fespaces
+            self.ptype.orders = orders
+            self.ptype.dimensions = dimensions
+
         self.fes = FESpace(
             self.two_mesh,
-            self.ptype,
-            **self.bcs.boundary_kwargs,
+            self.boundary_conditions,
+            ptype=self.ptype,
         )
         self._linear_form = ngs.LinearForm(self.fes.fespace)
         self._bilinear_form = ngs.BilinearForm(self.fes.fespace, symmetric=True)
@@ -75,8 +89,8 @@ class Problem:
             raise ValueError(
                 "Finite element space has not been constructed yet. Call construct_fespace() first."
             )
-        u = self.fes.u # type: ignore
-        v = self.fes.v # type: ignore
+        u = self.fes.u  # type: ignore
+        v = self.fes.v  # type: ignore
         return u, v
 
     @property
@@ -127,7 +141,7 @@ class Problem:
         self._bilinear_form_set = True
         self._bilinear_form += bf
 
-    def assemble(self):
+    def assemble(self, gfuncs: Optional[list[ngs.GridFunction]] = None):
         """
         Assemble the linear and bilinear forms.
         """
@@ -138,7 +152,7 @@ class Problem:
             )
 
         # check if problem type is set
-        if self.ptype is None:
+        if self.ptype == ProblemType.CUSTOM:
             if not self._linear_form_set:
                 raise ValueError(
                     "Linear form has not been set. Call set_linear_form() first."
@@ -147,17 +161,39 @@ class Problem:
                 raise ValueError(
                     "Bilinear form has not been set. Call set_bilinear_form() first."
                 )
+        elif self.ptype == ProblemType.DIFFUSION:
+            # check if gfuncs is provided for custom coefficient and source functions
+            if gfuncs is None or len(gfuncs) != 2:
+                raise ValueError(
+                    "For diffusion problem type, gfuncs must be provided with two grid functions."
+                    "One for coefficient function and one for source function."
+                )
+            
+            # get trial and test functions
+            u_h, v_h = self.get_trial_and_test_functions()
+
+            # construct bilinear and linear forms
+            self.set_bilinear_form(
+                gfuncs[0] * ngs.grad(u_h) * ngs.grad(v_h) * ngs.dx
+            )
+            self.set_linear_form(gfuncs[1] * v_h * ngs.dx)
+        elif self.ptype == ProblemType.NAVIER_STOKES:
+            raise NotImplementedError(
+                "Navier-Stokes problem type is not implemented yet."
+            )
         else:
-            # TODO: Auto construct (bi-)linear forms using a (mix of) problem type(s)
-            pass
+            raise ValueError(
+                f"Problem type {self.ptype} is not supported. Use ProblemType.CUSTOM."
+            )
 
         # solution grid function
         u = ngs.GridFunction(self.fes.fespace)
 
         # set boundary conditions on the grid function
-        self.bcs.set_boundary_conditions_on_gfunc(
-            u, self.fes.fespace, self.two_mesh.fine_mesh
-        )
+        for bcs in self.boundary_conditions:
+            bcs.set_boundary_conditions_on_gfunc(
+                u, self.fes.fespace, self.two_mesh.fine_mesh
+            )
 
         # assemble rhs and stiffness matrix
         b = self._linear_form.Assemble()
@@ -239,9 +275,7 @@ class Problem:
             u_arr,
             tol=rtol,
         )
-        u_arr[:], success = custom_cg.sparse_solve(
-            M=M_op, save_residuals=save_cg_info
-        )
+        u_arr[:], success = custom_cg.sparse_solve(M=M_op, save_residuals=save_cg_info)
         if not success:
             print(
                 f"Conjugate gradient solver did not converge. Number of iterations: {custom_cg.niters}"
@@ -300,22 +334,25 @@ if __name__ == "__main__":
         layers=layers,
     )
 
+    # define problem type
+    ptype = ProblemType.DIFFUSION
+
     # define boundary conditions
-    bcs = HomogeneousDirichlet()
+    bcs = HomogeneousDirichlet(ptype)
     bcs.set_boundary_condition(
         BoundaryCondition(
             name=BoundaryName.LEFT,
             btype=BoundaryType.DIRICHLET,
-            value=32 * ngs.y * (ly - ngs.y),
+            values={0: 32 * ngs.y * (ly - ngs.y)},
         )
     )
     print(bcs)
 
     # construct finite element space
-    problem = Problem(ProblemType.DIFFUSION, two_mesh, bcs)
+    problem = Problem(two_mesh, [bcs])
 
     # construct finite element space
-    problem.construct_fespace()
+    problem.construct_fespace([ngs.H1], [1], [1])
 
     # get trial and test functions
     u_h, v_h = problem.get_trial_and_test_functions()
@@ -342,8 +379,8 @@ if __name__ == "__main__":
 
     # direct solve
     problem.direct_ngs_solve(u, b, A)
-    problem.save_ngs_functions([u], ["solution"], "test_solution_direct")
+    # problem.save_ngs_functions([u], ["solution"], "test_solution_direct")
 
     # cg solve
     problem.solve()
-    problem.save_ngs_functions([problem.u], ["solution"], "test_solution_cg")
+    # problem.save_ngs_functions([problem.u], ["solution"], "test_solution_cg")

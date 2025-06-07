@@ -1,6 +1,7 @@
 import ngsolve as ngs
 import numpy as np
 import scipy.sparse as sp
+from boundary_conditions import BoundaryConditions, HomogeneousDirichlet
 from mesh import TwoLevelMesh
 from problem_type import ProblemType
 
@@ -15,8 +16,8 @@ class FESpace:
     def __init__(
         self,
         two_mesh: TwoLevelMesh,
-        ptype: ProblemType,
-        **bcs,
+        boundary_conditions: list[BoundaryConditions],
+        ptype: ProblemType = ProblemType.CUSTOM,
     ):
         """
         Initialize the finite element space for the given mesh.
@@ -34,8 +35,8 @@ class FESpace:
         self.ndofs_per_unknown = []
         
         # construct fespace to get dofs
-        for fespace, order, dim in zip(ptype.fespaces, ptype.orders, ptype.dimensions):
-            fespace = fespace(two_mesh.fine_mesh, order=order, **bcs)
+        for fespace, order, dim, bcs in zip(ptype.fespaces, ptype.orders, ptype.dimensions, boundary_conditions):
+            fespace = fespace(two_mesh.fine_mesh, order=order, **bcs.boundary_kwargs)
             for _ in range(dim):
                 self.ndofs_per_unknown.append(fespace.ndof//dim)
             if hasattr(self, "fespace"):
@@ -55,8 +56,8 @@ class FESpace:
         # now reconstruct the fininite element space for the refined coarse space
         two_mesh.refine_coarse_mesh()
         delattr(self, "fespace")
-        for fespace, order, dim in zip(ptype.fespaces, ptype.orders, ptype.dimensions):
-            fespace = fespace(two_mesh.coarse_mesh, order=order, **bcs)
+        for fespace, order, dim, bcs in zip(ptype.fespaces, ptype.orders, ptype.dimensions, boundary_conditions):
+            fespace = fespace(two_mesh.coarse_mesh, order=order, **bcs.boundary_kwargs)
             if hasattr(self, "fespace"):
                 self.fespace *= fespace
             else:
@@ -382,5 +383,7 @@ if __name__ == "__main__":
         refinement_levels=refinement_levels,
         layers=layers,
     )
-    fespace = FESpace(two_mesh, ProblemType.DIFFUSION)
+    ptype = ProblemType.DIFFUSION
+    fespace = FESpace(two_mesh, [HomogeneousDirichlet(ptype)], ptype)
+    fespace.calculate_dofs()
     print(fespace)
