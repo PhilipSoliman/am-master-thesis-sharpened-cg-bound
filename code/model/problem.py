@@ -29,9 +29,9 @@ from lib.custom_cg import CustomCG
 class Problem:
     def __init__(
         self,
+        ptype: ProblemType,
         two_mesh: TwoLevelMesh,
         bcs: BoundaryConditions,
-        ptype: Optional[ProblemType] = None,
     ):
         """
         Initialize the problem with the given coefficient function, source function, and boundary conditions.
@@ -49,21 +49,16 @@ class Problem:
         self._bilinear_form = None
         self._bilinear_form_set = False
 
-    def construct_fespace(self, order: int = 1, discontinuous: bool = False):
+    def construct_fespace(self):
         """
         Construct the finite element space for the problem.
-
-        Args:
-            order (int, optional): Polynomial order of the finite elements. Defaults to 1.
-            discontinuous (bool, optional): Whether to use discontinuous elements. Defaults to False.
 
         Returns:
             FESpace: The finite element space for the problem.
         """
         self.fes = FESpace(
             self.two_mesh,
-            order=order,
-            discontinuous=discontinuous,
+            self.ptype,
             **self.bcs.boundary_kwargs,
         )
         self._linear_form = ngs.LinearForm(self.fes.fespace)
@@ -317,10 +312,10 @@ if __name__ == "__main__":
     print(bcs)
 
     # construct finite element space
-    problem = Problem(two_mesh, bcs)
+    problem = Problem(ProblemType.DIFFUSION, two_mesh, bcs)
 
     # construct finite element space
-    problem.construct_fespace(order=1, discontinuous=False)
+    problem.construct_fespace()
 
     # get trial and test functions
     u_h, v_h = problem.get_trial_and_test_functions()

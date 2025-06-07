@@ -11,6 +11,7 @@ from coarse_space import GDSWCoarseSpace, Q1CoarseSpace, RGDSWCoarseSpace
 from mesh import BoundaryName, TwoLevelMesh
 from preconditioners import OneLevelSchwarzPreconditioner, TwoLevelSchwarzPreconditioner
 from problem import Problem
+from problem_type import ProblemType
 
 
 class SourceFunc(Enum):
@@ -60,10 +61,10 @@ class DiffusionProblem(Problem):
             two_mesh.save()
 
         # initialize the Problem with the TwoLevelMesh
-        super().__init__(two_mesh, bcs)
+        super().__init__(ProblemType.DIFFUSION, two_mesh, bcs)
 
         # construct finite element space
-        self.construct_fespace(order=1, discontinuous=False)
+        self.construct_fespace()
 
         # get trial and test functions
         u_h, v_h = self.get_trial_and_test_functions()
@@ -163,10 +164,10 @@ if __name__ == "__main__":
     get_cg_info = True
     diffusion_problem.solve(
         preconditioner=TwoLevelSchwarzPreconditioner,
-        coarse_space=GDSWCoarseSpace,
+        coarse_space=Q1CoarseSpace,
         rtol=1e-8,
         save_cg_info=get_cg_info,
-        save_coarse_bases=True,
+        save_coarse_bases=False,
     )
 
     # Save the functions to vtk files
@@ -181,7 +182,7 @@ if __name__ == "__main__":
     set_mpl_style()
     set_mpl_cycler(colors=True, lines=True)
     if get_cg_info:
-        figure, ax = plt.subplots(1, 2, figsize=(8, 4), squeeze=True)
+        figure, ax = plt.subplots(1, 2, figsize=(10, 4), squeeze=True)
         ax[0].plot(diffusion_problem.cg_alpha, label=r"$\alpha$")
         ax[0].plot(diffusion_problem.cg_beta, label=r"$\beta$")
         ax[0].set_xlabel("Iteration")

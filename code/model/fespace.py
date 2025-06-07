@@ -2,6 +2,7 @@ import ngsolve as ngs
 import numpy as np
 import scipy.sparse as sp
 from mesh import TwoLevelMesh
+from problem_type import ProblemType
 
 
 class FESpace:
@@ -14,9 +15,7 @@ class FESpace:
     def __init__(
         self,
         two_mesh: TwoLevelMesh,
-        order: int = 1,
-        discontinuous: bool = False,
-        dim: int = 1,
+        ptype: ProblemType,
         **bcs,
     ):
         """
@@ -31,12 +30,19 @@ class FESpace:
             ValueError: If the sum of classified DOFs does not match the total number of DOFs in the space.
         """
         self.two_mesh = two_mesh
-        self.dimension = dim
+        self.ptype = ptype
+        self.ndofs_per_unknown = []
+        
+        # construct fespace to get dofs
+        for fespace, order, dim in zip(ptype.fespaces, ptype.orders, ptype.dimensions):
+            fespace = fespace(two_mesh.fine_mesh, order=order, **bcs)
+            for _ in range(dim):
+                self.ndofs_per_unknown.append(fespace.ndof//dim)
+            if hasattr(self, "fespace"):
+                self.fespace *= fespace
+            else:
+                self.fespace = fespace
 
-        if dim == 1:
-            self.fespace = ngs.H1(two_mesh.fine_mesh, order=order, **bcs)
-        elif dim == 2:
-            self.fespace = ngs.VectorH1(two_mesh.fine_mesh, order=order, **bcs)
         self.calculate_dofs()
         if self.fespace.ndof != (
             self.num_interior_dofs + self.num_edge_dofs + self.num_coarse_node_dofs
@@ -48,10 +54,13 @@ class FESpace:
 
         # now reconstruct the fininite element space for the refined coarse space
         two_mesh.refine_coarse_mesh()
-        if dim == 1:
-            self.fespace = ngs.H1(two_mesh.coarse_mesh, order=order, **bcs)
-        elif dim == 2:
-            self.fespace = ngs.VectorH1(two_mesh.coarse_mesh, order=order, **bcs)
+        delattr(self, "fespace")
+        for fespace, order, dim in zip(ptype.fespaces, ptype.orders, ptype.dimensions):
+            fespace = fespace(two_mesh.coarse_mesh, order=order, **bcs)
+            if hasattr(self, "fespace"):
+                self.fespace *= fespace
+            else:
+                self.fespace = fespace
 
         # construct the prolongation operator
         self.prolongation_operator = self.get_prolongation_operator()
@@ -66,6 +75,9 @@ class FESpace:
             - Removes edge and coarse node DOFs from the set of interior DOFs.
             - Stores the classified DOFs and prints a summary.
         """
+        # all DOFS
+        self.total_dofs = self.fespace.ndof
+
         # free DOFs mask
         self.free_dofs_mask = np.array(self.fespace.FreeDofs()).astype(bool)
         self.num_free_dofs = np.sum(self.free_dofs_mask)
@@ -119,12 +131,6 @@ class FESpace:
         self.num_interior_dofs = len(self.interior_dofs)
         self.num_edge_dofs = len(self.edge_dofs)
         self.num_coarse_node_dofs = len(self.coarse_node_dofs)
-
-        print("FE space DOFS:")
-        print(f"\ttotal: {self.fespace.ndof}")
-        print(f"\tinterior: {self.num_interior_dofs}")
-        print(f"\tedge: {self.num_edge_dofs}")
-        print(f"\tcoarse_node: {self.num_coarse_node_dofs}")
 
     def calculate_subdomain_dofs(self):
         """
@@ -343,16 +349,23 @@ class FESpace:
         return self.fespace.TestFunction()
 
     def __repr__(self):
-        # print domain DOFs
-        repr_str = "Domain DOFs:\n"
-        for subdomain, data in self.domain_dofs.items():
-            repr_str += f"\t{subdomain.nr}:\n"
-            repr_str += f"\t\t#interior: {len(data['interior'])}\n"
-            repr_str += f"\t\t#coarse_nodes: {data['coarse_nodes']}\n"
-            repr_str += f"\t\t#edges: {data['edges']}\n"
-            repr_str += f"\t\t#layer: {len(data['layer'])}\n"
+        repr_str = "FE space DOFs:"
+        repr_str += f"\n\ttotal DOFs: {self.total_dofs}"
+        repr_str += f"\n\tfespace dimension: {'X'.join([str(d) for d in self.ptype.dimensions])}"
+        repr_str += f"\n\tinterior DOFs: {self.num_interior_dofs}"
+        repr_str += f"\n\tedge DOFs: {self.num_edge_dofs}"
+        repr_str += f"\n\tcoarse Node DOFs: {self.num_coarse_node_dofs}"
         return repr_str
 
+    def _print_domain_dofs(self):        
+        repr_str = "Domain DOFs:"
+        for subdomain, data in self.domain_dofs.items():
+            repr_str += f"\n\t{subdomain.nr}:"
+            repr_str += f"\n\t\t#interior: {len(data['interior'])}"
+            repr_str += f"\n\t\t#coarse_nodes: {data['coarse_nodes']}"
+            repr_str += f"\n\t\t#edges: {data['edges']}"
+            repr_str += f"\n\t\t#layer: {len(data['layer'])}"
+        return repr_str
 
 if __name__ == "__main__":
     """
@@ -369,5 +382,5 @@ if __name__ == "__main__":
         refinement_levels=refinement_levels,
         layers=layers,
     )
-    fespace = FESpace(two_mesh, order=1, discontinuous=False)
-    # print(fespace)
+    fespace = FESpace(two_mesh, ProblemType.DIFFUSION)
+    print(fespace)

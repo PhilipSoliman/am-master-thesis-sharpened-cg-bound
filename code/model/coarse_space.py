@@ -60,8 +60,6 @@ class CoarseSpace(object):
         """
         print(
             f"{self.name} initialized:"
-            f"\n\tproblem type: {self.ptype.value}"
-            f"\n\tfinite element space: {self.fespace.dimension}D "
             f"\n\tfree dofs: {self.fespace.num_free_dofs}"
             f"{self._meta_info()}"
         )
@@ -148,7 +146,7 @@ class GDSWCoarseSpace(CoarseSpace):
         ndofs (so if ndof = 8, then dofs for node 0 are 0, 8, 16, ...).
         """
         interface_operator = sp.csc_matrix(
-            (self.fespace.fespace.ndof, self.interface_dimension),
+            (self.fespace.total_dofs, self.interface_dimension),
             dtype=float,
         )
         interface_index = 0
@@ -177,15 +175,15 @@ class GDSWCoarseSpace(CoarseSpace):
         """
         # indices of all dofs
         ndofs = self.fespace.fespace.ndof
-        idxs = np.arange(ndofs)
-        coord_diff = ndofs // self.fespace.dimension
+        ndofs_prev = 0
+        for coord, ndofs in enumerate(self.fespace.ndofs_per_unknown):
+            # NOTE: NGSolve stores coordinate dofs corresponding to one node spaced by ndofs / dimension
+            idxs = np.arange(ndofs_prev, ndofs_prev + ndofs)
 
-        # NOTE: NGSolve stores coordinate dofs corresponding to one node spaced by ndofs / dimension
-        for coord in range(self.fespace.dimension):
             # get dofs for current coordinate coord
             coord_idxs_mask = np.logical_and(
-                coord < idxs[interface_component],
-                idxs[interface_component] < (coord + 1) * coord_diff,
+                ndofs_prev < idxs[interface_component],
+                idxs[interface_component] < ndofs_prev + ndofs,
             )
 
             # get indices of dofs for the current coordinate
@@ -203,6 +201,9 @@ class GDSWCoarseSpace(CoarseSpace):
                 interface_index : interface_index + self.null_space_dim,
             ] = self.null_space_basis[coord, :]
 
+            # increment the previous dofs index
+            ndofs_prev += ndofs
+
         # apply partition of unity (rowwise) and return
         interface_operator[interface_component, :] *= partition_of_unity
 
@@ -212,7 +213,7 @@ class GDSWCoarseSpace(CoarseSpace):
         if self.ptype == ProblemType.DIFFUSION:
             self.null_space_basis = np.ones((1, 1))
             null_space_dim = 1
-        elif self.ptype == ProblemType.ADVECTION:
+        elif self.ptype == ProblemType.NAVIER_STOKES:
             raise NotImplementedError(
                 "Advection problem type not implemented for coarse space."
             )
