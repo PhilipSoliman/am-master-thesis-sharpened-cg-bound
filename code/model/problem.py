@@ -69,12 +69,12 @@ class Problem:
             self.ptype.fespaces = fespaces
             self.ptype.orders = orders
             self.ptype.dimensions = dimensions
-
         self.fes = FESpace(
             self.two_mesh,
             self.boundary_conditions,
             ptype=self.ptype,
         )
+        print(f"Constructed FESpace for {str(self.ptype)}")
         self._linear_form = ngs.LinearForm(self.fes.fespace)
         self._bilinear_form = ngs.BilinearForm(self.fes.fespace, symmetric=True)
 
@@ -274,6 +274,9 @@ class Problem:
             res_arr,
             u_arr,
             tol=rtol,
+        )
+        print(f"Solving system:"
+            f"\n\tpreconditioner: {self.precond_name}"
         )
         u_arr[:], success = custom_cg.sparse_solve(M=M_op, save_residuals=save_cg_info)
         if not success:

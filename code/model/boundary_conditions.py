@@ -65,7 +65,7 @@ class BoundaryConditions:
         # check for previously defined bc
         old_bc = next((b for b in self._boundary_conditions if b.name == bc.name), None)
         if old_bc:
-            print("Replacing existing boundary condition on", bc.name.value)
+            print(f"Replacing existing boundary condition on {bc.name.value} boundary")
             self._boundary_conditions.remove(old_bc)
         else:
             self._unset_boundaries.remove(bc.name)

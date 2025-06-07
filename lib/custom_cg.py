@@ -4,6 +4,7 @@ from typing import Optional
 import numpy as np
 from numba import njit
 from scipy.sparse.linalg import LinearOperator, aslinearoperator
+from tqdm import trange
 
 from lib.utils import get_root
 
@@ -191,29 +192,40 @@ class CustomCG:
         # main loop
         iteration = -1  # Ensure iteration is always defined
         success = False
-        for iteration in range(self.maxiter):
-            if np.linalg.norm(r) < self.tol:
-                success = True
-                break
-            z = psolve(r)
-            rho_cur = dotprod(r, z)
-            if iteration > 0:
-                beta = rho_cur / rho_prev  # type: ignore
-                p *= beta  # type: ignore
-                p += z  # type: ignore
-                betas.append(beta)
-            else:
-                p = np.empty_like(r)
-                p[:] = z[:]
+        with trange(self.maxiter, desc="CG iterations", unit="it") as pbar:
+            for iteration in range(self.maxiter):
+                if np.linalg.norm(r_i[-1]) < self.tol:
+                    success = True
+                    pbar.n = iteration + 1  # Set progress bar to actual number of iterations
+                    pbar.last_print_n = iteration + 1  # Force tqdm to print the final value
+                    pbar.update(0)  # Refresh the bar
+                    break
+                z = psolve(r)
+                rho_cur = dotprod(r, z)
+                if iteration > 0:
+                    beta = rho_cur / rho_prev  # type: ignore
+                    p *= beta  # type: ignore
+                    p += z  # type: ignore
+                    betas.append(beta)
+                else:
+                    p = np.empty_like(r)
+                    p[:] = z[:]
 
-            q = matvec(p)
-            alpha = rho_cur / dotprod(p, q)
-            x += alpha * p
-            r -= alpha * q
-            if save_residuals:
-                r_i.append(np.linalg.norm(r))
-            rho_prev = rho_cur
-            alphas.append(alpha)
+                q = matvec(p)
+                alpha = rho_cur / dotprod(p, q)
+                x += alpha * p
+                r -= alpha * q
+                if save_residuals:
+                    r_i.append(np.linalg.norm(r))
+                rho_prev = rho_cur
+                alphas.append(alpha)
+
+                # Update tqdm bar with current residual norm and alpha
+                pbar.set_postfix({
+                    "residual": f"{np.linalg.norm(r):.2e}",
+                    "alpha": f"{alpha:.2e}",
+                    "beta": f"{betas[-1]:.2e}" if betas else "N/A"
+                })
 
         if save_residuals:
             self.r_i = np.array(r_i)

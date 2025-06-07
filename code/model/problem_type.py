@@ -18,13 +18,13 @@ class ProblemType(Enum):
         self._orders = orders
         self._dimensions = dimensions
 
-    def __repr__(self):
+    def __str__(self):
         """
-        Print the finite element spaces associated with the problem type.
+        Print info about problem type.
         """
-        repr_str = f"Finite Element Spaces for {self.title}:\n"
+        repr_str = f"ProblemType '{self.title}':"
         for fespace, order, dim in zip(self.fespaces, self.orders, self.dimensions):
-            repr_str += f"  - {fespace.__name__} (Order: {order}, Dimension: {dim})\n"
+            repr_str += f"\n\t{fespace.__name__} (Order: {order}, Dimension: {dim})"
         return repr_str
     
     @property
@@ -32,7 +32,7 @@ class ProblemType(Enum):
         """
         Get the title of the problem type.
         """
-        return self.value
+        return self._title
     
     @property
     def fespaces(self) -> list:
