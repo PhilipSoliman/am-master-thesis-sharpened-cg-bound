@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # from clibs.custom_cg import CustomCG
-from lib.custom_cg import CustomCG
+from lib import CustomCG
 from lib.utils import (
     get_cli_args,
     mpl_graph_plot_style,

@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-from lib.custom_cg import CustomCG
+from lib import CustomCG
 from lib.utils import (
     CustomColors,
     get_cli_args,
