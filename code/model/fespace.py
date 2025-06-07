@@ -269,7 +269,7 @@ class FESpace:
         """
         free_component_tree_dofs = {}
         edge_component_multiplicity = {}
-        component_tree = self.two_mesh.get_connected_component_tree()
+        component_tree = self.two_mesh.connected_component_tree
         for coarse_node, coarse_edges in component_tree.items():
             coarse_node_dofs = list(self.fespace.GetDofNrs(coarse_node))
             if coarse_node_dofs in self.free_coarse_node_dofs:

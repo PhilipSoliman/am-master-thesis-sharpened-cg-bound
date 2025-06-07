@@ -1,6 +1,7 @@
 import copy
 import json
 from enum import Enum
+from itertools import cycle
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -101,6 +102,7 @@ class TwoLevelMesh:
         self.fine_mesh, self.coarse_mesh = self.create_conforming_meshes()
         self.subdomains = self.get_subdomains()
         self.connected_components = self.get_connected_components()
+        self.connected_component_tree = self.get_connected_component_tree()
         self.layers = layers
         for layer_idx in range(1, layers + 1):
             self.extend_subdomains(layer_idx)
@@ -514,6 +516,7 @@ class TwoLevelMesh:
             for layer_idx in range(1, obj.layers + 1):
                 obj.extend_subdomains(layer_idx)
             setattr(obj, "connected_components", obj.get_connected_components())
+            setattr(obj, "connected_component_tree", obj.get_connected_component_tree())
             print(obj)
         else:
             raise FileNotFoundError(f"Metadata file {fp} does not exist.")
@@ -693,7 +696,7 @@ class TwoLevelMesh:
             elif domains_list_toggle:
                 if subdomain.nr not in domains:
                     continue
-            fillcolor = self.subdomain_colors[i % len(self.subdomain_colors)]
+            fillcolor = next(self.subdomain_colors)
             for domain_el in domain_elements:
                 self.plot_element(
                     ax,
@@ -772,6 +775,61 @@ class TwoLevelMesh:
             for face in face_component:
                 raise NotImplementedError(
                     "Plotting connected components for faces is not implemented yet."
+                )
+        return ax
+    
+    def plot_connected_component_tree(self, ax: Axes):
+        """
+        Plot the connected component tree of the fine mesh based on the coarse mesh subdomains.
+
+        Args:
+            ax (Axes): Matplotlib axis to plot on.
+
+        Returns:
+            Axes: The matplotlib axis with the plotted connected component tree.
+        """
+        plotted_edges = set()
+        for coarse_node, edges in self.connected_component_tree.items():
+            color = next(self.subdomain_colors)
+            # plot big coarse node
+            self.plot_vertices(
+                ax,
+                [coarse_node],
+                self.coarse_mesh,
+                color=color,
+                marker="x",
+                markersize=50,
+            )
+            for coarse_edge, edge_data in edges.items():
+                # plot thick coarse edge showing the connected component
+                self.plot_edges(
+                    ax,
+                    [coarse_edge],
+                    self.coarse_mesh,
+                    color=color,
+                    alpha=0.25,
+                    linewidth=8.0,
+                    zorder=TwoLevelMesh.ZORDERS["edges"] - 0.1,
+                    linestyle="-" if coarse_edge not in plotted_edges else "--",
+                )
+                plotted_edges.add(coarse_edge)
+
+                # plot fine edges and vertices
+                self.plot_edges(
+                    ax,
+                    edge_data["fine_edges"],
+                    self.fine_mesh,
+                    color="black",
+                    linewidth=0.5,
+                    linestyle="-",
+                )
+                self.plot_vertices(
+                    ax,
+                    edge_data["fine_vertices"],
+                    self.fine_mesh,
+                    color="green",
+                    marker="x",
+                    markersize=15,
                 )
         return ax
 
@@ -870,12 +928,12 @@ class TwoLevelMesh:
         )
 
     @property
-    def subdomain_colors(self):
+    def subdomain_colors(self) -> cycle:
         """
         List of colors for plotting domains.
         """
         if not hasattr(self, "_subdomain_colors"):
-            self._subdomain_colors = CUSTOM_COLORS_SIMPLE
+            self._subdomain_colors = cycle(CUSTOM_COLORS_SIMPLE)
         return self._subdomain_colors
 
     @subdomain_colors.setter
@@ -888,7 +946,7 @@ class TwoLevelMesh:
         """
         if not isinstance(colors, list):
             raise ValueError("Domain colors must be a list.")
-        self._subdomain_colors = colors
+        self._subdomain_colors = cycle(colors)
 
     # supporting methods
     def _get_edges_on_subdomain_edge(self, coarse_edge, mesh_element):
@@ -998,16 +1056,20 @@ if __name__ == "__main__":
     # two_mesh.save()  # Save the mesh and subdomains
     two_mesh = TwoLevelMesh.load(lx, ly, coarse_mesh_size, refinement_levels, layers)
 
-    # Plotting the meshes
+    # plot the meshes
     figure, ax = plt.subplots(figsize=(8, 6))
     two_mesh.plot_mesh(ax, mesh_type="fine")
     two_mesh.plot_mesh(ax, mesh_type="coarse")
 
-    # getting connected components
+    # plot the domains
+    figure, ax = plt.subplots(figsize=(8, 6))
+    two_mesh.plot_domains(ax, domains=1, plot_layers=True)
+
+    # get all connected components
     figure, ax = plt.subplots(figsize=(8, 6))
     two_mesh.plot_connected_components(ax)
 
-    # Plotting the domains
+    # plot the connected component tree
     figure, ax = plt.subplots(figsize=(8, 6))
-    two_mesh.plot_domains(ax, domains=1, plot_layers=True)
+    two_mesh.plot_connected_component_tree(ax)
     plt.show()
