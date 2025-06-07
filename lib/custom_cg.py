@@ -36,7 +36,7 @@ class CustomCG:
         self.A = A
         self.b = b
         self.n = len(b)
-        self.maxiter = maxiter if maxiter is not None else self.n * 10
+        self.maxiter = maxiter if maxiter is not None else self.n
 
         # initial guess
         self.x_0 = x_0
