@@ -121,10 +121,10 @@ class FESpace:
         self.num_coarse_node_dofs = len(self.coarse_node_dofs)
 
         print("FE space DOFS:")
-        print(f"\t#total: {self.fespace.ndof}")
-        print(f"\t#interior: {self.num_interior_dofs}")
-        print(f"\t#edge: {self.num_edge_dofs}")
-        print(f"\t#coarse_node: {self.num_coarse_node_dofs}")
+        print(f"\ttotal: {self.fespace.ndof}")
+        print(f"\tinterior: {self.num_interior_dofs}")
+        print(f"\tedge: {self.num_edge_dofs}")
+        print(f"\tcoarse_node: {self.num_coarse_node_dofs}")
 
     def calculate_subdomain_dofs(self):
         """

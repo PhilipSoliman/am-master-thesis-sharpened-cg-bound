@@ -119,7 +119,7 @@ class BoundaryConditions:
         width = max(widths)
         for name, btype, value in zip(self.names, self.btypes, self.values):
             out += f"\n\t{name.value:<{width}} {btype.value:<{width}} = {str(value):<{width}}"
-        out += f"\nBoundary kwargs = {self.boundary_kwargs}"
+        out += f"\n\tkwargs (fespace) = {self.boundary_kwargs}"
         return out
 
     @property

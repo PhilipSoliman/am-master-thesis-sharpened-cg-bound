@@ -104,6 +104,7 @@ class TwoLevelMesh:
         self.layers = layers
         for layer_idx in range(1, layers + 1):
             self.extend_subdomains(layer_idx)
+        print(self)
 
     def create_conforming_meshes(self) -> tuple[ngs.Mesh, ngs.Mesh]:
         """
@@ -372,7 +373,20 @@ class TwoLevelMesh:
         """
         for _ in range(self.refinement_levels):
             self.coarse_mesh.Refine()
-        
+    
+    # meta info string
+    def __str__(self):
+        return (
+            f"Fine mesh:"
+            f"\n\telements: {self.fine_mesh.ne}"
+            f"\n\tvertices: {self.fine_mesh.nv}"
+            f"\n\tedges: {len(self.fine_mesh.edges)}"
+            f"\nCoarse mesh:"
+            f"\n\telements: {self.coarse_mesh.ne}"
+            f"\n\tvertices: {self.coarse_mesh.nv}"
+            f"\n\tedges: {len(self.coarse_mesh.edges)}"
+        )
+
     # saving
     def save(self):
         """
@@ -500,6 +514,7 @@ class TwoLevelMesh:
             for layer_idx in range(1, obj.layers + 1):
                 obj.extend_subdomains(layer_idx)
             setattr(obj, "connected_components", obj.get_connected_components())
+            print(obj)
         else:
             raise FileNotFoundError(f"Metadata file {fp} does not exist.")
         return obj
@@ -531,14 +546,6 @@ class TwoLevelMesh:
             )
         self.fine_mesh = ngs.Mesh(str(fine_mesh_path))
         self.coarse_mesh = ngs.Mesh(str(coarse_mesh_path))
-        print("Fine mesh loaded.")
-        print(f"\tNumber of elements: {self.fine_mesh.ne}")
-        print(f"\tNumber of vertices: {self.fine_mesh.nv}")
-        print(f"\tNumber of edges: {len(self.fine_mesh.edges)}")
-        print("Coarse mesh loaded.")
-        print(f"\tNumber of elements: {self.coarse_mesh.ne}")
-        print(f"\tNumber of vertices: {self.coarse_mesh.nv}")
-        print(f"\tNumber of edges: {len(self.coarse_mesh.edges)}")
 
     def _load_subdomains(self, fp: Path):
         """
