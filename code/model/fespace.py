@@ -128,6 +128,9 @@ class FESpace:
             self.free_dofs_mask, self.interface_dofs_mask
         )[self.free_dofs_mask]
 
+        # create mask for interior dofs
+        self.interior_dofs_mask = ~self.interface_dofs_mask
+
         # meta info
         self.num_interior_dofs = len(self.interior_dofs)
         self.num_edge_dofs = len(self.edge_dofs)

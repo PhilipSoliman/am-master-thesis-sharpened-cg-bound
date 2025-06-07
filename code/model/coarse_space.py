@@ -41,7 +41,7 @@ class CoarseSpace(object):
             num_bases = restriction_operator.shape[1]
             bases = {}
             for i in range(num_bases):
-                vals = np.zeros(self.fespace.fespace.ndof)
+                vals = np.zeros(self.fespace.total_dofs)
                 vals[self.fespace.free_dofs_mask] = (
                     restriction_operator[:, i].toarray().flatten()
                 )
@@ -94,9 +94,6 @@ class GDSWCoarseSpace(CoarseSpace):
         super().__init__(A, fespace, two_mesh)
         self.name = "GDSW coarse space"
 
-        # collect all interface dofs
-        self.interface_dofs_mask = self.fespace.interface_dofs_mask
-
         # null space basis and dimension
         self.null_space_dim = self._get_null_space_basis()
 
@@ -122,12 +119,12 @@ class GDSWCoarseSpace(CoarseSpace):
         )
 
         # interior operator
-        A_II = self.A[~self.fespace.interface_dofs_mask, :][
+        A_II = self.A[self.fespace.interior_dofs_mask, :][
             :, ~self.fespace.interface_dofs_mask
         ]
 
         # interior <- interface operator
-        A_IGamma = self.A[~self.fespace.interface_dofs_mask, :][
+        A_IGamma = self.A[self.fespace.interior_dofs_mask, :][
             :, self.fespace.interface_dofs_mask
         ]
 
@@ -174,7 +171,7 @@ class GDSWCoarseSpace(CoarseSpace):
         Restrict the null space to the interface operator for the given interface component and for all problem coordinates.
         """
         # indices of all dofs
-        ndofs = self.fespace.fespace.ndof
+        ndofs = self.fespace.total_dofs
         ndofs_prev = 0
         for coord, ndofs in enumerate(self.fespace.ndofs_per_unknown):
             # NOTE: NGSolve stores coordinate dofs corresponding to one node spaced by ndofs / dimension
@@ -239,19 +236,19 @@ class GDSWCoarseSpace(CoarseSpace):
 
     def _get_face_components(self, interface_components):
         for face_component_dofs in self.fespace.free_face_component_dofs:
-            face_component_mask = np.zeros(self.fespace.fespace.ndof).astype(bool)
+            face_component_mask = np.zeros(self.fespace.total_dofs).astype(bool)
             face_component_mask[face_component_dofs] = True
             interface_components.append(face_component_mask)
 
     def _get_edge_components(self, interface_components):
         for edge_component_dofs in self.fespace.free_edge_component_dofs:
-            edge_component_mask = np.zeros(self.fespace.fespace.ndof).astype(bool)
+            edge_component_mask = np.zeros(self.fespace.total_dofs).astype(bool)
             edge_component_mask[edge_component_dofs] = True
             interface_components.append(edge_component_mask)
 
     def _get_coarse_components(self, interface_components):
         for coarse_dofs in self.fespace.free_coarse_node_dofs:
-            coarse_node_dofs_mask = np.zeros(self.fespace.fespace.ndof).astype(bool)
+            coarse_node_dofs_mask = np.zeros(self.fespace.total_dofs).astype(bool)
             coarse_node_dofs_mask[coarse_dofs] = True
             interface_components.append(coarse_node_dofs_mask)
 
@@ -286,7 +283,7 @@ class RGDSWCoarseSpace(GDSWCoarseSpace):
         self._print_init_string()
 
     def _assemble_interface_operator(self):
-        ndofs = self.fespace.fespace.ndof
+        ndofs = self.fespace.total_dofs
         interface_operator = sp.csc_matrix(
             (ndofs, self.interface_dimension),
             dtype=float,
@@ -322,9 +319,106 @@ class RGDSWCoarseSpace(GDSWCoarseSpace):
 
 class AMSCoarseSpace(GDSWCoarseSpace):
     def __init__(self, A: sp.csr_matrix, fespace: FESpace, two_mesh: TwoLevelMesh):
-        super().__init__(A, fespace, two_mesh)
+        CoarseSpace.__init__(self, A, fespace, two_mesh)
         self.name = "AMS coarse space"
+        self.coarse_dofs_mask, self.edge_dofs_mask, self.face_dofs_mask = (
+            self._get_interface_component_masks()
+        )
+        self.interface_dimension = np.sum(self.coarse_dofs_mask)
+        self.num_coarse_dofs = self.interface_dimension
+        self.num_edge_dofs = np.sum(self.edge_dofs_mask)
+        self.num_face_dofs = np.sum(self.face_dofs_mask)
+
+        self.interior_dofs_mask = ~self.fespace.interface_dofs_mask
+        self._print_init_string()
 
     def assemble_restriction_operator(self) -> sp.csc_matrix:
-        # Implement the AMS coarse space application logic here
-        raise NotImplementedError("AMS coarse space application not implemented.")
+        restriction_operator = sp.csc_matrix(
+            (self.fespace.num_free_dofs, self.interface_dimension), dtype=float
+        )
+
+        # Phi_V
+        vertex_restriction = sp.eye(self.interface_dimension, dtype=float)
+
+        # Phi_E
+        A_EE = self.A[self.edge_dofs_mask, :][:, self.edge_dofs_mask]
+        A_EI = self.A[self.edge_dofs_mask, :][:, self.fespace.interior_dofs_mask]
+        A_EE += sp.diags(A_EI.sum(axis=1).A1, offsets=0, format="csc")
+        if np.any(self.face_dofs_mask):
+            A_EF = self.A[self.edge_dofs_mask, :][:, self.face_dofs_mask]
+            A_EE += sp.diags(A_EF.sum(axis=1).A1, offsets=0, format="csc")
+        A_EV = self.A[self.edge_dofs_mask, :][:, self.coarse_dofs_mask]
+        edge_restriction = -spsolve(A_EE.tocsc(), A_EV.tocsc())
+
+        # Phi_F
+        face_restriction = sp.csc_matrix(
+            (self.num_face_dofs, self.interface_dimension), dtype=float
+        )
+        if np.any(self.face_dofs_mask):
+            A_FF = self.A[self.face_dofs_mask, :][:, self.face_dofs_mask]
+            A_FI = self.A[self.face_dofs_mask, :][:, self.fespace.interior_dofs_mask]
+            A_FF += sp.diags(A_FI.sum(axis=1).A1, offsets=0, format="csc")
+            A_FV = self.A[self.face_dofs_mask, :][:, self.coarse_dofs_mask]
+            A_FE = self.A[self.face_dofs_mask, :][:, self.edge_dofs_mask]
+            face_restriction = -spsolve(
+                A_FF.tocsc(),
+                (A_FV @ vertex_restriction + A_FE @ edge_restriction).tocsc(),
+            )
+
+        # Phi_I
+        A_II = self.A[self.interior_dofs_mask, :][:, self.interior_dofs_mask]
+        A_IV = self.A[self.interior_dofs_mask, :][:, self.coarse_dofs_mask]
+        A_IE = self.A[self.interior_dofs_mask, :][:, self.edge_dofs_mask]
+        A_IF = self.A[self.interior_dofs_mask, :][:, self.face_dofs_mask]
+        interface_restriction = (
+            A_IV @ vertex_restriction
+            + A_IE @ edge_restriction
+            + A_IF @ face_restriction
+        )
+        interior_restriction = -spsolve(
+            A_II.tocsc(),
+            interface_restriction.tocsc(),
+        )
+
+        # collect all restrictions at their respective dofs
+        restriction_operator[self.coarse_dofs_mask, :] = vertex_restriction
+        restriction_operator[self.edge_dofs_mask, :] = edge_restriction
+        if np.any(self.face_dofs_mask):
+            restriction_operator[self.face_dofs_mask, :] = face_restriction
+        restriction_operator[self.interior_dofs_mask, :] = interior_restriction
+
+        return restriction_operator
+
+    def _get_interface_component_masks(self):
+        # get all groups of interface components
+        coarse_components = []
+        super()._get_coarse_components(coarse_components)
+        coarse_dofs_mask = np.zeros(self.fespace.total_dofs).astype(bool)
+        for coarse_component in coarse_components:
+            coarse_dofs_mask[coarse_component] = True
+
+        edge_components = []
+        super()._get_edge_components(edge_components)
+        edge_dofs_mask = np.zeros(self.fespace.total_dofs).astype(bool)
+        for edge_component in edge_components:
+            edge_dofs_mask[edge_component] = True
+
+        face_components = []
+        super()._get_face_components(face_components)
+        face_dofs_mask = np.zeros(self.fespace.total_dofs).astype(bool)
+        for face_component in face_components:
+            face_dofs_mask[face_component] = True
+
+        return (
+            coarse_dofs_mask[self.fespace.free_dofs_mask],
+            edge_dofs_mask[self.fespace.free_dofs_mask],
+            face_dofs_mask[self.fespace.free_dofs_mask],
+        )
+
+    def _meta_info(self) -> str:
+        return (
+            f"\n\tinterface dimension: {self.interface_dimension}"
+            f"\n\tcoarse dofs: {self.num_coarse_dofs}"
+            f"\n\tedge dofs: {self.num_edge_dofs}"
+            f"\n\tface dofs: {self.num_face_dofs}"
+        )
