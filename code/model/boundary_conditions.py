@@ -66,13 +66,6 @@ class BoundaryConditions:
         else:
             self._unset_boundaries.remove(bc.name)
 
-        # # store type and boundary name
-        # if bc.type.value in self._boundary_kwargs:
-        #     self._boundary_kwargs[bc.type.value] += f"|{bc.name.value}"
-        # else:
-        #     self._boundary_kwargs[bc.type.value] = f"{bc.name.value}"
-
-        # save boundary condition
         self._boundary_conditions.append(bc)
 
     @property
@@ -147,31 +140,11 @@ class HomogeneousDirichlet(BoundaryConditions):
 
     def __init__(self):
         super().__init__()
-        self.set_boundary_condition(
-            BoundaryCondition(
-                BoundaryName.LEFT,
-                BoundaryType.DIRICHLET,
-                0.0,
+        for bname in BoundaryName:
+            self.set_boundary_condition(
+                BoundaryCondition(
+                    bname,
+                    BoundaryType.DIRICHLET,
+                    0.0,
+                )
             )
-        )
-        self.set_boundary_condition(
-            BoundaryCondition(
-                BoundaryName.RIGHT,
-                BoundaryType.DIRICHLET,
-                0.0,
-            )
-        )
-        self.set_boundary_condition(
-            BoundaryCondition(
-                BoundaryName.BOTTOM,
-                BoundaryType.DIRICHLET,
-                0.0,
-            )
-        )
-        self.set_boundary_condition(
-            BoundaryCondition(
-                BoundaryName.TOP,
-                BoundaryType.DIRICHLET,
-                0.0,
-            )
-        )
