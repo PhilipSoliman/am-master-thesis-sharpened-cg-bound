@@ -1,9 +1,10 @@
 import ngsolve as ngs
 import numpy as np
 import scipy.sparse as sp
-from ..problem_type import ProblemType
+
 from ..boundary_conditions import BoundaryConditions, HomogeneousDirichlet
 from ..meshes import TwoLevelMesh
+from ..problem_type import ProblemType
 
 
 class FESpace:
@@ -33,12 +34,14 @@ class FESpace:
         self.two_mesh = two_mesh
         self.ptype = ptype
         self.ndofs_per_unknown = []
-        
+
         # construct fespace to get dofs
-        for fespace, order, dim, bcs in zip(ptype.fespaces, ptype.orders, ptype.dimensions, boundary_conditions):
+        for fespace, order, dim, bcs in zip(
+            ptype.fespaces, ptype.orders, ptype.dimensions, boundary_conditions
+        ):
             fespace = fespace(two_mesh.fine_mesh, order=order, **bcs.boundary_kwargs)
             for _ in range(dim):
-                self.ndofs_per_unknown.append(fespace.ndof//dim)
+                self.ndofs_per_unknown.append(fespace.ndof // dim)
             if hasattr(self, "fespace"):
                 self.fespace *= fespace
             else:
@@ -56,7 +59,9 @@ class FESpace:
         # now reconstruct the fininite element space for the refined coarse space
         two_mesh.refine_coarse_mesh()
         delattr(self, "fespace")
-        for fespace, order, dim, bcs in zip(ptype.fespaces, ptype.orders, ptype.dimensions, boundary_conditions):
+        for fespace, order, dim, bcs in zip(
+            ptype.fespaces, ptype.orders, ptype.dimensions, boundary_conditions
+        ):
             fespace = fespace(two_mesh.coarse_mesh, order=order, **bcs.boundary_kwargs)
             if hasattr(self, "fespace"):
                 self.fespace *= fespace
@@ -361,7 +366,7 @@ class FESpace:
         repr_str += f"\n\tcoarse Node DOFs: {self.num_coarse_node_dofs}"
         return repr_str
 
-    def _print_domain_dofs(self):        
+    def _print_domain_dofs(self):
         repr_str = "Domain DOFs:"
         for subdomain, data in self.domain_dofs.items():
             repr_str += f"\n\t{subdomain.nr}:"
@@ -370,6 +375,7 @@ class FESpace:
             repr_str += f"\n\t\t#edges: {data['edges']}"
             repr_str += f"\n\t\t#layer: {len(data['layer'])}"
         return repr_str
+
 
 if __name__ == "__main__":
     """
