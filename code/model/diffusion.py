@@ -170,7 +170,7 @@ if __name__ == "__main__":
     get_cg_info = True
     diffusion_problem.solve(
         preconditioner=TwoLevelSchwarzPreconditioner,
-        coarse_space=GDSWCoarseSpace,
+        coarse_space=AMSCoarseSpace,
         rtol=1e-8,
         save_cg_info=get_cg_info,
         save_coarse_bases=False,
@@ -189,19 +189,21 @@ if __name__ == "__main__":
     set_mpl_cycler(colors=True, lines=True)
     if get_cg_info:
         figure, ax = plt.subplots(1, 2, figsize=(10, 4), squeeze=True)
+        # plot the coefficients
         ax[0].plot(diffusion_problem.cg_alpha, label=r"$\alpha$")
         ax[0].plot(diffusion_problem.cg_beta, label=r"$\beta$")
         ax[0].set_xlabel("Iteration")
         ax[0].set_ylabel("Coefficient Value")
         ax[0].legend()
-        if np.any(diffusion_problem.cg_alpha < 0):
-            print(
-                "Warning: Negative alpha values detected. This may indicate an issue with the preconditioner."
-            )
-        ax[1].plot(diffusion_problem.cg_residuals / diffusion_problem.cg_residuals[0])
+
+        # plot residuals and preconditioned residuals
+        ax[1].plot(diffusion_problem.cg_residuals, label=r"$||r_m||_2 / ||r_0||_2$")
+        if diffusion_problem.cg_precond_residuals is not None:
+            ax[1].plot(diffusion_problem.cg_precond_residuals,label=r"$||z_m||_2 / ||z_0||_2$")
         ax[1].set_xlabel("Iteration")
-        ax[1].set_ylabel(r"$\frac{||r_m||_2}{||r_0||_2}$")
+        ax[1].set_ylabel("Relative residuals")
         ax[1].set_yscale("log")
+        ax[1].legend()
 
         plt.suptitle(
             f"CG convergence ("

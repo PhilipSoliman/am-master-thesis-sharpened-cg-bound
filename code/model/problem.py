@@ -289,7 +289,10 @@ class Problem:
         # save cg coefficients if requested
         if save_cg_info:
             self.cg_alpha, self.cg_beta = custom_cg.alpha, custom_cg.beta
-            self.cg_residuals = custom_cg.r_i
+            self.cg_residuals = custom_cg.get_relative_residuals()
+            self.cg_precond_residuals = None
+            if precond is not None:
+                self.cg_precond_residuals = custom_cg.get_relative_preconditioned_residuals()
 
         # save coarse operator grid functions if available
         if save_coarse_bases and coarse_space is not None:

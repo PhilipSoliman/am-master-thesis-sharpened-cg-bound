@@ -36,7 +36,7 @@ class CustomCG:
         self.A = A
         self.b = b
         self.n = len(b)
-        self.maxiter = maxiter if maxiter is not None else self.n
+        self.maxiter = maxiter if maxiter is not None else 10 * self.n
 
         # initial guess
         self.x_0 = x_0
@@ -50,6 +50,7 @@ class CustomCG:
 
         # residuals
         self.r_i = np.array([], dtype=np.float64)
+        self.z_i = np.array([], dtype=np.float64)
 
         # exact solution
         self.x_exact = np.array([])
@@ -173,6 +174,7 @@ class CustomCG:
         matvec = A.matvec
 
         # preconditioner matrix-vector product
+        track_z = save_residuals and M is not None
         if M is None:
             M = LinearOperator(self.A.shape, lambda x: x)
         psolve = M.matvec
@@ -184,8 +186,12 @@ class CustomCG:
         r = self.b - matvec(self.x_0) if self.x_0.any() else self.b.copy()
         rho_prev, p = None, None
 
+        # intitial z vector
+        z = psolve(r)
+
         # historic
         r_i = [np.linalg.norm(r)]
+        z_i = [np.linalg.norm(z)] if track_z else []
         alphas = []
         betas = []
 
@@ -196,11 +202,14 @@ class CustomCG:
             for iteration in range(self.maxiter):
                 if np.linalg.norm(r_i[-1]) < self.tol:
                     success = True
-                    pbar.n = iteration + 1  # Set progress bar to actual number of iterations
-                    pbar.last_print_n = iteration + 1  # Force tqdm to print the final value
+                    pbar.n = (
+                        iteration + 1
+                    )  # Set progress bar to actual number of iterations
+                    pbar.last_print_n = (
+                        iteration + 1
+                    )  # Force tqdm to print the final value
                     pbar.update(0)  # Refresh the bar
                     break
-                z = psolve(r)
                 rho_cur = dotprod(r, z)
                 if iteration > 0:
                     beta = rho_cur / rho_prev  # type: ignore
@@ -215,20 +224,27 @@ class CustomCG:
                 alpha = rho_cur / dotprod(p, q)
                 x += alpha * p
                 r -= alpha * q
+                z = psolve(r)
                 if save_residuals:
                     r_i.append(np.linalg.norm(r))
+                if track_z:
+                    z_i.append(np.linalg.norm(z))
                 rho_prev = rho_cur
                 alphas.append(alpha)
 
                 # Update tqdm bar with current residual norm and alpha
-                pbar.set_postfix({
-                    "residual": f"{np.linalg.norm(r):.2e}",
-                    "alpha": f"{alpha:.2e}",
-                    "beta": f"{betas[-1]:.2e}" if betas else "N/A"
-                })
+                pbar.set_postfix(
+                    {
+                        "residual": f"{np.linalg.norm(r):.2e}",
+                        "alpha": f"{alpha:.2e}",
+                        "beta": f"{betas[-1]:.2e}" if betas else "N/A",
+                    }
+                )
 
         if save_residuals:
             self.r_i = np.array(r_i)
+        if track_z:
+            self.z_i = np.array(z_i)
 
         self.alpha = np.array(alphas)
         self.beta = np.array(betas)
@@ -247,6 +263,12 @@ class CustomCG:
             return self.r_i / self.r_i[0]
         else:
             raise ValueError("No residuals saved")
+
+    def get_relative_preconditioned_residuals(self) -> np.ndarray:
+        if np.any(self.z_i):
+            return self.z_i / self.z_i[0]
+        else:
+            raise ValueError("No preconditioner residuals saved")
 
     def cg_polynomial(
         self,
