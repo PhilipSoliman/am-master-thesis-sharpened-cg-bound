@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-from lib import CustomCG
+from lib.solvers import CustomCG
 from lib.utils import (
     get_cli_args,
     mpl_graph_plot_style,
