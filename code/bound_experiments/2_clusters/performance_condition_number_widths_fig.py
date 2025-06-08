@@ -2,11 +2,18 @@ from concurrent.futures import ThreadPoolExecutor
 
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.patches import Polygon
 from tqdm import tqdm
 
 from lib.solvers import CustomCG
-from lib.utils import get_cli_args, save_latex_figure, set_mpl_cycler
-
+from lib.utils import (
+    set_mpl_style,
+    CUSTOM_COLORS_SIMPLE,
+    get_cli_args,
+    save_latex_figure,
+    set_mpl_cycler,
+)
+set_mpl_style()
 set_mpl_cycler(colors=True, lines=True)
 
 ###################
@@ -25,7 +32,7 @@ TOLERANCE = 1e-6
 
 # spectrum
 MAX_CONDITION_NUMBER = 1e10  # maximum global condition number
-MIN_CONDITIION_NUMBER = 1e3  # minimum global condition number
+MIN_CONDITIION_NUMBER = 1e1  # minimum global condition number
 MIN_EIG = 1e-8  # reciprocal of the contrast of problem coefficient
 RIGHT_CLUSTER_CONDITION_NUMBER = 1e2  # condition number bound for contrast=1
 
@@ -100,10 +107,25 @@ for i in range(len(LEFT_CLUSTER_WIDTHS)):
     ax.plot(
         condition_numbers,
         performance[i, :],
-        label=f"$w_1 = {LEFT_CLUSTER_WIDTHS[i]:.0e}$",
+        label="$w_1 = 10^{" + f"{np.log10(LEFT_CLUSTER_WIDTHS[i]):.0f}" + "}$",
         lw=2,
     )
+# add shadded area at bottom of the graph
+polygon = Polygon(
+    [
+        [MIN_CONDITIION_NUMBER, 0],
+        [MAX_CONDITION_NUMBER, 0],
+        [MAX_CONDITION_NUMBER, 1],
+        [MIN_CONDITIION_NUMBER, 1],
+    ],
+    facecolor=CUSTOM_COLORS_SIMPLE[0],
+    alpha=0.2,
+    label="No improvement",
+)
+ax.add_patch(polygon)
+
 ax.set_yscale("log")
+ax.set_ylim((1e-1, 1e4))
 ax.set_xscale("log")
 ax.set_xlabel("Condition number $\\kappa$")
 ax.set_ylabel("Performance $m_c / m_s$")
