@@ -2,8 +2,8 @@ from enum import Enum
 
 import ngsolve as ngs
 
-from ..meshes import BoundaryName
-from ..problem_type import ProblemType
+from lib.meshes import BoundaryName
+from lib.problem_type import ProblemType
 
 
 class BoundaryType(Enum):

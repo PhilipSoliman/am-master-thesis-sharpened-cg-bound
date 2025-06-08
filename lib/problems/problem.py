@@ -7,22 +7,22 @@ import ngsolve as ngs
 import scipy.sparse as sp
 from scipy.sparse.linalg import LinearOperator
 
-from ..boundary_conditions import (
+from lib.boundary_conditions import (
     BoundaryCondition,
     BoundaryConditions,
     BoundaryType,
     HomogeneousDirichlet,
 )
-from ..fespace import FESpace
-from ..meshes import BoundaryName, TwoLevelMesh
-from ..preconditioners import (
+from lib.fespace import FESpace
+from lib.meshes import BoundaryName, TwoLevelMesh
+from lib.preconditioners import (
     CoarseSpace,
     OneLevelSchwarzPreconditioner,
     Preconditioner,
     TwoLevelSchwarzPreconditioner,
 )
-from ..problem_type import ProblemType
-from ..solvers import CustomCG
+from lib.problem_type import ProblemType
+from lib.solvers import CustomCG
 
 
 class Problem:

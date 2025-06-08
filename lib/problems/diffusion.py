@@ -2,11 +2,11 @@ from enum import Enum
 
 import ngsolve as ngs
 
-from ..boundary_conditions import BoundaryConditions, HomogeneousDirichlet
-from ..meshes import TwoLevelMesh
-from ..preconditioners import AMSCoarseSpace, TwoLevelSchwarzPreconditioner
-from ..problem_type import ProblemType
-from .problem import Problem
+from lib.boundary_conditions import BoundaryConditions, HomogeneousDirichlet
+from lib.meshes import TwoLevelMesh
+from lib.preconditioners import AMSCoarseSpace, TwoLevelSchwarzPreconditioner
+from lib.problem_type import ProblemType
+from lib.problems.problem import Problem
 
 
 class SourceFunc(Enum):

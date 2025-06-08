@@ -5,9 +5,9 @@ import numpy as np
 import scipy.sparse as sp
 from scipy.sparse.linalg import SuperLU, splu
 
-from ..fespace import FESpace
-from ..meshes import TwoLevelMesh
-from ..preconditioners import CoarseSpace
+from lib.fespace import FESpace
+from lib.meshes import TwoLevelMesh
+from lib.preconditioners import CoarseSpace
 
 
 class Preconditioner(object):

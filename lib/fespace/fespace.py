@@ -2,9 +2,9 @@ import ngsolve as ngs
 import numpy as np
 import scipy.sparse as sp
 
-from ..boundary_conditions import BoundaryConditions, HomogeneousDirichlet
-from ..meshes import TwoLevelMesh
-from ..problem_type import ProblemType
+from lib.boundary_conditions import BoundaryConditions, HomogeneousDirichlet
+from lib.meshes import TwoLevelMesh
+from lib.problem_type import ProblemType
 
 
 class FESpace:

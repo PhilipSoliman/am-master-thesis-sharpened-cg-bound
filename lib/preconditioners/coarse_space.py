@@ -6,9 +6,9 @@ import scipy.sparse as sp
 from scipy.sparse import SparseEfficiencyWarning
 from scipy.sparse.linalg import spsolve
 
-from ..fespace import FESpace
-from ..meshes import TwoLevelMesh
-from ..problem_type import ProblemType
+from lib.fespace import FESpace
+from lib.meshes import TwoLevelMesh
+from lib.problem_type import ProblemType
 
 warnings.simplefilter("ignore", SparseEfficiencyWarning)
 
