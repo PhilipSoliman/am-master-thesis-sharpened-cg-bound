@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from tqdm import tqdm
 
-from lib.custom_cg import CustomCG
+from lib.solvers import CustomCG
 from lib.utils import get_cli_args, save_latex_figure
 
 ###################

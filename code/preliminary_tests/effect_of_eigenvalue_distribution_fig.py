@@ -1,14 +1,14 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-from lib.custom_cg import CustomCG
+from lib import CustomCG
 from lib.utils import (
+    CustomColors,
     get_cli_args,
     mpl_graph_plot_style,
     save_latex_figure,
     set_mpl_cycler,
     set_mpl_style,
-    CustomColors
 )
 
 # constants
@@ -94,9 +94,7 @@ for i, A in enumerate(As):
 
     # solve system
     custom_cg = CustomCG(A, b, x0)
-    x, success = custom_cg.solve(
-        save_iterates=False, save_search_directions=False, x_exact=x_exact
-    )
+    x, success = custom_cg.solve(x_exact=x_exact)
 
     # calculate classical upperbound for the number of iterations
     if i == 0:  # upperbound is the same for all matrices
@@ -104,9 +102,9 @@ for i, A in enumerate(As):
         print(f"classical upperbound: {classical_iteration_upperbound}")
 
     # sharpened for the number of iterations
-    sharpened_iteration_upperbounds.append(custom_cg.calculate_improved_cg_iteration_upperbound(
-        clusters[i]
-    ))
+    sharpened_iteration_upperbounds.append(
+        custom_cg.calculate_improved_cg_iteration_upperbound(clusters[i])
+    )
     print(
         f"#clusters: {CLUSTER_COUNTS[row]}, spread: {CLUSTER_SPREADS[col]}, m_p: {sharpened_iteration_upperbounds[-1]}"
     )
@@ -141,13 +139,15 @@ for i, A in enumerate(As):
     sigma_text = r"$\mathbf{\sigma = " + f"{CLUSTER_SPREADS[col]}" + "}$"
     n_c_text = r"$\mathbf{n_c = " + f"{CLUSTER_COUNTS[row]}" + "}$"
 
-    axs_texts.append(ax.text(
-        DOMAIN[0] + 0.5 * domain_range,
-        CODOMAIN[0] + 0.9 * codomain_range,
-        convergence_info,
-        horizontalalignment="center",
-        zorder=11,
-    ))
+    axs_texts.append(
+        ax.text(
+            DOMAIN[0] + 0.5 * domain_range,
+            CODOMAIN[0] + 0.9 * codomain_range,
+            convergence_info,
+            horizontalalignment="center",
+            zorder=11,
+        )
+    )
     if row == 0:
         ax.set_title(sigma_text)
     if col == 0:
@@ -189,8 +189,14 @@ for i, _ in enumerate(As):
     row = i // len(CLUSTER_SPREADS)
     col = i % len(CLUSTER_SPREADS)
     ax = axs[row, col]
-    convergence_info = f"$m = {iterations[i]} < {sharpened_iteration_upperbounds[i]}"+ r" = \bar{m}$"
-    color = CustomColors.RED if classical_iteration_upperbound < sharpened_iteration_upperbounds[i] else CustomColors.NAVY
+    convergence_info = (
+        f"$m = {iterations[i]} < {sharpened_iteration_upperbounds[i]}" + r" = \bar{m}$"
+    )
+    color = (
+        CustomColors.RED
+        if classical_iteration_upperbound < sharpened_iteration_upperbounds[i]
+        else CustomColors.NAVY
+    )
     axs_texts[i].set_text(convergence_info)
 
 if ARGS.generate_output:

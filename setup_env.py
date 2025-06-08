@@ -42,7 +42,7 @@ def install_requirements(root_path):
 
 
 def make_c_library(root_path):
-    lib_path = os.path.join(root_path, "lib", "clib")
+    lib_path = os.path.join(root_path, "lib", "solvers", "clib")
     print(f"Building C library in {lib_path}...")
 
     result = subprocess.run(

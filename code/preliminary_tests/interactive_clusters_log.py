@@ -34,7 +34,7 @@ def chebyshev_polynomial(
 ) -> np.ndarray | float:
     if n == 0:
         raise ValueError("n must be greater than 0")
-    out = (z + np.emath.sqrt(z**2 - 1)) ** n + (z - np.emath.sqrt(z**2 - 1)) ** n
+    out = (z + np.emath.sqrt(z**2 - 1)) ** n + (z - np.emath.sqrt(z**2 - 1)) ** n # type: ignore
     return out / 2
 
 

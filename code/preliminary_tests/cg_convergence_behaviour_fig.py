@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # from clibs.custom_cg import CustomCG
-from lib.custom_cg import CustomCG
+from lib import CustomCG
 from lib.utils import (
     get_cli_args,
     mpl_graph_plot_style,
@@ -41,11 +41,10 @@ x_exact = np.linalg.solve(A, b)
 custom_cg = CustomCG(A, b, x0)
 
 # solve the system
-x, success = custom_cg.solve(save_iterates=True, save_search_directions=True)
+x, success = custom_cg.solve(save_residuals=True, x_exact=x_exact)
 
-# calculate errors & residuals
-errors = custom_cg.calculate_errors(x_exact)
-residuals = custom_cg.calculate_residuals()
+# calculate rel errors
+rel_errors = custom_cg.get_relative_errors()
 
 # calculate residual polynomials
 domain_size = DOMAIN[1] - DOMAIN[0]
@@ -74,7 +73,7 @@ for i in range(len(cg_poly_r)):
             cg_poly_x, cg_poly_r[i], label=label, markevery=RESOLUTION // NUMMARKERS
         )
     print(
-        f"CG iteration {i}: respoly error = {cg_poly_e[i]}, error (A-norm) = {errors[i]}"
+        f"CG iteration {i}: respoly error = {cg_poly_e[i]}, rel_error = {rel_errors[i]}"
     )
 
 # add eigenvalues of A

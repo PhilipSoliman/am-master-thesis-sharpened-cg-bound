@@ -1,18 +1,17 @@
+import argparse
 import subprocess
 from collections.abc import Iterable
 from enum import Enum
 from os import remove
 from os.path import abspath, dirname
 from pathlib import Path
-import argparse
 
 import matplotlib as mpl
 import matplotlib.colors as mpl_colors
 import numpy as np
 from matplotlib.axes import Axes
-from matplotlib.pyplot import savefig
 from matplotlib.figure import Figure
-from enum import Enum
+from matplotlib.pyplot import savefig
 
 LARGE_FILE_THRESHOLD = 10 * 1024 * 1024  # 10 MB
 
@@ -114,6 +113,8 @@ CUSTOM_COLORS_SIMPLE = [
     "#7EAFF1",  # Soft Sky Blue
     "#B79A89",  # Dark Warm Beige
 ]
+
+
 class CustomColors(Enum):
     RED = "#945357"
     BLUE = "#7A8F99"
@@ -121,6 +122,7 @@ class CustomColors(Enum):
     GOLD = "#B38B6D"
     SKY = "#7EAFF1"
     BEIGE = "#B79A89"
+
 
 DEFAULT_OUTPUT_TOGGLE_FLAGS = ["generate-output", "show-output"]
 
@@ -175,7 +177,9 @@ def get_cli_args(
 
     # Flag argument
     for flag in toggle_flags:
-        parser.add_argument(f"--{flag}", action="store_true", help=f"Enable {flag} mode")
+        parser.add_argument(
+            f"--{flag}", action="store_true", help=f"Enable {flag} mode"
+        )
 
     args = parser.parse_args()
     return args

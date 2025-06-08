@@ -35,3 +35,6 @@ figures/
 
 # Latex-Workshop
 ./build/
+
+# ignore FEM mesh folders
+data/tlm_*

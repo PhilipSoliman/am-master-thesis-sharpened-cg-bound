@@ -9,7 +9,7 @@ MATHFLAG=-lm
 # compiler
 CC=gcc
 
-lib: $(LIBTARGETS) 
+clibs: $(LIBTARGETS) 
 
 # shared lib compilation
 %.o : %.cpp
