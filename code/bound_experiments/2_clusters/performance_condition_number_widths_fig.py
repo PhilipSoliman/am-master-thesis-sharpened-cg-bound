@@ -1,18 +1,21 @@
 from concurrent.futures import ThreadPoolExecutor
 
+from matplotlib.axes import Axes
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.patches import Polygon
+from shapely.geometry import Polygon as ShapelyPolygon
 from tqdm import tqdm
 
 from lib.solvers import CustomCG
 from lib.utils import (
-    set_mpl_style,
     CUSTOM_COLORS_SIMPLE,
     get_cli_args,
     save_latex_figure,
     set_mpl_cycler,
+    set_mpl_style,
 )
+
 set_mpl_style()
 set_mpl_cycler(colors=True, lines=True)
 
@@ -22,7 +25,7 @@ set_mpl_cycler(colors=True, lines=True)
 ARGS = get_cli_args()
 
 # plot
-FIGWIDTH = 5
+FIGWIDTH = 6
 LEGEND_HEIGHT = 0.1
 LEVELS = 5
 RESOLUTION = int(1e2)
@@ -31,27 +34,29 @@ RESOLUTION = int(1e2)
 TOLERANCE = 1e-6
 
 # spectrum
-MAX_CONDITION_NUMBER = 1e10  # maximum global condition number
-MIN_CONDITIION_NUMBER = 1e1  # minimum global condition number
 MIN_EIG = 1e-8  # reciprocal of the contrast of problem coefficient
-RIGHT_CLUSTER_CONDITION_NUMBER = 1e2  # condition number bound for contrast=1
-
-# left cluster
+MAX_CONDITION_NUMBER = 1e10  # maximum global condition number
+RIGHT_CLUSTER_CONDITION_NUMBER = 1e1  # condition number bound for contrast=1
 LEFT_CLUSTER_WIDTHS = np.array([1e-10, 1e-9, 1e-8, 1e-7, 1e-6])
+min_condition_number = RIGHT_CLUSTER_CONDITION_NUMBER * (
+    1 + LEFT_CLUSTER_WIDTHS[0] / MIN_EIG
+)  # minimum global condition number
+
 
 ###########################
 # PERFORMANCE CALCULATION #
 ###########################
 # performance matrix
 performance = np.zeros((len(LEFT_CLUSTER_WIDTHS), RESOLUTION + 1))
+uniform_performance = np.zeros((RESOLUTION + 1,))
 
 # cluster variables
-condition_number_multiplier = (MAX_CONDITION_NUMBER / MIN_CONDITIION_NUMBER) ** (
+condition_number_multiplier = (MAX_CONDITION_NUMBER / min_condition_number) ** (
     1 / RESOLUTION
 )
 condition_numbers = np.array(
     [
-        MIN_CONDITIION_NUMBER * condition_number_multiplier**i
+        min_condition_number * condition_number_multiplier**i
         for i in range(RESOLUTION + 1)
     ]
 )
@@ -68,7 +73,7 @@ convergence_factors = (np.sqrt(condition_numbers) - 1) / (
 m_c = np.ceil(np.log(TOLERANCE / 2) / np.log(convergence_factors))
 
 
-# improved CG bound
+# improved CG bound (per width)
 def compute_bound_for_width(i):
     lcluster = left_clusters[i]
     m_s_i = np.zeros(RESOLUTION + 1)  # performance for this left cluster
@@ -85,6 +90,18 @@ def compute_bound_for_width(i):
     return i, m_s_i
 
 
+# improved CG bound (uniform performance)
+for i, rcluster in enumerate(right_clusters):
+    lcluster = (
+        MIN_EIG,
+        rcluster[0],
+    )  # left cluster is almost touching the right cluster
+    clusters = [lcluster, rcluster]
+    m_s = CustomCG.calculate_improved_cg_iteration_upperbound_static(
+        clusters, tol=TOLERANCE, exact_convergence=True
+    )
+    uniform_performance[i] = m_c[i] / m_s
+
 with ThreadPoolExecutor() as executor:
     desc = "Calculating performance surface"
     futures = [
@@ -97,12 +114,12 @@ with ThreadPoolExecutor() as executor:
             performance[i, :] = m_c / m_s_i
             pbar.update(1)
 
-#######################
-# PERFORMANCE SURFACE #
-#######################
+######################
+# PERFORMANCE CURVES #
+######################
 fig, ax = plt.subplots(figsize=(FIGWIDTH, FIGWIDTH))
 
-# plot surface
+# plot performance curves per width
 for i in range(len(LEFT_CLUSTER_WIDTHS)):
     ax.plot(
         condition_numbers,
@@ -110,19 +127,49 @@ for i in range(len(LEFT_CLUSTER_WIDTHS)):
         label="$w_1 = 10^{" + f"{np.log10(LEFT_CLUSTER_WIDTHS[i]):.0f}" + "}$",
         lw=2,
     )
-# add shadded area at bottom of the graph
-polygon = Polygon(
+
+
+# plot uniform performance
+ax.plot(
+    condition_numbers,
+    uniform_performance,
+    label="Uniform spectrum",
+    lw=2,
+    linestyle="--",
+    color="black",
+)
+
+# Define no improvement region
+performance_below_1 = ShapelyPolygon(
     [
-        [MIN_CONDITIION_NUMBER, 0],
+        [min_condition_number, 0],
         [MAX_CONDITION_NUMBER, 0],
         [MAX_CONDITION_NUMBER, 1],
-        [MIN_CONDITIION_NUMBER, 1],
+        [min_condition_number, 1],
     ],
-    facecolor=CUSTOM_COLORS_SIMPLE[0],
-    alpha=0.2,
-    label="No improvement",
 )
-ax.add_patch(polygon)
+uniform_spectrum = ShapelyPolygon(
+    [
+        [min_condition_number, 1],
+        *[[cond, perf] for cond, perf in zip(condition_numbers, uniform_performance)],
+        [MAX_CONDITION_NUMBER, 1],
+    ],
+)
+no_improvement_region = performance_below_1.intersection(uniform_spectrum)
+
+if not no_improvement_region.is_empty:
+    if no_improvement_region.geom_type == "Polygon":
+        x, y = no_improvement_region.exterior.xy  # type: ignore
+        ax.fill(x, y, color=CUSTOM_COLORS_SIMPLE[0], alpha=0.2, label="No improvement")
+    elif no_improvement_region.geom_type == "MultiPolygon":
+        for poly in no_improvement_region.geoms:  # type: ignore
+            x, y = poly.exterior.xy
+            ax.fill(
+                x, y, color=CUSTOM_COLORS_SIMPLE[0], alpha=0.2, label="No improvement"
+            )
+else:
+    print("No improvement region is empty, nothing to fill.")
+
 
 ax.set_yscale("log")
 ax.set_ylim((1e-1, 1e4))
