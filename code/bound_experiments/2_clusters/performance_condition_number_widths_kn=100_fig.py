@@ -1,4 +1,5 @@
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -210,6 +211,7 @@ fig.suptitle(
 fig.tight_layout()
 
 if ARGS.generate_output:
-    save_latex_figure("performance_condition_number_widths", fig)
+    fn = Path(__file__).name.replace("_fig.py", "")
+    save_latex_figure(fn, fig)
 if ARGS.show_output:
     plt.show()
