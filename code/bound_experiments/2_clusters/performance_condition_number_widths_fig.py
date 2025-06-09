@@ -1,8 +1,8 @@
 from concurrent.futures import ThreadPoolExecutor
 
-from matplotlib.axes import Axes
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.axes import Axes
 from matplotlib.patches import Polygon
 from shapely.geometry import Polygon as ShapelyPolygon
 from tqdm import tqdm
@@ -25,7 +25,7 @@ set_mpl_cycler(colors=True, lines=True)
 ARGS = get_cli_args()
 
 # plot
-FIGWIDTH = 6
+FIGWIDTH = 5.5
 LEGEND_HEIGHT = 0.1
 LEVELS = 5
 RESOLUTION = int(1e2)
@@ -37,7 +37,9 @@ TOLERANCE = 1e-6
 MIN_EIG = 1e-8  # reciprocal of the contrast of problem coefficient
 MAX_CONDITION_NUMBER = 1e10  # maximum global condition number
 RIGHT_CLUSTER_CONDITION_NUMBER = 1e1  # condition number bound for contrast=1
-LEFT_CLUSTER_WIDTHS = np.array([1e-10, 1e-9, 1e-8, 1e-7, 1e-6])
+LEFT_CLUSTER_WIDTHS = np.array(
+    [1e-10, 1e-9, 1e-8, 1e-7, 1e-6, 1e-5, 1e-4, 1e-3, 1e-2, 1e-1]
+)
 min_condition_number = RIGHT_CLUSTER_CONDITION_NUMBER * (
     1 + LEFT_CLUSTER_WIDTHS[0] / MIN_EIG
 )  # minimum global condition number
@@ -124,8 +126,20 @@ for i in range(len(LEFT_CLUSTER_WIDTHS)):
     ax.plot(
         condition_numbers,
         performance[i, :],
-        label="$w_1 = 10^{" + f"{np.log10(LEFT_CLUSTER_WIDTHS[i]):.0f}" + "}$",
         lw=2,
+    )
+    # Annotate at the right end of each curve
+    x_annot = condition_numbers[-1] * 10
+    y_annot = performance[i, -1]
+    ax.text(
+        x_annot,
+        y_annot,
+        f"$w_1=10^{{{int(np.log10(LEFT_CLUSTER_WIDTHS[i]))}}}$",
+        fontsize=10,
+        va="center",
+        ha="center",
+        color=ax.lines[-1].get_color(),  # match curve color
+        clip_on=False,
     )
 
 
@@ -173,12 +187,26 @@ else:
 
 ax.set_yscale("log")
 ax.set_ylim((1e-1, 1e4))
+xmax = condition_numbers[-1]
+ax.set_xlim((min_condition_number / 2, MAX_CONDITION_NUMBER * 100))
+steps = int(np.log10(MAX_CONDITION_NUMBER / min_condition_number))
 ax.set_xscale("log")
+
+ticks = np.logspace(
+    np.log10(min_condition_number),
+    np.log10(MAX_CONDITION_NUMBER),
+    steps,
+)
+ticklabels = [f"$10^{{{int(np.log10(tick))}}}$" for tick in ticks]
+ax.set_xticks(ticks, labels=ticklabels)
 ax.set_xlabel("Condition number $\\kappa$")
 ax.set_ylabel("Performance $m_c / m_s$")
 
 # meta info
 ax.legend()
+fig.suptitle(
+    f"Performance vs. Global condition number ($\kappa_n = 10^{{{np.log10(RIGHT_CLUSTER_CONDITION_NUMBER):.0f}}}$)",
+)
 fig.tight_layout()
 
 if ARGS.generate_output:
