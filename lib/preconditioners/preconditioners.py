@@ -3,7 +3,7 @@ from typing import Type
 import ngsolve as ngs
 import numpy as np
 import scipy.sparse as sp
-from scipy.sparse.linalg import SuperLU, splu
+from scipy.sparse.linalg import LinearOperator, SuperLU, splu
 
 from lib.fespace import FESpace
 from lib.meshes import TwoLevelMesh
@@ -17,6 +17,7 @@ class Preconditioner(object):
 
 class OneLevelSchwarzPreconditioner(Preconditioner):
     def __init__(self, A: sp.csr_matrix, fespace: FESpace):
+        self.shape = A.shape
         self.free_dofs = np.array(fespace.fespace.FreeDofs()).astype(bool)
         self.fespace = fespace
         self.local_operators = self._get_local_operators(A)
@@ -27,6 +28,10 @@ class OneLevelSchwarzPreconditioner(Preconditioner):
         for local_free_dofs, A_i in self.local_operators:
             out[local_free_dofs] += A_i.solve(x[local_free_dofs])
         return out
+    
+    def as_linear_operator(self) -> LinearOperator:
+        """Return the preconditioner as a linear operator."""
+        return LinearOperator(self.shape, lambda x: self.apply(x))
 
     def _get_local_operators(
         self, A: sp.csr_matrix
