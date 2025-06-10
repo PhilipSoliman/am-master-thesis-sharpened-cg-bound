@@ -3,3 +3,4 @@ matplotlib==3.10.1
 tqdm==4.67.1
 ngsolve==6.2.2406
 scipy==1.15.3
+shapely==2.1.1
