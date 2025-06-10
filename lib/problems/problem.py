@@ -196,7 +196,23 @@ class Problem:
         b = self._linear_form.Assemble()
         A = self._bilinear_form.Assemble()
 
-        return u, b, A
+        return A, u, b
+
+    def get_homogenized_system(self, A: ngs.Matrix, u: ngs.GridFunction, b: ngs.GridFunction):
+        res = b.vec.CreateVector()
+        res.data = b.vec - A.mat * u.vec
+
+        # free dofs
+        free_dofs = self.fes.fespace.FreeDofs()
+
+        # export to numpy arrays & sparse matrix
+        u_arr = copy(u.vec.FV().NumPy()[free_dofs])
+        res_arr = res.FV().NumPy()[free_dofs]
+        rows, cols, vals = A.mat.COO()
+        A_sp = sp.csr_matrix((vals, (rows, cols)), shape=A.mat.shape)
+        A_sp_f = A_sp[free_dofs, :][:, free_dofs]
+
+        return A_sp_f, u_arr, res_arr
 
     def direct_ngs_solve(self, u: ngs.Vector, b: ngs.Vector, A: ngs.Matrix):
         """
@@ -225,21 +241,10 @@ class Problem:
         save_coarse_bases: bool = False,
     ):
         # assemble the system
-        self.u, b, A = self.assemble()
+        A, self.u, b = self.assemble()
 
         # homogenization of the boundary conditions
-        res = b.vec.CreateVector()
-        res.data = b.vec - A.mat * self.u.vec
-
-        # free dofs
-        free_dofs = self.fes.fespace.FreeDofs()
-
-        # export to numpy arrays & sparse matrix
-        u_arr = copy(self.u.vec.FV().NumPy()[free_dofs])
-        res_arr = res.FV().NumPy()[free_dofs]
-        rows, cols, vals = A.mat.COO()
-        A_sp = sp.csr_matrix((vals, (rows, cols)), shape=A.mat.shape)
-        A_sp_f = A_sp[free_dofs, :][:, free_dofs]
+        A_sp_f, u_arr, res_arr = self.get_homogenized_system(A, self.u, b)
 
         # get preconditioner
         M_op = None
@@ -262,7 +267,7 @@ class Problem:
                     raise ValueError(
                         f"Unknown preconditioner type: {preconditioner.__name__}"
                     )
-                M_op = LinearOperator(A_sp_f.shape, lambda x: precond.apply(x))
+                M_op = precond.as_linear_operator()
         self.precond_name = precond.name if precond is not None else "None"
 
         # solve system using (P)CG
@@ -279,7 +284,7 @@ class Problem:
                 f"Conjugate gradient solver did not converge. Number of iterations: {custom_cg.niters}"
             )
         else:
-            self.u.vec.FV().NumPy()[free_dofs] = u_arr
+            self.u.vec.FV().NumPy()[self.fes.fespace.FreeDofs()] = u_arr
 
         # save cg coefficients if requested
         if save_cg_info:
@@ -367,7 +372,7 @@ if __name__ == "__main__":
     )
 
     # assemble the forms
-    u, b, A = problem.assemble()
+    A, u, b = problem.assemble()
 
     # plot the sparsity pattern of the stiffness matrix
     import scipy.sparse as sp
