@@ -28,7 +28,7 @@ ARGS = get_cli_args()
 TOLERANCE = 1e-6
 
 # spectrum
-MIN_EIGS = [1e-7, 1e-2]  # reciprocal of the contrast of problem coefficient
+MIN_EIGS = [1e-8, 1e2]  # reciprocal of the contrast of problem coefficient
 LEFT_CLUSTER_WIDTHS_MULTIPLIERS = [1e-2, 1, 1e2, 1e4, 1e6]
 RIGHT_CLUSTER_CONDITION_NUMBERS = [1e1, 1e2]  # condition number bound for contrast=1
 MAX_CONDITION_NUMBER = 1e10  # maximum global condition number
@@ -252,7 +252,7 @@ for row, min_eig in enumerate(MIN_EIGS):
             ticks = np.logspace(
                 np.log10(condition_numbers[0]),
                 np.log10(MAX_CONDITION_NUMBER),
-                steps,
+                steps+2,
             )
             ticklabels = [f"$10^{{{int(np.log10(tick))}}}$" for tick in ticks]
             ax.set_xticks(ticks, labels=ticklabels)
