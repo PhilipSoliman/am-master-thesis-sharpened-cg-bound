@@ -295,6 +295,7 @@ class Problem:
                 self.cg_precond_residuals = (
                     custom_cg.get_relative_preconditioned_residuals()
                 )
+            self.approximate_eigs = custom_cg.get_approximate_eigenvalues()
 
         # save coarse operator grid functions if available
         if save_coarse_bases and coarse_space is not None:
