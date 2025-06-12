@@ -2,7 +2,9 @@ from ctypes import CDLL, POINTER, byref, c_bool, c_double, c_int
 from typing import Optional
 
 import numpy as np
-from scipy.sparse.linalg import LinearOperator, aslinearoperator
+from scipy.sparse import csc_matrix
+from scipy.sparse import diags as spdiags
+from scipy.sparse.linalg import LinearOperator, aslinearoperator, eigsh
 from tqdm import trange
 
 from lib.utils import get_root
@@ -311,6 +313,25 @@ class CustomCG:
             e = np.empty(self.niters + 1)
 
         return x, r, e
+
+    def get_approximate_eigenvalues(self):
+        """
+        Returns the approximate eigenvalues of the system A using the Lanczos matrix.
+        The eigenvalues are computed from the diagonal and off-diagonal elements of the Lanczos matrix.
+        """
+        return eigsh(
+                self.get_lanczos_matrix(),
+                k=self.niters - 1,
+                which="BE",  # gets eigenvalues on both ends of the spectrum
+                return_eigenvectors=False,
+            )
+
+    def get_lanczos_matrix(self) -> csc_matrix:
+        delta = 1 / self.alpha + np.append(0, self.beta / self.alpha[:-1])
+        eta = np.append(0, np.sqrt(self.beta) / self.alpha[:-1])
+        return spdiags(
+            [eta, delta, eta], offsets=[-1, 0, 1], shape=(self.niters, self.niters) # type: ignore
+        ).tocsc()
 
     def residual_polynomials(self) -> list[np.ndarray]:
         delta = 1 / self.alpha + np.append(0, self.beta / self.alpha[:-1])
