@@ -31,8 +31,8 @@ FIGHEIGHT = 2
 problem_type = ProblemType.DIFFUSION
 boundary_conditions = HomogeneousDirichlet(problem_type)
 lx, ly = 1.0, 1.0  # Length of the domain in x and y directions
-coarrse_mesh_size = 0.3  # Size of the coarse mesh
-refinement_levels = 2  # Number of times to refine the mesh
+coarse_mesh_size = 0.3  # Size of the coarse mesh
+refinement_levels = 3  # Number of times to refine the mesh
 layers = 2  # Number of overlapping layers in the Schwarz Domain Decomposition
 source_func = SourceFunc.CONSTANT  # Source function
 coef_func = CoefFunc.INCLUSIONS  # Coefficient function
@@ -42,7 +42,7 @@ diffusion_problem = DiffusionProblem(
     boundary_conditions=boundary_conditions,
     lx=lx,
     ly=ly,
-    coarse_mesh_size=coarrse_mesh_size,
+    coarse_mesh_size=coarse_mesh_size,
     refinement_levels=refinement_levels,
     layers=layers,
     source_func=source_func,
@@ -87,9 +87,15 @@ cond_numbers = np.zeros(len(preconditioners))
 for shorthand, preconditioner in tqdm(
     preconditioners.items(), desc="Computing spectra"
 ):
+    MinvA = A
+    if preconditioner is not None:
+        MinvA = spl.LinearOperator(
+            A.shape,
+            lambda x: preconditioner.apply(A @ x),
+        )
     eigenvalues = spl.eigsh(
-        preconditioner.as_linear_operator() if preconditioner is not None else A,
-        k=n - 2,
+        MinvA,
+        k=n - 1,
         which="BE",  # gets eigenvalues on both ends of the spectrum
         return_eigenvectors=False,
     )
