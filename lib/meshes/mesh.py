@@ -402,7 +402,7 @@ class TwoLevelMesh:
         print(f"Saving TwoLevelMesh to {self.save_dir}...")
         self._save_metadata()
         self._save_meshes()
-        self._save_subdomains()
+        # self._save_subdomains()
 
     def _save_metadata(self):
         """
