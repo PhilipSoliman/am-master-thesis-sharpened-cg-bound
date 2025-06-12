@@ -1,6 +1,7 @@
 from enum import Enum
 
 import ngsolve as ngs
+import numpy as np
 
 from lib.boundary_conditions import BoundaryConditions, HomogeneousDirichlet
 from lib.meshes import TwoLevelMesh
@@ -116,21 +117,122 @@ class DiffusionProblem(Problem):
 
     # High coefficient inclusions around the coarse nodes.
     def inclusions_coefficient(self):
-        c = ngs.CoefficientFunction(0.0)
-        h = ngs.specialcf.mesh_size
+        # setup pieewise constant coefficient function
+        constant_fes = ngs.L2(self.two_mesh.fine_mesh, order=0)
+        grid_func = ngs.GridFunction(constant_fes)
+
+        # get mesh size
+        H = self.two_mesh.coarse_mesh_size
+        h = H * 2 ** (-self.two_mesh.refinement_levels)
+
+        # define background and contrast values
+        background = 1.0
         contrast = 1e8
-        all_coarse_vertices = set(self.two_mesh.coarse_mesh.vertices)
-        for subdomain, _ in self.two_mesh.subdomains.items():
-            mesh_e = self.two_mesh.fine_mesh[subdomain]
-            vertices = set(mesh_e.vertices)
-            all_coarse_vertices -= vertices
-            if len(all_coarse_vertices) == 0:
-                return c
-            for v in mesh_e.vertices:
-                p = self.two_mesh.fine_mesh[v].point
-                d = ngs.sqrt((ngs.x - p[0]) ** 2 + (ngs.y - p[1]) ** 2)
-                c += ngs.IfPos(h - d, contrast, 1.0)
-        return c
+
+        # Get all free coarse node coordinates
+        free_coarse_nodes = list(self.fes.free_component_tree_dofs.keys())
+        coarse_points = [
+            self.two_mesh.coarse_mesh[node].point for node in free_coarse_nodes
+        ]
+
+        # Loop over coarse nodes and set high contrast if inside any inclusion
+        coef_array = np.full(self.two_mesh.fine_mesh.ne, background)
+        for coarse_node, coarse_point in zip(free_coarse_nodes, coarse_points):
+            mesh_el = self.two_mesh.fine_mesh[coarse_node]
+            for el in mesh_el.elements:
+                vertices = np.array(
+                    [
+                        self.two_mesh.fine_mesh[v].point
+                        for v in self.two_mesh.fine_mesh[el].vertices
+                    ]
+                )
+                d = np.linalg.norm(vertices - coarse_point, axis=1, ord=2)
+                if np.all(d < 2 * h):
+                    coef_array[el.nr] = contrast
+
+        grid_func.vec.FV().NumPy()[:] = coef_array
+        coef_func = ngs.CoefficientFunction(grid_func)
+        return coef_func.Compile()
+
+    # High coefficient inclusions on the coarse node (2 layers).
+    def inclusions_2layers_coefficient(self):
+        # setup piecewise constant coefficient function
+        constant_fes = ngs.L2(self.two_mesh.fine_mesh, order=0)
+        grid_func = ngs.GridFunction(constant_fes)
+
+        # define background and contrast values
+        background = 1.0
+        contrast = 1e8
+
+        # Get all free coarse node coordinates
+        free_coarse_nodes = list(self.fes.free_component_tree_dofs.keys())
+
+        # Loop over coarse nodes and set high contrast if inside any inclusion
+        coef_array = np.full(self.two_mesh.fine_mesh.ne, background)
+        for coarse_node in free_coarse_nodes:
+            mesh_el = self.two_mesh.fine_mesh[coarse_node]
+            elements = set(mesh_el.elements)
+            for el in elements:
+                coef_array[el.nr] = contrast
+                # add second layer
+                outer_vertices = set(self.two_mesh.fine_mesh[el].vertices) - set(
+                    [coarse_node]
+                )
+                for vertex in outer_vertices:
+                    outer_elements = (
+                        set(self.two_mesh.fine_mesh[vertex].elements) - elements
+                    )
+                    for outer_el in outer_elements:
+                        coef_array[outer_el.nr] = contrast
+
+        grid_func.vec.FV().NumPy()[:] = coef_array
+        coef_func = ngs.CoefficientFunction(grid_func)
+        return coef_func.Compile()
+
+    # edge inclusions
+    def inclusions_edges_coefficient(self):
+        # get fine mesh size
+        num_edge_vertices = 2 ** self.two_mesh.refinement_levels - 2 # without coarse nodes
+        edge_vertex_inclusion_idxs = np.array([i for i in range(2, num_edge_vertices, 2)])
+
+        # setup piecewise constant coefficient function
+        constant_fes = ngs.L2(self.two_mesh.fine_mesh, order=0)
+        grid_func = ngs.GridFunction(constant_fes)
+
+        # define background and contrast values
+        background = 1.0
+        contrast = 1e8
+
+        # asssemble grid function
+        coef_array = np.full(self.two_mesh.fine_mesh.ne, background)
+        coarse_edges = set(self.two_mesh.coarse_mesh.edges)
+        component_tree_dofs = self.two_mesh.connected_component_tree
+        free_coarse_nodes = list(self.fes.free_component_tree_dofs.keys())
+        for coarse_node in free_coarse_nodes:
+            node_data = component_tree_dofs[coarse_node]
+            coarse_point = np.array(self.two_mesh.coarse_mesh[coarse_node].point)
+            for coarse_edge, edge_data in node_data.items():
+                if coarse_edge not in coarse_edges:
+                    continue  # edge already processed
+                coarse_edges.remove(coarse_edge)
+                distances = []
+                for vertex in edge_data["fine_vertices"]:
+                    point = np.array(self.two_mesh.fine_mesh[vertex].point)
+                    d = np.linalg.norm(coarse_point - point, ord=2)
+                    distances.append((vertex, d))
+                
+                # Sort the (vertex, distance) pairs by distance
+                sorted_vertices = [v for v, d in sorted(distances, key=lambda pair: pair[1])]
+                for i in edge_vertex_inclusion_idxs:
+                    vertex = sorted_vertices[i]
+                    mesh_el = self.two_mesh.fine_mesh[vertex]
+                    for el in mesh_el.elements:
+                        coef_array[el.nr] = contrast
+
+
+        grid_func.vec.FV().NumPy()[:] = coef_array
+        coef_func = ngs.CoefficientFunction(grid_func)
+        return coef_func.Compile()
 
     def save_functions(self):
         """Save the source and coefficient functions to vtk."""
@@ -143,8 +245,8 @@ class DiffusionProblem(Problem):
 
 if __name__ == "__main__":
     # Example usage
-    source_func = SourceFunc.PARABOLIC
-    coef_func = CoefFunc.INCLUSIONS
+    source_func = SourceFunc.CONSTANT
+    coef_func = CoefFunc.INCLUSIONS_EDGES
     diffusion_problem = DiffusionProblem(
         HomogeneousDirichlet(ProblemType.DIFFUSION),
         coarse_mesh_size=0.15,
@@ -177,24 +279,35 @@ if __name__ == "__main__":
     set_mpl_style()
     set_mpl_cycler(colors=True, lines=True)
     if get_cg_info:
-        figure, ax = plt.subplots(1, 2, figsize=(10, 4), squeeze=True)
+        fig, axs = plt.subplots(
+            2, 2,
+            figsize=(10, 6),
+            gridspec_kw={'height_ratios': [3, 1], 'width_ratios': [1, 1]}
+        )
+
+        # Remove the bottom-right axis and make the bottom-left axis span both columns
+        fig.delaxes(axs[1, 0])
+        fig.delaxes(axs[1, 1])
+        gs = axs[1, 0].get_gridspec()
+        axs_bottom = fig.add_subplot(gs[1, :])
+        
         # plot the coefficients
-        ax[0].plot(diffusion_problem.cg_alpha, label=r"$\alpha$")
-        ax[0].plot(diffusion_problem.cg_beta, label=r"$\beta$")
-        ax[0].set_xlabel("Iteration")
-        ax[0].set_ylabel("Coefficient Value")
-        ax[0].legend()
+        axs[0,0].plot(diffusion_problem.cg_alpha, label=r"$\alpha$")
+        axs[0,0].plot(diffusion_problem.cg_beta, label=r"$\beta$")
+        axs[0,0].set_xlabel("Iteration")
+        axs[0,0].set_ylabel("Coefficient Value")
+        axs[0,0].legend()
 
         # plot residuals and preconditioned residuals
-        ax[1].plot(diffusion_problem.cg_residuals, label=r"$||r_m||_2 / ||r_0||_2$")
+        axs[0,1].plot(diffusion_problem.cg_residuals, label=r"$||r_m||_2 / ||r_0||_2$")
         if diffusion_problem.cg_precond_residuals is not None:
-            ax[1].plot(
+            axs[0,1].plot(
                 diffusion_problem.cg_precond_residuals, label=r"$||z_m||_2 / ||z_0||_2$"
             )
-        ax[1].set_xlabel("Iteration")
-        ax[1].set_ylabel("Relative residuals")
-        ax[1].set_yscale("log")
-        ax[1].legend()
+        axs[0,1].set_xlabel("Iteration")
+        axs[0,1].set_ylabel("Relative residuals")
+        axs[0,1].set_yscale("log")
+        axs[0,1].legend()
 
         plt.suptitle(
             f"CG convergence ("
@@ -205,5 +318,34 @@ if __name__ == "__main__":
             + r"$M^{-1}$"
             + f" = {diffusion_problem.precond_name})"
         )
+
+        # Plot each spectrum at a different y
+        axs_bottom.plot(
+            np.real(diffusion_problem.approximate_eigs),
+            np.full_like(diffusion_problem.approximate_eigs, 0),
+            marker="x",
+            linestyle="None",
+        )
+
+        # Set y-ticks and labels
+        axs_bottom.set_ylim(-0.5, 0.5)
+        axs_bottom.set_yticks([0], ["$\\mathbf{\\sigma(T_m)}$"])
+        axs_bottom.set_xscale("log")
+        axs_bottom.grid(axis="x")
+        axs_bottom.grid()
+        ax2 = axs_bottom.twinx()
+
+        # add condition numbers on right axis
+        def format_cond(c):
+            if np.isnan(c):
+                return "n/a"
+            mantissa, exp = f"{c:.1e}".split("e")
+            exp = int(exp)
+            return rf"${mantissa} \times 10^{{{exp}}}$"
+
+        cond = np.max(diffusion_problem.approximate_eigs) / np.min(diffusion_problem.approximate_eigs)
+        ax2.set_ylim(axs_bottom.get_ylim())
+        ax2.set_yticks([0], [format_cond(cond)])
+
         plt.tight_layout()
         plt.show()
