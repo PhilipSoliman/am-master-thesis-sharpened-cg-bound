@@ -35,7 +35,7 @@ coarse_mesh_size = 0.3  # Size of the coarse mesh
 refinement_levels = 3  # Number of times to refine the mesh
 layers = 2  # Number of overlapping layers in the Schwarz Domain Decomposition
 source_func = SourceFunc.CONSTANT  # Source function
-coef_func = CoefFunc.INCLUSIONS  # Coefficient function
+coef_func = CoefFunc.INCLUSIONS_EDGES  # Coefficient function
 
 # Create the diffusion problem instance
 diffusion_problem = DiffusionProblem(
