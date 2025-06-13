@@ -250,7 +250,7 @@ class DiffusionProblem(Problem):
         )
 
 
-if __name__ == "__main__":
+def main():
     # Example usage
     source_func = SourceFunc.CONSTANT
     coef_func = CoefFunc.INCLUSIONS_EDGES
@@ -359,3 +359,6 @@ if __name__ == "__main__":
 
         plt.tight_layout()
         plt.show()
+
+if __name__ == "__main__":
+    main()
