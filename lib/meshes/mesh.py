@@ -100,8 +100,9 @@ class TwoLevelMesh:
         self.ly = ly
         self.coarse_mesh_size = coarse_mesh_size
         self.refinement_levels = refinement_levels
-        self.fine_mesh, self.coarse_mesh, self.coarse_edges_map = (
-            self.create_conforming_meshes()
+        self.fine_mesh = self.create_mesh()
+        self.coarse_edges_map, self.coarse_mesh = (
+            self._refine_mesh_and_get_coarse_edges_map(self.fine_mesh)
         )
         self.subdomains = self.get_subdomains()
         self.connected_components = self.get_connected_components()
@@ -111,7 +112,8 @@ class TwoLevelMesh:
             self.extend_subdomains(layer_idx)
         print(self)
 
-    def create_conforming_meshes(self) -> tuple[ngs.Mesh, ngs.Mesh, dict]:
+    # mesh creation
+    def create_mesh(self) -> ngs.Mesh:
         """
         Create conforming coarse and fine meshes by refining the coarse mesh.
         Args:
@@ -140,18 +142,18 @@ class TwoLevelMesh:
         )
         mesh = ngs.Mesh(ngm_coarse)
 
-        # refine mesh in-place and get a copy of the coarse mesh
-        coarse_mesh, coarse_edges = self._refine_mesh(mesh)
+        return mesh
 
-        return mesh, coarse_mesh, coarse_edges
-
-    def _refine_mesh(self, mesh: ngs.Mesh) -> tuple[ngs.Mesh, dict]:
+    # mesh refinement
+    def _refine_mesh_and_get_coarse_edges_map(
+        self, mesh: ngs.Mesh
+    ) -> tuple[dict, ngs.Mesh]:
         # Make a copy of the coarse mesh for easy reference (DO NOT REFINE THIS MESH... memory issues)
         coarse_mesh = copy.deepcopy(mesh)
 
         # initialize coarse edges dictionary
         num_fine_vertices_per_coarse_edge = 2**self.refinement_levels - 1
-        coarse_edges = {
+        coarse_edges_map = {
             coarse_edge: {
                 "fine_vertices": np.empty(
                     num_fine_vertices_per_coarse_edge, dtype=ngs.NodeId
@@ -190,7 +192,7 @@ class TwoLevelMesh:
 
         # refine the fine mesh + find fine vertices on coarse edges
         for ref_level in range(self.refinement_levels):
-            mesh.Refine() # we refine the mesh in-place, so the mesh is updated
+            mesh.Refine()  # we refine the mesh in-place, so the mesh is updated
 
             # get number of all newly created fine vertices
             vertex_numbers = np.arange(vertices_processed, mesh.nv)
@@ -226,7 +228,7 @@ class TwoLevelMesh:
                 distance = distance[points_mask]
                 sorted_indices = np.argsort(distance)
                 edge_vertices = edge_vertices[sorted_indices]
-                coarse_edges[coarse_edge]["fine_vertices"][
+                coarse_edges_map[coarse_edge]["fine_vertices"][
                     vertex_masks[ref_level]
                 ] = edge_vertices
 
@@ -234,7 +236,7 @@ class TwoLevelMesh:
             vertices_processed = mesh.nv
 
         # find fine edges on coarse edges using the vertices on coarse edges
-        for coarse_edge, data in coarse_edges.items():
+        for coarse_edge, data in coarse_edges_map.items():
             # convert numpy array of fine vertices to list
             data["fine_vertices"] = list(data["fine_vertices"])
 
@@ -247,7 +249,7 @@ class TwoLevelMesh:
                 fine_and_coarse_vertices, mesh
             )
 
-        return coarse_mesh, coarse_edges
+        return coarse_edges_map, coarse_mesh
 
     def _get_edges_between_vertices(
         self, vertices: list[ngs.NodeId], mesh: ngs.Mesh
@@ -267,6 +269,17 @@ class TwoLevelMesh:
             edges += list(edges1.intersection(edges2))
         return edges
 
+    def _refine_mesh(self, mesh: ngs.Mesh):
+        """
+        Refine the (coarse) mesh in-place to create a fine mesh that can be used for the fespace construction
+        and obtaining the prolongation operator
+        """
+        coarse_mesh = copy.deepcopy(mesh)
+        for _ in range(self.refinement_levels):
+            mesh.Refine()
+        return mesh, coarse_mesh
+
+    # domain decomposition
     def get_subdomains(self):
         """
         Identify and return the mapping of coarse mesh elements to their corresponding fine mesh domains.
@@ -295,61 +308,36 @@ class TwoLevelMesh:
             }
         return subdomains
 
-    def get_connected_component_tree(self) -> dict:
+    def extend_subdomains(self, layer_idx):
         """
-        Finds the tree of connected components in the fine mesh based on the coarse mesh subdomains.
+        Extend the subdomains by adding layers of fine mesh elements.
 
-        Note a 2D mesh does not have faces so the fine edge lists will be empty.
-        Returns:
-            dict: A dictionary with the following structure:
-                {
-                    coarse_node_i1: {
-                        coarse_edge_j1:{
-                            "fine_edges": [fine_edge_1, fine_edge_2, ...],
-                            "fine_vertices": [fine_vertex_1, fine_vertex_2, ...],
-                            coarse_face_k1: {
-                                "fine_faces": [fine_face_1, fine_face_2, ...],
-                                "fine_edges": [fine_edge_1, fine_edge_2, ...],
-                                "fine_vertices": [fine_vertex_1, fine_vertex_2, ...]
-                            },
-                        },
-                        coarse_edge_j2:{...},
-                        ...,
-                        coarse_edge_jm:{...},
-                    }
-                    coarse_node_i2: {...},
-                    ...,
-                    coarse_node_in: {...}
-                }
+        Args:
+            layer_idx (int, optional): The new layer's index. Defaults to 1.
         """
-        component_tree = {}
-        all_coarse_nodes = set(self.coarse_mesh.vertices)
-        for coarse_node in all_coarse_nodes:
-            component_tree[coarse_node] = {}
+        for subdomain_data in self.subdomains.values():
+            interior_edges = set()
+            domain_elements = copy.copy(subdomain_data["interior"])
+            for prev_layer_idx in range(1, layer_idx):
+                domain_elements += subdomain_data[f"layer_{prev_layer_idx}"]
+            for el in domain_elements:
+                mesh_el = self.fine_mesh[el]
+                for fine_edge in mesh_el.edges:
+                    interior_edges.add(fine_edge.nr)
 
-        for subdomain, subdomain_data in self.subdomains.items():
-            for coarse_node in subdomain.vertices:
-                for coarse_edge in self.coarse_mesh[coarse_node].edges:
-                    if (
-                        coarse_edge_d := component_tree[coarse_node].get(
-                            coarse_edge, None
-                        )
-                    ) is None:
-                        component_tree[coarse_node][coarse_edge] = {}
-                        coarse_edge_d = component_tree[coarse_node][coarse_edge]
-                    if (
-                        fine_edges := subdomain_data["edges"].get(coarse_edge, None)
-                    ) is not None:
-                        coarse_edge_d["fine_edges"] = fine_edges
-                        edge_vertices = set()
-                        for fine_edge in fine_edges:
-                            for vertex in self.fine_mesh[fine_edge].vertices:
-                                if vertex not in all_coarse_nodes:
-                                    edge_vertices.add(vertex)
-                        coarse_edge_d["fine_vertices"] = list(edge_vertices)
+            layer_elements = set()
+            for el in domain_elements:
+                mesh_el = self.fine_mesh[el]
+                vertices = mesh_el.vertices
+                for v in vertices:
+                    mesh_v = self.fine_mesh[v]
+                    for edge in mesh_v.edges:
+                        if edge.nr not in interior_edges:
+                            mesh_e = self.fine_mesh[edge]
+                            layer_elements.update(mesh_e.elements)
+            subdomain_data[f"layer_{layer_idx}"] = list(layer_elements)
 
-        return component_tree
-
+    # interface decomposition
     def get_connected_components(self) -> dict:
         """
         Finds all the connected components in the fine mesh based on the coarse mesh subdomains.
@@ -424,43 +412,60 @@ class TwoLevelMesh:
 
         return connected_components
 
-    def extend_subdomains(self, layer_idx):
+    def get_connected_component_tree(self) -> dict:
         """
-        Extend the subdomains by adding layers of fine mesh elements.
+        Finds the tree of connected components in the fine mesh based on the coarse mesh subdomains.
 
-        Args:
-            layer_idx (int, optional): The new layer's index. Defaults to 1.
+        Note a 2D mesh does not have faces so the fine edge lists will be empty.
+        Returns:
+            dict: A dictionary with the following structure:
+                {
+                    coarse_node_i1: {
+                        coarse_edge_j1:{
+                            "fine_edges": [fine_edge_1, fine_edge_2, ...],
+                            "fine_vertices": [fine_vertex_1, fine_vertex_2, ...],
+                            coarse_face_k1: {
+                                "fine_faces": [fine_face_1, fine_face_2, ...],
+                                "fine_edges": [fine_edge_1, fine_edge_2, ...],
+                                "fine_vertices": [fine_vertex_1, fine_vertex_2, ...]
+                            },
+                        },
+                        coarse_edge_j2:{...},
+                        ...,
+                        coarse_edge_jm:{...},
+                    }
+                    coarse_node_i2: {...},
+                    ...,
+                    coarse_node_in: {...}
+                }
         """
-        for subdomain_data in self.subdomains.values():
-            interior_edges = set()
-            domain_elements = copy.copy(subdomain_data["interior"])
-            for prev_layer_idx in range(1, layer_idx):
-                domain_elements += subdomain_data[f"layer_{prev_layer_idx}"]
-            for el in domain_elements:
-                mesh_el = self.fine_mesh[el]
-                for fine_edge in mesh_el.edges:
-                    interior_edges.add(fine_edge.nr)
+        component_tree = {}
+        all_coarse_nodes = set(self.coarse_mesh.vertices)
+        for coarse_node in all_coarse_nodes:
+            component_tree[coarse_node] = {}
 
-            layer_elements = set()
-            for el in domain_elements:
-                mesh_el = self.fine_mesh[el]
-                vertices = mesh_el.vertices
-                for v in vertices:
-                    mesh_v = self.fine_mesh[v]
-                    for edge in mesh_v.edges:
-                        if edge.nr not in interior_edges:
-                            mesh_e = self.fine_mesh[edge]
-                            layer_elements.update(mesh_e.elements)
-            subdomain_data[f"layer_{layer_idx}"] = list(layer_elements)
+        for subdomain, subdomain_data in self.subdomains.items():
+            for coarse_node in subdomain.vertices:
+                for coarse_edge in self.coarse_mesh[coarse_node].edges:
+                    if (
+                        coarse_edge_d := component_tree[coarse_node].get(
+                            coarse_edge, None
+                        )
+                    ) is None:
+                        component_tree[coarse_node][coarse_edge] = {}
+                        coarse_edge_d = component_tree[coarse_node][coarse_edge]
+                    if (
+                        fine_edges := subdomain_data["edges"].get(coarse_edge, None)
+                    ) is not None:
+                        coarse_edge_d["fine_edges"] = fine_edges
+                        edge_vertices = set()
+                        for fine_edge in fine_edges:
+                            for vertex in self.fine_mesh[fine_edge].vertices:
+                                if vertex not in all_coarse_nodes:
+                                    edge_vertices.add(vertex)
+                        coarse_edge_d["fine_vertices"] = list(edge_vertices)
 
-    # in-plca mesh refinement
-    def refine_coarse_mesh(self):
-        """
-        Refine the coarse mesh in-place to create a fine mesh that can be used for the fespace construction
-        and obtaining the prolongation operator
-        """
-        for _ in range(self.refinement_levels):
-            self.coarse_mesh.Refine()
+        return component_tree
 
     # meta info string
     def __str__(self):
@@ -476,7 +481,7 @@ class TwoLevelMesh:
         )
 
     # saving
-    def save(self):
+    def save(self, save_vtk_meshes: bool = False):
         """
         Save the mesh, metadata, and subdomain information to disk.
 
@@ -487,8 +492,9 @@ class TwoLevelMesh:
             self.save_dir.mkdir(parents=True, exist_ok=True)
         print(f"Saving TwoLevelMesh to {self.save_dir}...")
         self._save_metadata()
-        self._save_meshes()
-        # self._save_subdomains()
+        if save_vtk_meshes:
+            self._save_vtk_meshes()
+        self._save_coarse_edges_map()
 
     def _save_metadata(self):
         """
@@ -505,69 +511,50 @@ class TwoLevelMesh:
         with open(metadata_path, "w") as f:
             json.dump(metadata, f, indent=4)
 
-    def _save_meshes(self, save_vtk: bool = True):
+    def _save_vtk_meshes(self):
         """
         Saves the fine and coarse mesh data to disk in both .vol and optionally .vtk formats.
 
         Args:
             save_vtk (bool, optional): If True, saves the meshes in VTK format as well. Defaults to True.
+        """
+        vtk = ngs.VTKOutput(
+            self.fine_mesh,
+            coefs=[],
+            names=[],
+            filename=str(self.save_dir / "fine_mesh"),
+        )
+        vtk.Do()
+        vtk = ngs.VTKOutput(
+            self.coarse_mesh,
+            coefs=[],
+            names=[],
+            filename=str(self.save_dir / "coarse_mesh"),
+        )
+        vtk.Do()
 
-        Side Effects:
-            - Prints information about the fine and coarse meshes (number of elements, vertices, and edges).
-            - Saves the fine and coarse meshes to .vol files in the DATA_DIR directory.
-            - If save_vtk is True, also saves the meshes in VTK format with the specified file name prefix.
+    def _save_coarse_edges_map(self):
         """
-        self.fine_mesh.ngmesh.Save(str(self.save_dir / "fine_mesh.vol"))
-        self.coarse_mesh.ngmesh.Save(str(self.save_dir / "coarse_mesh.vol"))
-        if save_vtk:
-            vtk = ngs.VTKOutput(
-                self.fine_mesh,
-                coefs=[],
-                names=[],
-                filename=str(self.save_dir / "fine_mesh"),
-            )
-            vtk.Do()
-            vtk = ngs.VTKOutput(
-                self.coarse_mesh,
-                coefs=[],
-                names=[],
-                filename=str(self.save_dir / "coarse_mesh"),
-            )
-            vtk.Do()
-            print("Fine mesh saved:")
-            print(f"\tNumber of elements: {self.fine_mesh.ne}")
-            print(f"\tNumber of vertices: {self.fine_mesh.nv}")
-            print(f"\tNumber of edges: {len(self.fine_mesh.edges)}")
-            print("Coarse mesh saved:")
-            print(f"\tNumber of elements: {self.coarse_mesh.ne}")
-            print(f"\tNumber of vertices: {self.coarse_mesh.nv}")
-            print(f"\tNumber of edges: {len(self.coarse_mesh.edges)}")
-
-    def _save_subdomains(self):
+        Save the mapping of fine edges to coarse edges.
         """
-        Save subdomains to a file.
-        """
-        subdomains_path = self.save_dir / "subdomains.json"
-        with open(subdomains_path, "w") as f:
-            subdomains_picklable = {
-                int(subdomain.nr): {
-                    "interior": [el.nr for el in subdomain_data["interior"]],
-                    "edges": {
-                        int(coarse_edge.nr): [
-                            edge.nr for edge in subdomain_data["edges"][coarse_edge]
+        coarse_edges_map_path = self.save_dir / "coarse_edges_map.json"
+        with open(coarse_edges_map_path, "w") as f:
+            coarse_edges_map = {
+                coarse_edge.nr: {
+                    "fine_vertices": [
+                        vertex.nr
+                        for vertex in self.coarse_edges_map[coarse_edge][
+                            "fine_vertices"
                         ]
-                        for coarse_edge in subdomain_data["edges"]
-                    },
-                    **{
-                        f"layer_{layer_idx}": [
-                            el.nr for el in subdomain_data.get(f"layer_{layer_idx}", [])
-                        ]
-                        for layer_idx in range(1, self.layers + 1)
-                    },
+                    ],
+                    "fine_edges": [
+                        edge.nr
+                        for edge in self.coarse_edges_map[coarse_edge]["fine_edges"]
+                    ],
                 }
-                for subdomain, subdomain_data in self.subdomains.items()
+                for coarse_edge in self.coarse_mesh.edges
             }
-            json.dump(subdomains_picklable, f, indent=4)
+            json.dump(coarse_edges_map, f, indent=4)
 
     # loading
     @classmethod
@@ -598,8 +585,9 @@ class TwoLevelMesh:
             obj._load_metadata(fp)
             print(f"\tloaded metadata")
             obj._load_meshes(fp)
-            print(f"\tloaded meshes")
-            # obj._load_subdomains(fp) # TODO: fix this
+            print(f"\tregenerated meshes")
+            obj._load_coarse_edges_map(fp)
+            print(f"\tloaded coarse edges map")
             setattr(obj, "subdomains", obj.get_subdomains())
             print(f"\tcalculated subdomains")
             for layer_idx in range(1, obj.layers + 1):
@@ -634,54 +622,31 @@ class TwoLevelMesh:
         """
         Load fine and coarse meshes from disk.
         """
-        fine_mesh_path = fp / "fine_mesh.vol"
-        coarse_mesh_path = fp / "coarse_mesh.vol"
-        if not fine_mesh_path.exists() or not coarse_mesh_path.exists():
-            raise FileNotFoundError(
-                f"Mesh files {fine_mesh_path} or {coarse_mesh_path} do not exist."
-            )
-        self.fine_mesh = ngs.Mesh(str(fine_mesh_path))
-        self.coarse_mesh = ngs.Mesh(str(coarse_mesh_path))
+        mesh = self.create_mesh()
+        self.fine_mesh, self.coarse_mesh = self._refine_mesh(mesh)
 
-    def _load_subdomains(self, fp: Path):
+    def _load_coarse_edges_map(self, fp: Path):
         """
-        Load subdomains from a file and reconstruct the mapping.
-
-        Args:
-            file_name (str, optional): Name of the file to load the subdomains. Defaults to "".
+        Load the mapping of fine edges to coarse edges from a JSON file.
         """
-        # TODO: FIX SUBDOMAINS LOADING
-        subdomains_path = fp / "subdomains.json"
-        if not subdomains_path.exists():
+        coarse_edges_map_path = fp / "coarse_edges_map.json"
+        if not coarse_edges_map_path.exists():
             raise FileNotFoundError(
-                f"subdomains file {subdomains_path} does not exist."
+                f"Coarse edges map file {coarse_edges_map_path} does not exist."
             )
-        with open(subdomains_path, "r") as f:
-            self.subdomains = json.load(f)
-
-        # Convert keys back to elements
-        self.subdomains = {
-            self.coarse_mesh[ngs.ElementId(ngs.VOL, int(subdomain))]: {
-                "interior": [
-                    self.fine_mesh[ngs.ElementId(ngs.VOL, el)]
-                    for el in subdomain_data["interior"]
+        with open(coarse_edges_map_path, "r") as f:
+            coarse_edges_map = json.load(f)
+        self.coarse_edges_map = {
+            self.coarse_mesh.edges[int(coarse_edge_nr)]: {
+                "fine_vertices": [
+                    self.fine_mesh[self.fine_mesh.vertices[v]]
+                    for v in data["fine_vertices"]
                 ],
-                "edges": {
-                    self.coarse_mesh.edges[int(coarse_edge_nr)]: [
-                        self.fine_mesh.edges[edge_nr]
-                        for edge_nr in subdomain_data["edges"][coarse_edge_nr]
-                    ]
-                    for coarse_edge_nr in subdomain_data["edges"]
-                },
-                **{
-                    f"layer_{layer_idx}": [
-                        self.fine_mesh[ngs.ElementId(ngs.VOL, el)]
-                        for el in subdomain_data.get(f"layer_{layer_idx}", [])
-                    ]
-                    for layer_idx in range(1, self.layers + 1)
-                },
+                "fine_edges": [
+                    self.fine_mesh[self.fine_mesh.edges[e]] for e in data["fine_edges"]
+                ],
             }
-            for subdomain, subdomain_data in self.subdomains.items()
+            for coarse_edge_nr, data in coarse_edges_map.items()
         }
 
     @property
