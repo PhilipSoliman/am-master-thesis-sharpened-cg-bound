@@ -9,6 +9,7 @@ import netgen.libngpy._NgOCC as occ
 import ngsolve as ngs
 import numpy as np
 from matplotlib.axes import Axes
+from matplotlib.figure import Figure
 from matplotlib.patches import Polygon
 
 from lib.utils import CUSTOM_COLORS_SIMPLE, get_root
@@ -836,14 +837,15 @@ class TwoLevelMesh:
                     linewidth=0.5,
                     linestyle="-",
                 )
-                self.plot_vertices(
-                    ax,
-                    edge_data["fine_vertices"],
-                    self.fine_mesh,
-                    color="green",
-                    marker="x",
-                    markersize=15,
-                )
+                if np.any(edge_data["fine_vertices"]):
+                    self.plot_vertices(
+                        ax,
+                        edge_data["fine_vertices"],
+                        self.fine_mesh,
+                        color="green",
+                        marker="x",
+                        markersize=15,
+                    )
         return ax
 
     @staticmethod
@@ -939,6 +941,45 @@ class TwoLevelMesh:
             label=kwargs.get("label"),
             zorder=kwargs.get("zorder", TwoLevelMesh.ZORDERS["vertices"]),
         )
+
+    def visualize_two_level_mesh(self, show: bool = True) -> Figure:
+        """
+        Visualize the two-level mesh with subdomains and layers.
+
+        Args:
+            ax (Axes): Matplotlib axis to plot on.
+
+        Returns:
+            Figure: The matplotlib figure with the plotted two-level mesh.
+        """
+        # visualize TwoLevelMesh
+        from lib.utils import set_mpl_style
+
+        set_mpl_style()
+        fig, ax = plt.subplots(2, 2, figsize=(10, 6), sharex=True, sharey=True)
+
+        two_mesh.plot_mesh(ax[0, 0], mesh_type="fine")
+        two_mesh.plot_mesh(ax[0, 0], mesh_type="coarse")
+        ax[0, 0].set_title("Fine and Coarse Meshes")
+
+        # plot the domains
+        two_mesh.plot_domains(ax[0, 1], domains=1, plot_layers=True)
+        ax[0, 1].set_title("Subdomains and Layers")
+
+        # plot all connected components
+        two_mesh.plot_connected_components(ax[1, 0])
+        ax[1, 0].set_title("Interface")
+
+        # plot the connected component tree
+        two_mesh.plot_connected_component_tree(ax[1, 1])
+        ax[1, 1].set_title("Connected Component Tree")
+
+        fig.tight_layout()
+
+        if show:
+            plt.show()
+
+        return fig
 
     @property
     def subdomain_colors(self) -> cycle:
@@ -1069,24 +1110,5 @@ if __name__ == "__main__":
     # two_mesh.save()  # Save the mesh and subdomains
     two_mesh = TwoLevelMesh.load(lx, ly, coarse_mesh_size, refinement_levels, layers)
 
-    # visualize TwoLevelMesh
-    from lib.utils import set_mpl_style
-    set_mpl_style()
-    figure, ax = plt.subplots(2, 2, figsize=(10, 6), sharex=True, sharey=True)
+    fig = two_mesh.visualize_two_level_mesh(show=True)
 
-    two_mesh.plot_mesh(ax[0, 0], mesh_type="fine")
-    two_mesh.plot_mesh(ax[0, 0], mesh_type="coarse")
-    ax[0, 0].set_title("Fine and Coarse Meshes")
-
-    # plot the domains
-    two_mesh.plot_domains(ax[0, 1], domains=1, plot_layers=True)
-    ax[0, 1].set_title("Subdomains and Layers")
-
-    # plot all connected components
-    two_mesh.plot_connected_components(ax[1, 0])
-    ax[1, 0].set_title("Interface")
-
-    # plot the connected component tree
-    two_mesh.plot_connected_component_tree(ax[1, 1])
-    ax[1, 1].set_title("Connected Component Tree")
-    plt.show()
