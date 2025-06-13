@@ -22,6 +22,8 @@ class CoefFunc(Enum):
 
     SINUSOIDAL = "sinusoidal_coefficient"
     INCLUSIONS = "inclusions_coefficient"
+    INCLUSIONS_2LAYERS = "inclusions_2layers_coefficient"
+    INCLUSIONS_EDGES = "inclusions_edges_coefficient"
     CONSTANT = "constant_coefficient"
     HETMANIUK_LEHOUCQ = "hetmaniuk_lehoucq_coefficient"
     HEINLEIN = "heinlein_coefficient"
@@ -192,8 +194,12 @@ class DiffusionProblem(Problem):
     # edge inclusions
     def inclusions_edges_coefficient(self):
         # get fine mesh size
-        num_edge_vertices = 2 ** self.two_mesh.refinement_levels - 2 # without coarse nodes
-        edge_vertex_inclusion_idxs = np.array([i for i in range(2, num_edge_vertices, 2)])
+        num_edge_vertices = (
+            2**self.two_mesh.refinement_levels - 2
+        )  # without coarse nodes
+        edge_vertex_inclusion_idxs = np.array(
+            [i for i in range(2, num_edge_vertices, 2)]
+        )
 
         # setup piecewise constant coefficient function
         constant_fes = ngs.L2(self.two_mesh.fine_mesh, order=0)
@@ -220,15 +226,16 @@ class DiffusionProblem(Problem):
                     point = np.array(self.two_mesh.fine_mesh[vertex].point)
                     d = np.linalg.norm(coarse_point - point, ord=2)
                     distances.append((vertex, d))
-                
+
                 # Sort the (vertex, distance) pairs by distance
-                sorted_vertices = [v for v, d in sorted(distances, key=lambda pair: pair[1])]
+                sorted_vertices = [
+                    v for v, d in sorted(distances, key=lambda pair: pair[1])
+                ]
                 for i in edge_vertex_inclusion_idxs:
                     vertex = sorted_vertices[i]
                     mesh_el = self.two_mesh.fine_mesh[vertex]
                     for el in mesh_el.elements:
                         coef_array[el.nr] = contrast
-
 
         grid_func.vec.FV().NumPy()[:] = coef_array
         coef_func = ngs.CoefficientFunction(grid_func)
@@ -280,9 +287,10 @@ if __name__ == "__main__":
     set_mpl_cycler(colors=True, lines=True)
     if get_cg_info:
         fig, axs = plt.subplots(
-            2, 2,
+            2,
+            2,
             figsize=(10, 6),
-            gridspec_kw={'height_ratios': [3, 1], 'width_ratios': [1, 1]}
+            gridspec_kw={"height_ratios": [3, 1], "width_ratios": [1, 1]},
         )
 
         # Remove the bottom-right axis and make the bottom-left axis span both columns
@@ -290,24 +298,24 @@ if __name__ == "__main__":
         fig.delaxes(axs[1, 1])
         gs = axs[1, 0].get_gridspec()
         axs_bottom = fig.add_subplot(gs[1, :])
-        
+
         # plot the coefficients
-        axs[0,0].plot(diffusion_problem.cg_alpha, label=r"$\alpha$")
-        axs[0,0].plot(diffusion_problem.cg_beta, label=r"$\beta$")
-        axs[0,0].set_xlabel("Iteration")
-        axs[0,0].set_ylabel("Coefficient Value")
-        axs[0,0].legend()
+        axs[0, 0].plot(diffusion_problem.cg_alpha, label=r"$\alpha$")
+        axs[0, 0].plot(diffusion_problem.cg_beta, label=r"$\beta$")
+        axs[0, 0].set_xlabel("Iteration")
+        axs[0, 0].set_ylabel("Coefficient Value")
+        axs[0, 0].legend()
 
         # plot residuals and preconditioned residuals
-        axs[0,1].plot(diffusion_problem.cg_residuals, label=r"$||r_m||_2 / ||r_0||_2$")
+        axs[0, 1].plot(diffusion_problem.cg_residuals, label=r"$||r_m||_2 / ||r_0||_2$")
         if diffusion_problem.cg_precond_residuals is not None:
-            axs[0,1].plot(
+            axs[0, 1].plot(
                 diffusion_problem.cg_precond_residuals, label=r"$||z_m||_2 / ||z_0||_2$"
             )
-        axs[0,1].set_xlabel("Iteration")
-        axs[0,1].set_ylabel("Relative residuals")
-        axs[0,1].set_yscale("log")
-        axs[0,1].legend()
+        axs[0, 1].set_xlabel("Iteration")
+        axs[0, 1].set_ylabel("Relative residuals")
+        axs[0, 1].set_yscale("log")
+        axs[0, 1].legend()
 
         plt.suptitle(
             f"CG convergence ("
@@ -343,7 +351,9 @@ if __name__ == "__main__":
             exp = int(exp)
             return rf"${mantissa} \times 10^{{{exp}}}$"
 
-        cond = np.max(diffusion_problem.approximate_eigs) / np.min(diffusion_problem.approximate_eigs)
+        cond = np.max(diffusion_problem.approximate_eigs) / np.min(
+            diffusion_problem.approximate_eigs
+        )
         ax2.set_ylim(axs_bottom.get_ylim())
         ax2.set_yticks([0], [format_cond(cond)])
 
