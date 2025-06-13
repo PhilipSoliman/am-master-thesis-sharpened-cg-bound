@@ -1002,20 +1002,20 @@ class TwoLevelMesh:
         set_mpl_style()
         fig, ax = plt.subplots(2, 2, figsize=(10, 6), sharex=True, sharey=True)
 
-        two_mesh.plot_mesh(ax[0, 0], mesh_type="fine")
-        two_mesh.plot_mesh(ax[0, 0], mesh_type="coarse")
+        self.plot_mesh(ax[0, 0], mesh_type="fine")
+        self.plot_mesh(ax[0, 0], mesh_type="coarse")
         ax[0, 0].set_title("Fine and Coarse Meshes")
 
         # plot the domains
-        two_mesh.plot_domains(ax[0, 1], domains=1, plot_layers=True)
+        self.plot_domains(ax[0, 1], domains=1, plot_layers=True)
         ax[0, 1].set_title("Subdomains and Layers")
 
         # plot all connected components
-        two_mesh.plot_connected_components(ax[1, 0])
+        self.plot_connected_components(ax[1, 0])
         ax[1, 0].set_title("Interface")
 
         # plot the connected component tree
-        two_mesh.plot_connected_component_tree(ax[1, 1])
+        self.plot_connected_component_tree(ax[1, 1])
         ax[1, 1].set_title("Connected Component Tree")
 
         fig.tight_layout()
@@ -1132,17 +1132,48 @@ class TwoLevelMesh:
         )
 
 
-# Example usage:
-if __name__ == "__main__":
+# usage examples
+class TwoLevelMeshExamples:
+
     lx, ly = 1.0, 1.0
-    coarse_mesh_size = 0.5
-    refinement_levels = 3
+    coarse_mesh_size = lx
+    refinement_levels = 2
     layers = 1
-    # two_mesh = TwoLevelMesh(
-    #     lx, ly, coarse_mesh_size, refinement_levels=refinement_levels, layers=layers
-    # )
-    # two_mesh.save()  # Save the mesh and subdomains
-    two_mesh = TwoLevelMesh.load(lx, ly, coarse_mesh_size, refinement_levels, layers)
+    SAVE_DIR = DATA_DIR / TwoLevelMesh.SAVE_STRING.format(
+        lx, ly, coarse_mesh_size, refinement_levels, layers
+    )
 
-    fig = two_mesh.visualize_two_level_mesh(show=True)
+    @classmethod
+    def example_creation(cls, fig_toggle: bool = True):
+        two_mesh = TwoLevelMesh(
+            cls.lx, cls.ly, cls.coarse_mesh_size, refinement_levels=cls.refinement_levels, layers=cls.layers
+        )
+        two_mesh.save()  # Save the mesh and subdomains
+        fig = two_mesh.visualize_two_level_mesh(show=fig_toggle)
 
+    @classmethod
+    def example_load(cls):
+        two_mesh = TwoLevelMesh.load(cls.lx, cls.ly, cls.coarse_mesh_size, cls.refinement_levels, cls.layers)
+
+
+    # Profiling the mesh creation & loading
+    @classmethod
+    def profile(cls):
+        import cProfile
+        import pstats
+
+        fp = cls.SAVE_DIR / "mesh_creation.prof"
+        cProfile.run("TwoLevelMeshExamples.example_creation(fig_toggle=False)", str(fp))
+        p = pstats.Stats(str(fp))
+        p.sort_stats("cumulative").print_stats(10)
+
+        fp = cls.SAVE_DIR / "mesh_loading.prof"
+        cProfile.run("TwoLevelMeshExamples.example_load()", str(fp))
+        p = pstats.Stats(str(fp))
+        p.sort_stats("cumulative").print_stats(10)
+
+
+if __name__ == "__main__":
+    # TwoLevelMeshExamples.example_creation()
+    # TwoLevelMeshExamples.example_load()  # Uncomment to load an existing mesh
+    TwoLevelMeshExamples.profile()  # Uncomment to profile the mesh creation & loading
