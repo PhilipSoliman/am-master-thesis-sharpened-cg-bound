@@ -100,7 +100,9 @@ class TwoLevelMesh:
         self.ly = ly
         self.coarse_mesh_size = coarse_mesh_size
         self.refinement_levels = refinement_levels
-        self.fine_mesh, self.coarse_mesh = self.create_conforming_meshes()
+        self.fine_mesh, self.coarse_mesh, self.coarse_edges_map = (
+            self.create_conforming_meshes()
+        )
         self.subdomains = self.get_subdomains()
         self.connected_components = self.get_connected_components()
         self.connected_component_tree = self.get_connected_component_tree()
@@ -109,7 +111,7 @@ class TwoLevelMesh:
             self.extend_subdomains(layer_idx)
         print(self)
 
-    def create_conforming_meshes(self) -> tuple[ngs.Mesh, ngs.Mesh]:
+    def create_conforming_meshes(self) -> tuple[ngs.Mesh, ngs.Mesh, dict]:
         """
         Create conforming coarse and fine meshes by refining the coarse mesh.
         Args:
@@ -136,14 +138,134 @@ class TwoLevelMesh:
         ngm_coarse = geo.GenerateMesh(
             minh=self.coarse_mesh_size, maxh=self.coarse_mesh_size
         )
-        coarse_mesh = ngs.Mesh(ngm_coarse)
+        mesh = ngs.Mesh(ngm_coarse)
 
-        # Make a copy for the fine mesh and refine in-place
-        fine_mesh = copy.deepcopy(coarse_mesh)
-        for _ in range(self.refinement_levels):
-            fine_mesh.Refine()
+        # refine mesh in-place and get a copy of the coarse mesh
+        coarse_mesh, coarse_edges = self._refine_mesh(mesh)
 
-        return fine_mesh, coarse_mesh
+        return mesh, coarse_mesh, coarse_edges
+
+    def _refine_mesh(self, mesh: ngs.Mesh) -> tuple[ngs.Mesh, dict]:
+        # Make a copy of the coarse mesh for easy reference (DO NOT REFINE THIS MESH... memory issues)
+        coarse_mesh = copy.deepcopy(mesh)
+
+        # initialize coarse edges dictionary
+        num_fine_vertices_per_coarse_edge = 2**self.refinement_levels - 1
+        coarse_edges = {
+            coarse_edge: {
+                "fine_vertices": np.empty(
+                    num_fine_vertices_per_coarse_edge, dtype=ngs.NodeId
+                ),
+                "fine_edges": [],
+            }
+            for coarse_edge in coarse_mesh.edges
+        }
+
+        # precompute vertex masks for coarse edges
+        vertex_masks = []
+        start = (num_fine_vertices_per_coarse_edge - 1) // 2
+        for ref_level in range(self.refinement_levels):
+            step = 2 * (start + 1)
+            vertex_mask = np.arange(start, num_fine_vertices_per_coarse_edge, step)
+            vertex_masks.append(vertex_mask)
+            start = (start - 1) // 2
+
+        # get all coarse edge line segments
+        coarse_edge_lines_starts = np.array(
+            [
+                coarse_mesh[coarse_mesh[coarse_edge].vertices[0]].point
+                for coarse_edge in coarse_mesh.edges
+            ]
+        )
+        coarse_edge_lines_ends = np.array(
+            [
+                coarse_mesh[coarse_mesh[coarse_edge].vertices[1]].point
+                for coarse_edge in coarse_mesh.edges
+            ]
+        )
+        coarse_edge_lines = np.array([coarse_edge_lines_starts, coarse_edge_lines_ends])
+
+        # keep track of the processed vertices (we skip the first coarse mesh vertices, obviously)
+        vertices_processed = coarse_mesh.nv
+
+        # refine the fine mesh + find fine vertices on coarse edges
+        for ref_level in range(self.refinement_levels):
+            mesh.Refine() # we refine the mesh in-place, so the mesh is updated
+
+            # get number of all newly created fine vertices
+            vertex_numbers = np.arange(vertices_processed, mesh.nv)
+
+            # instantiate lists fine mesh vertex points and ids
+            vertex_points = []
+            vertex_ids = []
+
+            # fill the lists with fine mesh vertex points and ids
+            for fine_vertex in vertex_numbers:
+                vertex_id = ngs.NodeId(ngs.VERTEX, fine_vertex)
+                vertex_ids.append(vertex_id)
+                mesh_vertex = mesh[vertex_id]
+                vertex_points.append(mesh_vertex.point)
+
+            # turn vertex_points and vertex_ids into numpy arrays
+            vertex_points = np.array(vertex_points)
+            vertex_ids = np.array(vertex_ids)
+
+            # find on which coarse edge the fine vertices lie (efficiently)
+            points_on_coarse_edges, distances = self._vectorized_check_if_point_on_line(
+                vertex_points, coarse_edge_lines
+            )
+
+            # add fine vertices to coarse edge dictionary in order to efficiently find fine edges later
+            for coarse_edge_nr, (points_mask, distance) in enumerate(
+                zip(points_on_coarse_edges.T, distances.T)
+            ):
+                coarse_edge = coarse_mesh.edges[coarse_edge_nr]
+                edge_vertices = vertex_ids[points_mask]
+
+                # sort vertices by distance to the coarse edge line segment
+                distance = distance[points_mask]
+                sorted_indices = np.argsort(distance)
+                edge_vertices = edge_vertices[sorted_indices]
+                coarse_edges[coarse_edge]["fine_vertices"][
+                    vertex_masks[ref_level]
+                ] = edge_vertices
+
+            # update processed vertices
+            vertices_processed = mesh.nv
+
+        # find fine edges on coarse edges using the vertices on coarse edges
+        for coarse_edge, data in coarse_edges.items():
+            # convert numpy array of fine vertices to list
+            data["fine_vertices"] = list(data["fine_vertices"])
+
+            # get all vertices on this coarse edge
+            coarse_vertices = coarse_edge.vertices
+            fine_and_coarse_vertices = (
+                [coarse_vertices[0]] + data["fine_vertices"] + [coarse_vertices[1]]
+            )
+            data["fine_edges"] = self._get_edges_between_vertices(
+                fine_and_coarse_vertices, mesh
+            )
+
+        return coarse_mesh, coarse_edges
+
+    def _get_edges_between_vertices(
+        self, vertices: list[ngs.NodeId], mesh: ngs.Mesh
+    ) -> list[ngs.NodeId]:
+        """
+        Given a set of vertices on a corresponding mesh, find all edges that connect them.
+        Args:
+            vertices (list[ngs.NodeId]): List of vertex IDs to find edges between.
+            mesh (ngs.Mesh): The mesh containing the vertices and edges.
+        """
+        num_vertices = len(vertices)
+        edges = []
+        for i in range(num_vertices - 1):
+            v1, v2 = vertices[i], vertices[i + 1]
+            edges1 = set(mesh[v1].edges)
+            edges2 = set(mesh[v2].edges)
+            edges += list(edges1.intersection(edges2))
+        return edges
 
     def get_subdomains(self):
         """
@@ -154,67 +276,24 @@ class TwoLevelMesh:
         """
         subdomains = {}
         coarse_elements = self.coarse_mesh.Elements()
-        interior_indices = np.arange(self.fine_mesh.ne)  # indices of fine elements
-        fine_elements_vertices = np.zeros(
-            (self.fine_mesh.ne, 3, 2)
-        )  # el X vertices X coords
-        for i, fine_el in enumerate(self.fine_mesh.Elements(ngs.VOL)):
-            fine_v1 = self.fine_mesh.vertices[fine_el.vertices[0].nr].point
-            fine_v2 = self.fine_mesh.vertices[fine_el.vertices[1].nr].point
-            fine_v3 = self.fine_mesh.vertices[fine_el.vertices[2].nr].point
-            fine_elements_vertices[i, 0, :] = fine_v1
-            fine_elements_vertices[i, 1, :] = fine_v2
-            fine_elements_vertices[i, 2, :] = fine_v3
+        num_coarse_elements = self.coarse_mesh.ne
+        num_elements_per_coarse_element = 4**self.refinement_levels
 
-        for subdomain in coarse_elements:  # coarse elements are taken to be subdomains
-            interior_indices_copy = np.copy(
-                interior_indices
-            )  # copy of fine indices to filter
-            fine_elements_vertices_copy = np.copy(fine_elements_vertices)
-            coarse_v1 = self.coarse_mesh.vertices[subdomain.vertices[0].nr].point
-            coarse_v2 = self.coarse_mesh.vertices[subdomain.vertices[1].nr].point
-            coarse_v3 = self.coarse_mesh.vertices[subdomain.vertices[2].nr].point
-            for vertex_idx in range(3):
-                # look at first vertices
-                fine_elements_vertex = fine_elements_vertices_copy[:, vertex_idx, :]
+        # coarse elements are taken to be subdomains
+        for i, subdomain in enumerate(coarse_elements):
 
-                # find fine elements that have this vertex within the coarse element
-                mask = self._vectorized_point_in_triangle(
-                    fine_elements_vertex, coarse_v1, coarse_v2, coarse_v3
-                )
-
-                # get rid of fine elements that do not have this vertex within the coarse element
-                fine_elements_vertices_copy = fine_elements_vertices_copy[mask]
-                interior_indices_copy = interior_indices_copy[mask]
             interior_elements = [
-                self.fine_mesh[ngs.ElementId(ngs.VOL, idx)]
-                for idx in interior_indices_copy
+                self.fine_mesh[ngs.ElementId(ngs.VOL, i + j * num_coarse_elements)]
+                for j in range(num_elements_per_coarse_element)
             ]
+            edges = {}
+            for coarse_edge in subdomain.edges:
+                edges[coarse_edge] = self.coarse_edges_map[coarse_edge]["fine_edges"]
             subdomains[subdomain] = {
                 "interior": interior_elements,
-                "edges": self.get_subdomain_edges(subdomain, interior_elements),
+                "edges": edges,
             }
         return subdomains
-
-    def get_subdomain_edges(self, subdomain, interior_elements) -> dict:
-        """
-        Find all fine mesh edges that lie on the edges of a given coarse mesh element.
-
-        Args:
-            subdomain: The coarse mesh element.
-            interior_elements: List of fine mesh elements inside the coarse element.
-
-        Returns:
-            dict: Fine mesh edges that lie on the coarse element's edges.
-        """
-        subdomain_edges = {}
-        for coarse_edge in subdomain.edges:
-            subdomain_edges[coarse_edge] = []
-            for el in interior_elements:
-                mesh_el = self.fine_mesh[el]
-                fine_edges = self._get_edges_on_subdomain_edge(coarse_edge, mesh_el)
-                subdomain_edges[coarse_edge] += fine_edges
-        return subdomain_edges
 
     def get_connected_component_tree(self) -> dict:
         """
@@ -1002,49 +1081,39 @@ class TwoLevelMesh:
             raise ValueError("Domain colors must be a list.")
         self._subdomain_colors = cycle(colors)
 
-    # supporting methods
-    def _get_edges_on_subdomain_edge(self, coarse_edge, mesh_element):
-        """
-        Find all fine edges that lie on a given subdomain (coarse mesh) edge.
-
-        Args:
-            coarse_edge: The coarse mesh edge.
-            mesh_element: The fine mesh element.
-
-        Returns:
-            set: Fine edges that lie on the coarse edge.
-        """
-        fine_edges = []
-        vc_1, vc_2 = self.coarse_mesh.edges[coarse_edge.nr].vertices
-        pc_1 = self.coarse_mesh.vertices[vc_1.nr].point
-        pc_2 = self.coarse_mesh.vertices[vc_2.nr].point
-        for fine_edge in mesh_element.edges:
-            vf_1, vf_2 = self.fine_mesh.edges[fine_edge.nr].vertices
-            pf_1 = self.fine_mesh.vertices[vf_1.nr].point
-            pf_2 = self.fine_mesh.vertices[vf_2.nr].point
-            p1_on_line = self._check_if_point_on_line(pf_1, pc_1, pc_2)
-            p2_on_line = self._check_if_point_on_line(pf_2, pc_1, pc_2)
-            if p1_on_line and p2_on_line:
-                fine_edges.append(fine_edge)
-        return fine_edges
-
     @staticmethod
-    def _check_if_point_on_line(point, line_start, line_end) -> np.bool:
+    def _vectorized_check_if_point_on_line(points, lines, atol=1e-9):
         """
-        Check if a point is on a line segment defined by (line_start, line_end).
+        Vectorized check if points are on line segments.
 
         Args:
-            point (array-like): The point to check.
-            line_start (array-like): The start point of the line segment.
-            line_end (array-like): The end point of the line segment.
+            points (np.ndarray): (N, D) array of points.
+            lines (np.ndarray): (2, M, D) array, lines[0] are starts, lines[1] are ends.
+            atol (float): Tolerance for floating point comparison.
 
         Returns:
-            bool: True if the point is on the line segment, False otherwise.
+            np.ndarray: (N, M) boolean array, True if point i is on line j.
         """
-        d1 = np.linalg.norm(np.array(point) - np.array(line_start))
-        d2 = np.linalg.norm(np.array(point) - np.array(line_end))
-        line_length = np.linalg.norm(np.array(line_end) - np.array(line_start))
-        return np.isclose(d1 + d2, line_length, atol=1e-9)
+        points = np.atleast_2d(points)  # (N, D)
+        line_starts = np.atleast_2d(lines[0])  # (M, D)
+        line_ends = np.atleast_2d(lines[1])  # (M, D)
+
+        line_vecs = line_ends - line_starts  # (M, D)
+        point_vecs = points[:, None, :] - line_starts[None, :, :]  # (N, M, D)
+
+        line_lens = np.linalg.norm(line_vecs, axis=1)  # (M,)
+        line_lens = np.where(line_lens == 0, 1, line_lens)  # Avoid division by zero
+
+        t = np.einsum("nmd,md->nm", point_vecs, line_vecs) / (line_lens**2)  # type: ignore
+
+        on_segment = (t >= -atol) & (t <= 1 + atol)
+
+        closest = line_starts[None, :, :] + t[:, :, None] * line_vecs[None, :, :]
+
+        dist = np.linalg.norm(points[:, None, :] - closest, axis=2)
+        is_on_line = np.isclose(dist, 0, atol=atol)
+
+        return on_segment & is_on_line, t
 
     @staticmethod
     def _vectorized_point_in_triangle(points, a, b, c):
