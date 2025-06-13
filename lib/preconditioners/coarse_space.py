@@ -84,7 +84,8 @@ class Q1CoarseSpace(CoarseSpace):
         self._print_init_string()
 
     def assemble_restriction_operator(self) -> sp.csc_matrix:
-        return self.fespace.prolongation_operator[self.fespace.free_dofs_mask, :]
+        prolongation_operator = self.fespace.get_prolongation_operator()
+        return prolongation_operator[self.fespace.free_dofs_mask, :]
 
     def _meta_info(self) -> str:
         return f"\n\tcoarse dimension: {self.coarse_dimension}"
