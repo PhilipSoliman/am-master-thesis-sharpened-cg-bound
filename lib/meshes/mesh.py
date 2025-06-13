@@ -51,7 +51,7 @@ class TwoLevelMesh:
             Create conforming coarse and fine meshes for the rectangular domain.
         - get_subdomains():
             Identify and return the mapping of coarse mesh elements to their corresponding fine mesh domains.
-        - get_subdomain_domain_edges(subdomain, interior_elements):
+        - get_subdomain_edges(subdomain, interior_elements):
             Find all fine mesh edges that lie on the edges of a given coarse mesh element.
         - extend_subdomains(layer_idx=1):
             Extend the subdomains by adding layers of fine mesh elements.
@@ -191,11 +191,11 @@ class TwoLevelMesh:
             ]
             subdomains[subdomain] = {
                 "interior": interior_elements,
-                "edges": self.get_subdomain_domain_edges(subdomain, interior_elements),
+                "edges": self.get_subdomain_edges(subdomain, interior_elements),
             }
         return subdomains
 
-    def get_subdomain_domain_edges(self, subdomain, interior_elements) -> dict:
+    def get_subdomain_edges(self, subdomain, interior_elements) -> dict:
         """
         Find all fine mesh edges that lie on the edges of a given coarse mesh element.
 
@@ -246,14 +246,20 @@ class TwoLevelMesh:
         all_coarse_nodes = set(self.coarse_mesh.vertices)
         for coarse_node in all_coarse_nodes:
             component_tree[coarse_node] = {}
-        
+
         for subdomain, subdomain_data in self.subdomains.items():
             for coarse_node in subdomain.vertices:
                 for coarse_edge in self.coarse_mesh[coarse_node].edges:
-                    if (coarse_edge_d := component_tree[coarse_node].get(coarse_edge, None)) is None:
+                    if (
+                        coarse_edge_d := component_tree[coarse_node].get(
+                            coarse_edge, None
+                        )
+                    ) is None:
                         component_tree[coarse_node][coarse_edge] = {}
-                        coarse_edge_d = component_tree[coarse_node][coarse_edge] 
-                    if (fine_edges := subdomain_data["edges"].get(coarse_edge, None)) is not None:
+                        coarse_edge_d = component_tree[coarse_node][coarse_edge]
+                    if (
+                        fine_edges := subdomain_data["edges"].get(coarse_edge, None)
+                    ) is not None:
                         coarse_edge_d["fine_edges"] = fine_edges
                         edge_vertices = set()
                         for fine_edge in fine_edges:
@@ -261,7 +267,7 @@ class TwoLevelMesh:
                                 if vertex not in all_coarse_nodes:
                                     edge_vertices.add(vertex)
                         coarse_edge_d["fine_vertices"] = list(edge_vertices)
-            
+
         return component_tree
 
     def get_connected_components(self) -> dict:
@@ -370,12 +376,12 @@ class TwoLevelMesh:
     # in-plca mesh refinement
     def refine_coarse_mesh(self):
         """
-        Refine the coarse mesh in-place to create a fine mesh that can be used for the fespace construction 
+        Refine the coarse mesh in-place to create a fine mesh that can be used for the fespace construction
         and obtaining the prolongation operator
         """
         for _ in range(self.refinement_levels):
             self.coarse_mesh.Refine()
-    
+
     # meta info string
     def __str__(self):
         return (
@@ -685,7 +691,7 @@ class TwoLevelMesh:
         domains_int_toggle = isinstance(domains, int)
         domains_list_toggle = isinstance(domains, list)
         for i, (subdomain, subdomain_data) in enumerate(self.subdomains.items()):
-            #plot coarse mesh element without fill and thick border
+            # plot coarse mesh element without fill and thick border
             self.plot_element(
                 ax,
                 subdomain,
@@ -716,9 +722,9 @@ class TwoLevelMesh:
             if plot_layers:
                 for layer_idx in range(1, self.layers + 1):
                     layer_elements = subdomain_data.get(f"layer_{layer_idx}", [])
-                    alpha_value = opacity / (
-                        1 + (layer_idx / self.layers) ** fade_factor
-                    ) / 4
+                    alpha_value = (
+                        opacity / (1 + (layer_idx / self.layers) ** fade_factor) / 4
+                    )
                     for layer_el in layer_elements:
                         self.plot_element(
                             ax,
@@ -784,7 +790,7 @@ class TwoLevelMesh:
                     "Plotting connected components for faces is not implemented yet."
                 )
         return ax
-    
+
     def plot_connected_component_tree(self, ax: Axes):
         """
         Plot the connected component tree of the fine mesh based on the coarse mesh subdomains.
@@ -1054,29 +1060,33 @@ class TwoLevelMesh:
 # Example usage:
 if __name__ == "__main__":
     lx, ly = 1.0, 1.0
-    coarse_mesh_size = 0.15
-    refinement_levels = 2
-    layers = 2
+    coarse_mesh_size = 0.5
+    refinement_levels = 3
+    layers = 1
     # two_mesh = TwoLevelMesh(
     #     lx, ly, coarse_mesh_size, refinement_levels=refinement_levels, layers=layers
     # )
     # two_mesh.save()  # Save the mesh and subdomains
     two_mesh = TwoLevelMesh.load(lx, ly, coarse_mesh_size, refinement_levels, layers)
 
-    # plot the meshes
-    figure, ax = plt.subplots(figsize=(8, 6))
-    two_mesh.plot_mesh(ax, mesh_type="fine")
-    two_mesh.plot_mesh(ax, mesh_type="coarse")
+    # visualize TwoLevelMesh
+    from lib.utils import set_mpl_style
+    set_mpl_style()
+    figure, ax = plt.subplots(2, 2, figsize=(10, 6), sharex=True, sharey=True)
+
+    two_mesh.plot_mesh(ax[0, 0], mesh_type="fine")
+    two_mesh.plot_mesh(ax[0, 0], mesh_type="coarse")
+    ax[0, 0].set_title("Fine and Coarse Meshes")
 
     # plot the domains
-    figure, ax = plt.subplots(figsize=(8, 6))
-    two_mesh.plot_domains(ax, domains=1, plot_layers=True)
+    two_mesh.plot_domains(ax[0, 1], domains=1, plot_layers=True)
+    ax[0, 1].set_title("Subdomains and Layers")
 
-    # get all connected components
-    figure, ax = plt.subplots(figsize=(8, 6))
-    two_mesh.plot_connected_components(ax)
+    # plot all connected components
+    two_mesh.plot_connected_components(ax[1, 0])
+    ax[1, 0].set_title("Interface")
 
     # plot the connected component tree
-    figure, ax = plt.subplots(figsize=(8, 6))
-    two_mesh.plot_connected_component_tree(ax)
+    two_mesh.plot_connected_component_tree(ax[1, 1])
+    ax[1, 1].set_title("Connected Component Tree")
     plt.show()
