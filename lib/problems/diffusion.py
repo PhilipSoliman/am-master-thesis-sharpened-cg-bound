@@ -277,15 +277,15 @@ if __name__ == "__main__":
     # Save the functions to vtk files
     # diffusion_problem.save_functions()
 
-    # plot cg coefficients
-    import matplotlib.pyplot as plt
-    import numpy as np
-
-    from lib.utils import set_mpl_cycler, set_mpl_style
-
-    set_mpl_style()
-    set_mpl_cycler(colors=True, lines=True)
     if get_cg_info:
+        import matplotlib.pyplot as plt
+        import numpy as np
+
+        from lib.utils import set_mpl_cycler, set_mpl_style
+
+        set_mpl_style()
+        set_mpl_cycler(colors=True, lines=True)
+
         fig, axs = plt.subplots(
             2,
             2,
