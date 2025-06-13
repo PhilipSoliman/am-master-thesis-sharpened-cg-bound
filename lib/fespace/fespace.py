@@ -69,7 +69,7 @@ class FESpace:
                 self.fespace = fespace
 
         # construct the prolongation operator
-        self.prolongation_operator = self.get_prolongation_operator()
+        # self.prolongation_operator = self.get_prolongation_operator()
 
     def calculate_dofs(self):
         """
