@@ -38,3 +38,6 @@ figures/
 
 # ignore FEM mesh folders
 data/tlm_*
+
+# ignore python profiling files
+**/*.prof
