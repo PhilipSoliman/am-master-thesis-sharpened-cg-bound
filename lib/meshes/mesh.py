@@ -510,13 +510,20 @@ class TwoLevelMesh:
             print(f"Loading TwoLevelMesh from {fp}...")
             obj = cls.__new__(cls)
             obj._load_metadata(fp)
+            print(f"\tloaded metadata")
             obj._load_meshes(fp)
+            print(f"\tloaded meshes")
             # obj._load_subdomains(fp) # TODO: fix this
             setattr(obj, "subdomains", obj.get_subdomains())
+            print(f"\tcalculated subdomains")
             for layer_idx in range(1, obj.layers + 1):
                 obj.extend_subdomains(layer_idx)
+            print(f"\textended subdomains with {obj.layers} layers")
             setattr(obj, "connected_components", obj.get_connected_components())
+            print(f"\tcalculated connected components")
             setattr(obj, "connected_component_tree", obj.get_connected_component_tree())
+            print(f"\tcalculated connected component tree")
+            print("Finished loading TwoLevelMesh.")
             print(obj)
         else:
             raise FileNotFoundError(f"Metadata file {fp} does not exist.")
