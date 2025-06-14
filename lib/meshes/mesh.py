@@ -101,12 +101,13 @@ class TwoLevelMesh:
         self.ly = ly
         self.coarse_mesh_size = coarse_mesh_size
         self.refinement_levels = refinement_levels
-        print("Creating TwoLevelMesh with the following parameters:")
-        print(f"\tlx: {lx}")
-        print(f"\tly: {ly}")
-        print(f"\tcoarse_mesh_size: {coarse_mesh_size}")
-        print(f"\trefinement_levels: {refinement_levels}")
-        print(f"\tlayers: {layers}")
+        print("Creating TwoLevelMesh")
+        print("\tparameters:")
+        print(f"\t\tlx: {lx}")
+        print(f"\t\tly: {ly}")
+        print(f"\t\tcoarse_mesh_size: {coarse_mesh_size}")
+        print(f"\t\trefinement_levels: {refinement_levels}")
+        print(f"\t\tlayers: {layers}")
         self.fine_mesh = self.create_mesh()
         print("\tcreated coarse mesh")
         self.coarse_edges_map, self.coarse_mesh = (
@@ -156,7 +157,7 @@ class TwoLevelMesh:
         mesh = ngs.Mesh(ngm_coarse)
 
         return mesh
-    
+
     ###################
     # mesh refinement #
     ###################
@@ -201,7 +202,7 @@ class TwoLevelMesh:
             # instantiate lists fine mesh vertex points and ids
             for coarse_edge, data in tqdm(
                 coarse_edges_map.items(),
-                desc="\tProcessing coarse edges",
+                desc="Processing coarse edges",
                 total=num_coarse_edges,
             ):
 
@@ -285,7 +286,7 @@ class TwoLevelMesh:
         ids = np.array([ngs.NodeId(ngs.VERTEX, vertex_id) for vertex_id in ids])
 
         return ids
-    
+
     @staticmethod
     def _vectorized_check_if_point_on_line(points, lines, atol=1e-9):
         """
@@ -347,7 +348,7 @@ class TwoLevelMesh:
         for _ in range(self.refinement_levels):
             mesh.Refine()
         return mesh, coarse_mesh
-    
+
     ########################
     # domain decomposition #
     ########################
@@ -379,34 +380,79 @@ class TwoLevelMesh:
             }
         return subdomains
 
-    def extend_subdomains(self, layer_idx):
+    def extend_subdomains(self, layer_idx: int):
         """
         Extend the subdomains by adding layers of fine mesh elements.
 
         Args:
             layer_idx (int, optional): The new layer's index. Defaults to 1.
         """
-        for subdomain_data in self.subdomains.values():
-            interior_edges = set()
-            domain_elements = copy.copy(subdomain_data["interior"])
-            for prev_layer_idx in range(1, layer_idx):
-                domain_elements += subdomain_data[f"layer_{prev_layer_idx}"]
-            for el in domain_elements:
-                mesh_el = self.fine_mesh[el]
-                for fine_edge in mesh_el.edges:
-                    interior_edges.add(fine_edge.nr)
+        # for subdomain_data in self.subdomains.values():
+        #     interior_edges = set()
+        #     domain_elements = copy.copy(subdomain_data["interior"])
+        #     for prev_layer_idx in range(1, layer_idx):
+        #         domain_elements += subdomain_data[f"layer_{prev_layer_idx}"]
+        #     for el in domain_elements:
+        #         mesh_el = self.fine_mesh[el]
+        #         for fine_edge in mesh_el.edges:
+        #             interior_edges.add(fine_edge.nr)
 
-            layer_elements = set()
-            for el in domain_elements:
-                mesh_el = self.fine_mesh[el]
-                vertices = mesh_el.vertices
-                for v in vertices:
-                    mesh_v = self.fine_mesh[v]
-                    for edge in mesh_v.edges:
-                        if edge.nr not in interior_edges:
-                            mesh_e = self.fine_mesh[edge]
-                            layer_elements.update(mesh_e.elements)
-            subdomain_data[f"layer_{layer_idx}"] = list(layer_elements)
+        #     layer_elements = set()
+        #     for el in domain_elements:
+        #         mesh_el = self.fine_mesh[el]
+        #         vertices = mesh_el.vertices
+        #         for v in vertices:
+        #             mesh_v = self.fine_mesh[v]
+        #             for edge in mesh_v.edges:
+        #                 if edge.nr not in interior_edges:
+        #                     mesh_e = self.fine_mesh[edge]
+        #                     layer_elements.update(mesh_e.elements)
+        #     subdomain_data[f"layer_{layer_idx}"] = list(layer_elements)
+
+        for subdomain, subdomain_data in self.subdomains.items():
+            # get all interior elements of the subdomain
+            interior_elements = [el.nr for el in subdomain_data["interior"]]
+            for prev_layer_idx in range(1, layer_idx):
+                interior_elements += [
+                    el.nr for el in subdomain_data[f"layer_{prev_layer_idx}"]
+                ]
+
+            # get all vertices on the edge of the domain
+            edge_vertices = []
+            if layer_idx == 1: # we use coarse edge map for the first layer
+                edge_vertices.extend(subdomain.vertices)
+                for coarse_edge in subdomain_data["edges"].keys():
+                    edge_vertices.extend(
+                        list(self.coarse_edges_map[coarse_edge]["fine_vertices"])
+                    )
+            if layer_idx > 1: # we use vertices of the previous layer elements for subsequent layers
+                layer_elements = subdomain_data[f"layer_{layer_idx - 1}"]
+                for el in layer_elements:
+                    mesh_el = self.fine_mesh[el]
+                    edge_vertices.extend(mesh_el.vertices)
+
+            # get all elements associated with the edge vertices
+            layer_elements = []
+            for edge_vertex in edge_vertices:
+                mesh_vertex = self.fine_mesh[edge_vertex]
+                layer_elements.extend([el.nr for el in mesh_vertex.elements])
+
+            # remove duplicates
+            layer_elements = set(layer_elements)
+
+            # convert to numpy array for easier manipulation
+            layer_elements = np.array(list(layer_elements))
+
+            # filter out elements that are already in the interior or previous layers
+            mask = np.isin(
+                layer_elements, interior_elements, assume_unique=True, invert=True
+            )
+            layer_elements = layer_elements[mask]
+
+            # add the new layer elements to the subdomain data
+            subdomain_data[f"layer_{layer_idx}"] = [
+                self.fine_mesh[ngs.ElementId(el)] for el in layer_elements
+            ]
 
     ###########################
     # interface decomposition #
@@ -552,11 +598,12 @@ class TwoLevelMesh:
         """
         if not self.save_dir.exists():
             self.save_dir.mkdir(parents=True, exist_ok=True)
-        print(f"Saving TwoLevelMesh to {self.save_dir}...")
+        print(f"Saving TwoLevelMesh to {self.save_dir}")
         self._save_metadata()
         if save_vtk_meshes:
             self._save_vtk_meshes()
         self._save_coarse_edges_map()
+        print(f"\tDone.")
 
     def _save_metadata(self):
         """
@@ -847,7 +894,7 @@ class TwoLevelMesh:
                 for layer_idx in range(1, self.layers + 1):
                     layer_elements = subdomain_data.get(f"layer_{layer_idx}", [])
                     alpha_value = (
-                        opacity / (1 + (layer_idx / self.layers) ** fade_factor) / 4
+                        opacity / (1 + (layer_idx / self.layers) ** fade_factor) / 2
                     )
                     for layer_el in layer_elements:
                         self.plot_element(
@@ -1075,31 +1122,39 @@ class TwoLevelMesh:
         Returns:
             Figure: The matplotlib figure with the plotted two-level mesh.
         """
+        print("Visualizing TwoLevelMesh")
         # visualize TwoLevelMesh
         from lib.utils import set_mpl_style
 
         set_mpl_style()
         fig, ax = plt.subplots(2, 2, figsize=(10, 6), sharex=True, sharey=True)
+        print("\tcreated figure and axes...")
 
         self.plot_mesh(ax[0, 0], mesh_type="fine")
         self.plot_mesh(ax[0, 0], mesh_type="coarse")
         ax[0, 0].set_title("Fine and Coarse Meshes")
+        print("\tplotted fine and coarse meshes.")
 
         # plot the domains
-        self.plot_domains(ax[0, 1], domains=1, plot_layers=True)
+        self.plot_domains(ax[0, 1], domains=[0], plot_layers=True)
         ax[0, 1].set_title("Subdomains and Layers")
+        print("\tplotted subdomains and layers.")
 
         # plot all connected components
         self.plot_connected_components(ax[1, 0])
         ax[1, 0].set_title("Interface")
+        print("\tplotted connected components.")
 
         # plot the connected component tree
         self.plot_connected_component_tree(ax[1, 1])
         ax[1, 1].set_title("Connected Component Tree")
+        print("\tplotted connected component tree.")
 
         fig.tight_layout()
+        print("\tvisualization complete.")
 
         if show:
+            print("\tshowing figure...")
             plt.show()
 
         return fig
@@ -1131,9 +1186,9 @@ class TwoLevelMesh:
 class TwoLevelMeshExamples:
 
     lx, ly = 1.0, 1.0
-    coarse_mesh_size = lx/32
+    coarse_mesh_size = lx
     refinement_levels = 4
-    layers = 1
+    layers = 2
     SAVE_DIR = DATA_DIR / TwoLevelMesh.SAVE_STRING.format(
         lx, ly, coarse_mesh_size, refinement_levels, layers
     )
@@ -1179,8 +1234,8 @@ class TwoLevelMeshExamples:
 
 
 if __name__ == "__main__":
-    TwoLevelMeshExamples.example_creation(fig_toggle=False)
+    TwoLevelMeshExamples.example_creation(
+        fig_toggle=True
+    )  # Uncomment to create and visualize a new mesh
     # TwoLevelMeshExamples.example_load()  # Uncomment to load an existing mesh
-    TwoLevelMeshExamples.profile(
-        loading=True
-    )  # Uncomment to profile the mesh creation & loading
+    # TwoLevelMeshExamples.profile()  # Uncomment to profile the mesh creation & loading
