@@ -11,10 +11,12 @@ import numpy as np
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from matplotlib.patches import Polygon
+from tqdm import tqdm
 
 from lib.utils import CUSTOM_COLORS_SIMPLE, get_root
 
 DATA_DIR = get_root() / "data"
+SAFE_MAX_ELEMENTS = int(5 * 1e4)
 
 
 def OCCRectangle(l, w):
@@ -100,16 +102,28 @@ class TwoLevelMesh:
         self.ly = ly
         self.coarse_mesh_size = coarse_mesh_size
         self.refinement_levels = refinement_levels
+        print("Creating TwoLevelMesh with the following parameters:")
+        print(f"  - lx: {lx}")
+        print(f"  - ly: {ly}")
+        print(f"  - coarse_mesh_size: {coarse_mesh_size}")
+        print(f"  - refinement_levels: {refinement_levels}")
+        print(f"  - layers: {layers}")
         self.fine_mesh = self.create_mesh()
+        print("\tcreated coarse mesh")
         self.coarse_edges_map, self.coarse_mesh = (
             self._refine_mesh_and_get_coarse_edges_map(self.fine_mesh)
         )
+        print("\trefined mesh and created coarse edges map")
         self.subdomains = self.get_subdomains()
+        print("\tcalculated subdomains")
         self.connected_components = self.get_connected_components()
+        print("\tcalculated connected components")
         self.connected_component_tree = self.get_connected_component_tree()
+        print("\tcalculated connected component tree")
         self.layers = layers
         for layer_idx in range(1, layers + 1):
             self.extend_subdomains(layer_idx)
+        print(f"\textended subdomains with {layers} layers")
         print(self)
 
     # mesh creation
@@ -186,12 +200,14 @@ class TwoLevelMesh:
             ]
         )
         coarse_edge_lines = np.array([coarse_edge_lines_starts, coarse_edge_lines_ends])
+        num_coarse_edges = len(coarse_edge_lines)
 
         # keep track of the processed vertices (we skip the first coarse mesh vertices, obviously)
         vertices_processed = coarse_mesh.nv
 
         # refine the fine mesh + find fine vertices on coarse edges
         for ref_level in range(self.refinement_levels):
+            print(f"\trefining mesh at refinement level {ref_level + 1}...")
             mesh.Refine()  # we refine the mesh in-place, so the mesh is updated
 
             # get number of all newly created fine vertices
@@ -211,26 +227,48 @@ class TwoLevelMesh:
             # turn vertex_points and vertex_ids into numpy arrays
             vertex_points = np.array(vertex_points)
             vertex_ids = np.array(vertex_ids)
+            num_vertex_points = vertex_points.shape[0]
 
             # find on which coarse edge the fine vertices lie (efficiently)
-            points_on_coarse_edges, distances = self._vectorized_check_if_point_on_line(
-                vertex_points, coarse_edge_lines
+            num_elements = num_coarse_edges * num_vertex_points * 2
+            print(
+                f"\tprocessing {num_elements} elements... (#vertices: {num_vertex_points}, MAX_ELEMENTS={SAFE_MAX_ELEMENTS})"
             )
+            if num_elements < SAFE_MAX_ELEMENTS:
+                self._get_vertices_on_coarse_edges(
+                    vertex_ids,
+                    vertex_points,
+                    coarse_edge_lines,
+                    coarse_mesh,
+                    coarse_edges_map,
+                    vertex_masks[ref_level],
+                )
+            else:
+                # if the number of elements is too large, we process the vertices in batches
+                batch_size = max(int(SAFE_MAX_ELEMENTS // num_vertex_points), 1)
+                num_batches = int((num_coarse_edges + batch_size - 1) // batch_size)
 
-            # add fine vertices to coarse edge dictionary in order to efficiently find fine edges later
-            for coarse_edge_nr, (points_mask, distance) in enumerate(
-                zip(points_on_coarse_edges.T, distances.T)
-            ):
-                coarse_edge = coarse_mesh.edges[coarse_edge_nr]
-                edge_vertices = vertex_ids[points_mask]
+                for batch_index in tqdm(
+                    range(num_batches), desc="Processing batches", total=num_batches
+                ):
+                    start_index = batch_index * batch_size
+                    end_index = min(start_index + batch_size, num_coarse_edges)
+                    coarse_edge_lines_batch = coarse_edge_lines[
+                        :, start_index:end_index
+                    ]
+                    located_vertices = self._get_vertices_on_coarse_edges(
+                        vertex_ids,
+                        vertex_points,
+                        coarse_edge_lines_batch,
+                        coarse_mesh,
+                        coarse_edges_map,
+                        vertex_masks[ref_level],
+                        batch_index=start_index,
+                    )
 
-                # sort vertices by distance to the coarse edge line segment
-                distance = distance[points_mask]
-                sorted_indices = np.argsort(distance)
-                edge_vertices = edge_vertices[sorted_indices]
-                coarse_edges_map[coarse_edge]["fine_vertices"][
-                    vertex_masks[ref_level]
-                ] = edge_vertices
+                    # only keep the vertices that were not located on coarse edges
+                    vertex_points = vertex_points[~located_vertices]
+                    vertex_ids = vertex_ids[~located_vertices]
 
             # update processed vertices
             vertices_processed = mesh.nv
@@ -250,6 +288,47 @@ class TwoLevelMesh:
             )
 
         return coarse_edges_map, coarse_mesh
+
+    def _get_vertices_on_coarse_edges(
+        self,
+        vertex_ids: np.ndarray,
+        vertex_points: np.ndarray,
+        coarse_edge_lines: np.ndarray,
+        coarse_mesh: ngs.Mesh,
+        coarse_edges_map: dict,
+        vertex_mask: np.ndarray,
+        batch_index: int = 0,
+    ):
+        num_vertex_points = vertex_points.shape[0]
+        if num_vertex_points > SAFE_MAX_ELEMENTS:
+            raise NotImplementedError(
+                f"Batch processing is not implemented for more than {SAFE_MAX_ELEMENTS:,} fine vertices."
+            )
+
+        points_on_coarse_edges, distances = self._vectorized_check_if_point_on_line(
+            vertex_points, coarse_edge_lines
+        )
+
+        # keep a record of which vertices are already found
+        located_vertices = np.zeros(vertex_points.shape[0], dtype=bool)
+
+        # add fine vertices to coarse edge dictionary in order to efficiently find fine edges later
+        for coarse_edge_nr, (points_mask, distance) in enumerate(
+            zip(points_on_coarse_edges.T, distances.T)
+        ):
+            coarse_edge = coarse_mesh.edges[coarse_edge_nr + batch_index]
+            edge_vertices = vertex_ids[points_mask]
+
+            # update located vertices
+            located_vertices[points_mask] = True
+
+            # sort vertices by distance to the coarse edge line segment
+            distance = distance[points_mask]
+            sorted_indices = np.argsort(distance)
+            edge_vertices = edge_vertices[sorted_indices]
+            coarse_edges_map[coarse_edge]["fine_vertices"][vertex_mask] = edge_vertices
+
+        return located_vertices
 
     def _get_edges_between_vertices(
         self, vertices: list[ngs.NodeId], mesh: ngs.Mesh
@@ -1136,8 +1215,8 @@ class TwoLevelMesh:
 class TwoLevelMeshExamples:
 
     lx, ly = 1.0, 1.0
-    coarse_mesh_size = lx
-    refinement_levels = 2
+    coarse_mesh_size = lx / 32
+    refinement_levels = 4
     layers = 1
     SAVE_DIR = DATA_DIR / TwoLevelMesh.SAVE_STRING.format(
         lx, ly, coarse_mesh_size, refinement_levels, layers
@@ -1146,34 +1225,46 @@ class TwoLevelMeshExamples:
     @classmethod
     def example_creation(cls, fig_toggle: bool = True):
         two_mesh = TwoLevelMesh(
-            cls.lx, cls.ly, cls.coarse_mesh_size, refinement_levels=cls.refinement_levels, layers=cls.layers
+            cls.lx,
+            cls.ly,
+            cls.coarse_mesh_size,
+            refinement_levels=cls.refinement_levels,
+            layers=cls.layers,
         )
         two_mesh.save()  # Save the mesh and subdomains
-        fig = two_mesh.visualize_two_level_mesh(show=fig_toggle)
+        if fig_toggle:
+            fig = two_mesh.visualize_two_level_mesh(show=True)
 
     @classmethod
     def example_load(cls):
-        two_mesh = TwoLevelMesh.load(cls.lx, cls.ly, cls.coarse_mesh_size, cls.refinement_levels, cls.layers)
-
+        two_mesh = TwoLevelMesh.load(
+            cls.lx, cls.ly, cls.coarse_mesh_size, cls.refinement_levels, cls.layers
+        )
 
     # Profiling the mesh creation & loading
     @classmethod
-    def profile(cls):
+    def profile(cls, creation: bool = True, loading: bool = True, top: int = 10):
         import cProfile
         import pstats
 
-        fp = cls.SAVE_DIR / "mesh_creation.prof"
-        cProfile.run("TwoLevelMeshExamples.example_creation(fig_toggle=False)", str(fp))
-        p = pstats.Stats(str(fp))
-        p.sort_stats("cumulative").print_stats(10)
+        if creation:
+            fp = cls.SAVE_DIR / "mesh_creation.prof"
+            cProfile.run(
+                "TwoLevelMeshExamples.example_creation(fig_toggle=False)", str(fp)
+            )
+            p_creation = pstats.Stats(str(fp))
+            p_creation.sort_stats("cumulative").print_stats(top)
 
-        fp = cls.SAVE_DIR / "mesh_loading.prof"
-        cProfile.run("TwoLevelMeshExamples.example_load()", str(fp))
-        p = pstats.Stats(str(fp))
-        p.sort_stats("cumulative").print_stats(10)
+        if loading:
+            fp = cls.SAVE_DIR / "mesh_loading.prof"
+            cProfile.run("TwoLevelMeshExamples.example_load()", str(fp))
+            p_loading = pstats.Stats(str(fp))
+            p_loading.sort_stats("cumulative").print_stats(top)
 
 
 if __name__ == "__main__":
-    # TwoLevelMeshExamples.example_creation()
+    TwoLevelMeshExamples.example_creation(fig_toggle=False)
     # TwoLevelMeshExamples.example_load()  # Uncomment to load an existing mesh
-    TwoLevelMeshExamples.profile()  # Uncomment to profile the mesh creation & loading
+    TwoLevelMeshExamples.profile(
+        loading=True
+    )  # Uncomment to profile the mesh creation & loading
