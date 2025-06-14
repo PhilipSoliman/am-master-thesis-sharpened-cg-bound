@@ -16,7 +16,6 @@ from tqdm import tqdm
 from lib.utils import CUSTOM_COLORS_SIMPLE, get_root
 
 DATA_DIR = get_root() / "data"
-SAFE_MAX_ELEMENTS = int(5 * 1e4)
 
 
 def OCCRectangle(l, w):
@@ -103,11 +102,11 @@ class TwoLevelMesh:
         self.coarse_mesh_size = coarse_mesh_size
         self.refinement_levels = refinement_levels
         print("Creating TwoLevelMesh with the following parameters:")
-        print(f"  - lx: {lx}")
-        print(f"  - ly: {ly}")
-        print(f"  - coarse_mesh_size: {coarse_mesh_size}")
-        print(f"  - refinement_levels: {refinement_levels}")
-        print(f"  - layers: {layers}")
+        print(f"\tlx: {lx}")
+        print(f"\tly: {ly}")
+        print(f"\tcoarse_mesh_size: {coarse_mesh_size}")
+        print(f"\trefinement_levels: {refinement_levels}")
+        print(f"\tlayers: {layers}")
         self.fine_mesh = self.create_mesh()
         print("\tcreated coarse mesh")
         self.coarse_edges_map, self.coarse_mesh = (
@@ -157,8 +156,10 @@ class TwoLevelMesh:
         mesh = ngs.Mesh(ngm_coarse)
 
         return mesh
-
-    # mesh refinement
+    
+    ###################
+    # mesh refinement #
+    ###################
     def _refine_mesh_and_get_coarse_edges_map(
         self, mesh: ngs.Mesh
     ) -> tuple[dict, ngs.Mesh]:
@@ -187,91 +188,29 @@ class TwoLevelMesh:
             start = (start - 1) // 2
 
         # get all coarse edge line segments
-        coarse_edge_lines_starts = np.array(
-            [
-                coarse_mesh[coarse_mesh[coarse_edge].vertices[0]].point
-                for coarse_edge in coarse_mesh.edges
-            ]
-        )
-        coarse_edge_lines_ends = np.array(
-            [
-                coarse_mesh[coarse_mesh[coarse_edge].vertices[1]].point
-                for coarse_edge in coarse_mesh.edges
-            ]
-        )
-        coarse_edge_lines = np.array([coarse_edge_lines_starts, coarse_edge_lines_ends])
-        num_coarse_edges = len(coarse_edge_lines)
-
-        # keep track of the processed vertices (we skip the first coarse mesh vertices, obviously)
-        vertices_processed = coarse_mesh.nv
+        num_coarse_edges = len(coarse_mesh.edges)
 
         # refine the fine mesh + find fine vertices on coarse edges
         for ref_level in range(self.refinement_levels):
             print(f"\trefining mesh at refinement level {ref_level + 1}...")
             mesh.Refine()  # we refine the mesh in-place, so the mesh is updated
 
-            # get number of all newly created fine vertices
-            vertex_numbers = np.arange(vertices_processed, mesh.nv)
+            # get vertex masks for this refinement level
+            vertex_mask = vertex_masks[ref_level]
 
             # instantiate lists fine mesh vertex points and ids
-            vertex_points = []
-            vertex_ids = []
+            for coarse_edge, data in tqdm(
+                coarse_edges_map.items(),
+                desc="\tProcessing coarse edges",
+                total=num_coarse_edges,
+            ):
 
-            # fill the lists with fine mesh vertex points and ids
-            for fine_vertex in vertex_numbers:
-                vertex_id = ngs.NodeId(ngs.VERTEX, fine_vertex)
-                vertex_ids.append(vertex_id)
-                mesh_vertex = mesh[vertex_id]
-                vertex_points.append(mesh_vertex.point)
-
-            # turn vertex_points and vertex_ids into numpy arrays
-            vertex_points = np.array(vertex_points)
-            vertex_ids = np.array(vertex_ids)
-            num_vertex_points = vertex_points.shape[0]
-
-            # find on which coarse edge the fine vertices lie (efficiently)
-            num_elements = num_coarse_edges * num_vertex_points * 2
-            print(
-                f"\tprocessing {num_elements} elements... (#vertices: {num_vertex_points}, MAX_ELEMENTS={SAFE_MAX_ELEMENTS})"
-            )
-            if num_elements < SAFE_MAX_ELEMENTS:
-                self._get_vertices_on_coarse_edges(
-                    vertex_ids,
-                    vertex_points,
-                    coarse_edge_lines,
-                    coarse_mesh,
-                    coarse_edges_map,
-                    vertex_masks[ref_level],
-                )
-            else:
-                # if the number of elements is too large, we process the vertices in batches
-                batch_size = max(int(SAFE_MAX_ELEMENTS // num_vertex_points), 1)
-                num_batches = int((num_coarse_edges + batch_size - 1) // batch_size)
-
-                for batch_index in tqdm(
-                    range(num_batches), desc="Processing batches", total=num_batches
-                ):
-                    start_index = batch_index * batch_size
-                    end_index = min(start_index + batch_size, num_coarse_edges)
-                    coarse_edge_lines_batch = coarse_edge_lines[
-                        :, start_index:end_index
-                    ]
-                    located_vertices = self._get_vertices_on_coarse_edges(
-                        vertex_ids,
-                        vertex_points,
-                        coarse_edge_lines_batch,
-                        coarse_mesh,
-                        coarse_edges_map,
-                        vertex_masks[ref_level],
-                        batch_index=start_index,
+                # update coarse edges map with fine vertices
+                coarse_edges_map[coarse_edge]["fine_vertices"][vertex_mask] = (
+                    self._get_vertex_ids_on_coarse_edge(
+                        coarse_edge, mesh, ref_level, data["fine_vertices"]
                     )
-
-                    # only keep the vertices that were not located on coarse edges
-                    vertex_points = vertex_points[~located_vertices]
-                    vertex_ids = vertex_ids[~located_vertices]
-
-            # update processed vertices
-            vertices_processed = mesh.nv
+                )
 
         # find fine edges on coarse edges using the vertices on coarse edges
         for coarse_edge, data in coarse_edges_map.items():
@@ -289,46 +228,97 @@ class TwoLevelMesh:
 
         return coarse_edges_map, coarse_mesh
 
-    def _get_vertices_on_coarse_edges(
+    def _get_vertex_ids_on_coarse_edge(
         self,
-        vertex_ids: np.ndarray,
-        vertex_points: np.ndarray,
-        coarse_edge_lines: np.ndarray,
-        coarse_mesh: ngs.Mesh,
-        coarse_edges_map: dict,
-        vertex_mask: np.ndarray,
-        batch_index: int = 0,
+        coarse_edge: ngs.NodeId,
+        fine_mesh: ngs.Mesh,
+        ref_level: int,
+        fine_vertices_on_edge,
     ):
-        num_vertex_points = vertex_points.shape[0]
-        if num_vertex_points > SAFE_MAX_ELEMENTS:
-            raise NotImplementedError(
-                f"Batch processing is not implemented for more than {SAFE_MAX_ELEMENTS:,} fine vertices."
-            )
+        # get vertices on coarse edge
+        vertices = coarse_edge.vertices
+        if ref_level > 0:  # for refinement level 0, we only have coarse vertices
+            fine_vertices = fine_vertices_on_edge[fine_vertices_on_edge != None]
+            vertices = np.concatenate(([vertices[0]], fine_vertices, [vertices[1]]))
 
-        points_on_coarse_edges, distances = self._vectorized_check_if_point_on_line(
-            vertex_points, coarse_edge_lines
+        # get associated edges
+        surrounding_edges = set()
+        for v in vertices:
+            surrounding_edges.update(set(fine_mesh[v].edges))
+
+        # get associated vertex points and ids
+        ids = []
+        for e in surrounding_edges:
+            fine_mesh_edge = fine_mesh[e]
+            for v in fine_mesh_edge.vertices:
+                if v not in coarse_edge.vertices:
+                    ids.append(v.nr)
+
+        # Find unique ids and their counts
+        unique_ids, counts = np.unique(ids, return_counts=True)
+
+        # vertices that appear exactly twice are on the coarse edge (+ possibly other ones)
+        ids = unique_ids[counts == 2]
+
+        # get points
+        points = np.array(
+            [fine_mesh[ngs.NodeId(ngs.VERTEX, vertex_id)].point for vertex_id in ids]
         )
 
-        # keep a record of which vertices are already found
-        located_vertices = np.zeros(vertex_points.shape[0], dtype=bool)
+        # determine whether the points are on the coarse edge line segment
+        coarse_v0, coarse_v1 = coarse_edge.vertices
+        coarse_p0, coarse_p1 = fine_mesh[coarse_v0].point, fine_mesh[coarse_v1].point
+        coarse_edge_line = np.array([coarse_p0, coarse_p1])
+        points_mask, distances = self._vectorized_check_if_point_on_line(
+            points, coarse_edge_line
+        )
 
-        # add fine vertices to coarse edge dictionary in order to efficiently find fine edges later
-        for coarse_edge_nr, (points_mask, distance) in enumerate(
-            zip(points_on_coarse_edges.T, distances.T)
-        ):
-            coarse_edge = coarse_mesh.edges[coarse_edge_nr + batch_index]
-            edge_vertices = vertex_ids[points_mask]
+        # filter ids based on the points that are on the coarse edge line segment
+        ids = ids[points_mask.flatten()]
 
-            # update located vertices
-            located_vertices[points_mask] = True
+        # sort ids by distance to coarse vertex 0
+        distances = distances[points_mask.flatten()]
+        sorted_indices = np.argsort(distances.flatten())
+        ids = ids[sorted_indices]
 
-            # sort vertices by distance to the coarse edge line segment
-            distance = distance[points_mask]
-            sorted_indices = np.argsort(distance)
-            edge_vertices = edge_vertices[sorted_indices]
-            coarse_edges_map[coarse_edge]["fine_vertices"][vertex_mask] = edge_vertices
+        # convert to ngs.NodeId
+        ids = np.array([ngs.NodeId(ngs.VERTEX, vertex_id) for vertex_id in ids])
 
-        return located_vertices
+        return ids
+    
+    @staticmethod
+    def _vectorized_check_if_point_on_line(points, lines, atol=1e-9):
+        """
+        Vectorized check if points are on line segments.
+
+        Args:
+            points (np.ndarray): (N, D) array of points.
+            lines (np.ndarray): (2, M, D) array, lines[0] are starts, lines[1] are ends.
+            atol (float): Tolerance for floating point comparison.
+
+        Returns:
+            np.ndarray: (N, M) boolean array, True if point i is on line j.
+        """
+        points = np.atleast_2d(points)  # (N, D)
+        line_starts = np.atleast_2d(lines[0])  # (M, D)
+        line_ends = np.atleast_2d(lines[1])  # (M, D)
+
+        line_vecs = line_ends - line_starts  # (M, D)
+        point_vecs = points[:, None, :] - line_starts[None, :, :]  # (N, M, D)
+
+        line_lens = np.linalg.norm(line_vecs, axis=1)  # (M,)
+        line_lens = np.where(line_lens == 0, 1, line_lens)  # Avoid division by zero
+
+        t = np.einsum("nmd,md->nm", point_vecs, line_vecs) / (line_lens**2)  # type: ignore
+
+        on_segment = (t >= -atol) & (t <= 1 + atol)
+
+        closest = line_starts[None, :, :] + t[:, :, None] * line_vecs[None, :, :]
+
+        dist = np.linalg.norm(points[:, None, :] - closest, axis=2)
+        is_on_line = np.isclose(dist, 0, atol=atol)
+
+        return on_segment & is_on_line, t
 
     def _get_edges_between_vertices(
         self, vertices: list[ngs.NodeId], mesh: ngs.Mesh
@@ -357,8 +347,10 @@ class TwoLevelMesh:
         for _ in range(self.refinement_levels):
             mesh.Refine()
         return mesh, coarse_mesh
-
-    # domain decomposition
+    
+    ########################
+    # domain decomposition #
+    ########################
     def get_subdomains(self):
         """
         Identify and return the mapping of coarse mesh elements to their corresponding fine mesh domains.
@@ -416,7 +408,9 @@ class TwoLevelMesh:
                             layer_elements.update(mesh_e.elements)
             subdomain_data[f"layer_{layer_idx}"] = list(layer_elements)
 
-    # interface decomposition
+    ###########################
+    # interface decomposition #
+    ###########################
     def get_connected_components(self) -> dict:
         """
         Finds all the connected components in the fine mesh based on the coarse mesh subdomains.
@@ -546,20 +540,9 @@ class TwoLevelMesh:
 
         return component_tree
 
-    # meta info string
-    def __str__(self):
-        return (
-            f"Fine mesh:"
-            f"\n\telements: {self.fine_mesh.ne}"
-            f"\n\tvertices: {self.fine_mesh.nv}"
-            f"\n\tedges: {len(self.fine_mesh.edges)}"
-            f"\nCoarse mesh:"
-            f"\n\telements: {self.coarse_mesh.ne}"
-            f"\n\tvertices: {self.coarse_mesh.nv}"
-            f"\n\tedges: {len(self.coarse_mesh.edges)}"
-        )
-
-    # saving
+    ##########
+    # saving #
+    ##########
     def save(self, save_vtk_meshes: bool = False):
         """
         Save the mesh, metadata, and subdomain information to disk.
@@ -754,7 +737,24 @@ class TwoLevelMesh:
         if not self._save_folder.exists():
             self._save_folder.mkdir(parents=True, exist_ok=True)
 
-    # plotting
+    ####################
+    # meta info string #
+    ####################
+    def __str__(self):
+        return (
+            f"Fine mesh:"
+            f"\n\telements: {self.fine_mesh.ne}"
+            f"\n\tvertices: {self.fine_mesh.nv}"
+            f"\n\tedges: {len(self.fine_mesh.edges)}"
+            f"\nCoarse mesh:"
+            f"\n\telements: {self.coarse_mesh.ne}"
+            f"\n\tvertices: {self.coarse_mesh.nv}"
+            f"\n\tedges: {len(self.coarse_mesh.edges)}"
+        )
+
+    ############
+    # plotting #
+    ############
     def plot_mesh(self, ax: Axes, mesh_type: str = "fine"):
         """
         Plot the fine or coarse mesh using matplotlib.
@@ -1125,97 +1125,13 @@ class TwoLevelMesh:
             raise ValueError("Domain colors must be a list.")
         self._subdomain_colors = cycle(colors)
 
-    @staticmethod
-    def _vectorized_check_if_point_on_line(points, lines, atol=1e-9):
-        """
-        Vectorized check if points are on line segments.
-
-        Args:
-            points (np.ndarray): (N, D) array of points.
-            lines (np.ndarray): (2, M, D) array, lines[0] are starts, lines[1] are ends.
-            atol (float): Tolerance for floating point comparison.
-
-        Returns:
-            np.ndarray: (N, M) boolean array, True if point i is on line j.
-        """
-        points = np.atleast_2d(points)  # (N, D)
-        line_starts = np.atleast_2d(lines[0])  # (M, D)
-        line_ends = np.atleast_2d(lines[1])  # (M, D)
-
-        line_vecs = line_ends - line_starts  # (M, D)
-        point_vecs = points[:, None, :] - line_starts[None, :, :]  # (N, M, D)
-
-        line_lens = np.linalg.norm(line_vecs, axis=1)  # (M,)
-        line_lens = np.where(line_lens == 0, 1, line_lens)  # Avoid division by zero
-
-        t = np.einsum("nmd,md->nm", point_vecs, line_vecs) / (line_lens**2)  # type: ignore
-
-        on_segment = (t >= -atol) & (t <= 1 + atol)
-
-        closest = line_starts[None, :, :] + t[:, :, None] * line_vecs[None, :, :]
-
-        dist = np.linalg.norm(points[:, None, :] - closest, axis=2)
-        is_on_line = np.isclose(dist, 0, atol=atol)
-
-        return on_segment & is_on_line, t
-
-    @staticmethod
-    def _vectorized_point_in_triangle(points, a, b, c):
-        """
-        Vectorized check if points are inside the triangle defined by (a, b, c).
-
-        Args:
-            points (np.ndarray): Array of points to check (N, 2).
-            a, b, c (array-like): Triangle vertices.
-
-        Returns:
-            np.ndarray: Boolean mask of points inside the triangle.
-        """
-        # Ensure points is (N, 2)
-        points = np.asarray(points)
-
-        N = points.shape[0]
-
-        A = TwoLevelMesh._vectorized_area(
-            np.tile(a, (N, 1)), np.tile(b, (N, 1)), np.tile(c, (N, 1))
-        )
-        A1 = TwoLevelMesh._vectorized_area(
-            points, np.tile(b, (N, 1)), np.tile(c, (N, 1))
-        )
-        A2 = TwoLevelMesh._vectorized_area(
-            np.tile(a, (N, 1)), points, np.tile(c, (N, 1))
-        )
-        A3 = TwoLevelMesh._vectorized_area(
-            np.tile(a, (N, 1)), np.tile(b, (N, 1)), points
-        )
-
-        return np.abs(A - (A1 + A2 + A3)) < 1e-9
-
-    @staticmethod
-    def _vectorized_area(p1, p2, p3):
-        """
-        Compute the area of triangles defined by points p1, p2, p3.
-
-        Args:
-            p1, p2, p3 (np.ndarray): Arrays of triangle vertices (N, 2).
-
-        Returns:
-            np.ndarray: Areas of the triangles.
-        """
-        return 0.5 * np.abs(
-            (
-                p1[:, 0] * (p2[:, 1] - p3[:, 1])
-                + p2[:, 0] * (p3[:, 1] - p1[:, 1])
-                + p3[:, 0] * (p1[:, 1] - p2[:, 1])
-            )
-        )
-
-
-# usage examples
+##################
+# usage examples #
+##################
 class TwoLevelMeshExamples:
 
     lx, ly = 1.0, 1.0
-    coarse_mesh_size = lx / 32
+    coarse_mesh_size = lx/32
     refinement_levels = 4
     layers = 1
     SAVE_DIR = DATA_DIR / TwoLevelMesh.SAVE_STRING.format(
