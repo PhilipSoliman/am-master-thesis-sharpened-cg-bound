@@ -251,14 +251,25 @@ class DiffusionProblem(Problem):
 
 
 def main():
-    # Example usage
+    # Define mesh parameters
+    lx = 1.0
+    ly = 1.0
+    coarse_mesh_size = 1 / 32
+    refinement_levels = 4
+    layers = 2
+
+    # define source and coefficient functions
     source_func = SourceFunc.CONSTANT
-    coef_func = CoefFunc.INCLUSIONS_EDGES
+    coef_func = CoefFunc.INCLUSIONS
+
+    # create diffusion problem
     diffusion_problem = DiffusionProblem(
         HomogeneousDirichlet(ProblemType.DIFFUSION),
-        coarse_mesh_size=0.15,
-        refinement_levels=2,
-        layers=2,
+        lx=lx,
+        ly=ly,
+        coarse_mesh_size=coarse_mesh_size,
+        refinement_levels=refinement_levels,
+        layers=layers,
         source_func=source_func,
         coef_func=coef_func,
     )
