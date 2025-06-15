@@ -340,7 +340,7 @@ class AMSCoarseSpace(GDSWCoarseSpace):
         )
 
         # Phi_V
-        vertex_restriction = sp.eye(self.interface_dimension, dtype=float)
+        vertex_restriction = sp.eye(self.interface_dimension, dtype=float).tocsc()
 
         # Phi_E
         A_EE = self.A[self.edge_dofs_mask, :][:, self.edge_dofs_mask]
@@ -350,7 +350,7 @@ class AMSCoarseSpace(GDSWCoarseSpace):
             A_EF = self.A[self.edge_dofs_mask, :][:, self.face_dofs_mask]
             A_EE += sp.diags(A_EF.sum(axis=1).A1, offsets=0, format="csc")
         A_EV = self.A[self.edge_dofs_mask, :][:, self.coarse_dofs_mask]
-        edge_restriction = -spsolve(A_EE.tocsc(), A_EV.tocsc())
+        edge_restriction = -spsolve(A_EE.tocsc(), A_EV.tocsc()).tocsc()
 
         # Phi_F
         face_restriction = sp.csc_matrix(
@@ -376,11 +376,11 @@ class AMSCoarseSpace(GDSWCoarseSpace):
             A_IV @ vertex_restriction
             + A_IE @ edge_restriction
             + A_IF @ face_restriction
-        )
+        ).tocsc()
         interior_restriction = -spsolve(
             A_II.tocsc(),
-            interface_restriction.tocsc(),
-        )
+            interface_restriction,
+        ).tocsc()
 
         # collect all restrictions at their respective dofs
         restriction_operator[self.coarse_dofs_mask, :] = vertex_restriction
