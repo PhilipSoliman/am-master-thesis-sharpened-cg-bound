@@ -5,7 +5,7 @@ import numpy as np
 
 from lib.boundary_conditions import BoundaryConditions, HomogeneousDirichlet
 from lib.meshes import TwoLevelMesh
-from lib.preconditioners import AMSCoarseSpace, TwoLevelSchwarzPreconditioner
+from lib.preconditioners import RGDSWCoarseSpace, TwoLevelSchwarzPreconditioner
 from lib.problem_type import ProblemType
 from lib.problems.problem import Problem
 
@@ -279,7 +279,7 @@ def main():
     get_cg_info = True
     diffusion_problem.solve(
         preconditioner=TwoLevelSchwarzPreconditioner,
-        coarse_space=AMSCoarseSpace,
+        coarse_space=RGDSWCoarseSpace,
         rtol=1e-8,
         save_cg_info=get_cg_info,
         save_coarse_bases=False,
