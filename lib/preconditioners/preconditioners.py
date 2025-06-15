@@ -41,7 +41,7 @@ class OneLevelSchwarzPreconditioner(Preconditioner):
         for subdomain_dofs in self.fespace.domain_dofs.values():
             # get dofs on subdomain
             subdomain_mask = np.zeros(self.fespace.fespace.ndof).astype(bool)
-            subdomain_mask[self._get_all_subdomain_dofs(subdomain_dofs)] = True
+            subdomain_mask[subdomain_dofs] = True
 
             # take only free dofs on subdomain
             local_free_dofs = subdomain_mask[self.free_dofs]
@@ -52,24 +52,6 @@ class OneLevelSchwarzPreconditioner(Preconditioner):
             # store local free dofs and local operator
             local_operators.append((local_free_dofs, A_i))
         return local_operators
-
-    def _get_all_subdomain_dofs(self, subdomain_dofs):
-        """Get all subdomain dofs."""
-        all_subdomain_dofs = set()
-        for component_type, component in subdomain_dofs.items():
-            if (
-                component_type == "interior"
-                or component_type == "coarse_nodes"
-                or component_type == "layer"
-            ):
-                all_subdomain_dofs.update(component)
-            elif component_type == "edges":
-                for edge_nr, edge_dofs in component.items():
-                    all_subdomain_dofs.update(edge_dofs["vertices"])
-                    all_subdomain_dofs.update(edge_dofs["edges"])
-            elif component_type == "face":
-                raise NotImplementedError("Face dofs are not implemented.")
-        return list(all_subdomain_dofs)
 
     def __str__(self):
         return self.name

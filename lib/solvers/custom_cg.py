@@ -328,7 +328,7 @@ class CustomCG:
 
     def get_lanczos_matrix(self) -> csc_matrix:
         delta = 1 / self.alpha + np.append(0, self.beta / self.alpha[:-1])
-        eta = np.append(0, np.sqrt(self.beta) / self.alpha[:-1])
+        eta = np.sqrt(self.beta) / self.alpha[:-1]
         return spdiags(
             [eta, delta, eta], offsets=[-1, 0, 1], shape=(self.niters, self.niters) # type: ignore
         ).tocsc()

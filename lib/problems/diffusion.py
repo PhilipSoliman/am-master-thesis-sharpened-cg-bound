@@ -5,7 +5,7 @@ import numpy as np
 
 from lib.boundary_conditions import BoundaryConditions, HomogeneousDirichlet
 from lib.meshes import TwoLevelMesh
-from lib.preconditioners import AMSCoarseSpace, TwoLevelSchwarzPreconditioner
+from lib.preconditioners import RGDSWCoarseSpace, TwoLevelSchwarzPreconditioner
 from lib.problem_type import ProblemType
 from lib.problems.problem import Problem
 
@@ -251,14 +251,25 @@ class DiffusionProblem(Problem):
 
 
 def main():
-    # Example usage
+    # Define mesh parameters
+    lx = 1.0
+    ly = 1.0
+    coarse_mesh_size = 1 / 32
+    refinement_levels = 4
+    layers = 2
+
+    # define source and coefficient functions
     source_func = SourceFunc.CONSTANT
-    coef_func = CoefFunc.INCLUSIONS_EDGES
+    coef_func = CoefFunc.INCLUSIONS
+
+    # create diffusion problem
     diffusion_problem = DiffusionProblem(
         HomogeneousDirichlet(ProblemType.DIFFUSION),
-        coarse_mesh_size=0.15,
-        refinement_levels=2,
-        layers=2,
+        lx=lx,
+        ly=ly,
+        coarse_mesh_size=coarse_mesh_size,
+        refinement_levels=refinement_levels,
+        layers=layers,
         source_func=source_func,
         coef_func=coef_func,
     )
@@ -268,7 +279,7 @@ def main():
     get_cg_info = True
     diffusion_problem.solve(
         preconditioner=TwoLevelSchwarzPreconditioner,
-        coarse_space=AMSCoarseSpace,
+        coarse_space=RGDSWCoarseSpace,
         rtol=1e-8,
         save_cg_info=get_cg_info,
         save_coarse_bases=False,
