@@ -387,29 +387,11 @@ class TwoLevelMesh:
         Args:
             layer_idx (int, optional): The new layer's index. Defaults to 1.
         """
-        # for subdomain_data in self.subdomains.values():
-        #     interior_edges = set()
-        #     domain_elements = copy.copy(subdomain_data["interior"])
-        #     for prev_layer_idx in range(1, layer_idx):
-        #         domain_elements += subdomain_data[f"layer_{prev_layer_idx}"]
-        #     for el in domain_elements:
-        #         mesh_el = self.fine_mesh[el]
-        #         for fine_edge in mesh_el.edges:
-        #             interior_edges.add(fine_edge.nr)
-
-        #     layer_elements = set()
-        #     for el in domain_elements:
-        #         mesh_el = self.fine_mesh[el]
-        #         vertices = mesh_el.vertices
-        #         for v in vertices:
-        #             mesh_v = self.fine_mesh[v]
-        #             for edge in mesh_v.edges:
-        #                 if edge.nr not in interior_edges:
-        #                     mesh_e = self.fine_mesh[edge]
-        #                     layer_elements.update(mesh_e.elements)
-        #     subdomain_data[f"layer_{layer_idx}"] = list(layer_elements)
-
-        for subdomain, subdomain_data in self.subdomains.items():
+        for subdomain, subdomain_data in tqdm(
+            self.subdomains.items(),
+            desc=f"Extending subdomains (layer {layer_idx})",
+            total=len(self.subdomains),
+        ):
             # get all interior elements of the subdomain
             interior_elements = [el.nr for el in subdomain_data["interior"]]
             for prev_layer_idx in range(1, layer_idx):
@@ -419,13 +401,15 @@ class TwoLevelMesh:
 
             # get all vertices on the edge of the domain
             edge_vertices = []
-            if layer_idx == 1: # we use coarse edge map for the first layer
+            if layer_idx == 1:  # we use coarse edge map for the first layer
                 edge_vertices.extend(subdomain.vertices)
                 for coarse_edge in subdomain_data["edges"].keys():
                     edge_vertices.extend(
                         list(self.coarse_edges_map[coarse_edge]["fine_vertices"])
                     )
-            if layer_idx > 1: # we use vertices of the previous layer elements for subsequent layers
+            if (
+                layer_idx > 1
+            ):  # we use vertices of the previous layer elements for subsequent layers
                 layer_elements = subdomain_data[f"layer_{layer_idx - 1}"]
                 for el in layer_elements:
                     mesh_el = self.fine_mesh[el]
@@ -586,9 +570,9 @@ class TwoLevelMesh:
 
         return component_tree
 
-    ##########
-    # saving #
-    ##########
+    ####################
+    # saving & loading #
+    ####################
     def save(self, save_vtk_meshes: bool = False):
         """
         Save the mesh, metadata, and subdomain information to disk.
@@ -603,6 +587,7 @@ class TwoLevelMesh:
         if save_vtk_meshes:
             self._save_vtk_meshes()
         self._save_coarse_edges_map()
+        self._save_subdomain_layers()
         print(f"\tDone.")
 
     def _save_metadata(self):
@@ -665,7 +650,25 @@ class TwoLevelMesh:
             }
             json.dump(coarse_edges_map, f, indent=4)
 
-    # loading
+    def _save_subdomain_layers(self):
+        """
+        Save the subdomain layers to a JSON file.
+        """
+        subdomains_path = self.save_dir / "subdomains_layers.json"
+        with open(subdomains_path, "w") as f:
+            subdomains_data = {
+                subdomain.nr: {
+                    **{
+                        f"layer_{layer_idx}": [
+                            el.nr for el in subdomain_data[f"layer_{layer_idx}"]
+                        ]
+                        for layer_idx in range(1, self.layers + 1)
+                    },
+                }
+                for subdomain, subdomain_data in self.subdomains.items()
+            }
+            json.dump(subdomains_data, f, indent=4)
+
     @classmethod
     def load(
         cls,
@@ -698,14 +701,13 @@ class TwoLevelMesh:
             obj._load_coarse_edges_map(fp)
             print(f"\tloaded coarse edges map")
             setattr(obj, "subdomains", obj.get_subdomains())
-            print(f"\tcalculated subdomains")
-            for layer_idx in range(1, obj.layers + 1):
-                obj.extend_subdomains(layer_idx)
-            print(f"\textended subdomains with {obj.layers} layers")
+            print(f"\tgot subdomain interior elements and edges")
+            obj._load_subdomain_layers(fp)
+            print(f"\trecovered {obj.layers} overlap layers for each subdomain")
             setattr(obj, "connected_components", obj.get_connected_components())
-            print(f"\tcalculated connected components")
+            print(f"\trecalculated connected components")
             setattr(obj, "connected_component_tree", obj.get_connected_component_tree())
-            print(f"\tcalculated connected component tree")
+            print(f"\trecalculated connected component tree")
             print("Finished loading TwoLevelMesh.")
             print(obj)
         else:
@@ -757,6 +759,27 @@ class TwoLevelMesh:
             }
             for coarse_edge_nr, data in coarse_edges_map.items()
         }
+
+    def _load_subdomain_layers(self, fp: Path):
+        """
+        Load the subdomain layers from a JSON file.
+        """
+        subdomains_path = fp / "subdomains_layers.json"
+        if not subdomains_path.exists():
+            raise FileNotFoundError(
+                f"Subdomains layers file {subdomains_path} does not exist."
+            )
+        with open(subdomains_path, "r") as f:
+            subdomains_data = json.load(f)
+
+        for subdomain in self.subdomains.keys():
+            subdomain_data = subdomains_data[str(subdomain.nr)]
+            for layer_idx in range(1, self.layers + 1):
+                layer_elements = [
+                    self.fine_mesh[ngs.ElementId(el)]
+                    for el in subdomain_data[f"layer_{layer_idx}"]
+                ]
+                self.subdomains[subdomain][f"layer_{layer_idx}"] = layer_elements
 
     @property
     def save_dir(self):
@@ -1180,13 +1203,14 @@ class TwoLevelMesh:
             raise ValueError("Domain colors must be a list.")
         self._subdomain_colors = cycle(colors)
 
+
 ##################
 # usage examples #
 ##################
 class TwoLevelMeshExamples:
 
     lx, ly = 1.0, 1.0
-    coarse_mesh_size = lx
+    coarse_mesh_size = lx / 64
     refinement_levels = 4
     layers = 2
     SAVE_DIR = DATA_DIR / TwoLevelMesh.SAVE_STRING.format(
@@ -1232,10 +1256,9 @@ class TwoLevelMeshExamples:
             p_loading = pstats.Stats(str(fp))
             p_loading.sort_stats("cumulative").print_stats(top)
 
-
 if __name__ == "__main__":
-    TwoLevelMeshExamples.example_creation(
-        fig_toggle=True
-    )  # Uncomment to create and visualize a new mesh
+    # TwoLevelMeshExamples.example_creation(
+    #     fig_toggle=True
+    # )  # Uncomment to create and visualize a new mesh
     # TwoLevelMeshExamples.example_load()  # Uncomment to load an existing mesh
-    # TwoLevelMeshExamples.profile()  # Uncomment to profile the mesh creation & loading
+    TwoLevelMeshExamples.profile()  # Uncomment to profile the mesh creation & loading
