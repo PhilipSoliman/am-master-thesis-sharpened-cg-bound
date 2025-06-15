@@ -56,21 +56,6 @@ class FESpace:
                 f"{self.fespace.ndof} != {self.num_interior_dofs} + {self.num_edge_dofs} + {self.num_coarse_node_dofs}"
             )
 
-        # now reconstruct the fininite element space for the refined coarse space
-        two_mesh.refine_coarse_mesh()
-        delattr(self, "fespace")
-        for fespace, order, dim, bcs in zip(
-            ptype.fespaces, ptype.orders, ptype.dimensions, boundary_conditions
-        ):
-            fespace = fespace(two_mesh.coarse_mesh, order=order, **bcs.boundary_kwargs)
-            if hasattr(self, "fespace"):
-                self.fespace *= fespace
-            else:
-                self.fespace = fespace
-
-        # construct the prolongation operator
-        # self.prolongation_operator = self.get_prolongation_operator()
-
     def calculate_dofs(self):
         """
         Calculate and classify the degrees of freedom (DOFs) in the finite element space.
