@@ -119,38 +119,20 @@ class DiffusionProblem(Problem):
 
     # High coefficient inclusions around the coarse nodes.
     def inclusions_coefficient(self):
-        # setup pieewise constant coefficient function
+        # setup piecewise constant coefficient function
         constant_fes = ngs.L2(self.two_mesh.fine_mesh, order=0)
         grid_func = ngs.GridFunction(constant_fes)
-
-        # get mesh size
-        H = self.two_mesh.coarse_mesh_size
-        h = H * 2 ** (-self.two_mesh.refinement_levels)
 
         # define background and contrast values
         background = 1.0
         contrast = 1e8
 
-        # Get all free coarse node coordinates
-        free_coarse_nodes = list(self.fes.free_component_tree_dofs.keys())
-        coarse_points = [
-            self.two_mesh.coarse_mesh[node].point for node in free_coarse_nodes
-        ]
-
-        # Loop over coarse nodes and set high contrast if inside any inclusion
+        # Loop over coarse nodes and set high contrast on elements around them
         coef_array = np.full(self.two_mesh.fine_mesh.ne, background)
-        for coarse_node, coarse_point in zip(free_coarse_nodes, coarse_points):
+        for coarse_node in list(self.fes.free_component_tree_dofs.keys()):
             mesh_el = self.two_mesh.fine_mesh[coarse_node]
             for el in mesh_el.elements:
-                vertices = np.array(
-                    [
-                        self.two_mesh.fine_mesh[v].point
-                        for v in self.two_mesh.fine_mesh[el].vertices
-                    ]
-                )
-                d = np.linalg.norm(vertices - coarse_point, axis=1, ord=2)
-                if np.all(d < 2 * h):
-                    coef_array[el.nr] = contrast
+                coef_array[el.nr] = contrast
 
         grid_func.vec.FV().NumPy()[:] = coef_array
         coef_func = ngs.CoefficientFunction(grid_func)
@@ -193,14 +175,6 @@ class DiffusionProblem(Problem):
 
     # edge inclusions
     def inclusions_edges_coefficient(self):
-        # get fine mesh size
-        num_edge_vertices = (
-            2**self.two_mesh.refinement_levels - 2
-        )  # without coarse nodes
-        edge_vertex_inclusion_idxs = np.array(
-            [i for i in range(2, num_edge_vertices, 2)]
-        )
-
         # setup piecewise constant coefficient function
         constant_fes = ngs.L2(self.two_mesh.fine_mesh, order=0)
         grid_func = ngs.GridFunction(constant_fes)
@@ -209,33 +183,26 @@ class DiffusionProblem(Problem):
         background = 1.0
         contrast = 1e8
 
+        # get num vertices on subdomain edges (without coarse nodes)
+        num_edge_vertices = (
+            2**self.two_mesh.refinement_levels - 2
+        ) 
+
+        # set the indices of the edge vertices around which elements will be set to high contrast
+        edge_vertex_inclusion_idxs = np.array(
+            [i for i in range(2, num_edge_vertices, 2)]
+        )
+
         # asssemble grid function
         coef_array = np.full(self.two_mesh.fine_mesh.ne, background)
-        coarse_edges = set(self.two_mesh.coarse_mesh.edges)
-        component_tree_dofs = self.two_mesh.connected_component_tree
-        free_coarse_nodes = list(self.fes.free_component_tree_dofs.keys())
-        for coarse_node in free_coarse_nodes:
-            node_data = component_tree_dofs[coarse_node]
-            coarse_point = np.array(self.two_mesh.coarse_mesh[coarse_node].point)
-            for coarse_edge, edge_data in node_data.items():
-                if coarse_edge not in coarse_edges:
-                    continue  # edge already processed
-                coarse_edges.remove(coarse_edge)
-                distances = []
-                for vertex in edge_data["fine_vertices"]:
-                    point = np.array(self.two_mesh.fine_mesh[vertex].point)
-                    d = np.linalg.norm(coarse_point - point, ord=2)
-                    distances.append((vertex, d))
-
-                # Sort the (vertex, distance) pairs by distance
-                sorted_vertices = [
-                    v for v, d in sorted(distances, key=lambda pair: pair[1])
-                ]
-                for i in edge_vertex_inclusion_idxs:
-                    vertex = sorted_vertices[i]
-                    mesh_el = self.two_mesh.fine_mesh[vertex]
-                    for el in mesh_el.elements:
-                        coef_array[el.nr] = contrast
+        for coarse_edge in self.fes.free_coarse_edges:
+            # get already sorted fine vertices on free coarse edge
+            fine_vertices =  self.two_mesh.coarse_edges_map[coarse_edge]["fine_vertices"] 
+            for i in edge_vertex_inclusion_idxs:
+                vertex = fine_vertices[i]
+                mesh_el = self.two_mesh.fine_mesh[vertex]
+                for el in mesh_el.elements:
+                    coef_array[el.nr] = contrast
 
         grid_func.vec.FV().NumPy()[:] = coef_array
         coef_func = ngs.CoefficientFunction(grid_func)

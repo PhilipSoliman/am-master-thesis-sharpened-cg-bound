@@ -84,7 +84,7 @@ class FESpace:
 
         # component dofs
         self.free_coarse_node_dofs = self.get_free_coarse_node_dofs()
-        self.free_edge_component_dofs = self.get_free_edge_component_dofs()
+        self.free_edge_component_dofs, self.free_coarse_edges = self.get_free_edge_component_dofs()
         self.free_face_component_dofs = self.get_free_face_component_dofs()
         self.free_component_tree_dofs, self.edge_component_multiplicities = (
             self.get_free_component_tree_dofs()
@@ -185,11 +185,13 @@ class FESpace:
         edge_component_dofs = []
         all_dofs = np.arange(self.fespace.ndof)
         free_dofs = all_dofs[self.fespace.FreeDofs()]
+        coarse_edges = []
         dofs_arrs = []
-        for edge_component in tqdm(
-            self.two_mesh.connected_components["edges"],
+        for coarse_edge, edge_component in tqdm(
+            self.two_mesh.connected_components["edges"].items(),
             desc="Obtaining free edge component DOFs",
         ):
+            coarse_edges.append(coarse_edge)
             dofs = []
             for c in edge_component:
                 dofs.extend(self.fespace.GetDofNrs(c))
@@ -208,15 +210,19 @@ class FESpace:
         dofs_arrs = dofs_arrs[isin].reshape(num_free_dofs, num_edge_dofs_per_edge)
         for dofs in dofs_arrs:
             edge_component_dofs.append(dofs.tolist())
+        
+        # get list of free coarse edges
+        coarse_edges = np.array(coarse_edges)
+        free_coarse_edges = coarse_edges[any_free_dofs].tolist()
 
-        return edge_component_dofs
+        return edge_component_dofs, free_coarse_edges
 
     def get_free_face_component_dofs(self):
         face_component_dofs = []
         all_dofs = np.arange(self.fespace.ndof)
         free_dofs = all_dofs[self.fespace.FreeDofs()]
         for face_component in tqdm(
-            self.two_mesh.connected_components["faces"],
+            self.two_mesh.connected_components["faces"].values(),
             desc="Obtaining free face component DOFs",
         ):
             dofs = []
@@ -255,7 +261,7 @@ class FESpace:
         free_component_tree_dofs = {}
         edge_component_multiplicity = {}
         component_tree = self.two_mesh.connected_component_tree
-        for coarse_node, coarse_edges in component_tree.items():
+        for coarse_node, components in component_tree.items():
             coarse_node_dofs = list(self.fespace.GetDofNrs(coarse_node))
             if coarse_node_dofs in self.free_coarse_node_dofs:
                 free_component_tree_dofs[coarse_node] = {"node": coarse_node_dofs}
@@ -264,19 +270,17 @@ class FESpace:
 
             # treat coarse edges
             free_component_tree_dofs[coarse_node]["edges"] = {}
-            for coarse_edge, edge_components in coarse_edges.items():
+
+            for coarse_edge, edge_components in components["edges"].items():
                 # increment the multiplicity of the coarse edge component
                 edge_component_multiplicity[coarse_edge] = (
                     edge_component_multiplicity.get(coarse_edge, 0) + 1
                 )
                 # save all DOFs of the edge component
                 dofs = []
-                for edge in edge_components["fine_edges"]:
-                    edge_dofs = list(self.fespace.GetDofNrs(edge))
+                for c in edge_components:
+                    edge_dofs = list(self.fespace.GetDofNrs(c))
                     dofs.extend(edge_dofs)
-                for vertex in edge_components["fine_vertices"]:
-                    vertex_dofs = list(self.fespace.GetDofNrs(vertex))
-                    dofs.extend(vertex_dofs)
                 free_component_tree_dofs[coarse_node]["edges"][coarse_edge] = dofs
         return free_component_tree_dofs, edge_component_multiplicity
 
@@ -382,7 +386,7 @@ class FESpace:
 
 def load_mesh():
     lx, ly = 1.0, 1.0
-    coarse_mesh_size = 1 / 64
+    coarse_mesh_size = 1 / 4
     refinement_levels = 4
     layers = 2
     return TwoLevelMesh.load(

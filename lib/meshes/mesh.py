@@ -118,7 +118,9 @@ class TwoLevelMesh:
         print("\tcalculated subdomains")
         self.connected_components = self.get_connected_components()
         print("\tcalculated connected components")
-        self.connected_component_tree = self.get_connected_component_tree()
+        self.connected_component_tree = self.get_connected_component_tree(
+            self.connected_components
+        )
         print("\tcalculated connected component tree")
         self.layers = layers
         for layer_idx in range(1, layers + 1):
@@ -455,67 +457,20 @@ class TwoLevelMesh:
         """
         connected_components = {}
 
-        connected_components["coarse_nodes"] = []
-        coarse_nodes_processed = set()
+        connected_components["coarse_nodes"] = list(self.coarse_mesh.vertices)
 
-        connected_components["edges"] = []
-        subdomain_edges_processed = set()
+        connected_components["edges"] = {}
+        for coarse_edge, nodes in self.coarse_edges_map.items():
+            fine_edges = nodes["fine_edges"]
+            fine_vertices = nodes["fine_vertices"]
+            connected_components["edges"][coarse_edge] = fine_edges + fine_vertices
 
-        # NOTE: this code is commented out until 3D meshes are implemented
-        connected_components["faces"] = []
-        subdomain_faces_processed = set()
-
-        # figure, ax = plt.subplots()
-        for subdomain, subdomain_data in self.subdomains.items():
-            # coarse nodes
-            subdomain_coarse_nodes = subdomain.vertices
-            for subdomain_coarse_node in subdomain_coarse_nodes:
-                if subdomain_coarse_node not in coarse_nodes_processed:
-                    connected_components["coarse_nodes"].append(subdomain_coarse_node)
-                    coarse_nodes_processed.add(subdomain_coarse_node)
-
-            # subdomain edges
-            for subdomain_edge, fine_edges in subdomain_data["edges"].items():
-                # add fine edges
-                subdomain_edge_components = set(fine_edges)
-                for fine_edge in fine_edges:
-                    # add fine vertices
-                    for vertex in self.fine_mesh[fine_edge].vertices:
-                        # coarse nodes are not added to edges
-                        if vertex not in coarse_nodes_processed:
-                            subdomain_edge_components.add(vertex)
-
-                if subdomain_edge not in subdomain_edges_processed:
-                    connected_components["edges"].append(
-                        list(subdomain_edge_components)
-                    )
-                    subdomain_edges_processed.add(subdomain_edge)
-
-                # NOTE: this code is commented out until 3D meshes are implemented
-                # # faces
-                # if (subdomain_faces := getattr(subdomain, "faces")) is not None:
-                #     for subdomain_face, fine_faces in subdomain_faces.items():
-                #         subdomain_face_components = set()
-                #         subdomain_faces.remove(subdomain_face)
-                #         if len(subdomain_faces) == 0:
-                #             break
-                #         for fine_face in fine_faces:
-                #             # add face
-                #             subdomain_face_components.add(fine_face)
-
-                #             # add edges
-                #             for edge in fine_face.edges:
-                #                 if edge not in subdomain_edge_components:
-                #                     subdomain_face_components.add(edge)
-
-                #             # add vertices
-                #             for vertex in fine_face.vertices:
-                #                 if vertex not in coarse_nodes:
-                #                     subdomain_face_components.add(vertex)
+        # NOTE: this code is only necessary for 3D meshes
+        connected_components["faces"] = {}
 
         return connected_components
 
-    def get_connected_component_tree(self) -> dict:
+    def get_connected_component_tree(self, connected_components: dict) -> dict:
         """
         Finds the tree of connected components in the fine mesh based on the coarse mesh subdomains.
 
@@ -524,49 +479,65 @@ class TwoLevelMesh:
             dict: A dictionary with the following structure:
                 {
                     coarse_node_i1: {
-                        coarse_edge_j1:{
-                            "fine_edges": [fine_edge_1, fine_edge_2, ...],
-                            "fine_vertices": [fine_vertex_1, fine_vertex_2, ...],
-                            coarse_face_k1: {
-                                "fine_faces": [fine_face_1, fine_face_2, ...],
-                                "fine_edges": [fine_edge_1, fine_edge_2, ...],
-                                "fine_vertices": [fine_vertex_1, fine_vertex_2, ...]
-                            },
-                        },
+                        coarse_edge_j1: [fine_edge_1, fine_edge_2, ..., fine_vertex_1, fine_vertex_2, ...],
                         coarse_edge_j2:{...},
                         ...,
                         coarse_edge_jm:{...},
+                        coarse_face_k1: [fine_face_1, fine_face_2, ..., fine_edge_1, fine_edge_2, ..., fine_vertex_1, fine_vertex_2, ...],
+                        coarse_face_k2: {...},
+                        ...,
+                        coarse_face_kn: {...}
                     }
                     coarse_node_i2: {...},
                     ...,
                     coarse_node_in: {...}
                 }
         """
-        component_tree = {}
-        all_coarse_nodes = set(self.coarse_mesh.vertices)
-        for coarse_node in all_coarse_nodes:
-            component_tree[coarse_node] = {}
+        component_tree = {
+            coarse_node: {
+                "edges": {
+                    self.coarse_mesh[coarse_edge]: connected_components["edges"][
+                        coarse_edge
+                    ]
+                    for coarse_edge in coarse_node.edges
+                },
+                # "faces": { #NOTE: this is only for 3D meshes
+                #     self.coarse_mesh[coarse_face]: connected_components["faces"][
+                #         coarse_face
+                #     ]
+                #     for coarse_face in coarse_node.faces
+                # },
+            }
+            for coarse_node in connected_components["coarse_nodes"]
+        }
+        # component_tree = {}
+        # all_coarse_nodes = set(self.coarse_mesh.vertices)
+        # for coarse_node in all_coarse_nodes:
+        #     component_tree[coarse_node] = {}
 
-        for subdomain, subdomain_data in self.subdomains.items():
-            for coarse_node in subdomain.vertices:
-                for coarse_edge in self.coarse_mesh[coarse_node].edges:
-                    if (
-                        coarse_edge_d := component_tree[coarse_node].get(
-                            coarse_edge, None
-                        )
-                    ) is None:
-                        component_tree[coarse_node][coarse_edge] = {}
-                        coarse_edge_d = component_tree[coarse_node][coarse_edge]
-                    if (
-                        fine_edges := subdomain_data["edges"].get(coarse_edge, None)
-                    ) is not None:
-                        coarse_edge_d["fine_edges"] = fine_edges
-                        edge_vertices = set()
-                        for fine_edge in fine_edges:
-                            for vertex in self.fine_mesh[fine_edge].vertices:
-                                if vertex not in all_coarse_nodes:
-                                    edge_vertices.add(vertex)
-                        coarse_edge_d["fine_vertices"] = list(edge_vertices)
+        # for coarse_node, data in component_tree.items():
+        #     for coarse_edge in coarse_node.edges:
+
+        # for subdomain, subdomain_data in self.subdomains.items():
+        #     for coarse_node in subdomain.vertices:
+        #         for coarse_edge in self.coarse_mesh[coarse_node].edges:
+        #             if (
+        #                 coarse_edge_d := component_tree[coarse_node].get(
+        #                     coarse_edge, None
+        #                 )
+        #             ) is None:
+        #                 component_tree[coarse_node][coarse_edge] = {}
+        #                 coarse_edge_d = component_tree[coarse_node][coarse_edge]
+        #             if (
+        #                 fine_edges := subdomain_data["edges"].get(coarse_edge, None)
+        #             ) is not None:
+        #                 coarse_edge_d["fine_edges"] = fine_edges
+        #                 edge_vertices = set()
+        #                 for fine_edge in fine_edges:
+        #                     for vertex in self.fine_mesh[fine_edge].vertices:
+        #                         if vertex not in all_coarse_nodes:
+        #                             edge_vertices.add(vertex)
+        #                 coarse_edge_d["fine_vertices"] = list(edge_vertices)
 
         return component_tree
 
@@ -706,7 +677,11 @@ class TwoLevelMesh:
             print(f"\trecovered {obj.layers} overlap layers for each subdomain")
             setattr(obj, "connected_components", obj.get_connected_components())
             print(f"\trecalculated connected components")
-            setattr(obj, "connected_component_tree", obj.get_connected_component_tree())
+            setattr(
+                obj,
+                "connected_component_tree",
+                obj.get_connected_component_tree(obj.connected_components),
+            )
             print(f"\trecalculated connected component tree")
             print("Finished loading TwoLevelMesh.")
             print(obj)
@@ -954,32 +929,23 @@ class TwoLevelMesh:
         )
 
         # edges
-        for components in self.connected_components["edges"]:
-            for component in components:
-                mesh_comp = self.fine_mesh[component]
-                try:  # edge component
-                    _ = mesh_comp.vertices
-                    self.plot_edges(
-                        ax,
-                        [mesh_comp],
-                        self.fine_mesh,
-                        color="blue",
-                        linewidth=1.5,
-                        linestyle="-",
-                    )
-                except TypeError:  # vertex component
-                    self.plot_vertices(
-                        ax,
-                        [component],
-                        self.fine_mesh,
-                        color="green",
-                        marker="x",
-                        markersize=15,
-                    )
+        for components in self.connected_components["edges"].values():
+            self.plot_components(
+                ax,
+                components,
+                self.fine_mesh,
+                edge_color="blue",
+                vertex_color="green",
+                marker="x",
+                markersize=15,
+                linewidth=1.5,
+                linestyle="-",
+                zorder=TwoLevelMesh.ZORDERS["edges"] + 0.1,
+            )
 
         # faces
-        for face_component in self.connected_components["faces"]:
-            for face in face_component:
+        for coarse_face, components in self.connected_components["faces"].items():
+            for face in components:
                 raise NotImplementedError(
                     "Plotting connected components for faces is not implemented yet."
                 )
@@ -996,7 +962,7 @@ class TwoLevelMesh:
             Axes: The matplotlib axis with the plotted connected component tree.
         """
         plotted_edges = set()
-        for coarse_node, edges in self.connected_component_tree.items():
+        for coarse_node, components in self.connected_component_tree.items():
             color = next(self.subdomain_colors)
             # plot big coarse node
             self.plot_vertices(
@@ -1007,7 +973,7 @@ class TwoLevelMesh:
                 marker="x",
                 markersize=50,
             )
-            for coarse_edge, edge_data in edges.items():
+            for coarse_edge, edge_components in components["edges"].items():
                 # plot thick coarse edge showing the connected component
                 self.plot_edges(
                     ax,
@@ -1022,23 +988,21 @@ class TwoLevelMesh:
                 plotted_edges.add(coarse_edge)
 
                 # plot fine edges and vertices
-                self.plot_edges(
+                self.plot_components(
                     ax,
-                    edge_data["fine_edges"],
+                    edge_components,
                     self.fine_mesh,
-                    color="black",
-                    linewidth=0.5,
+                    fillcolor=color,
+                    edge_color="black",
+                    vertex_color="green",
+                    marker="x",
+                    markersize=15,
+                    alpha=0.5,
+                    linewidth=1.5,
                     linestyle="-",
+                    zorder=TwoLevelMesh.ZORDERS["edges"] + 0.1,
                 )
-                if np.any(edge_data["fine_vertices"]):
-                    self.plot_vertices(
-                        ax,
-                        edge_data["fine_vertices"],
-                        self.fine_mesh,
-                        color="green",
-                        marker="x",
-                        markersize=15,
-                    )
+
         return ax
 
     @staticmethod
@@ -1075,9 +1039,77 @@ class TwoLevelMesh:
         ax.add_patch(polygon)
 
     @staticmethod
+    def plot_components(
+        ax: Axes,
+        components: list[ngs.NodeId],  # list of vertices, edges, and/or faces
+        mesh,
+        **kwargs,
+    ):
+        vertices = []
+        edges = []
+        faces = []
+        for component in components:
+            mesh_comp = mesh[component]
+            try:  # edge component
+                _ = mesh_comp.vertices
+                try:
+                    _ = mesh_comp.edges
+                except TypeError:
+                    edges.append(mesh_comp)
+                    continue
+            except TypeError:  # vertex component
+                vertices.append(mesh_comp)
+                continue
+            faces.append(mesh_comp)  # face component
+
+        TwoLevelMesh.plot_vertices(
+            ax, vertices, mesh, color=kwargs.get("vertex_color", "green"), **kwargs
+        )
+        TwoLevelMesh.plot_edges(
+            ax,
+            edges,
+            mesh,
+            color=kwargs.get("edge_color", "black"),
+            **kwargs,
+        )
+        TwoLevelMesh.plot_faces(
+            ax, faces, mesh, color=kwargs.get("face_color", "yellow"), **kwargs
+        )
+
+    @staticmethod
+    def plot_vertices(
+        ax: Axes,
+        vertices: list,  # list of vertices
+        mesh,
+        **kwargs,
+    ):
+        """
+        Plot a single mesh node on a matplotlib axis.
+
+        Args:
+            ax (Axes): Matplotlib axis to plot on.
+            node: NodeId of the node to plot.
+            mesh: NGSolve mesh containing the node.
+            color (str, optional): Color for the node. Defaults to "red".
+            marker (str, optional): Marker style for the node. Defaults to "o".
+            markersize (int, optional): Size of the marker. Defaults to 5.
+            label (str, optional): Label for the node (optional).
+        """
+        coarse_node_coords = np.array([mesh.vertices[v.nr].point for v in vertices])
+        ax.scatter(
+            coarse_node_coords[:, 0],
+            coarse_node_coords[:, 1],
+            c=kwargs.get("color", "red"),
+            marker=kwargs.get("marker", "o"),
+            s=kwargs.get("markersize", 5),
+            label=kwargs.get("label"),
+            zorder=kwargs.get("zorder", TwoLevelMesh.ZORDERS["vertices"]),
+        )
+
+    @staticmethod
     def plot_edges(
         ax: Axes,
-        edges: list,
+        edges: list,  # list of edges
         mesh,
         **kwargs,
     ):
@@ -1106,34 +1138,17 @@ class TwoLevelMesh:
             )
 
     @staticmethod
-    def plot_vertices(
+    def plot_faces(
         ax: Axes,
-        vertices: list,
+        faces: list,  # list of faces
         mesh,
         **kwargs,
     ):
-        """
-        Plot a single mesh node on a matplotlib axis.
-
-        Args:
-            ax (Axes): Matplotlib axis to plot on.
-            node: NodeId of the node to plot.
-            mesh: NGSolve mesh containing the node.
-            color (str, optional): Color for the node. Defaults to "red".
-            marker (str, optional): Marker style for the node. Defaults to "o".
-            markersize (int, optional): Size of the marker. Defaults to 5.
-            label (str, optional): Label for the node (optional).
-        """
-        coarse_node_coords = np.array([mesh.vertices[v.nr].point for v in vertices])
-        ax.scatter(
-            coarse_node_coords[:, 0],
-            coarse_node_coords[:, 1],
-            color=kwargs.get("color", "red"),
-            marker=kwargs.get("marker", "o"),
-            s=kwargs.get("markersize", 5),
-            label=kwargs.get("label"),
-            zorder=kwargs.get("zorder", TwoLevelMesh.ZORDERS["vertices"]),
-        )
+        for face in faces:
+            # NOTE: this is only for 3D meshes
+            raise NotImplementedError(
+                "Plotting faces is not implemented yet. This is only used for 3D meshes."
+            )
 
     def visualize_two_level_mesh(self, show: bool = True) -> Figure:
         """
@@ -1210,7 +1225,7 @@ class TwoLevelMesh:
 class TwoLevelMeshExamples:
 
     lx, ly = 1.0, 1.0
-    coarse_mesh_size = lx / 64
+    coarse_mesh_size = lx / 4
     refinement_levels = 4
     layers = 2
     SAVE_DIR = DATA_DIR / TwoLevelMesh.SAVE_STRING.format(
@@ -1256,9 +1271,10 @@ class TwoLevelMeshExamples:
             p_loading = pstats.Stats(str(fp))
             p_loading.sort_stats("cumulative").print_stats(top)
 
+
 if __name__ == "__main__":
-    # TwoLevelMeshExamples.example_creation(
-    #     fig_toggle=True
-    # )  # Uncomment to create and visualize a new mesh
+    TwoLevelMeshExamples.example_creation(
+        fig_toggle=True
+    )  # Uncomment to create and visualize a new mesh
     # TwoLevelMeshExamples.example_load()  # Uncomment to load an existing mesh
-    TwoLevelMeshExamples.profile()  # Uncomment to profile the mesh creation & loading
+    # TwoLevelMeshExamples.profile()  # Uncomment to profile the mesh creation & loading
