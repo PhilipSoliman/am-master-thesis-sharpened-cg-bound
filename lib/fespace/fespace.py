@@ -34,6 +34,7 @@ class FESpace:
         Raises:
             - ValueError: If the sum of classified free DOFs does not match the total number of free DOFs in the space.
         """
+        print("Constructing FESpace:")
         self.two_mesh = two_mesh
         self.ptype = ptype
         self.ndofs_per_unknown = []
