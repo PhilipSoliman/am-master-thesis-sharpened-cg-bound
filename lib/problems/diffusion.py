@@ -21,9 +21,10 @@ class CoefFunc(Enum):
     """Enumeration for coefficient functions used in the diffusion problem."""
 
     SINUSOIDAL = "sinusoidal_coefficient"
-    INCLUSIONS = "inclusions_coefficient"
-    INCLUSIONS_2LAYERS = "inclusions_2layers_coefficient"
-    INCLUSIONS_EDGES = "inclusions_edges_coefficient"
+    VERTEX_INCLUSIONS = "vertex_inclusions_coefficient"
+    VERTEX_INCLUSIONS_2LAYERS = "vertex_inclusions_2layers_coefficient"
+    EDGE_INCLUSIONS = "edge_inclusions_coefficient"
+    EDGE_SLAB_INCLUSIONS = "edge_slab_inclusions_coefficient"
     CONSTANT = "constant_coefficient"
     HETMANIUK_LEHOUCQ = "hetmaniuk_lehoucq_coefficient"
     HEINLEIN = "heinlein_coefficient"
@@ -40,7 +41,7 @@ class DiffusionProblem(Problem):
         coarse_mesh_size=0.15,
         refinement_levels=2,
         layers=2,
-        coef_func=CoefFunc.INCLUSIONS,
+        coef_func=CoefFunc.VERTEX_INCLUSIONS,
         source_func=SourceFunc.CONSTANT,
     ):
         try:
@@ -73,6 +74,7 @@ class DiffusionProblem(Problem):
         self.source_func = getattr(self, self.source_func_name)()
 
     def assemble(self, gfuncs=None):
+        print("Assembling system...")
         return super().assemble(gfuncs=[self.coef_func, self.source_func])
 
     ####################
@@ -118,7 +120,7 @@ class DiffusionProblem(Problem):
         return c
 
     # High coefficient inclusions around the coarse nodes.
-    def inclusions_coefficient(self):
+    def vertex_inclusions_coefficient(self):
         # setup piecewise constant coefficient function
         constant_fes = ngs.L2(self.two_mesh.fine_mesh, order=0)
         grid_func = ngs.GridFunction(constant_fes)
@@ -139,7 +141,7 @@ class DiffusionProblem(Problem):
         return coef_func.Compile()
 
     # High coefficient inclusions on the coarse node (2 layers).
-    def inclusions_2layers_coefficient(self):
+    def vertex_inclusions_2layers_coefficient(self):
         # setup piecewise constant coefficient function
         constant_fes = ngs.L2(self.two_mesh.fine_mesh, order=0)
         grid_func = ngs.GridFunction(constant_fes)
@@ -174,7 +176,7 @@ class DiffusionProblem(Problem):
         return coef_func.Compile()
 
     # edge inclusions
-    def inclusions_edges_coefficient(self):
+    def edge_inclusions_coefficient(self):
         # setup piecewise constant coefficient function
         constant_fes = ngs.L2(self.two_mesh.fine_mesh, order=0)
         grid_func = ngs.GridFunction(constant_fes)
@@ -184,9 +186,7 @@ class DiffusionProblem(Problem):
         contrast = 1e8
 
         # get num vertices on subdomain edges (without coarse nodes)
-        num_edge_vertices = (
-            2**self.two_mesh.refinement_levels - 2
-        ) 
+        num_edge_vertices = 2**self.two_mesh.refinement_levels - 2
 
         # set the indices of the edge vertices around which elements will be set to high contrast
         edge_vertex_inclusion_idxs = np.array(
@@ -197,12 +197,31 @@ class DiffusionProblem(Problem):
         coef_array = np.full(self.two_mesh.fine_mesh.ne, background)
         for coarse_edge in self.fes.free_coarse_edges:
             # get already sorted fine vertices on free coarse edge
-            fine_vertices =  self.two_mesh.coarse_edges_map[coarse_edge]["fine_vertices"] 
+            fine_vertices = self.two_mesh.coarse_edges_map[coarse_edge]["fine_vertices"]
             for i in edge_vertex_inclusion_idxs:
                 vertex = fine_vertices[i]
                 mesh_el = self.two_mesh.fine_mesh[vertex]
                 for el in mesh_el.elements:
                     coef_array[el.nr] = contrast
+
+        grid_func.vec.FV().NumPy()[:] = coef_array
+        coef_func = ngs.CoefficientFunction(grid_func)
+        return coef_func.Compile()
+
+    def edge_slab_inclusions_coefficient(self):
+        # setup piecewise constant coefficient function
+        constant_fes = ngs.L2(self.two_mesh.fine_mesh, order=0)
+        grid_func = ngs.GridFunction(constant_fes)
+
+        # define background and contrast values
+        background = 1.0
+        contrast = 1e8
+
+        # construct the coefficient array
+        coef_array = np.full(self.two_mesh.fine_mesh.ne, background)
+        for coarse_edge in self.fes.free_coarse_edges:
+            slab_elements = self.two_mesh.edge_slabs[coarse_edge.nr]
+            coef_array[slab_elements] = contrast
 
         grid_func.vec.FV().NumPy()[:] = coef_array
         coef_func = ngs.CoefficientFunction(grid_func)
@@ -227,7 +246,7 @@ def main():
 
     # define source and coefficient functions
     source_func = SourceFunc.CONSTANT
-    coef_func = CoefFunc.INCLUSIONS
+    coef_func = CoefFunc.EDGE_SLAB_INCLUSIONS
 
     # create diffusion problem
     diffusion_problem = DiffusionProblem(
@@ -337,6 +356,7 @@ def main():
 
         plt.tight_layout()
         plt.show()
+
 
 if __name__ == "__main__":
     main()
