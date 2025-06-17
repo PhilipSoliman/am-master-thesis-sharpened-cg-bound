@@ -247,18 +247,6 @@ class DiffusionProblemExample:
     source_func = SourceFunc.CONSTANT
     coef_func = CoefFunc.EDGE_INCLUSIONS
 
-    # create diffusion problem
-    diffusion_problem = DiffusionProblem(
-        HomogeneousDirichlet(ProblemType.DIFFUSION),
-        lx=lx,
-        ly=ly,
-        coarse_mesh_size=coarse_mesh_size,
-        refinement_levels=refinement_levels,
-        layers=layers,
-        source_func=source_func,
-        coef_func=coef_func,
-    )
-
     # save CG convergence information
     get_cg_info = True
 
