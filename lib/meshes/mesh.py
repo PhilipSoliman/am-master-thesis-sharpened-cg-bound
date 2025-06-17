@@ -126,6 +126,8 @@ class TwoLevelMesh:
         for layer_idx in range(1, layers + 1):
             self.extend_subdomains(layer_idx)
         print(f"\textended subdomains with {layers} layers")
+        self.edge_slabs = self.generate_edge_slabs()
+        print("\tgenerated edge slabs")
         print(self)
 
     # mesh creation
@@ -429,6 +431,9 @@ class TwoLevelMesh:
             # convert to numpy array for easier manipulation
             layer_elements = np.array(list(layer_elements))
 
+            # make unique
+            layer_elements = np.unique(layer_elements)
+
             # filter out elements that are already in the interior or previous layers
             mask = np.isin(
                 layer_elements, interior_elements, assume_unique=True, invert=True
@@ -510,36 +515,304 @@ class TwoLevelMesh:
             }
             for coarse_node in connected_components["coarse_nodes"]
         }
-        # component_tree = {}
-        # all_coarse_nodes = set(self.coarse_mesh.vertices)
-        # for coarse_node in all_coarse_nodes:
-        #     component_tree[coarse_node] = {}
-
-        # for coarse_node, data in component_tree.items():
-        #     for coarse_edge in coarse_node.edges:
-
-        # for subdomain, subdomain_data in self.subdomains.items():
-        #     for coarse_node in subdomain.vertices:
-        #         for coarse_edge in self.coarse_mesh[coarse_node].edges:
-        #             if (
-        #                 coarse_edge_d := component_tree[coarse_node].get(
-        #                     coarse_edge, None
-        #                 )
-        #             ) is None:
-        #                 component_tree[coarse_node][coarse_edge] = {}
-        #                 coarse_edge_d = component_tree[coarse_node][coarse_edge]
-        #             if (
-        #                 fine_edges := subdomain_data["edges"].get(coarse_edge, None)
-        #             ) is not None:
-        #                 coarse_edge_d["fine_edges"] = fine_edges
-        #                 edge_vertices = set()
-        #                 for fine_edge in fine_edges:
-        #                     for vertex in self.fine_mesh[fine_edge].vertices:
-        #                         if vertex not in all_coarse_nodes:
-        #                             edge_vertices.add(vertex)
-        #                 coarse_edge_d["fine_vertices"] = list(edge_vertices)
 
         return component_tree
+
+    #######################
+    # generate edge slabs #
+    #######################
+    def generate_edge_slabs(self) -> dict:
+        """
+        Generates the the mapping from coarse edges to fine mesh elements that are
+        in slabs that are extruded from the coarse edge vertices. These single slabs
+        can be used to create a coefficient function on the fine mesh that has high
+        contrast on the slab elements and low contrast on the rest of the mesh. These
+        slabs should be larger than the domain overlap. Hence the number of slab layers
+        is equal to the number of layers in the TwoLevelMesh plus one.
+        """
+        # main output dictionary
+        edge_slabs = {}
+
+        # get num vertices on subdomain edges (without coarse nodes)
+        num_edge_vertices = 2**self.refinement_levels - 2
+
+        # number of layers in the slab (slab height)
+        slab_layers = self.layers + 1
+
+        # find index center vertex on coarse edge
+        edge_vertex_inclusion_idx = num_edge_vertices // 2
+        edge_corner_vertex_idxs = np.array(
+            [
+                edge_vertex_inclusion_idx - 1,
+                edge_vertex_inclusion_idx + 1,
+            ]
+        )
+
+        # construct the coefficient array
+        for coarse_edge, data in tqdm(
+            self.coarse_edges_map.items(),
+            desc="Assembling edge slabs",
+            total=len(self.coarse_edges_map),
+            unit="edges",
+        ):
+            # get already sorted fine vertices on free coarse edge
+            fine_vertices = np.array(data["fine_vertices"])
+
+            # get the center vertex and the edge corners
+            center_vertex = fine_vertices[edge_vertex_inclusion_idx]
+            edge_corners = fine_vertices[edge_corner_vertex_idxs].tolist()
+
+            # get main edge direction
+            v0, v1 = self.fine_mesh[coarse_edge].vertices
+            p0, p1 = (
+                self.fine_mesh[v0].point,
+                self.fine_mesh[v1].point,
+            )
+            main_edge_direction = np.array(p1) - np.array(p0)
+            main_edge_direction /= np.linalg.norm(main_edge_direction)
+
+            # get extrusion directions
+            upper_direction, lower_direction = self.get_extrusion_directions(
+                center_vertex, main_edge_direction
+            )
+
+            # only consider existing extrusion directions
+            directions = []
+            if upper_direction.size > 0:
+                directions.append(upper_direction)
+            if lower_direction.size > 0:
+                directions.append(lower_direction)
+
+            # loop over both extrusion directions to find slab elements
+            slab_elements = []
+            for direction in directions:
+                # extrude the edge corners (to get parallelogram corners)
+                interior_corners, all_outer_vertices = self.extrude_vertices(
+                    vertices=edge_corners,
+                    extrusion_direction=direction,
+                    num_extrusions=slab_layers,
+                )
+
+                # extrude the center vertex (to get all inner vertices)
+                _, all_inner_vertices = self.extrude_vertices(
+                    vertices=[center_vertex],
+                    extrusion_direction=direction,
+                    num_extrusions=slab_layers,
+                )
+
+                # get corner of the parallelogram
+                corners = edge_corners + interior_corners
+                corner_points = np.array([self.fine_mesh[v].point for v in corners])
+
+                # get all elements in and near the parallelogram
+                el_nrs = []
+                el_points = []
+                # we loop over all available vertices to get a full covering of the parallelogram
+                for v in all_outer_vertices + all_inner_vertices:
+                    mesh_el = self.fine_mesh[v]
+                    for el in mesh_el.elements:
+                        el_nrs.append(el.nr)
+                        points = []
+                        for vertex in self.fine_mesh[el].vertices:
+                            points.append(self.fine_mesh[vertex].point)
+                        el_points.append(np.array(points))
+                el_nrs = np.array(el_nrs)
+                el_points = np.array(el_points)
+
+                # perform parallellogram check
+                inside_elements = self.points_in_parallelogram(
+                    corner_points,
+                    el_points,
+                )
+
+                # pick only elements that have all points inside the parallelogram
+                inside_elements = np.all(inside_elements, axis=1)
+
+                # get indices of elements that are inside the parallelogram
+                inside_element_indices = el_nrs[inside_elements].tolist()
+
+                # store the slab elements
+                slab_elements.extend(inside_element_indices)
+
+            # store the slab elements in the output dictionary
+            edge_slabs[coarse_edge.nr] = slab_elements
+
+        return edge_slabs
+
+    def get_extrusion_directions(
+        self,
+        center_vertex: ngs.NodeId,
+        main_edge_direction: np.ndarray,
+    ):
+        upper_edges = []
+        upper_edge_directions = []
+        lower_edges = []
+        lower_edge_directions = []
+        perpendicular_edge_direction = np.array(
+            [-main_edge_direction[1], main_edge_direction[0]]
+        )
+        for edge in self.fine_mesh[center_vertex].edges:
+            v0, v1 = self.fine_mesh[edge].vertices
+            p0, p1 = (
+                self.fine_mesh[v0].point,
+                self.fine_mesh[v1].point,
+            )
+            edge_direction = np.array(p1) - np.array(p0)
+            edge_direction /= np.linalg.norm(edge_direction)
+            inner_product = np.dot(edge_direction, perpendicular_edge_direction)
+            if np.isclose(np.abs(inner_product), 0.0):
+                continue  # edge is parallel to the main edge direction
+            elif inner_product > 0:
+                upper_edges.append(edge)
+                upper_edge_directions.append(edge_direction)
+            else:
+                lower_edges.append(edge)
+                lower_edge_directions.append(edge_direction)
+
+        # get extrusion directions
+        upper_extrusion_direction = np.array([])
+        if len(upper_edge_directions) > 0:
+            upper_extrusion_direction = self._get_middle_direction(
+                upper_edge_directions, main_edge_direction
+            )
+        lower_extrusion_direction = np.array([])
+        if len(lower_edge_directions) > 0:
+            lower_extrusion_direction = self._get_middle_direction(
+                lower_edge_directions, main_edge_direction
+            )
+
+        return upper_extrusion_direction, lower_extrusion_direction
+
+    def _get_middle_direction(
+        self, directions: list[np.ndarray], main_edge_direction: np.ndarray
+    ):
+        angles = []
+        for direction in directions:
+            dot = np.dot(direction, main_edge_direction)
+            det = (
+                direction[0] * main_edge_direction[1]
+                - direction[1] * main_edge_direction[0]
+            )  # 2D cross product
+            angle = np.arctan2(det, dot)
+            angles.append(angle)
+        angles = np.array(angles)
+        angles_sorted = np.argsort(angles)
+        middle_index = len(angles_sorted) // 2
+        middle_direction = directions[angles_sorted[middle_index]]
+        return middle_direction
+
+    def extrude_vertices(
+        self,
+        vertices: list[ngs.NodeId],
+        extrusion_direction: np.ndarray,
+        num_extrusions: int = 1,
+    ):
+        """
+        Extrude a list of vertices along a given direction.
+
+        Args:
+            vertices (list[ngs.NodeId]): List of vertices to extrude.
+            extrusion_direction (np.ndarray): Direction vector for extrusion.
+            num_extrusions (int): Number of times to extrude the edge.
+
+        Returns:
+        """
+        all_vertices = vertices.copy()
+        outer_vertices = vertices.copy()
+        for _ in range(num_extrusions):
+            outer_edges = []
+            for v in outer_vertices:
+                outer_edges.extend(self.fine_mesh[v].edges)
+
+            new_extrusion_edges = []
+            for edge in outer_edges:
+                # get outward orientation of the edge
+                start_point = None
+                edge_end_point = None
+                v0, v1 = self.fine_mesh[edge].vertices
+                if v0 in outer_vertices:
+                    start_point = np.array(self.fine_mesh[v0].point)
+                    edge_end_point = np.array(self.fine_mesh[v1].point)
+                else:
+                    start_point = np.array(self.fine_mesh[v1].point)
+                    edge_end_point = np.array(self.fine_mesh[v0].point)
+
+                # check if the edge is parallel to the extrusion direction
+                edge_direction = edge_end_point - start_point
+                edge_direction /= np.linalg.norm(edge_direction)
+                inner_product = np.dot(edge_direction, extrusion_direction)
+                if np.isclose(inner_product, 1.0):
+                    new_extrusion_edges.append(edge)
+
+            # update outer vertices
+            new_outer_vertices = []
+            for edge in new_extrusion_edges:
+                v0, v1 = self.fine_mesh[edge].vertices
+                if v0 not in all_vertices:
+                    new_outer_vertices.append(v0)
+                if v1 not in all_vertices:
+                    new_outer_vertices.append(v1)
+            all_vertices.extend(new_outer_vertices)
+            outer_vertices = new_outer_vertices
+
+        return outer_vertices, all_vertices
+
+    def points_in_parallelogram(
+        self, corners: np.ndarray, points_to_check: np.ndarray, tol: float = 1e-9
+    ) -> np.ndarray:
+        # 1. Select corners[0] as point A (origin for parallelogram vectors).
+        A = corners[0, :]
+
+        # 2. Determine the two edge vectors vec1 and vec2 originating from A.
+        v_AP1 = corners[1, :] - A
+        v_AP2 = corners[2, :] - A
+        v_AP3 = corners[3, :] - A
+
+        vec1 = None
+        vec2 = None
+
+        # Check combinations to find which two sum to the third.
+        if np.allclose(v_AP1 + v_AP2, v_AP3, atol=tol):
+            vec1 = v_AP1
+            vec2 = v_AP2
+        elif np.allclose(v_AP1 + v_AP3, v_AP2, atol=tol):
+            vec1 = v_AP1
+            vec2 = v_AP3
+        elif np.allclose(v_AP2 + v_AP3, v_AP1, atol=tol):
+            vec1 = v_AP2
+            vec2 = v_AP3
+        else:
+            raise ValueError(
+                "The provided corners do not appear to form a parallelogram from which "
+            )
+
+        # Reshape points_to_check to (-1, 2) for vectorized computation
+        orig_shape = points_to_check.shape[:-1]
+        AP_check = points_to_check.reshape(-1, 2) - A  # (N*M, 2)
+
+        # 4. Solve AP_check = u * vec1 + v * vec2 for u and v.
+        det_M = vec1[0] * vec2[1] - vec1[1] * vec2[0]
+
+        if abs(det_M) < tol:
+            raise ValueError(
+                "The vectors vec1 and vec2 are linearly dependent or nearly so, "
+                "which means the parallelogram is degenerate."
+            )
+
+        # Numerator for u: cross_product_2d(AP_check, vec2)
+        u_numerator = AP_check[:, 0] * vec2[1] - AP_check[:, 1] * vec2[0]  # Shape (N,)
+
+        # Numerator for v: cross_product_2d(vec1, AP_check)
+        v_numerator = vec1[0] * AP_check[:, 1] - vec1[1] * AP_check[:, 0]  # Shape (N,)
+
+        u = u_numerator / det_M
+        v = v_numerator / det_M
+
+        # 5. A point is inside or on the boundary if 0 <= u <= 1 and 0 <= v <= 1.
+        is_inside_u = (u >= -tol) & (u <= 1 + tol)
+        is_inside_v = (v >= -tol) & (v <= 1 + tol)
+
+        return (is_inside_u & is_inside_v).reshape(orig_shape)
 
     ####################
     # saving & loading #
@@ -559,6 +832,7 @@ class TwoLevelMesh:
             self._save_vtk_meshes()
         self._save_coarse_edges_map()
         self._save_subdomain_layers()
+        self._save_edge_slabs()
         print(f"\tDone.")
 
     def _save_metadata(self):
@@ -640,6 +914,14 @@ class TwoLevelMesh:
             }
             json.dump(subdomains_data, f, indent=4)
 
+    def _save_edge_slabs(self):
+        """
+        Save the edge slabs to a JSON file.
+        """
+        edge_slabs_path = self.save_dir / "edge_slabs.json"
+        with open(edge_slabs_path, "w") as f:
+            json.dump(self.edge_slabs, f, indent=4)
+
     @classmethod
     def load(
         cls,
@@ -683,6 +965,8 @@ class TwoLevelMesh:
                 obj.get_connected_component_tree(obj.connected_components),
             )
             print(f"\trecalculated connected component tree")
+            obj.edge_slabs = obj._load_edge_slabs(fp)
+            print(f"\tloaded edge slabs")
             print("Finished loading TwoLevelMesh.")
             print(obj)
         else:
@@ -755,6 +1039,27 @@ class TwoLevelMesh:
                     for el in subdomain_data[f"layer_{layer_idx}"]
                 ]
                 self.subdomains[subdomain][f"layer_{layer_idx}"] = layer_elements
+
+    def _load_edge_slabs(self, fp: Path) -> dict:
+        """
+        Load the edge slabs from a JSON file.
+
+        Args:
+            fp (Path): Path to the folder containing the edge slabs file.
+
+        Returns:
+            dict: The edge slabs mapping.
+        """
+        edge_slabs_path = fp / "edge_slabs.json"
+        if not edge_slabs_path.exists():
+            raise FileNotFoundError(
+                f"Edge slabs file {edge_slabs_path} does not exist."
+            )
+        with open(edge_slabs_path, "r") as f:
+            edge_slabs = json.load(f)
+        # Convert string keys back to int
+        edge_slabs = {int(k): v for k, v in edge_slabs.items()}
+        return edge_slabs
 
     @property
     def save_dir(self):
@@ -1174,7 +1479,7 @@ class TwoLevelMesh:
         print("\tplotted fine and coarse meshes.")
 
         # plot the domains
-        self.plot_domains(ax[0, 1], domains=[0], plot_layers=True)
+        self.plot_domains(ax[0, 1], domains=3, plot_layers=True)
         ax[0, 1].set_title("Subdomains and Layers")
         print("\tplotted subdomains and layers.")
 
@@ -1274,7 +1579,7 @@ class TwoLevelMeshExamples:
 
 if __name__ == "__main__":
     TwoLevelMeshExamples.example_creation(
-        fig_toggle=True
+        fig_toggle=False
     )  # Uncomment to create and visualize a new mesh
     # TwoLevelMeshExamples.example_load()  # Uncomment to load an existing mesh
     # TwoLevelMeshExamples.profile()  # Uncomment to profile the mesh creation & loading
