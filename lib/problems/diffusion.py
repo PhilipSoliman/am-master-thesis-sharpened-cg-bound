@@ -235,24 +235,32 @@ class DiffusionProblem(Problem):
             category="diffusion",
         )
 
+
 class DiffusionProblemExample:
-    # Define mesh parameters
+    # mesh parameters
     lx = 1.0
     ly = 1.0
     coarse_mesh_size = 1 / 4
     refinement_levels = 4
     layers = 2
 
-    # define source and coefficient functions
+    # source and coefficient functions
     source_func = SourceFunc.CONSTANT
-    coef_func = CoefFunc.EDGE_INCLUSIONS
+    coef_func = CoefFunc.EDGE_SLAB_INCLUSIONS
+
+    # preconditioner and coarse space
+    preconditioner = TwoLevelSchwarzPreconditioner
+    coarse_space = RGDSWCoarseSpace
+
+    # save coarse bases
+    save_coarse_bases = False
 
     # save CG convergence information
     get_cg_info = True
 
     # save source, coefficient and solution as VTK files
     save_functions_toggle = False
-    
+
     @classmethod
     def example_construction(cls):
         # create diffusion problem
@@ -272,11 +280,11 @@ class DiffusionProblemExample:
     def example_solve(cls):
         # solve problem
         cls.diffusion_problem.solve(
-            preconditioner=TwoLevelSchwarzPreconditioner,
-            coarse_space=RGDSWCoarseSpace,
+            preconditioner=cls.preconditioner,
+            coarse_space=cls.coarse_space,
             rtol=1e-8,
             save_cg_info=cls.get_cg_info,
-            save_coarse_bases=False,
+            save_coarse_bases=cls.save_coarse_bases,
         )
 
     @classmethod
@@ -317,10 +325,13 @@ class DiffusionProblemExample:
             axs[0, 0].legend()
 
             # plot residuals and preconditioned residuals
-            axs[0, 1].plot(cls.diffusion_problem.cg_residuals, label=r"$||r_m||_2 / ||r_0||_2$")
+            axs[0, 1].plot(
+                cls.diffusion_problem.cg_residuals, label=r"$||r_m||_2 / ||r_0||_2$"
+            )
             if cls.diffusion_problem.cg_precond_residuals is not None:
                 axs[0, 1].plot(
-                    cls.diffusion_problem.cg_precond_residuals, label=r"$||z_m||_2 / ||z_0||_2$"
+                    cls.diffusion_problem.cg_precond_residuals,
+                    label=r"$||z_m||_2 / ||z_0||_2$",
                 )
             axs[0, 1].set_xlabel("Iteration")
             axs[0, 1].set_ylabel("Relative residuals")
@@ -375,25 +386,27 @@ class DiffusionProblemExample:
         """Get the directory where the problem files are saved."""
         return cls.diffusion_problem.two_mesh.save_dir
 
+
 def full_example():
     DiffusionProblemExample.example_construction()
     DiffusionProblemExample.example_solve()
     DiffusionProblemExample.save_functions()
     DiffusionProblemExample.visualize_convergence()
 
+
 def profile_solve():
     import cProfile
     import pstats
 
     from lib.utils import visualize_profile
+
     DiffusionProblemExample.example_construction()
     fp = DiffusionProblemExample.get_save_dir() / "diffusion_problem_solve.prof"
-    cProfile.run(
-        "DiffusionProblemExample.example_solve()", str(fp)
-    )
+    cProfile.run("DiffusionProblemExample.example_solve()", str(fp))
     p = pstats.Stats(str(fp))
     p.sort_stats("cumulative").print_stats(10)
     visualize_profile(fp)
+
 
 if __name__ == "__main__":
     # full_example() # Uncomment this line to run a full diffusion problem example
