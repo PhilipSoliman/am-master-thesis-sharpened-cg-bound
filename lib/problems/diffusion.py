@@ -241,7 +241,7 @@ class DiffusionProblemExample:
     # mesh parameters
     lx = 1.0
     ly = 1.0
-    coarse_mesh_size = 1 / 32
+    coarse_mesh_size = 1 / 64
     refinement_levels = 4
     layers = 2
 
@@ -410,5 +410,5 @@ def profile_solve():
 
 
 if __name__ == "__main__":
-    # full_example() # Uncomment this line to run a full diffusion problem example
-    profile_solve()  # Uncomment this line to profile problem solving
+    full_example() # Uncomment this line to run a full diffusion problem example
+    # profile_solve()  # Uncomment this line to profile problem solving
