@@ -76,7 +76,7 @@ class TwoLevelSchwarzPreconditioner(OneLevelSchwarzPreconditioner):
         self.coarse_space = coarse_space(A, fespace, two_mesh)
         self.name = f"2-level Schwarz preconditioner with {self.coarse_space}"
         coarse_op = self.coarse_space.assemble_coarse_operator(A)
-        print("obtaining coarse solver")
+        print("\tobtaining coarse solver")
         self.coarse_solver = factorized(coarse_op.tocsc())
         print("\tdone obtaining coarse solver")
 
