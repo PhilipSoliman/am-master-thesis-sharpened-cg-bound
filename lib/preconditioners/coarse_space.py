@@ -10,7 +10,7 @@ from tqdm import tqdm
 from lib.fespace import FESpace
 from lib.meshes import TwoLevelMesh
 from lib.problem_type import ProblemType
-
+from lib.solvers.direct_sparse import DirectSparseSolver, MatrixType
 warnings.simplefilter("ignore", SparseEfficiencyWarning)
 
 
@@ -144,22 +144,11 @@ class GDSWCoarseSpace(CoarseSpace):
 
         # discrete harmonic extension
         A_II_csc = A_II.tocsc()
-        solve_A_II = factorized(A_II_csc)
+        sparse_solver = DirectSparseSolver(
+            A_II_csc, matrix_type=MatrixType.SPD, multithreaded=False
+        )
         rhs = (A_IGamma @ interface_operator).tocsc()
-        n_cols = rhs.shape[1]
-        interior_op_cols = []
-        for i in tqdm(
-            range(n_cols),
-            desc="Solving interior operators",
-            unit="operator",
-            total=n_cols,
-        ):
-            # x, info = cg(A_II, rhs[:, i].toarray().ravel())
-            x = solve_A_II(rhs[:, i].toarray().ravel())
-            interior_op_cols.append(sp.csc_matrix(-x.reshape(-1, 1)))
-
-        # Stack all columns into a sparse matrix
-        interior_op = sp.hstack(interior_op_cols, format="csc")
+        interior_op = -sparse_solver(rhs)
 
         # Efficiently stack the operators
         blocks = [
