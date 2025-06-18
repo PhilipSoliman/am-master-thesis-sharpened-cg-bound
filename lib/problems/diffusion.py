@@ -74,7 +74,7 @@ class DiffusionProblem(Problem):
         self.source_func = getattr(self, self.source_func_name)()
 
     def assemble(self, gfuncs=None):
-        print("Assembling system...")
+        print("Assembling system")
         return super().assemble(gfuncs=[self.coef_func, self.source_func])
 
     ####################
@@ -240,7 +240,7 @@ class DiffusionProblemExample:
     # mesh parameters
     lx = 1.0
     ly = 1.0
-    coarse_mesh_size = 1 / 4
+    coarse_mesh_size = 1 / 64
     refinement_levels = 4
     layers = 2
 
