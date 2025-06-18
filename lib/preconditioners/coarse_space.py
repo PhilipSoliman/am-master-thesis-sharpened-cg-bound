@@ -44,16 +44,23 @@ class CoarseSpace(object):
         if (
             restriction_operator := getattr(self, "restriction_operator", None)
         ) is not None:
-            num_bases = restriction_operator.shape[1]
-            bases = {}
-            for i in range(num_bases):
-                vals = np.zeros(self.fespace.total_dofs)
-                vals[self.fespace.free_dofs_mask] = (
-                    restriction_operator[:, i].toarray().flatten()
+            try:
+                num_bases = restriction_operator.shape[1]
+                bases = {}
+                for i in range(num_bases):
+                    vals = np.zeros(self.fespace.total_dofs)
+                    vals[self.fespace.free_dofs_mask] = (
+                        restriction_operator[:, i].toarray().flatten()
+                    )
+                    gfunc = self.fespace.get_gridfunc(vals)
+                    bases[f"coarse_basis_{i}"] = gfunc
+                return bases
+            except MemoryError:
+                print(
+                    "MemoryError: The restriction operator bases are too large to fit in memory."
+                    "Returning empty dictionary."
                 )
-                gfunc = self.fespace.get_gridfunc(vals)
-                bases[f"coarse_basis_{i}"] = gfunc
-            return bases
+                return {}
         else:
             raise ValueError("Restriction operator is not assembled yet.")
 
