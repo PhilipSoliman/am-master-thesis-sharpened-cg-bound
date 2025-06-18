@@ -5,6 +5,11 @@ import venv
 
 VENV_NAME = ".venv"
 DYNAMIC_LIBRARY_FOLDER = "clibs"
+PYTHON_EXEC = (
+    os.path.join(VENV_NAME, "Scripts", "python.exe")
+    if os.name == "nt"
+    else os.path.join(VENV_NAME, "bin", "python")
+)
 
 
 def create_virtual_environment():
@@ -16,18 +21,15 @@ def create_virtual_environment():
 
 
 def install_requirements(root_path):
-    python_exec = (
-        os.path.join(VENV_NAME, "Scripts", "python.exe")
-        if os.name == "nt"
-        else os.path.join(VENV_NAME, "bin", "python")
-    )
 
-    subprocess.check_call([python_exec, "-m", "pip", "install", "--upgrade", "pip"])
+    # upgrade pip
+    subprocess.check_call([PYTHON_EXEC, "-m", "pip", "install", "--upgrade", "pip"])
     print("Upgraded pip to latest version")
 
+    # Install requirements from requirements.txt
     subprocess.check_call(
         [
-            python_exec,
+            PYTHON_EXEC,
             "-m",
             "pip",
             "install",
@@ -37,8 +39,55 @@ def install_requirements(root_path):
     )
     print("Installed required packages")
 
-    subprocess.check_call([python_exec, "-m", "pip", "install", "-e", "."])
+    # install PyTorch
+    if os.name == "nt":
+        torch_url = "https://download.pytorch.org/whl/cu126"
+        subprocess.check_call(
+            [
+                PYTHON_EXEC,
+                "-m",
+                "pip",
+                "install",
+                "torch",
+                "--index-url",
+                torch_url,
+            ]
+        )
+    else:
+        subprocess.check_call(
+            [
+                PYTHON_EXEC,
+                "-m",
+                "pip",
+                "install",
+                "torch",
+            ]
+        )
+    print("Installed PyTorch")
+
+    subprocess.check_call([PYTHON_EXEC, "-m", "pip", "install", "-e", "."])
     print("Installed local packages")
+
+
+def generate_meshes_for_experiments(root_path):
+    mesh_script = os.path.join(root_path, "generate_meshes.py")
+    print(f"Generating meshes for experiments using {mesh_script}...")
+
+    result = subprocess.run(
+        [PYTHON_EXEC, mesh_script],
+        cwd=root_path,
+        # stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+    )
+
+    print(result.stdout)
+
+    if result.returncode != 0:
+        print("Failed to generate meshes. Exiting.")
+        sys.exit(1)
+
+    print("Meshes generated successfully.")
 
 
 def make_c_library(root_path):
@@ -78,6 +127,7 @@ def main():
     root_path = os.path.abspath(os.path.dirname(__file__))
     create_virtual_environment()
     install_requirements(root_path)
+    generate_meshes_for_experiments(root_path)
     make_c_library(root_path)
     activate_environment()
     sys.exit(0)
