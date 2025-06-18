@@ -262,7 +262,7 @@ class Problem:
                     precond = TwoLevelSchwarzPreconditioner(
                         A_sp_f, self.fes, self.two_mesh, coarse_space
                     )
-                    coarse_space_bases = precond.get_restriction_operator_bases()
+                    if save_coarse_bases: coarse_space_bases = precond.get_restriction_operator_bases()
                 else:
                     raise ValueError(
                         f"Unknown preconditioner type: {preconditioner.__name__}"
