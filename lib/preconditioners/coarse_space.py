@@ -4,7 +4,8 @@ import ngsolve as ngs
 import numpy as np
 import scipy.sparse as sp
 from scipy.sparse import SparseEfficiencyWarning
-from scipy.sparse.linalg import spsolve
+from scipy.sparse.linalg import factorized, spsolve
+from tqdm import tqdm
 
 from lib.fespace import FESpace
 from lib.meshes import TwoLevelMesh
@@ -21,6 +22,7 @@ class CoarseSpace(object):
         two_mesh: TwoLevelMesh,
         ptype: ProblemType = ProblemType.DIFFUSION,
     ):
+        print("Initializing coarse space")
         self.fespace = fespace
         self.A = A
         self.two_mesh = two_mesh
@@ -28,8 +30,11 @@ class CoarseSpace(object):
         self.name = "Coarse space (base)"  # to be overridden by subclasses
 
     def assemble_coarse_operator(self, A: sp.csr_matrix) -> sp.csc_matrix:
+        print("Assembling coarse operator:")
         if not hasattr(self, "restriction_operator"):
+            print("\tassembling restriction operator")
             self.restriction_operator = self.assemble_restriction_operator()
+        print("\treturning coarse operator")
         return self.restriction_operator.transpose() @ (A @ self.restriction_operator)
 
     def assemble_restriction_operator(self) -> sp.csc_matrix:
@@ -131,11 +136,40 @@ class GDSWCoarseSpace(CoarseSpace):
         ]
 
         # discrete harmonic extension
-        interior_op = -spsolve(A_II.tocsc(), (A_IGamma @ interface_operator).tocsc())
+        A_II_csc = A_II.tocsc()
+        solve_A_II = factorized(A_II_csc)
+        rhs = (A_IGamma @ interface_operator).tocsc()
+        n_cols = rhs.shape[1]
+        interior_op_cols = []
+        for i in tqdm(
+            range(n_cols),
+            desc="Solving interior operators",
+            unit="operator",
+            total=n_cols,
+        ):
+            # x, info = cg(A_II, rhs[:, i].toarray().ravel())
+            x = solve_A_II(rhs[:, i].toarray().ravel())
+            interior_op_cols.append(sp.csc_matrix(-x.reshape(-1, 1)))
 
-        # fill the coarse operator #TODO: find more efficient way to construct the restriction operator
-        restriction_operator[~self.fespace.interface_dofs_mask, :] = interior_op.tocsc()
-        restriction_operator[self.fespace.interface_dofs_mask, :] = interface_operator
+        # Stack all columns into a sparse matrix
+        interior_op = sp.hstack(interior_op_cols, format="csc")
+
+        # Efficiently stack the operators
+        blocks = [
+            sp.csc_matrix(interior_op),  # shape: (num_interior, interface_dim)
+            sp.csc_matrix(interface_operator),  # shape: (num_interface, interface_dim)
+        ]
+        stacked = sp.vstack(blocks, format="csc")
+
+        # Now, permute rows to match the original free DOF ordering
+        # Create a permutation array: indices of [interior_dofs, interface_dofs] in the free_dofs_mask
+        interior_idx = np.where(~self.fespace.interface_dofs_mask)[0]
+        interface_idx = np.where(self.fespace.interface_dofs_mask)[0]
+        perm = np.argsort(np.concatenate([interior_idx, interface_idx]))
+
+        # Apply the permutation to the stacked operator
+        restriction_operator = stacked[perm, :]  # type: ignore
+
         return restriction_operator
 
     def _assemble_interface_operator(self):
@@ -144,18 +178,26 @@ class GDSWCoarseSpace(CoarseSpace):
         Note: for problems with multiple dimensions, coordinate dofs corresponding to one node are spaced by
         ndofs (so if ndof = 8, then dofs for node 0 are 0, 8, 16, ...).
         """
-        interface_operator = sp.csc_matrix(
-            (self.fespace.total_dofs, self.interface_dimension),
-            dtype=float,
-        )
         interface_index = 0
-        for interface_component in self.interface_components:
+        entries = ([], ([], []))  # data, (rows, cols)
+        for interface_component in tqdm(
+            self.interface_components,
+            desc="Assembling interface operator",
+            total=len(self.interface_components),
+            unit="component",
+        ):
             self._restrict_null_space_to_interface_component(
-                interface_operator, interface_component, interface_index
+                entries, interface_component, interface_index
             )
 
             # update the interface index for the next interface component with the null space dimension
             interface_index += self.null_space_dim
+
+        interface_operator = sp.coo_array(
+            entries,
+            shape=(self.fespace.total_dofs, self.interface_dimension),
+            dtype=float,
+        ).tocsc()
 
         # restric the interface operator to the free and interface dofs
         return interface_operator[self.fespace.free_dofs_mask, :][
@@ -164,7 +206,7 @@ class GDSWCoarseSpace(CoarseSpace):
 
     def _restrict_null_space_to_interface_component(
         self,
-        interface_operator: sp.csc_matrix,
+        entries: tuple[list[float], tuple[list[int], list[int]]],  # data, (rows, cols)
         interface_component: list[int],
         interface_index: int,
         partition_of_unity: int | np.ndarray = 1,
@@ -172,6 +214,9 @@ class GDSWCoarseSpace(CoarseSpace):
         """
         Restrict the null space to the interface operator for the given interface component and for all problem coordinates.
         """
+        # unpack the entries
+        data, (rows, cols) = entries
+
         # indices of all dofs
         ndofs = self.fespace.total_dofs
         ndofs_prev = 0
@@ -186,25 +231,24 @@ class GDSWCoarseSpace(CoarseSpace):
             )
 
             # get indices of dofs for the current coordinate
-            component_coord_idxs = idxs[interface_component][coord_idxs_mask]
-
-            # get the adjusted component coordinate mask
-            component_coord_mask = np.zeros(ndofs, dtype=bool)
-            component_coord_mask[component_coord_idxs] = True
-            component_coord_mask = component_coord_mask
-
-            # fill the interface operator with the null space basis for the current coordinate
-            # TODO: perform this construction with LIL sparse matrix for better performance
-            interface_operator[
-                component_coord_mask,
-                interface_index : interface_index + self.null_space_dim,
-            ] = self.null_space_basis[coord, :]
+            component_coord_idxs = idxs[interface_component][coord_idxs_mask].tolist()
+            rows_coord = component_coord_idxs * self.null_space_dim
+            cols_coord = []
+            data_coord = []
+            for i in range(self.null_space_dim):
+                cols_coord.extend([interface_index + i for _ in component_coord_idxs])
+                data_coord.extend(
+                    [
+                        self.null_space_basis[coord, i] * partition_of_unity
+                        for _ in component_coord_idxs
+                    ]
+                )
+            rows.extend(rows_coord)
+            cols.extend(cols_coord)
+            data.extend(data_coord)
 
             # increment the previous dofs index
             ndofs_prev += ndofs
-
-        # apply partition of unity (rowwise) and return
-        interface_operator[interface_component, :] *= partition_of_unity
 
     def _get_null_space_basis(self):
         self.null_space_basis = np.array([])
@@ -285,27 +329,34 @@ class RGDSWCoarseSpace(GDSWCoarseSpace):
         self._print_init_string()
 
     def _assemble_interface_operator(self):
-        ndofs = self.fespace.total_dofs
-        interface_operator = sp.csc_matrix(
-            (ndofs, self.interface_dimension),
-            dtype=float,
-        )
+        entries = ([], ([], []))  # data, (rows, cols)
         interface_index = 0
-        for component_dofs in self.component_tree_dofs.values():
+        for component_dofs in tqdm(
+            self.component_tree_dofs.values(),
+            desc="Assembling interface operator",
+            unit="component",
+            total=len(self.component_tree_dofs),
+        ):
             node_dofs = component_dofs["node"]
             edge_components = component_dofs["edges"]
             self._restrict_null_space_to_interface_component(
-                interface_operator, node_dofs, interface_index
+                entries, node_dofs, interface_index
             )
 
             for edge, edge_dofs in edge_components.items():
                 multiplicity = self.edge_component_multiplicities[edge]
                 self._restrict_null_space_to_interface_component(
-                    interface_operator, edge_dofs, interface_index, 1 / multiplicity
+                    entries, edge_dofs, interface_index, 1 / multiplicity
                 )
 
             # update the interface index for the next interface component with the null space dimension
             interface_index += self.null_space_dim
+
+        interface_operator = sp.coo_array(
+            entries,
+            shape=(self.fespace.total_dofs, self.interface_dimension),
+            dtype=float,
+        ).tocsc()
 
         # restric the interface operator to the free and interface dofs
         return interface_operator[self.fespace.free_dofs_mask, :][
