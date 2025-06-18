@@ -20,7 +20,6 @@ class OneLevelSchwarzPreconditioner(Preconditioner):
     def __init__(self, A: sp.csr_matrix, fespace: FESpace):
         print("Initializing 1-level Schwarz preconditioner")
         self.shape = A.shape
-        self.free_dofs = np.array(fespace.fespace.FreeDofs()).astype(bool)
         self.fespace = fespace
         self.local_solvers = self._get_local_solvers(A)
         self.name = "1-level Schwarz preconditioner"
@@ -38,20 +37,15 @@ class OneLevelSchwarzPreconditioner(Preconditioner):
     def _get_local_solvers(self, A: sp.csr_matrix) -> list[tuple[np.ndarray, SuperLU]]:
         """Get local solvers for each subdomain."""
         local_solvers = []
-        free_idx = np.flatnonzero(
-            self.free_dofs
-        )  # Maps free dof global idx -> restricted idx
         for subdomain_dofs in tqdm(
             self.fespace.domain_dofs.values(),
             desc="Getting local solvers",
             total=len(self.fespace.domain_dofs),
         ):
-            # Efficiently get local free dofs as the intersection of subdomain and free dofs
-            subdomain_dofs = np.array(subdomain_dofs).astype(int)
-            local_free_global = subdomain_dofs[self.free_dofs[subdomain_dofs]]
-
             # Map global free dofs to restricted matrix indices
-            local_free_dofs = np.searchsorted(free_idx, local_free_global)
+            local_free_dofs = self.fespace.map_global_to_restricted_dofs(
+                np.array(subdomain_dofs)
+            )
 
             # local operator for subdomain
             A_i_solver = factorized(A[local_free_dofs, :][:, local_free_dofs].tocsc())
