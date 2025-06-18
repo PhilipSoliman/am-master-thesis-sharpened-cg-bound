@@ -203,7 +203,7 @@ class GDSWCoarseSpace(CoarseSpace):
     def _restrict_null_space_to_interface_component(
         self,
         entries: tuple[list[float], tuple[list[int], list[int]]],  # data, (rows, cols)
-        interface_component: list[int],
+        interface_component: np.ndarray,
         interface_index: int,
         partition_of_unity: int | np.ndarray = 1,
     ):
@@ -222,12 +222,12 @@ class GDSWCoarseSpace(CoarseSpace):
 
             # get dofs for current coordinate coord
             coord_idxs_mask = np.logical_and(
-                ndofs_prev < idxs[interface_component],
-                idxs[interface_component] < ndofs_prev + ndofs,
+                ndofs_prev < interface_component,
+                interface_component < ndofs_prev + ndofs,
             )
 
             # get indices of dofs for the current coordinate
-            component_coord_idxs = idxs[interface_component][coord_idxs_mask].tolist()
+            component_coord_idxs = interface_component[coord_idxs_mask].tolist()
             rows_coord = component_coord_idxs * self.null_space_dim
             cols_coord = []
             data_coord = []
@@ -276,23 +276,17 @@ class GDSWCoarseSpace(CoarseSpace):
 
         return interface_components
 
-    def _get_face_components(self, interface_components):
-        for face_component_dofs in self.fespace.free_face_component_dofs:
-            face_component_mask = np.zeros(self.fespace.total_dofs).astype(bool)
-            face_component_mask[face_component_dofs] = True
-            interface_components.append(face_component_mask)
+    def _get_coarse_components(self, interface_components):
+        for coarse_component_dofs in self.fespace.free_coarse_node_dofs:
+            interface_components.append(np.array(coarse_component_dofs))
 
     def _get_edge_components(self, interface_components):
         for edge_component_dofs in self.fespace.free_edge_component_dofs:
-            edge_component_mask = np.zeros(self.fespace.total_dofs).astype(bool)
-            edge_component_mask[edge_component_dofs] = True
-            interface_components.append(edge_component_mask)
+            interface_components.append(np.array(edge_component_dofs))
 
-    def _get_coarse_components(self, interface_components):
-        for coarse_dofs in self.fespace.free_coarse_node_dofs:
-            coarse_node_dofs_mask = np.zeros(self.fespace.total_dofs).astype(bool)
-            coarse_node_dofs_mask[coarse_dofs] = True
-            interface_components.append(coarse_node_dofs_mask)
+    def _get_face_components(self, interface_components):
+        for face_component_dofs in self.fespace.free_face_component_dofs:
+            interface_components.append(np.array(face_component_dofs))
 
     def _meta_info(self) -> str:
         return (
@@ -336,13 +330,13 @@ class RGDSWCoarseSpace(GDSWCoarseSpace):
             node_dofs = component_dofs["node"]
             edge_components = component_dofs["edges"]
             self._restrict_null_space_to_interface_component(
-                entries, node_dofs, interface_index
+                entries, np.array(node_dofs), interface_index
             )
 
             for edge, edge_dofs in edge_components.items():
                 multiplicity = self.edge_component_multiplicities[edge]
                 self._restrict_null_space_to_interface_component(
-                    entries, edge_dofs, interface_index, 1 / multiplicity
+                    entries, np.array(edge_dofs), interface_index, 1 / multiplicity
                 )
 
             # update the interface index for the next interface component with the null space dimension
