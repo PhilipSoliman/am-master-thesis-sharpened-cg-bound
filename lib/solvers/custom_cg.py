@@ -241,6 +241,7 @@ class CustomCG:
                         "beta": f"{betas[-1]:.2e}" if betas else "N/A",
                     }
                 )
+                pbar.update(1)
 
         if save_residuals:
             self.r_i = np.array(r_i)
