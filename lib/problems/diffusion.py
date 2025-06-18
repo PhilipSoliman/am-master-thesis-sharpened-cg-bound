@@ -5,7 +5,7 @@ import numpy as np
 
 from lib.boundary_conditions import BoundaryConditions, HomogeneousDirichlet
 from lib.meshes import TwoLevelMesh
-from lib.preconditioners import RGDSWCoarseSpace, TwoLevelSchwarzPreconditioner
+from lib.preconditioners import GDSWCoarseSpace, TwoLevelSchwarzPreconditioner
 from lib.problem_type import ProblemType
 from lib.problems.problem import Problem
 
@@ -92,19 +92,19 @@ class DiffusionProblem(Problem):
     #########################
     # coefficient functions #
     #########################
-    # eq. 5.5 from Hetmaniuk & Lehoucq (2010).
     def constant_coefficient(self):
+        """Constant coefficient function."""
         return 1.0
 
-    # eq. 5.6 from Hetmaniuk & Lehoucq (2010).
     def hetmaniuk_lehoucq_coefficient(self):
+        """Hetmaniuk & Lehoucq coefficient function. Equation 5.6 from Hetmaniuk & Lehoucq (2010)."""
         c = (
             1.2 + ngs.cos(32 * ngs.pi * ngs.x * (1 - ngs.x) * ngs.y * (1 - ngs.y))
         ) ** -1
         return c
 
-    # eq. 5.8 from Hetmaniuk & Lehoucq (2010)
     def sinusoidal_coefficient(self):
+        """Sinusoidal coefficient function. Equation 5.8 from Hetmaniuk & Lehoucq (2010)."""
         sx, sy = ngs.sin(25 * ngs.pi * ngs.x / self.two_mesh.lx), ngs.sin(
             25 * ngs.pi * ngs.y / self.two_mesh.ly
         )
@@ -112,15 +112,15 @@ class DiffusionProblem(Problem):
         c = ((2 + 1.8 * sx) / (2 + 1.8 * cy)) + ((2 + sy) / (2 + 1.8 * sx))
         return c
 
-    # eq. 4.36 from Heinlein (2016).
     def heinlein_coefficient(self):
+        """Heinlein coefficient function. Equation 4.36 from Heinlein (2016)."""
         sx, sy = ngs.sin(25 * ngs.pi * ngs.x), ngs.sin(25 * ngs.pi * ngs.y)
         cy = ngs.cos(25 * ngs.pi * ngs.y)
         c = ((2 + 1.99 * sx) / (2 + 1.99 * cy)) + ((2 + sy) / (2 + 1.99 * sx))
         return c
 
-    # High coefficient inclusions around the coarse nodes.
     def vertex_inclusions_coefficient(self):
+        """High coefficient inclusions around the coarse nodes."""
         # setup piecewise constant coefficient function
         constant_fes = ngs.L2(self.two_mesh.fine_mesh, order=0)
         grid_func = ngs.GridFunction(constant_fes)
@@ -140,8 +140,8 @@ class DiffusionProblem(Problem):
         coef_func = ngs.CoefficientFunction(grid_func)
         return coef_func.Compile()
 
-    # High coefficient inclusions on the coarse node (2 layers).
     def vertex_inclusions_2layers_coefficient(self):
+        """High coefficient inclusions around the coarse nodes with 2 layers of elements."""
         # setup piecewise constant coefficient function
         constant_fes = ngs.L2(self.two_mesh.fine_mesh, order=0)
         grid_func = ngs.GridFunction(constant_fes)
@@ -175,8 +175,8 @@ class DiffusionProblem(Problem):
         coef_func = ngs.CoefficientFunction(grid_func)
         return coef_func.Compile()
 
-    # edge inclusions
     def edge_inclusions_coefficient(self):
+        """High coefficient inclusions centered on the coarse edges."""
         # setup piecewise constant coefficient function
         constant_fes = ngs.L2(self.two_mesh.fine_mesh, order=0)
         grid_func = ngs.GridFunction(constant_fes)
@@ -209,6 +209,7 @@ class DiffusionProblem(Problem):
         return coef_func.Compile()
 
     def edge_slab_inclusions_coefficient(self):
+        """High coefficient inclusions centered on the coarse edges with slabs."""
         # setup piecewise constant coefficient function
         constant_fes = ngs.L2(self.two_mesh.fine_mesh, order=0)
         grid_func = ngs.GridFunction(constant_fes)
@@ -240,7 +241,7 @@ class DiffusionProblemExample:
     # mesh parameters
     lx = 1.0
     ly = 1.0
-    coarse_mesh_size = 1 / 64
+    coarse_mesh_size = 1 / 32
     refinement_levels = 4
     layers = 2
 
@@ -250,7 +251,7 @@ class DiffusionProblemExample:
 
     # preconditioner and coarse space
     preconditioner = TwoLevelSchwarzPreconditioner
-    coarse_space = RGDSWCoarseSpace
+    coarse_space = GDSWCoarseSpace
 
     # save coarse bases
     save_coarse_bases = False
