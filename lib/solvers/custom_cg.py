@@ -342,7 +342,7 @@ class CustomCG:
                     {
                         "residual": f"{residual_norm:.2e}",
                         "alpha": f"{alpha:.2e}",
-                        "beta": f"{betas[-1]:.2e}",
+                        "beta": f"{betas[-1]:.2e}" if betas else "N/A",
                     }
                 )
                 pbar.update(1)

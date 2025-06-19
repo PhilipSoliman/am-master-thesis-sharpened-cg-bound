@@ -13,7 +13,7 @@ from lib.meshes import TwoLevelMesh
 from lib.operators import Operator
 from lib.preconditioners import CoarseSpace
 from lib.solvers import DirectSparseSolver, MatrixType
-from lib.utils import send_matrix_to_gpu
+from lib.utils import send_matrix_to_gpu, suppress_output
 
 
 class OneLevelSchwarzPreconditioner(Operator):
@@ -83,7 +83,10 @@ class OneLevelSchwarzPreconditioner(Operator):
             if self.gpu_device is None:
                 solver_f = factorized(operator)
             else:
-                solver = DirectSparseSolver(operator, matrix_type=MatrixType.SPD).solver
+                with suppress_output():
+                    solver = DirectSparseSolver(
+                        operator, matrix_type=MatrixType.SPD
+                    ).solver
                 solver_f = lambda rhs, out: solver.solve(rhs, out)  # type: ignore
             local_solvers.append(solver_f)
         return local_solvers
@@ -139,7 +142,10 @@ class TwoLevelSchwarzPreconditioner(OneLevelSchwarzPreconditioner):
         if self.gpu_device is None:
             return factorized(coarse_op)
         else:
-            solver = DirectSparseSolver(coarse_op, matrix_type=MatrixType.SPD).solver
+            with suppress_output():
+                solver = DirectSparseSolver(
+                    coarse_op, matrix_type=MatrixType.SPD
+                ).solver
             solver_f = lambda rhs, out: solver.solve(rhs, out)  # type: ignore
             return solver_f
 

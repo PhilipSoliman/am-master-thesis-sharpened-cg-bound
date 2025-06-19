@@ -1,6 +1,9 @@
 import argparse
+import os
 import subprocess
+import sys
 from collections.abc import Iterable
+from contextlib import contextmanager
 from enum import Enum
 from os import remove
 from os.path import abspath, dirname
@@ -479,6 +482,7 @@ def mpl_add_custom_tick(
 
     return ax
 
+
 def visualize_profile(fp: Path):
     # run snakeviz in subprocess
     if fp.is_file():
@@ -486,10 +490,24 @@ def visualize_profile(fp: Path):
     else:
         print(f"File {fp} does not exist. Skipping visualization.")
 
-        
+
 def send_matrix_to_gpu(mat: sp.csc_matrix | sp.csr_matrix, device: str) -> torch.Tensor:
     coo = mat.tocoo()  # convert to COO format for sparse tensor creation
     # rows = torch.tensor(coo.row, dtype=torch.float64, device=device)
     # cols = torch.tensor(coo.col, dtype=torch.float64, device=device)
     # data = torch.tensor(coo.data, dtype=torch.float64, device=device)
     return torch.sparse_coo_tensor(np.array([coo.row, coo.col]), coo.data, coo.shape, device=device)  # type: ignore
+
+
+@contextmanager
+def suppress_output():
+    with open(os.devnull, "w") as devnull:
+        old_stdout = sys.stdout
+        old_stderr = sys.stderr
+        sys.stdout = devnull
+        sys.stderr = devnull
+        try:
+            yield
+        finally:
+            sys.stdout = old_stdout
+            sys.stderr = old_stderr

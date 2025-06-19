@@ -5,11 +5,7 @@ import numpy as np
 
 from lib.boundary_conditions import BoundaryConditions, HomogeneousDirichlet
 from lib.meshes import TwoLevelMesh
-from lib.preconditioners import (
-    AMSCoarseSpace,
-    OneLevelSchwarzPreconditioner,
-    TwoLevelSchwarzPreconditioner,
-)
+from lib.preconditioners import RGDSWCoarseSpace, TwoLevelSchwarzPreconditioner
 from lib.problem_type import ProblemType
 from lib.problems.problem import Problem
 
@@ -245,7 +241,7 @@ class DiffusionProblemExample:
     # mesh parameters
     lx = 1.0
     ly = 1.0
-    coarse_mesh_size = 1 / 4
+    coarse_mesh_size = 1 / 32
     refinement_levels = 4
     layers = 2
 
@@ -255,10 +251,10 @@ class DiffusionProblemExample:
 
     # preconditioner and coarse space
     preconditioner = TwoLevelSchwarzPreconditioner
-    coarse_space = AMSCoarseSpace
+    coarse_space = RGDSWCoarseSpace
 
     # use GPU for solving
-    use_gpu = True
+    use_gpu = False
 
     # save coarse bases
     save_coarse_bases = False
