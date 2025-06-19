@@ -11,6 +11,7 @@ from lib.fespace import FESpace
 from lib.meshes import TwoLevelMesh
 from lib.problem_type import ProblemType
 from lib.solvers.direct_sparse import DirectSparseSolver, MatrixType
+
 warnings.simplefilter("ignore", SparseEfficiencyWarning)
 
 
@@ -264,29 +265,35 @@ class GDSWCoarseSpace(CoarseSpace):
         interface_components = []
         # coarse node components
         if len(self.fespace.free_coarse_node_dofs) > 0:
-            self._get_coarse_components(interface_components)
+            interface_components.extend(self._get_coarse_components())
 
         # edge components
         if len(self.fespace.free_edge_component_dofs) > 0:
-            self._get_edge_components(interface_components)
+            interface_components.extend(self._get_edge_components())
 
         # face components
         if len(self.fespace.free_face_component_dofs) > 0:
-            self._get_face_components(interface_components)
+            interface_components.extend(self._get_face_components())
 
         return interface_components
 
-    def _get_coarse_components(self, interface_components):
+    def _get_coarse_components(self) -> list[np.ndarray]:
+        components = []
         for coarse_component_dofs in self.fespace.free_coarse_node_dofs:
-            interface_components.append(np.array(coarse_component_dofs))
+            components.append(np.array(coarse_component_dofs))
+        return components
 
-    def _get_edge_components(self, interface_components):
+    def _get_edge_components(self) -> list[np.ndarray]:
+        components = []
         for edge_component_dofs in self.fespace.free_edge_component_dofs:
-            interface_components.append(np.array(edge_component_dofs))
+            components.append(np.array(edge_component_dofs))
+        return components
 
-    def _get_face_components(self, interface_components):
+    def _get_face_components(self) -> list[np.ndarray]:
+        components = []
         for face_component_dofs in self.fespace.free_face_component_dofs:
-            interface_components.append(np.array(face_component_dofs))
+            components.append(np.array(face_component_dofs))
+        return components
 
     def _meta_info(self) -> str:
         return (
@@ -364,13 +371,13 @@ class AMSCoarseSpace(GDSWCoarseSpace):
     def __init__(self, A: sp.csr_matrix, fespace: FESpace, two_mesh: TwoLevelMesh):
         CoarseSpace.__init__(self, A, fespace, two_mesh)
         self.name = "AMS coarse space"
-        self.coarse_dofs_mask, self.edge_dofs_mask, self.face_dofs_mask = (
+        self.coarse_dofs, self.edge_dofs, self.face_dofs = (
             self._get_interface_component_masks()
         )
-        self.interface_dimension = np.sum(self.coarse_dofs_mask)
+        self.interface_dimension = len(self.coarse_dofs)
         self.num_coarse_dofs = self.interface_dimension
-        self.num_edge_dofs = np.sum(self.edge_dofs_mask)
-        self.num_face_dofs = np.sum(self.face_dofs_mask)
+        self.num_edge_dofs = len(self.edge_dofs)
+        self.num_face_dofs = len(self.face_dofs)
 
         self.interior_dofs_mask = ~self.fespace.interface_dofs_mask
         self._print_init_string()
@@ -381,81 +388,93 @@ class AMSCoarseSpace(GDSWCoarseSpace):
         )
 
         # Phi_V
+        print("\tassembling vertex restriction")
         vertex_restriction = sp.eye(self.interface_dimension, dtype=float).tocsc()
 
         # Phi_E
-        A_EE = self.A[self.edge_dofs_mask, :][:, self.edge_dofs_mask]
-        A_EI = self.A[self.edge_dofs_mask, :][:, self.fespace.interior_dofs_mask]
-        A_EE += sp.diags(A_EI.sum(axis=1).A1, offsets=0, format="csc")
-        if np.any(self.face_dofs_mask):
-            A_EF = self.A[self.edge_dofs_mask, :][:, self.face_dofs_mask]
+        print("\tassembling edge restriction")
+        A_EE = self.A[self.edge_dofs, :][:, self.edge_dofs]
+        A_EI = self.A[self.edge_dofs, :][:, self.fespace.interior_dofs_mask]
+        A_EE += sp.diags(A_EI.sum(axis=1).A1, offsets=0, format="csc") # NOTE: SPD-ness is lost here
+        if np.any(self.face_dofs):
+            A_EF = self.A[self.edge_dofs, :][:, self.face_dofs]
             A_EE += sp.diags(A_EF.sum(axis=1).A1, offsets=0, format="csc")
-        A_EV = self.A[self.edge_dofs_mask, :][:, self.coarse_dofs_mask]
-        edge_restriction = -spsolve(A_EE.tocsc(), A_EV.tocsc()).tocsc()
+        A_EV = self.A[self.edge_dofs, :][:, self.coarse_dofs]
+        sparse_solver = DirectSparseSolver(A_EE.tocsc(), matrix_type=MatrixType.Symmetric)
+        edge_restriction = -sparse_solver(A_EV.tocsc())
 
         # Phi_F
+        print("\tassembling face restriction")
         face_restriction = sp.csc_matrix(
             (self.num_face_dofs, self.interface_dimension), dtype=float
         )
-        if np.any(self.face_dofs_mask):
-            A_FF = self.A[self.face_dofs_mask, :][:, self.face_dofs_mask]
-            A_FI = self.A[self.face_dofs_mask, :][:, self.fespace.interior_dofs_mask]
+        if np.any(self.face_dofs):
+            A_FF = self.A[self.face_dofs, :][:, self.face_dofs]
+            A_FI = self.A[self.face_dofs, :][:, self.fespace.interior_dofs_mask] # NOTE: SPD-ness is lost here
             A_FF += sp.diags(A_FI.sum(axis=1).A1, offsets=0, format="csc")
-            A_FV = self.A[self.face_dofs_mask, :][:, self.coarse_dofs_mask]
-            A_FE = self.A[self.face_dofs_mask, :][:, self.edge_dofs_mask]
-            face_restriction = -spsolve(
-                A_FF.tocsc(),
-                (A_FV @ vertex_restriction + A_FE @ edge_restriction).tocsc(),
+            A_FV = self.A[self.face_dofs, :][:, self.coarse_dofs]
+            A_FE = self.A[self.face_dofs, :][:, self.edge_dofs]
+            sparse_solver = DirectSparseSolver(A_FF.tocsc(), matrix_type=MatrixType.Symmetric)
+            face_restriction = -sparse_solver(
+                (A_FV @ vertex_restriction + A_FE @ edge_restriction).tocsc()
             )
 
         # Phi_I
+        print("\tassembling interior restriction")
         A_II = self.A[self.interior_dofs_mask, :][:, self.interior_dofs_mask]
-        A_IV = self.A[self.interior_dofs_mask, :][:, self.coarse_dofs_mask]
-        A_IE = self.A[self.interior_dofs_mask, :][:, self.edge_dofs_mask]
-        A_IF = self.A[self.interior_dofs_mask, :][:, self.face_dofs_mask]
+        A_IV = self.A[self.interior_dofs_mask, :][:, self.coarse_dofs]
+        A_IE = self.A[self.interior_dofs_mask, :][:, self.edge_dofs]
+        A_IF = self.A[self.interior_dofs_mask, :][:, self.face_dofs]
         interface_restriction = (
             A_IV @ vertex_restriction
             + A_IE @ edge_restriction
             + A_IF @ face_restriction
         ).tocsc()
-        interior_restriction = -spsolve(
-            A_II.tocsc(),
-            interface_restriction,
-        ).tocsc()
+        sparse_solver = DirectSparseSolver(A_II.tocsc(), matrix_type=MatrixType.SPD)
+        interior_restriction = -sparse_solver(interface_restriction)
 
-        # collect all restrictions at their respective dofs
-        restriction_operator[self.coarse_dofs_mask, :] = vertex_restriction
-        restriction_operator[self.edge_dofs_mask, :] = edge_restriction
-        if np.any(self.face_dofs_mask):
-            restriction_operator[self.face_dofs_mask, :] = face_restriction
-        restriction_operator[self.interior_dofs_mask, :] = interior_restriction
+        # Efficiently stack the operators in the order: coarse, edge, face, interior
+        blocks = [
+            vertex_restriction,      # shape: (num_coarse_dofs, interface_dim)
+            edge_restriction,        # shape: (num_edge_dofs, interface_dim)
+            face_restriction,        # shape: (num_face_dofs, interface_dim)
+            interior_restriction,    # shape: (num_interior_dofs, interface_dim)
+        ]
+        stacked = sp.vstack(blocks, format="csc")
+
+        # Build the permutation array to match the original free DOF ordering
+        coarse_idx = np.array(self.coarse_dofs)
+        edge_idx = np.array(self.edge_dofs)
+        face_idx = np.array(self.face_dofs)
+        interior_idx = np.where(self.interior_dofs_mask)[0]
+        perm = np.argsort(np.concatenate([coarse_idx, edge_idx, face_idx, interior_idx]))
+
+        # Apply the permutation to the stacked operator
+        restriction_operator = stacked[perm, :]  # type: ignore
 
         return restriction_operator
 
     def _get_interface_component_masks(self):
         # get all groups of interface components
         coarse_components = []
-        super()._get_coarse_components(coarse_components)
-        coarse_dofs_mask = np.zeros(self.fespace.total_dofs).astype(bool)
-        for coarse_component in coarse_components:
-            coarse_dofs_mask[coarse_component] = True
+        for coarse_component in super()._get_coarse_components():
+            free_dofs = self.fespace.map_global_to_restricted_dofs(coarse_component)
+            coarse_components.extend(free_dofs.tolist())
 
         edge_components = []
-        super()._get_edge_components(edge_components)
-        edge_dofs_mask = np.zeros(self.fespace.total_dofs).astype(bool)
-        for edge_component in edge_components:
-            edge_dofs_mask[edge_component] = True
+        for edge_component in super()._get_edge_components():
+            free_dofs = self.fespace.map_global_to_restricted_dofs(edge_component)
+            edge_components.extend(free_dofs.tolist())
 
         face_components = []
-        super()._get_face_components(face_components)
-        face_dofs_mask = np.zeros(self.fespace.total_dofs).astype(bool)
-        for face_component in face_components:
-            face_dofs_mask[face_component] = True
+        for face_component in super()._get_face_components():
+            free_dofs = self.fespace.map_global_to_restricted_dofs(face_component)
+            face_components.extend(free_dofs.tolist())
 
         return (
-            coarse_dofs_mask[self.fespace.free_dofs_mask],
-            edge_dofs_mask[self.fespace.free_dofs_mask],
-            face_dofs_mask[self.fespace.free_dofs_mask],
+            np.array(coarse_components),
+            np.array(edge_components),
+            np.array(face_components),
         )
 
     def _meta_info(self) -> str:
