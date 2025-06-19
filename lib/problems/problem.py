@@ -260,13 +260,14 @@ class Problem:
 
         # get preconditioner
         M_op = None
-        M_ops = None # seperate operators for GPU
         precond = None
         coarse_space_bases = {}
         if preconditioner is not None:
             if isinstance(preconditioner, type):
                 if preconditioner is OneLevelSchwarzPreconditioner:
-                    precond = OneLevelSchwarzPreconditioner(A_sp_f, self.fes, gpu_device)
+                    precond = OneLevelSchwarzPreconditioner(
+                        A_sp_f, self.fes, gpu_device
+                    )
                 elif preconditioner is TwoLevelSchwarzPreconditioner:
                     if coarse_space is None:
                         raise ValueError(
@@ -281,20 +282,19 @@ class Problem:
                     raise ValueError(
                         f"Unknown preconditioner type: {preconditioner.__name__}"
                     )
-                if not use_gpu: M_op = precond.as_linear_operator()
+                if not use_gpu:
+                    M_op = precond.as_linear_operator()
         self.precond_name = precond.name if precond is not None else "None"
 
         success = False
         if not use_gpu:
-            print(f"Solving system:" 
-                  f"\n\tpreconditioner: {self.precond_name}")
-            u_arr[:], success = custom_cg.sparse_solve(M_op, save_residuals=save_cg_info)
-        else:
-            print(
-                f"Solving system on GPU:"
-                f"\n\tpreconditioner: {self.precond_name}"
+            print(f"Solving system:" f"\n\tpreconditioner: {self.precond_name}")
+            u_arr[:], success = custom_cg.sparse_solve(
+                M_op, save_residuals=save_cg_info
             )
-            u_arr[:], success = custom_cg.sparse_solve_gpu(precond, save_residuals=save_cg_info) # type: ignore
+        else:
+            print(f"Solving system on GPU:" f"\n\tpreconditioner: {self.precond_name}")
+            u_arr[:], success = custom_cg.sparse_solve_gpu(precond, save_residuals=save_cg_info)  # type: ignore
         if not success:
             print(
                 f"Conjugate gradient solver did not converge. Number of iterations: {custom_cg.niters}"

@@ -241,7 +241,7 @@ class DiffusionProblemExample:
     # mesh parameters
     lx = 1.0
     ly = 1.0
-    coarse_mesh_size = 1 / 32
+    coarse_mesh_size = 1 / 16
     refinement_levels = 4
     layers = 2
 

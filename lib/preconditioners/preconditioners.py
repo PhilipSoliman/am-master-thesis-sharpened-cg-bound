@@ -42,8 +42,6 @@ class OneLevelSchwarzPreconditioner(Operator):
             tmp = torch.zeros_like(x[dofs], dtype=torch.float64)
             solver(x[dofs], tmp)  # type: ignore
             out[dofs] += tmp
-            # del tmp
-            # torch.cuda.empty_cache()  # Clear GPU memory
         return out
 
     def as_linear_operator(self) -> LinearOperator:
@@ -129,7 +127,6 @@ class TwoLevelSchwarzPreconditioner(OneLevelSchwarzPreconditioner):
         tmp = torch.zeros_like(x_2, dtype=torch.float64)
         self.coarse_solver(x_2, tmp)  # type: ignore
         x_2 = torch.mv(self.restriction_operator, tmp)  # type: ignore
-        # del tmp
         return x_1 + x_2
 
     def _get_coarse_solver(
