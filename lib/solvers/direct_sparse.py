@@ -50,7 +50,7 @@ class DirectSparseSolver:
         self.A = A
         self.matrix_type = matrix_type
         self.multithreaded = multithreaded
-        self.solver = self.get_solver()
+        self._solver = self.get_solver()
 
     def __call__(
         self,
@@ -110,7 +110,10 @@ class DirectSparseSolver:
             raise ValueError(
                 f"Direct solver is not available for {self.matrix_type} matrices."
             )
-
+    @property
+    def solver(self) -> Callable[[np.ndarray], np.ndarray] | chol.CholeskySolverD:  # type: ignore
+        return self._solver
+    
     @property
     def matrix_type(self) -> MatrixType:
         return self._matrix_type

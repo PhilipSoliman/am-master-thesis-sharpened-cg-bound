@@ -9,6 +9,8 @@ from pathlib import Path
 import matplotlib as mpl
 import matplotlib.colors as mpl_colors
 import numpy as np
+import scipy.sparse as sp
+import torch
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from matplotlib.pyplot import savefig
@@ -483,3 +485,11 @@ def visualize_profile(fp: Path):
         subprocess.run(["snakeviz", fp.as_posix()], check=True)
     else:
         print(f"File {fp} does not exist. Skipping visualization.")
+
+        
+def send_matrix_to_gpu(mat: sp.csc_matrix | sp.csr_matrix, device: str) -> torch.Tensor:
+    coo = mat.tocoo()  # convert to COO format for sparse tensor creation
+    # rows = torch.tensor(coo.row, dtype=torch.float64, device=device)
+    # cols = torch.tensor(coo.col, dtype=torch.float64, device=device)
+    # data = torch.tensor(coo.data, dtype=torch.float64, device=device)
+    return torch.sparse_coo_tensor(np.array([coo.row, coo.col]), coo.data, coo.shape, device=device)  # type: ignore

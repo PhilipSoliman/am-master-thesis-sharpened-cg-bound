@@ -7,12 +7,10 @@ from .coarse_space import (
 )
 from .preconditioners import (
     OneLevelSchwarzPreconditioner,
-    Preconditioner,
     TwoLevelSchwarzPreconditioner,
 )
 
 __all__ = [
-    "Preconditioner",
     "OneLevelSchwarzPreconditioner",
     "TwoLevelSchwarzPreconditioner",
     "CoarseSpace",

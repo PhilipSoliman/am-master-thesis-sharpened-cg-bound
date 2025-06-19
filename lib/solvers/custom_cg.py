@@ -2,12 +2,14 @@ from ctypes import CDLL, POINTER, byref, c_bool, c_double, c_int
 from typing import Optional
 
 import numpy as np
-from scipy.sparse import csc_matrix
+import torch
+from scipy.sparse import coo_matrix, csc_matrix
 from scipy.sparse import diags as spdiags
 from scipy.sparse.linalg import LinearOperator, aslinearoperator, eigsh
 from tqdm import trange
 
-from lib.utils import get_root
+from lib.operators import Operator
+from lib.utils import get_root, send_matrix_to_gpu
 
 # constants
 DLL_FOLDER = "lib/solvers/clib"
@@ -24,10 +26,12 @@ custom_cg_lib = CDLL(lib_path.as_posix())
 
 
 class CustomCG:
+    GPU_BATCH_SIZE = 128
+    DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
     def __init__(
         self,
-        A: np.ndarray,
+        A: np.ndarray | csc_matrix,
         b: np.ndarray,
         x_0: np.ndarray,
         tol: float = 1e-6,
@@ -85,10 +89,10 @@ class CustomCG:
         e_i = np.zeros(self.maxiter + 1, dtype=np.float64)
 
         # convert to c types
-        n = c_int(self.A.shape[0])
+        n = c_int(self.A.shape[0])  # type: ignore
         tol = c_double(self.tol)
         maxiter = c_int(self.maxiter)
-        A = self.A.flatten().astype(c_double)
+        A = self.A.flatten().astype(c_double)  # type: ignore
         b = self.b.astype(c_double)
         x_0 = self.x_0.astype(c_double)
         x_m = x_m.astype(c_double)
@@ -254,6 +258,106 @@ class CustomCG:
 
         return x, success
 
+    def sparse_solve_gpu(
+        self,
+        M: Operator | csc_matrix | None = None,
+        save_residuals: bool = False,
+    ) -> tuple[np.ndarray, int]:
+        # dot product
+        dotprod = torch.dot
+
+        # matrix-vector product with A
+        if isinstance(self.A, csc_matrix):
+            A_device = send_matrix_to_gpu(self.A, self.DEVICE)
+        else:
+            A_device = send_matrix_to_gpu(csc_matrix(self.A), self.DEVICE)
+        matvec = lambda x: torch.mv(A_device, x)
+
+        # preconditioner matrix-vector product
+        track_z = save_residuals and M is not None
+        psolve = lambda x: x
+        if isinstance(M, csc_matrix):
+            M_device = send_matrix_to_gpu(M, self.DEVICE)
+            psolve = lambda x: torch.mv(M_device, x)
+        elif isinstance(M, Operator):
+            psolve = lambda x: M.apply_gpu(x)
+
+        # initial guess
+        x = torch.tensor(self.x_0.copy(), dtype=torch.float64, device=self.DEVICE)
+
+        # initial residual
+        r = self.b - self.A @ self.x_0 if self.x_0.any() else self.b.copy()
+        r = torch.tensor(r, dtype=torch.float64, device=self.DEVICE)
+        rho_prev, p = None, None
+
+        # intitial z vector
+        z = psolve(r)  # NOTE: tensor by consruction
+
+        # historic
+        r_i = [torch.norm(r)]
+        z_i = [torch.norm(z)] if track_z else []
+        alphas = []
+        betas = []
+
+        # main loop
+        iteration = -1  # Ensure iteration is always defined
+        success = False
+        with trange(self.maxiter, desc="CG iterations", unit="it") as pbar:
+            for iteration in range(self.maxiter):
+                if r_i[-1] < self.tol:
+                    success = True
+                    pbar.n = (
+                        iteration + 1
+                    )  # Set progress bar to actual number of iterations
+                    pbar.last_print_n = (
+                        iteration + 1
+                    )  # Force tqdm to print the final value
+                    pbar.update(0)  # Refresh the bar
+                    break
+                rho_cur = dotprod(r, z)
+                if iteration > 0:
+                    beta = rho_cur / rho_prev  # type: ignore
+                    p *= beta  # type: ignore
+                    p += z  # type: ignore
+                    betas.append(beta)
+                else:
+                    p = torch.empty_like(r)
+                    p[:] = z[:]
+
+                q = matvec(p)
+                alpha = rho_cur / dotprod(p, q)
+                x += alpha * p
+                r -= alpha * q
+                z = psolve(r)
+                residual_norm = torch.norm(r).item()
+                if save_residuals:
+                    r_i.append(residual_norm)
+                if track_z:
+                    z_i.append(torch.norm(z))
+                rho_prev = rho_cur
+                alphas.append(alpha)
+
+                # Update tqdm bar with current residual norm and alpha
+                pbar.set_postfix(
+                    {
+                        "residual": f"{residual_norm:.2e}",
+                        "alpha": f"{alpha:.2e}",
+                        "beta": f"{betas[-1]:.2e}",
+                    }
+                )
+                pbar.update(1)
+
+        if save_residuals:
+            self.r_i = np.array(r_i)
+        if track_z:
+            self.z_i = torch.stack(z_i).cpu().numpy()  # Convert to numpy array
+
+        self.alpha = torch.stack(alphas).cpu().numpy()  # Convert to numpy array
+        self.beta = torch.stack(betas).cpu().numpy()  # Convert to numpy array
+        self.niters = iteration
+
+        return x.cpu().numpy(), success
+
     def get_relative_errors(self) -> np.ndarray:
         if np.any(self.e_i):
             return self.e_i / self.e_i[0]
@@ -271,6 +375,14 @@ class CustomCG:
             return self.z_i / self.z_i[0]
         else:
             raise ValueError("No preconditioner residuals saved")
+    
+    @property
+    def gpu_device(self) -> str:
+        """
+        Returns the GPU device being used for computations.
+        If no GPU is available, returns 'cpu'.
+        """
+        return self.DEVICE
 
     def cg_polynomial(
         self,
@@ -321,17 +433,17 @@ class CustomCG:
         The eigenvalues are computed from the diagonal and off-diagonal elements of the Lanczos matrix.
         """
         return eigsh(
-                self.get_lanczos_matrix(),
-                k=self.niters - 1,
-                which="BE",  # gets eigenvalues on both ends of the spectrum
-                return_eigenvectors=False,
-            )
+            self.get_lanczos_matrix(),
+            k=self.niters - 1,
+            which="BE",  # gets eigenvalues on both ends of the spectrum
+            return_eigenvectors=False,
+        )
 
     def get_lanczos_matrix(self) -> csc_matrix:
         delta = 1 / self.alpha + np.append(0, self.beta / self.alpha[:-1])
         eta = np.sqrt(self.beta) / self.alpha[:-1]
         return spdiags(
-            [eta, delta, eta], offsets=[-1, 0, 1], shape=(self.niters, self.niters) # type: ignore
+            [eta, delta, eta], offsets=[-1, 0, 1], shape=(self.niters, self.niters)  # type: ignore
         ).tocsc()
 
     def residual_polynomials(self) -> list[np.ndarray]:
@@ -365,7 +477,7 @@ class CustomCG:
         if self.residual_polynomials_coefficients == []:
             self.residual_polynomials()
 
-        self.eigenvalues, self.eigenvectors = np.linalg.eig(self.A)
+        self.eigenvalues, self.eigenvectors = np.linalg.eig(self.A)  # type: ignore
 
         # calculate initial residual in the eigenbasis of A
         self.rho_0 = self.eigenvectors.T @ self.r_0
@@ -381,7 +493,7 @@ class CustomCG:
     # helper
     def calculate_iteration_upperbound(self) -> int:
         return CustomCG.calculate_iteration_upperbound_static(
-            cond=np.linalg.cond(self.A),
+            cond=np.linalg.cond(self.A),  # type: ignore
             log_rtol=np.log(self.tol),
             exact_convergence=self.exact_convergence,
         )

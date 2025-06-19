@@ -15,10 +15,10 @@ from lib.boundary_conditions import (
 )
 from lib.fespace import FESpace
 from lib.meshes import BoundaryName, TwoLevelMesh
+from lib.operators import Operator
 from lib.preconditioners import (
     CoarseSpace,
     OneLevelSchwarzPreconditioner,
-    Preconditioner,
     TwoLevelSchwarzPreconditioner,
 )
 from lib.problem_type import ProblemType
@@ -236,9 +236,10 @@ class Problem:
 
     def solve(
         self,
-        preconditioner: Optional[Type[Preconditioner]] = None,
+        preconditioner: Optional[Type[Operator]] = None,
         coarse_space: Optional[Type[CoarseSpace]] = None,
         rtol: float = 1e-8,
+        use_gpu: bool = False,
         save_cg_info: bool = False,
         save_coarse_bases: bool = False,
     ):
@@ -248,21 +249,31 @@ class Problem:
         # homogenization of the boundary conditions
         A_sp_f, u_arr, res_arr = self.get_homogenized_system(A, self.u, b)
 
+        # setup custom solver
+        custom_cg = CustomCG(
+            A_sp_f,
+            res_arr,
+            u_arr,
+            tol=rtol,
+        )
+        gpu_device = None if use_gpu is False else custom_cg.gpu_device
+
         # get preconditioner
         M_op = None
+        M_ops = None # seperate operators for GPU
         precond = None
         coarse_space_bases = {}
         if preconditioner is not None:
             if isinstance(preconditioner, type):
                 if preconditioner is OneLevelSchwarzPreconditioner:
-                    precond = OneLevelSchwarzPreconditioner(A_sp_f, self.fes)
+                    precond = OneLevelSchwarzPreconditioner(A_sp_f, self.fes, gpu_device)
                 elif preconditioner is TwoLevelSchwarzPreconditioner:
                     if coarse_space is None:
                         raise ValueError(
                             "Coarse space must be provided for TwoLevelSchwarzPreconditioner."
                         )
                     precond = TwoLevelSchwarzPreconditioner(
-                        A_sp_f, self.fes, self.two_mesh, coarse_space
+                        A_sp_f, self.fes, self.two_mesh, coarse_space, gpu_device
                     )
                     if save_coarse_bases:
                         coarse_space_bases = precond.get_restriction_operator_bases()
@@ -270,18 +281,20 @@ class Problem:
                     raise ValueError(
                         f"Unknown preconditioner type: {preconditioner.__name__}"
                     )
-                M_op = precond.as_linear_operator()
+                if not use_gpu: M_op = precond.as_linear_operator()
         self.precond_name = precond.name if precond is not None else "None"
 
-        # solve system using (P)CG
-        custom_cg = CustomCG(
-            A_sp_f,
-            res_arr,
-            u_arr,
-            tol=rtol,
-        )
-        print(f"Solving system:" f"\n\tpreconditioner: {self.precond_name}")
-        u_arr[:], success = custom_cg.sparse_solve(M=M_op, save_residuals=save_cg_info)
+        success = False
+        if not use_gpu:
+            print(f"Solving system:" 
+                  f"\n\tpreconditioner: {self.precond_name}")
+            u_arr[:], success = custom_cg.sparse_solve(M_op, save_residuals=save_cg_info)
+        else:
+            print(
+                f"Solving system on GPU:"
+                f"\n\tpreconditioner: {self.precond_name}"
+            )
+            u_arr[:], success = custom_cg.sparse_solve_gpu(precond, save_residuals=save_cg_info) # type: ignore
         if not success:
             print(
                 f"Conjugate gradient solver did not converge. Number of iterations: {custom_cg.niters}"
