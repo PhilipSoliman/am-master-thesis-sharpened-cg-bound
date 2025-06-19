@@ -71,7 +71,7 @@ class TwoLevelSchwarzPreconditioner(OneLevelSchwarzPreconditioner):
         self.name = f"2-level Schwarz preconditioner with {self.coarse_space}"
         coarse_op = self.coarse_space.assemble_coarse_operator(A)
         print("\tobtaining coarse solver")
-        self.coarse_solver = factorized(coarse_op.tocsc())
+        self.coarse_solver = factorized(coarse_op)
         print("\tdone obtaining coarse solver")
 
     def apply(self, x: np.ndarray):
