@@ -18,16 +18,20 @@ class MatrixType(Enum):
     General = "General"
 
 
-
 class DirectSparseSolver:
     NUM_CPU_THREADS = multiprocessing.cpu_count()
     GPU_BATCH_SIZE = 128
     CPU_BATCH_SIZE = 32
     DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
-    def __init__(self, A: sp.csc_matrix, matrix_type: Optional[MatrixType] = None, multithreaded: bool = False):
+    def __init__(
+        self,
+        A: sp.csc_matrix,
+        matrix_type: Optional[MatrixType] = None,
+        multithreaded: bool = False,
+    ):
         """
-        Initialize a sparse solver. For SPD matrices a sparse Cholesky decomposition is made and efficiently 
+        Initialize a sparse solver. For SPD matrices a sparse Cholesky decomposition is made and efficiently
         reused for solving thereafter. If GPU is available, the sparse solve is performed on the GPU, otherwise on the CPU.
         For symmetric and general matrices, a scipy factorized solver is used.
 
@@ -79,17 +83,19 @@ class DirectSparseSolver:
 
     def get_solver(self) -> chol.CholeskySolverD | Callable[[np.ndarray], np.ndarray]:  # type: ignore
         print(f"\tgetting direct solver for {self.matrix_type} matrix")
+
+        # select solver based on matrix type
         if self.matrix_type == MatrixType.SPD:
             print(f"\tusing cholesky solver")
-            A_coo = self.A.tocoo()
-            n = self.A.shape[0]  # type: ignore
+
             if self.DEVICE == "cuda":
                 print(f"\tusing GPU device: {self.DEVICE}")
                 self.batch_size = self.GPU_BATCH_SIZE
             else:
                 print(f"\tusing CPU device: {self.DEVICE}")
                 self.batch_size = self.CPU_BATCH_SIZE
-
+            n = self.A.shape[0]  # type: ignore
+            A_coo = self.A.tocoo()
             rows = torch.tensor(A_coo.row, dtype=torch.float64, device=self.DEVICE)
             cols = torch.tensor(A_coo.col, dtype=torch.float64, device=self.DEVICE)
             data = torch.tensor(A_coo.data, dtype=torch.float64, device=self.DEVICE)
@@ -102,7 +108,7 @@ class DirectSparseSolver:
             return factorized(self.A)
         else:
             raise ValueError(
-                "Direct solver is not available for non-symmetric matrices."
+                f"Direct solver is not available for {self.matrix_type} matrices."
             )
 
     @property
@@ -165,7 +171,7 @@ class DirectSparseSolver:
             # rhs
             shape = (n_rows, end - start)
             rhs_batch = rhs[:, start:end].tocoo()
-            rhs_batch_array = np.empty(shape, dtype=np.float64)
+            rhs_batch_array = np.zeros(shape, dtype=np.float64)
             rhs_batch_array[rhs_batch.row, rhs_batch.col] = rhs_batch.data
             rhs_device = torch.tensor(
                 rhs_batch_array, dtype=torch.float64, device=self.DEVICE
@@ -186,10 +192,20 @@ class DirectSparseSolver:
 
         # Stack all columns into a sparse matrix
         return sp.hstack(out_cols).tocsc()  # type: ignore
-    
+
     def lu(self, rhs: sp.csc_matrix) -> sp.csc_matrix:
-        n_rhs = rhs.shape[1] # type: ignore
-        cols = []
+        """
+        Solve the system using LU decomposition and single loop over rhs columns.
+
+        This is efficient, as the factorized solver is used to solve each column of the right-hand side matrix
+        independently. This is suitable for medium-sized matrices where the factorization is not too expensive.
+
+        Note, this method instantiates an empty csc_matrix of the same shape as rhs and fills it with the solution
+        for each column of rhs. This is is not as fast as saving the columns (possibly in batches) and stacking them
+        at the end, but it is more memory efficient for large rhs matrices.
+        """
+        n_rhs = rhs.shape[1]  # type: ignore
+        out = sp.csc_matrix(rhs.shape)
         for i in tqdm(
             range(n_rhs),
             desc="Solving interior operators",
@@ -197,12 +213,14 @@ class DirectSparseSolver:
             total=n_rhs,
         ):
             x = self.solver(rhs[:, i].toarray().ravel())
-            cols.append(sp.csc_matrix(-x.reshape(-1, 1)))
-        return sp.hstack(cols).tocsc() # type: ignore
+            x_coo = sp.coo_matrix(x.reshape(-1, 1))
+            out[x_coo.row, x_coo.col] = x_coo.data
+
+        return out.tocsc()  # type: ignore
 
     def lu_threaded(self, rhs: sp.csc_matrix) -> sp.csc_matrix:
         """
-        Solve the system using LU decomposition on CPU, parallelized over columns.
+        Solve the system using LU decomposition on CPU, multithreaded over rhs columns.
 
         Args:
             rhs (sp.csc_matrix): The right-hand side matrix.
@@ -231,9 +249,12 @@ class DirectSparseSolver:
         lock = threading.Lock()
         with tqdm(total=n_rhs, desc="LU solving columns", unit="col") as pbar:
             tqdm.set_lock(lock)
-            with concurrent.futures.ThreadPoolExecutor(max_workers=num_threads) as executor:
+            with concurrent.futures.ThreadPoolExecutor(
+                max_workers=num_threads
+            ) as executor:
                 futures = [
-                    executor.submit(solve_chunk, col_range, pbar.update) for col_range in col_ranges
+                    executor.submit(solve_chunk, col_range, pbar.update)
+                    for col_range in col_ranges
                 ]
                 for future in concurrent.futures.as_completed(futures):
                     results.extend(future.result())
