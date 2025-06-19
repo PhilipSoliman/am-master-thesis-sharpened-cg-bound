@@ -80,12 +80,17 @@ class FESpace:
         self.free_dofs_mask = np.array(self.fespace.FreeDofs()).astype(bool)
         self.num_free_dofs = np.sum(self.free_dofs_mask)
 
+        # Map free dof global idx -> restricted idx
+        self.free_idx = np.flatnonzero(self.free_dofs_mask)
+
         # calculate subdomain DOFs
         self.domain_dofs = self.get_subdomain_dofs()
 
         # component dofs
         self.free_coarse_node_dofs = self.get_free_coarse_node_dofs()
-        self.free_edge_component_dofs, self.free_coarse_edges = self.get_free_edge_component_dofs()
+        self.free_edge_component_dofs, self.free_coarse_edges = (
+            self.get_free_edge_component_dofs()
+        )
         self.free_face_component_dofs = self.get_free_face_component_dofs()
         self.free_component_tree_dofs, self.edge_component_multiplicities = (
             self.get_free_component_tree_dofs()
@@ -211,7 +216,7 @@ class FESpace:
         dofs_arrs = dofs_arrs[isin].reshape(num_free_dofs, num_edge_dofs_per_edge)
         for dofs in dofs_arrs:
             edge_component_dofs.append(dofs.tolist())
-        
+
         # get list of free coarse edges
         coarse_edges = np.array(coarse_edges)
         free_coarse_edges = coarse_edges[any_free_dofs].tolist()
@@ -284,6 +289,13 @@ class FESpace:
                     dofs.extend(edge_dofs)
                 free_component_tree_dofs[coarse_node]["edges"][coarse_edge] = dofs
         return free_component_tree_dofs, edge_component_multiplicity
+
+    def map_global_to_restricted_dofs(self, global_dofs: np.ndarray) -> np.ndarray:
+        """Efficiently get free dofs as the intersection of global and free dofs"""
+        free_global = global_dofs[self.free_dofs_mask[global_dofs]]
+
+        # Map global free dofs to restricted matrix indices
+        return np.searchsorted(self.free_idx, free_global)
 
     def get_prolongation_operator(self):
         """

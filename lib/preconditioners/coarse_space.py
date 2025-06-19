@@ -4,11 +4,13 @@ import ngsolve as ngs
 import numpy as np
 import scipy.sparse as sp
 from scipy.sparse import SparseEfficiencyWarning
-from scipy.sparse.linalg import spsolve
+from scipy.sparse.linalg import factorized, spsolve
+from tqdm import tqdm
 
 from lib.fespace import FESpace
 from lib.meshes import TwoLevelMesh
 from lib.problem_type import ProblemType
+from lib.solvers.direct_sparse import DirectSparseSolver, MatrixType
 
 warnings.simplefilter("ignore", SparseEfficiencyWarning)
 
@@ -21,6 +23,7 @@ class CoarseSpace(object):
         two_mesh: TwoLevelMesh,
         ptype: ProblemType = ProblemType.DIFFUSION,
     ):
+        print("Initializing coarse space")
         self.fespace = fespace
         self.A = A
         self.two_mesh = two_mesh
@@ -28,8 +31,11 @@ class CoarseSpace(object):
         self.name = "Coarse space (base)"  # to be overridden by subclasses
 
     def assemble_coarse_operator(self, A: sp.csr_matrix) -> sp.csc_matrix:
+        print("Assembling coarse operator:")
         if not hasattr(self, "restriction_operator"):
+            print("\tassembling restriction operator")
             self.restriction_operator = self.assemble_restriction_operator()
+        print("\treturning coarse operator")
         return self.restriction_operator.transpose() @ (A @ self.restriction_operator)
 
     def assemble_restriction_operator(self) -> sp.csc_matrix:
@@ -39,16 +45,23 @@ class CoarseSpace(object):
         if (
             restriction_operator := getattr(self, "restriction_operator", None)
         ) is not None:
-            num_bases = restriction_operator.shape[1]
-            bases = {}
-            for i in range(num_bases):
-                vals = np.zeros(self.fespace.total_dofs)
-                vals[self.fespace.free_dofs_mask] = (
-                    restriction_operator[:, i].toarray().flatten()
+            try:
+                num_bases = restriction_operator.shape[1]
+                bases = {}
+                for i in range(num_bases):
+                    vals = np.zeros(self.fespace.total_dofs)
+                    vals[self.fespace.free_dofs_mask] = (
+                        restriction_operator[:, i].toarray().flatten()
+                    )
+                    gfunc = self.fespace.get_gridfunc(vals)
+                    bases[f"coarse_basis_{i}"] = gfunc
+                return bases
+            except MemoryError:
+                print(
+                    "MemoryError: The restriction operator bases are too large to fit in memory."
+                    "Returning empty dictionary."
                 )
-                gfunc = self.fespace.get_gridfunc(vals)
-                bases[f"coarse_basis_{i}"] = gfunc
-            return bases
+                return {}
         else:
             raise ValueError("Restriction operator is not assembled yet.")
 
@@ -131,11 +144,29 @@ class GDSWCoarseSpace(CoarseSpace):
         ]
 
         # discrete harmonic extension
-        interior_op = -spsolve(A_II.tocsc(), (A_IGamma @ interface_operator).tocsc())
+        A_II_csc = A_II.tocsc()
+        sparse_solver = DirectSparseSolver(
+            A_II_csc, matrix_type=MatrixType.SPD, multithreaded=False
+        )
+        rhs = (A_IGamma @ interface_operator).tocsc()
+        interior_op = -sparse_solver(rhs)
 
-        # fill the coarse operator #TODO: find more efficient way to construct the restriction operator
-        restriction_operator[~self.fespace.interface_dofs_mask, :] = interior_op.tocsc()
-        restriction_operator[self.fespace.interface_dofs_mask, :] = interface_operator
+        # Efficiently stack the operators
+        blocks = [
+            sp.csc_matrix(interior_op),  # shape: (num_interior, interface_dim)
+            sp.csc_matrix(interface_operator),  # shape: (num_interface, interface_dim)
+        ]
+        stacked = sp.vstack(blocks, format="csc")
+
+        # Now, permute rows to match the original free DOF ordering
+        # Create a permutation array: indices of [interior_dofs, interface_dofs] in the free_dofs_mask
+        interior_idx = np.where(~self.fespace.interface_dofs_mask)[0]
+        interface_idx = np.where(self.fespace.interface_dofs_mask)[0]
+        perm = np.argsort(np.concatenate([interior_idx, interface_idx]))
+
+        # Apply the permutation to the stacked operator
+        restriction_operator = stacked[perm, :]  # type: ignore
+
         return restriction_operator
 
     def _assemble_interface_operator(self):
@@ -144,18 +175,26 @@ class GDSWCoarseSpace(CoarseSpace):
         Note: for problems with multiple dimensions, coordinate dofs corresponding to one node are spaced by
         ndofs (so if ndof = 8, then dofs for node 0 are 0, 8, 16, ...).
         """
-        interface_operator = sp.csc_matrix(
-            (self.fespace.total_dofs, self.interface_dimension),
-            dtype=float,
-        )
         interface_index = 0
-        for interface_component in self.interface_components:
+        entries = ([], ([], []))  # data, (rows, cols)
+        for interface_component in tqdm(
+            self.interface_components,
+            desc="Assembling interface operator",
+            total=len(self.interface_components),
+            unit="component",
+        ):
             self._restrict_null_space_to_interface_component(
-                interface_operator, interface_component, interface_index
+                entries, interface_component, interface_index
             )
 
             # update the interface index for the next interface component with the null space dimension
             interface_index += self.null_space_dim
+
+        interface_operator = sp.coo_array(
+            entries,
+            shape=(self.fespace.total_dofs, self.interface_dimension),
+            dtype=float,
+        ).tocsc()
 
         # restric the interface operator to the free and interface dofs
         return interface_operator[self.fespace.free_dofs_mask, :][
@@ -164,14 +203,17 @@ class GDSWCoarseSpace(CoarseSpace):
 
     def _restrict_null_space_to_interface_component(
         self,
-        interface_operator: sp.csc_matrix,
-        interface_component: list[int],
+        entries: tuple[list[float], tuple[list[int], list[int]]],  # data, (rows, cols)
+        interface_component: np.ndarray,
         interface_index: int,
         partition_of_unity: int | np.ndarray = 1,
     ):
         """
         Restrict the null space to the interface operator for the given interface component and for all problem coordinates.
         """
+        # unpack the entries
+        data, (rows, cols) = entries
+
         # indices of all dofs
         ndofs = self.fespace.total_dofs
         ndofs_prev = 0
@@ -181,30 +223,29 @@ class GDSWCoarseSpace(CoarseSpace):
 
             # get dofs for current coordinate coord
             coord_idxs_mask = np.logical_and(
-                ndofs_prev < idxs[interface_component],
-                idxs[interface_component] < ndofs_prev + ndofs,
+                ndofs_prev < interface_component,
+                interface_component < ndofs_prev + ndofs,
             )
 
             # get indices of dofs for the current coordinate
-            component_coord_idxs = idxs[interface_component][coord_idxs_mask]
-
-            # get the adjusted component coordinate mask
-            component_coord_mask = np.zeros(ndofs, dtype=bool)
-            component_coord_mask[component_coord_idxs] = True
-            component_coord_mask = component_coord_mask
-
-            # fill the interface operator with the null space basis for the current coordinate
-            # TODO: perform this construction with LIL sparse matrix for better performance
-            interface_operator[
-                component_coord_mask,
-                interface_index : interface_index + self.null_space_dim,
-            ] = self.null_space_basis[coord, :]
+            component_coord_idxs = interface_component[coord_idxs_mask].tolist()
+            rows_coord = component_coord_idxs * self.null_space_dim
+            cols_coord = []
+            data_coord = []
+            for i in range(self.null_space_dim):
+                cols_coord.extend([interface_index + i for _ in component_coord_idxs])
+                data_coord.extend(
+                    [
+                        self.null_space_basis[coord, i] * partition_of_unity
+                        for _ in component_coord_idxs
+                    ]
+                )
+            rows.extend(rows_coord)
+            cols.extend(cols_coord)
+            data.extend(data_coord)
 
             # increment the previous dofs index
             ndofs_prev += ndofs
-
-        # apply partition of unity (rowwise) and return
-        interface_operator[interface_component, :] *= partition_of_unity
 
     def _get_null_space_basis(self):
         self.null_space_basis = np.array([])
@@ -224,35 +265,35 @@ class GDSWCoarseSpace(CoarseSpace):
         interface_components = []
         # coarse node components
         if len(self.fespace.free_coarse_node_dofs) > 0:
-            self._get_coarse_components(interface_components)
+            interface_components.extend(self._get_coarse_components())
 
         # edge components
         if len(self.fespace.free_edge_component_dofs) > 0:
-            self._get_edge_components(interface_components)
+            interface_components.extend(self._get_edge_components())
 
         # face components
         if len(self.fespace.free_face_component_dofs) > 0:
-            self._get_face_components(interface_components)
+            interface_components.extend(self._get_face_components())
 
         return interface_components
 
-    def _get_face_components(self, interface_components):
-        for face_component_dofs in self.fespace.free_face_component_dofs:
-            face_component_mask = np.zeros(self.fespace.total_dofs).astype(bool)
-            face_component_mask[face_component_dofs] = True
-            interface_components.append(face_component_mask)
+    def _get_coarse_components(self) -> list[np.ndarray]:
+        components = []
+        for coarse_component_dofs in self.fespace.free_coarse_node_dofs:
+            components.append(np.array(coarse_component_dofs))
+        return components
 
-    def _get_edge_components(self, interface_components):
+    def _get_edge_components(self) -> list[np.ndarray]:
+        components = []
         for edge_component_dofs in self.fespace.free_edge_component_dofs:
-            edge_component_mask = np.zeros(self.fespace.total_dofs).astype(bool)
-            edge_component_mask[edge_component_dofs] = True
-            interface_components.append(edge_component_mask)
+            components.append(np.array(edge_component_dofs))
+        return components
 
-    def _get_coarse_components(self, interface_components):
-        for coarse_dofs in self.fespace.free_coarse_node_dofs:
-            coarse_node_dofs_mask = np.zeros(self.fespace.total_dofs).astype(bool)
-            coarse_node_dofs_mask[coarse_dofs] = True
-            interface_components.append(coarse_node_dofs_mask)
+    def _get_face_components(self) -> list[np.ndarray]:
+        components = []
+        for face_component_dofs in self.fespace.free_face_component_dofs:
+            components.append(np.array(face_component_dofs))
+        return components
 
     def _meta_info(self) -> str:
         return (
@@ -285,27 +326,34 @@ class RGDSWCoarseSpace(GDSWCoarseSpace):
         self._print_init_string()
 
     def _assemble_interface_operator(self):
-        ndofs = self.fespace.total_dofs
-        interface_operator = sp.csc_matrix(
-            (ndofs, self.interface_dimension),
-            dtype=float,
-        )
+        entries = ([], ([], []))  # data, (rows, cols)
         interface_index = 0
-        for component_dofs in self.component_tree_dofs.values():
+        for component_dofs in tqdm(
+            self.component_tree_dofs.values(),
+            desc="Assembling interface operator",
+            unit="component",
+            total=len(self.component_tree_dofs),
+        ):
             node_dofs = component_dofs["node"]
             edge_components = component_dofs["edges"]
             self._restrict_null_space_to_interface_component(
-                interface_operator, node_dofs, interface_index
+                entries, np.array(node_dofs), interface_index
             )
 
             for edge, edge_dofs in edge_components.items():
                 multiplicity = self.edge_component_multiplicities[edge]
                 self._restrict_null_space_to_interface_component(
-                    interface_operator, edge_dofs, interface_index, 1 / multiplicity
+                    entries, np.array(edge_dofs), interface_index, 1 / multiplicity
                 )
 
             # update the interface index for the next interface component with the null space dimension
             interface_index += self.null_space_dim
+
+        interface_operator = sp.coo_array(
+            entries,
+            shape=(self.fespace.total_dofs, self.interface_dimension),
+            dtype=float,
+        ).tocsc()
 
         # restric the interface operator to the free and interface dofs
         return interface_operator[self.fespace.free_dofs_mask, :][
@@ -323,13 +371,13 @@ class AMSCoarseSpace(GDSWCoarseSpace):
     def __init__(self, A: sp.csr_matrix, fespace: FESpace, two_mesh: TwoLevelMesh):
         CoarseSpace.__init__(self, A, fespace, two_mesh)
         self.name = "AMS coarse space"
-        self.coarse_dofs_mask, self.edge_dofs_mask, self.face_dofs_mask = (
+        self.coarse_dofs, self.edge_dofs, self.face_dofs = (
             self._get_interface_component_masks()
         )
-        self.interface_dimension = np.sum(self.coarse_dofs_mask)
+        self.interface_dimension = len(self.coarse_dofs)
         self.num_coarse_dofs = self.interface_dimension
-        self.num_edge_dofs = np.sum(self.edge_dofs_mask)
-        self.num_face_dofs = np.sum(self.face_dofs_mask)
+        self.num_edge_dofs = len(self.edge_dofs)
+        self.num_face_dofs = len(self.face_dofs)
 
         self.interior_dofs_mask = ~self.fespace.interface_dofs_mask
         self._print_init_string()
@@ -340,81 +388,93 @@ class AMSCoarseSpace(GDSWCoarseSpace):
         )
 
         # Phi_V
+        print("\tassembling vertex restriction")
         vertex_restriction = sp.eye(self.interface_dimension, dtype=float).tocsc()
 
         # Phi_E
-        A_EE = self.A[self.edge_dofs_mask, :][:, self.edge_dofs_mask]
-        A_EI = self.A[self.edge_dofs_mask, :][:, self.fespace.interior_dofs_mask]
-        A_EE += sp.diags(A_EI.sum(axis=1).A1, offsets=0, format="csc")
-        if np.any(self.face_dofs_mask):
-            A_EF = self.A[self.edge_dofs_mask, :][:, self.face_dofs_mask]
+        print("\tassembling edge restriction")
+        A_EE = self.A[self.edge_dofs, :][:, self.edge_dofs]
+        A_EI = self.A[self.edge_dofs, :][:, self.fespace.interior_dofs_mask]
+        A_EE += sp.diags(A_EI.sum(axis=1).A1, offsets=0, format="csc") # NOTE: SPD-ness is lost here
+        if np.any(self.face_dofs):
+            A_EF = self.A[self.edge_dofs, :][:, self.face_dofs]
             A_EE += sp.diags(A_EF.sum(axis=1).A1, offsets=0, format="csc")
-        A_EV = self.A[self.edge_dofs_mask, :][:, self.coarse_dofs_mask]
-        edge_restriction = -spsolve(A_EE.tocsc(), A_EV.tocsc()).tocsc()
+        A_EV = self.A[self.edge_dofs, :][:, self.coarse_dofs]
+        sparse_solver = DirectSparseSolver(A_EE.tocsc(), matrix_type=MatrixType.Symmetric)
+        edge_restriction = -sparse_solver(A_EV.tocsc())
 
         # Phi_F
+        print("\tassembling face restriction")
         face_restriction = sp.csc_matrix(
             (self.num_face_dofs, self.interface_dimension), dtype=float
         )
-        if np.any(self.face_dofs_mask):
-            A_FF = self.A[self.face_dofs_mask, :][:, self.face_dofs_mask]
-            A_FI = self.A[self.face_dofs_mask, :][:, self.fespace.interior_dofs_mask]
+        if np.any(self.face_dofs):
+            A_FF = self.A[self.face_dofs, :][:, self.face_dofs]
+            A_FI = self.A[self.face_dofs, :][:, self.fespace.interior_dofs_mask] # NOTE: SPD-ness is lost here
             A_FF += sp.diags(A_FI.sum(axis=1).A1, offsets=0, format="csc")
-            A_FV = self.A[self.face_dofs_mask, :][:, self.coarse_dofs_mask]
-            A_FE = self.A[self.face_dofs_mask, :][:, self.edge_dofs_mask]
-            face_restriction = -spsolve(
-                A_FF.tocsc(),
-                (A_FV @ vertex_restriction + A_FE @ edge_restriction).tocsc(),
+            A_FV = self.A[self.face_dofs, :][:, self.coarse_dofs]
+            A_FE = self.A[self.face_dofs, :][:, self.edge_dofs]
+            sparse_solver = DirectSparseSolver(A_FF.tocsc(), matrix_type=MatrixType.Symmetric)
+            face_restriction = -sparse_solver(
+                (A_FV @ vertex_restriction + A_FE @ edge_restriction).tocsc()
             )
 
         # Phi_I
+        print("\tassembling interior restriction")
         A_II = self.A[self.interior_dofs_mask, :][:, self.interior_dofs_mask]
-        A_IV = self.A[self.interior_dofs_mask, :][:, self.coarse_dofs_mask]
-        A_IE = self.A[self.interior_dofs_mask, :][:, self.edge_dofs_mask]
-        A_IF = self.A[self.interior_dofs_mask, :][:, self.face_dofs_mask]
+        A_IV = self.A[self.interior_dofs_mask, :][:, self.coarse_dofs]
+        A_IE = self.A[self.interior_dofs_mask, :][:, self.edge_dofs]
+        A_IF = self.A[self.interior_dofs_mask, :][:, self.face_dofs]
         interface_restriction = (
             A_IV @ vertex_restriction
             + A_IE @ edge_restriction
             + A_IF @ face_restriction
         ).tocsc()
-        interior_restriction = -spsolve(
-            A_II.tocsc(),
-            interface_restriction,
-        ).tocsc()
+        sparse_solver = DirectSparseSolver(A_II.tocsc(), matrix_type=MatrixType.SPD)
+        interior_restriction = -sparse_solver(interface_restriction)
 
-        # collect all restrictions at their respective dofs
-        restriction_operator[self.coarse_dofs_mask, :] = vertex_restriction
-        restriction_operator[self.edge_dofs_mask, :] = edge_restriction
-        if np.any(self.face_dofs_mask):
-            restriction_operator[self.face_dofs_mask, :] = face_restriction
-        restriction_operator[self.interior_dofs_mask, :] = interior_restriction
+        # Efficiently stack the operators in the order: coarse, edge, face, interior
+        blocks = [
+            vertex_restriction,      # shape: (num_coarse_dofs, interface_dim)
+            edge_restriction,        # shape: (num_edge_dofs, interface_dim)
+            face_restriction,        # shape: (num_face_dofs, interface_dim)
+            interior_restriction,    # shape: (num_interior_dofs, interface_dim)
+        ]
+        stacked = sp.vstack(blocks, format="csc")
+
+        # Build the permutation array to match the original free DOF ordering
+        coarse_idx = np.array(self.coarse_dofs)
+        edge_idx = np.array(self.edge_dofs)
+        face_idx = np.array(self.face_dofs)
+        interior_idx = np.where(self.interior_dofs_mask)[0]
+        perm = np.argsort(np.concatenate([coarse_idx, edge_idx, face_idx, interior_idx]))
+
+        # Apply the permutation to the stacked operator
+        restriction_operator = stacked[perm, :]  # type: ignore
 
         return restriction_operator
 
     def _get_interface_component_masks(self):
         # get all groups of interface components
         coarse_components = []
-        super()._get_coarse_components(coarse_components)
-        coarse_dofs_mask = np.zeros(self.fespace.total_dofs).astype(bool)
-        for coarse_component in coarse_components:
-            coarse_dofs_mask[coarse_component] = True
+        for coarse_component in super()._get_coarse_components():
+            free_dofs = self.fespace.map_global_to_restricted_dofs(coarse_component)
+            coarse_components.extend(free_dofs.tolist())
 
         edge_components = []
-        super()._get_edge_components(edge_components)
-        edge_dofs_mask = np.zeros(self.fespace.total_dofs).astype(bool)
-        for edge_component in edge_components:
-            edge_dofs_mask[edge_component] = True
+        for edge_component in super()._get_edge_components():
+            free_dofs = self.fespace.map_global_to_restricted_dofs(edge_component)
+            edge_components.extend(free_dofs.tolist())
 
         face_components = []
-        super()._get_face_components(face_components)
-        face_dofs_mask = np.zeros(self.fespace.total_dofs).astype(bool)
-        for face_component in face_components:
-            face_dofs_mask[face_component] = True
+        for face_component in super()._get_face_components():
+            free_dofs = self.fespace.map_global_to_restricted_dofs(face_component)
+            face_components.extend(free_dofs.tolist())
 
         return (
-            coarse_dofs_mask[self.fespace.free_dofs_mask],
-            edge_dofs_mask[self.fespace.free_dofs_mask],
-            face_dofs_mask[self.fespace.free_dofs_mask],
+            np.array(coarse_components),
+            np.array(edge_components),
+            np.array(face_components),
         )
 
     def _meta_info(self) -> str:

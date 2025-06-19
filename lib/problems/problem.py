@@ -198,7 +198,9 @@ class Problem:
 
         return A, u, b
 
-    def get_homogenized_system(self, A: ngs.Matrix, u: ngs.GridFunction, b: ngs.GridFunction):
+    def get_homogenized_system(
+        self, A: ngs.Matrix, u: ngs.GridFunction, b: ngs.GridFunction
+    ):
         res = b.vec.CreateVector()
         res.data = b.vec - A.mat * u.vec
 
@@ -262,7 +264,8 @@ class Problem:
                     precond = TwoLevelSchwarzPreconditioner(
                         A_sp_f, self.fes, self.two_mesh, coarse_space
                     )
-                    coarse_space_bases = precond.get_restriction_operator_bases()
+                    if save_coarse_bases:
+                        coarse_space_bases = precond.get_restriction_operator_bases()
                 else:
                     raise ValueError(
                         f"Unknown preconditioner type: {preconditioner.__name__}"
@@ -304,7 +307,10 @@ class Problem:
             for basis, basis_gfunc in coarse_space_bases.items():
                 names.append(basis)
                 gfuncs.append(basis_gfunc)
-            self.save_ngs_functions(gfuncs, names, "coarse_bases")
+            if gfuncs != []:
+                self.save_ngs_functions(gfuncs, names, "coarse_bases")
+            else:
+                print("No coarse space bases to save.")
 
     def save_ngs_functions(
         self, funcs: list[ngs.GridFunction], names: list[str], category: str

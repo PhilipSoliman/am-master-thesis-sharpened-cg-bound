@@ -5,7 +5,7 @@ import numpy as np
 
 from lib.boundary_conditions import BoundaryConditions, HomogeneousDirichlet
 from lib.meshes import TwoLevelMesh
-from lib.preconditioners import RGDSWCoarseSpace, TwoLevelSchwarzPreconditioner
+from lib.preconditioners import AMSCoarseSpace, TwoLevelSchwarzPreconditioner
 from lib.problem_type import ProblemType
 from lib.problems.problem import Problem
 
@@ -74,7 +74,7 @@ class DiffusionProblem(Problem):
         self.source_func = getattr(self, self.source_func_name)()
 
     def assemble(self, gfuncs=None):
-        print("Assembling system...")
+        print("Assembling system")
         return super().assemble(gfuncs=[self.coef_func, self.source_func])
 
     ####################
@@ -92,19 +92,19 @@ class DiffusionProblem(Problem):
     #########################
     # coefficient functions #
     #########################
-    # eq. 5.5 from Hetmaniuk & Lehoucq (2010).
     def constant_coefficient(self):
+        """Constant coefficient function."""
         return 1.0
 
-    # eq. 5.6 from Hetmaniuk & Lehoucq (2010).
     def hetmaniuk_lehoucq_coefficient(self):
+        """Hetmaniuk & Lehoucq coefficient function. Equation 5.6 from Hetmaniuk & Lehoucq (2010)."""
         c = (
             1.2 + ngs.cos(32 * ngs.pi * ngs.x * (1 - ngs.x) * ngs.y * (1 - ngs.y))
         ) ** -1
         return c
 
-    # eq. 5.8 from Hetmaniuk & Lehoucq (2010)
     def sinusoidal_coefficient(self):
+        """Sinusoidal coefficient function. Equation 5.8 from Hetmaniuk & Lehoucq (2010)."""
         sx, sy = ngs.sin(25 * ngs.pi * ngs.x / self.two_mesh.lx), ngs.sin(
             25 * ngs.pi * ngs.y / self.two_mesh.ly
         )
@@ -112,15 +112,15 @@ class DiffusionProblem(Problem):
         c = ((2 + 1.8 * sx) / (2 + 1.8 * cy)) + ((2 + sy) / (2 + 1.8 * sx))
         return c
 
-    # eq. 4.36 from Heinlein (2016).
     def heinlein_coefficient(self):
+        """Heinlein coefficient function. Equation 4.36 from Heinlein (2016)."""
         sx, sy = ngs.sin(25 * ngs.pi * ngs.x), ngs.sin(25 * ngs.pi * ngs.y)
         cy = ngs.cos(25 * ngs.pi * ngs.y)
         c = ((2 + 1.99 * sx) / (2 + 1.99 * cy)) + ((2 + sy) / (2 + 1.99 * sx))
         return c
 
-    # High coefficient inclusions around the coarse nodes.
     def vertex_inclusions_coefficient(self):
+        """High coefficient inclusions around the coarse nodes."""
         # setup piecewise constant coefficient function
         constant_fes = ngs.L2(self.two_mesh.fine_mesh, order=0)
         grid_func = ngs.GridFunction(constant_fes)
@@ -140,8 +140,8 @@ class DiffusionProblem(Problem):
         coef_func = ngs.CoefficientFunction(grid_func)
         return coef_func.Compile()
 
-    # High coefficient inclusions on the coarse node (2 layers).
     def vertex_inclusions_2layers_coefficient(self):
+        """High coefficient inclusions around the coarse nodes with 2 layers of elements."""
         # setup piecewise constant coefficient function
         constant_fes = ngs.L2(self.two_mesh.fine_mesh, order=0)
         grid_func = ngs.GridFunction(constant_fes)
@@ -153,7 +153,7 @@ class DiffusionProblem(Problem):
         # Get all free coarse node coordinates
         free_coarse_nodes = list(self.fes.free_component_tree_dofs.keys())
 
-        # Loop over coarse nodes and set high contrast if inside any inclusion
+        # Loop over coarse nodes and set high contrast to 2 layers of elements around them
         coef_array = np.full(self.two_mesh.fine_mesh.ne, background)
         for coarse_node in free_coarse_nodes:
             mesh_el = self.two_mesh.fine_mesh[coarse_node]
@@ -175,8 +175,8 @@ class DiffusionProblem(Problem):
         coef_func = ngs.CoefficientFunction(grid_func)
         return coef_func.Compile()
 
-    # edge inclusions
     def edge_inclusions_coefficient(self):
+        """High coefficient inclusions centered on the coarse edges."""
         # setup piecewise constant coefficient function
         constant_fes = ngs.L2(self.two_mesh.fine_mesh, order=0)
         grid_func = ngs.GridFunction(constant_fes)
@@ -209,6 +209,7 @@ class DiffusionProblem(Problem):
         return coef_func.Compile()
 
     def edge_slab_inclusions_coefficient(self):
+        """High coefficient inclusions centered on the coarse edges with slabs."""
         # setup piecewise constant coefficient function
         constant_fes = ngs.L2(self.two_mesh.fine_mesh, order=0)
         grid_func = ngs.GridFunction(constant_fes)
@@ -236,127 +237,178 @@ class DiffusionProblem(Problem):
         )
 
 
-def main():
-    # Define mesh parameters
+class DiffusionProblemExample:
+    # mesh parameters
     lx = 1.0
     ly = 1.0
-    coarse_mesh_size = 1 / 32
+    coarse_mesh_size = 1 / 64
     refinement_levels = 4
     layers = 2
 
-    # define source and coefficient functions
+    # source and coefficient functions
     source_func = SourceFunc.CONSTANT
     coef_func = CoefFunc.EDGE_SLAB_INCLUSIONS
 
-    # create diffusion problem
-    diffusion_problem = DiffusionProblem(
-        HomogeneousDirichlet(ProblemType.DIFFUSION),
-        lx=lx,
-        ly=ly,
-        coarse_mesh_size=coarse_mesh_size,
-        refinement_levels=refinement_levels,
-        layers=layers,
-        source_func=source_func,
-        coef_func=coef_func,
-    )
-    print(diffusion_problem.boundary_conditions)
+    # preconditioner and coarse space
+    preconditioner = TwoLevelSchwarzPreconditioner
+    coarse_space = AMSCoarseSpace
 
-    # solve problem
+    # save coarse bases
+    save_coarse_bases = False
+
+    # save CG convergence information
     get_cg_info = True
-    diffusion_problem.solve(
-        preconditioner=TwoLevelSchwarzPreconditioner,
-        coarse_space=RGDSWCoarseSpace,
-        rtol=1e-8,
-        save_cg_info=get_cg_info,
-        save_coarse_bases=False,
-    )
 
-    # Save the functions to vtk files
-    # diffusion_problem.save_functions()
+    # save source, coefficient and solution as VTK files
+    save_functions_toggle = False
 
-    if get_cg_info:
-        import matplotlib.pyplot as plt
-        import numpy as np
+    @classmethod
+    def example_construction(cls):
+        # create diffusion problem
+        cls.diffusion_problem = DiffusionProblem(
+            HomogeneousDirichlet(ProblemType.DIFFUSION),
+            lx=cls.lx,
+            ly=cls.ly,
+            coarse_mesh_size=cls.coarse_mesh_size,
+            refinement_levels=cls.refinement_levels,
+            layers=cls.layers,
+            source_func=cls.source_func,
+            coef_func=cls.coef_func,
+        )
+        print(cls.diffusion_problem.boundary_conditions)
 
-        from lib.utils import set_mpl_cycler, set_mpl_style
-
-        set_mpl_style()
-        set_mpl_cycler(colors=True, lines=True)
-
-        fig, axs = plt.subplots(
-            2,
-            2,
-            figsize=(10, 6),
-            gridspec_kw={"height_ratios": [3, 1], "width_ratios": [1, 1]},
+    @classmethod
+    def example_solve(cls):
+        # solve problem
+        cls.diffusion_problem.solve(
+            preconditioner=cls.preconditioner,
+            coarse_space=cls.coarse_space,
+            rtol=1e-8,
+            save_cg_info=cls.get_cg_info,
+            save_coarse_bases=cls.save_coarse_bases,
         )
 
-        # Remove the bottom-right axis and make the bottom-left axis span both columns
-        fig.delaxes(axs[1, 0])
-        fig.delaxes(axs[1, 1])
-        gs = axs[1, 0].get_gridspec()
-        axs_bottom = fig.add_subplot(gs[1, :])
+    @classmethod
+    def save_functions(cls):
+        """Save the source and coefficient functions to vtk."""
+        if cls.save_functions_toggle:
+            cls.diffusion_problem.save_functions()
 
-        # plot the coefficients
-        axs[0, 0].plot(diffusion_problem.cg_alpha, label=r"$\alpha$")
-        axs[0, 0].plot(diffusion_problem.cg_beta, label=r"$\beta$")
-        axs[0, 0].set_xlabel("Iteration")
-        axs[0, 0].set_ylabel("Coefficient Value")
-        axs[0, 0].legend()
+    @classmethod
+    def visualize_convergence(cls):
+        if cls.get_cg_info:
+            import matplotlib.pyplot as plt
+            import numpy as np
 
-        # plot residuals and preconditioned residuals
-        axs[0, 1].plot(diffusion_problem.cg_residuals, label=r"$||r_m||_2 / ||r_0||_2$")
-        if diffusion_problem.cg_precond_residuals is not None:
-            axs[0, 1].plot(
-                diffusion_problem.cg_precond_residuals, label=r"$||z_m||_2 / ||z_0||_2$"
+            from lib.utils import set_mpl_cycler, set_mpl_style
+
+            set_mpl_style()
+            set_mpl_cycler(colors=True, lines=True)
+
+            fig, axs = plt.subplots(
+                2,
+                2,
+                figsize=(10, 6),
+                gridspec_kw={"height_ratios": [3, 1], "width_ratios": [1, 1]},
             )
-        axs[0, 1].set_xlabel("Iteration")
-        axs[0, 1].set_ylabel("Relative residuals")
-        axs[0, 1].set_yscale("log")
-        axs[0, 1].legend()
 
-        plt.suptitle(
-            f"CG convergence ("
-            + r"$\mathcal{C}$"
-            + f" = {coef_func.name}, "
-            + r"$f$"
-            + f" = {source_func.name}, "
-            + r"$M^{-1}$"
-            + f" = {diffusion_problem.precond_name})"
-        )
+            # Remove the bottom-right axis and make the bottom-left axis span both columns
+            fig.delaxes(axs[1, 0])
+            fig.delaxes(axs[1, 1])
+            gs = axs[1, 0].get_gridspec()
+            axs_bottom = fig.add_subplot(gs[1, :])
 
-        # Plot each spectrum at a different y
-        axs_bottom.plot(
-            np.real(diffusion_problem.approximate_eigs),
-            np.full_like(diffusion_problem.approximate_eigs, 0),
-            marker="x",
-            linestyle="None",
-        )
+            # plot the coefficients
+            axs[0, 0].plot(cls.diffusion_problem.cg_alpha, label=r"$\alpha$")
+            axs[0, 0].plot(cls.diffusion_problem.cg_beta, label=r"$\beta$")
+            axs[0, 0].set_xlabel("Iteration")
+            axs[0, 0].set_ylabel("Coefficient Value")
+            axs[0, 0].legend()
 
-        # Set y-ticks and labels
-        axs_bottom.set_ylim(-0.5, 0.5)
-        axs_bottom.set_yticks([0], ["$\\mathbf{\\sigma(T_m)}$"])
-        axs_bottom.set_xscale("log")
-        axs_bottom.grid(axis="x")
-        axs_bottom.grid()
-        ax2 = axs_bottom.twinx()
+            # plot residuals and preconditioned residuals
+            axs[0, 1].plot(
+                cls.diffusion_problem.cg_residuals, label=r"$||r_m||_2 / ||r_0||_2$"
+            )
+            if cls.diffusion_problem.cg_precond_residuals is not None:
+                axs[0, 1].plot(
+                    cls.diffusion_problem.cg_precond_residuals,
+                    label=r"$||z_m||_2 / ||z_0||_2$",
+                )
+            axs[0, 1].set_xlabel("Iteration")
+            axs[0, 1].set_ylabel("Relative residuals")
+            axs[0, 1].set_yscale("log")
+            axs[0, 1].legend()
 
-        # add condition numbers on right axis
-        def format_cond(c):
-            if np.isnan(c):
-                return "n/a"
-            mantissa, exp = f"{c:.1e}".split("e")
-            exp = int(exp)
-            return rf"${mantissa} \times 10^{{{exp}}}$"
+            plt.suptitle(
+                f"CG convergence ("
+                + r"$\mathcal{C}$"
+                + f" = {cls.coef_func.name}, "
+                + r"$f$"
+                + f" = {cls.source_func.name}, "
+                + r"$M^{-1}$"
+                + f" = {cls.diffusion_problem.precond_name})"
+            )
 
-        cond = np.max(diffusion_problem.approximate_eigs) / np.min(
-            diffusion_problem.approximate_eigs
-        )
-        ax2.set_ylim(axs_bottom.get_ylim())
-        ax2.set_yticks([0], [format_cond(cond)])
+            # Plot each spectrum at a different y
+            axs_bottom.plot(
+                np.real(cls.diffusion_problem.approximate_eigs),
+                np.full_like(cls.diffusion_problem.approximate_eigs, 0),
+                marker="x",
+                linestyle="None",
+            )
 
-        plt.tight_layout()
-        plt.show()
+            # Set y-ticks and labels
+            axs_bottom.set_ylim(-0.5, 0.5)
+            axs_bottom.set_yticks([0], ["$\\mathbf{\\sigma(T_m)}$"])
+            axs_bottom.set_xscale("log")
+            axs_bottom.grid(axis="x")
+            axs_bottom.grid()
+            ax2 = axs_bottom.twinx()
+
+            # add condition numbers on right axis
+            def format_cond(c):
+                if np.isnan(c):
+                    return "n/a"
+                mantissa, exp = f"{c:.1e}".split("e")
+                exp = int(exp)
+                return rf"${mantissa} \times 10^{{{exp}}}$"
+
+            cond = np.max(cls.diffusion_problem.approximate_eigs) / np.min(
+                cls.diffusion_problem.approximate_eigs
+            )
+            ax2.set_ylim(axs_bottom.get_ylim())
+            ax2.set_yticks([0], [format_cond(cond)])
+
+            plt.tight_layout()
+            plt.show()
+
+    @classmethod
+    def get_save_dir(cls):
+        """Get the directory where the problem files are saved."""
+        return cls.diffusion_problem.two_mesh.save_dir
+
+
+def full_example():
+    DiffusionProblemExample.example_construction()
+    DiffusionProblemExample.example_solve()
+    DiffusionProblemExample.save_functions()
+    DiffusionProblemExample.visualize_convergence()
+
+
+def profile_solve():
+    import cProfile
+    import pstats
+
+    from lib.utils import visualize_profile
+
+    DiffusionProblemExample.example_construction()
+    fp = DiffusionProblemExample.get_save_dir() / "diffusion_problem_solve.prof"
+    cProfile.run("DiffusionProblemExample.example_solve()", str(fp))
+    p = pstats.Stats(str(fp))
+    p.sort_stats("cumulative").print_stats(10)
+    visualize_profile(fp)
 
 
 if __name__ == "__main__":
-    main()
+    full_example() # Uncomment this line to run a full diffusion problem example
+    # profile_solve()  # Uncomment this line to profile problem solving
