@@ -523,12 +523,17 @@ class TwoLevelMesh:
     #######################
     def generate_edge_slabs(self) -> dict:
         """
-        Generates the the mapping from coarse edges to fine mesh elements that are
-        in slabs that are extruded from the coarse edge vertices. These single slabs
-        can be used to create a coefficient function on the fine mesh that has high
+        Generates the mapping from coarse edges to fine mesh elements that are
+        in slabs that are extruded from the coarse edge vertices.
+
+        Requires a refinement level of at least 4
+
+        These slabs can be used to create a coefficient function on the fine mesh that has high
         contrast on the slab elements and low contrast on the rest of the mesh. These
-        slabs should be larger than the domain overlap. Hence the number of slab layers
-        is equal to the number of layers in the TwoLevelMesh plus one.
+        slabs should be larger than the domain overlap, in order to create edge inclusions.
+        Hence the number of slab layers is equal to the number of layers in the TwoLevelMesh plus one.
+
+        This functions can generates two sets of edge inclusions: single and double slabs.
         """
         # main output dictionary
         edge_slabs = {}
@@ -536,31 +541,63 @@ class TwoLevelMesh:
         # get num vertices on subdomain edges (without coarse nodes)
         num_edge_vertices = 2**self.refinement_levels - 2
 
-        # number of layers in the slab (slab height)
-        slab_layers = self.layers + 1
-
         # find index center vertex on coarse edge
-        edge_vertex_inclusion_idx = num_edge_vertices // 2
-        edge_corner_vertex_idxs = np.array(
-            [
-                edge_vertex_inclusion_idx - 1,
-                edge_vertex_inclusion_idx + 1,
-            ]
-        )
+        center_idx = num_edge_vertices // 2
+
+        # number of layers in the slab (slab height ~ half the subdomain diameter)
+        slab_layers = center_idx // 2
 
         # construct the coefficient array
-        for coarse_edge, data in tqdm(
-            self.coarse_edges_map.items(),
+        for coarse_edge in tqdm(
+            self.coarse_edges_map.keys(),
             desc="Assembling edge slabs",
             total=len(self.coarse_edges_map),
             unit="edges",
         ):
-            # get already sorted fine vertices on free coarse edge
-            fine_vertices = np.array(data["fine_vertices"])
+            single_slab_elements = self.get_slab_elements(
+                coarse_edge,
+                [center_idx],
+                slab_layers=slab_layers,
+            )
+            double_slab_elements = self.get_slab_elements(
+                coarse_edge,
+                [center_idx - 2, center_idx + 2],
+                slab_layers=slab_layers,
+            )
 
-            # get the center vertex and the edge corners
-            center_vertex = fine_vertices[edge_vertex_inclusion_idx]
-            edge_corners = fine_vertices[edge_corner_vertex_idxs].tolist()
+            # store the slab elements in the output dictionary
+            edge_slabs[coarse_edge.nr] = {
+                "single": single_slab_elements,
+                "double": double_slab_elements,
+            }
+
+        return edge_slabs
+
+    def get_slab_elements(
+        self, coarse_edge: ngs.NodeId, idxs: list[int], slab_layers: int
+    ) -> list[list[ngs.ElementId]]:
+        """
+        Get the slab elements for a given coarse edge centered at the idxs given in idxs.
+
+        The allowed indices in idxs are 0,1, ..., n_fv - 1, where n_vf = 2**self.refinement_levels - 1 is
+        the number of fine vertices on the coarse edge (so excluding the coarse nodes).
+
+        The values in idx should correspond to the fine vertices on the coarse edge.
+        The width of a slab will always be 2 fine edges or 3 fine vertices, the
+        middle of which will correspond to the index(-ices) in idxs.
+
+        The number of layers in the slab can be specified by slab_layers, which is the number of fine edges the
+        slab will extend in both extrusion directions. This height is still limited though by the diameter of the subdomain
+        into which the slab is extruded, so the slab will not extend beyond the subdomain boundary.
+        """
+        # instantiate output
+        slabs = []
+
+        # get the center vertex and the edge corners
+        fine_vertices = np.array(self.coarse_edges_map[coarse_edge]["fine_vertices"])
+        for idx in idxs:
+            center_vertex = fine_vertices[idx]
+            edge_corners = fine_vertices[[idx - 1, idx + 1]].tolist()
 
             # get main edge direction
             v0, v1 = self.fine_mesh[coarse_edge].vertices
@@ -634,10 +671,10 @@ class TwoLevelMesh:
                 # store the slab elements
                 slab_elements.extend(inside_element_indices)
 
-            # store the slab elements in the output dictionary
-            edge_slabs[coarse_edge.nr] = slab_elements
+            # store the slab elements in the output list
+            slabs.append(slab_elements)
 
-        return edge_slabs
+        return slabs
 
     def get_extrusion_directions(
         self,
@@ -671,15 +708,20 @@ class TwoLevelMesh:
 
         # get extrusion directions
         upper_extrusion_direction = np.array([])
-        if len(upper_edge_directions) > 0:
+        if len(upper_edge_directions) > 1:
             upper_extrusion_direction = self._get_middle_direction(
                 upper_edge_directions, main_edge_direction
             )
+        elif len(upper_edge_directions) == 1:
+            upper_extrusion_direction = upper_edge_directions[0]
+
         lower_extrusion_direction = np.array([])
-        if len(lower_edge_directions) > 0:
+        if len(lower_edge_directions) > 1:
             lower_extrusion_direction = self._get_middle_direction(
                 lower_edge_directions, main_edge_direction
             )
+        elif len(lower_edge_directions) == 1:
+            lower_extrusion_direction = lower_edge_directions[0]
 
         return upper_extrusion_direction, lower_extrusion_direction
 
