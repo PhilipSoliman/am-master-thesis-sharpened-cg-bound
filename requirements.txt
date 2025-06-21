@@ -6,3 +6,4 @@ scipy==1.15.3
 shapely==2.1.1
 snakeviz==2.2.2
 cholespy==2.1.0
+rich==14.0.0

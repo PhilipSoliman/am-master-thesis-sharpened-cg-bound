@@ -2,6 +2,7 @@ from enum import Enum
 
 import ngsolve as ngs
 
+from lib.logger import LOGGER
 from lib.meshes import BoundaryName
 from lib.problem_type import ProblemType
 
@@ -66,7 +67,9 @@ class BoundaryConditions:
         # check for previously defined bc
         old_bc = next((b for b in self._boundary_conditions if b.name == bc.name), None)
         if old_bc:
-            print(f"Replacing existing boundary condition on {bc.name.value} boundary")
+            LOGGER.debug(
+                f"Replacing existing boundary condition on {bc.name.value} boundary"
+            )
             self._boundary_conditions.remove(old_bc)
         else:
             self._unset_boundaries.remove(bc.name)
@@ -114,10 +117,12 @@ class BoundaryConditions:
                 u_tmp.Set(bc.values[0], definedon=mesh.Boundaries(bc.name.value))
             u.vec.data += u_tmp.vec
         else:
-            raise NotImplementedError(
-                f"Unsupported boundary condition type: {bc.type}. "
+            msg = (
+                f"Boundary condition {bc.name.value} of type {bc.type.value} is not supported. "
                 "Only Dirichlet conditions are supported."
             )
+            LOGGER.error(msg)
+            raise NotImplementedError(msg)
 
     def __repr__(self):
         out = "Boundary Conditions:"
