@@ -1,11 +1,12 @@
 import json
+from typing import Optional
 
 import ngsolve as ngs
 import numpy as np
 import scipy.sparse as sp
-from tqdm import tqdm
 
 from lib.boundary_conditions import BoundaryConditions, HomogeneousDirichlet
+from lib.logger import LOGGER, PROGRESS
 from lib.meshes import TwoLevelMesh
 from lib.problem_type import ProblemType
 
@@ -22,6 +23,7 @@ class FESpace:
         two_mesh: TwoLevelMesh,
         boundary_conditions: list[BoundaryConditions],
         ptype: ProblemType = ProblemType.CUSTOM,
+        progress: Optional[PROGRESS] = None,
     ):
         """
         Initialize the finite element space for the given mesh.
@@ -34,7 +36,13 @@ class FESpace:
         Raises:
             - ValueError: If the sum of classified free DOFs does not match the total number of free DOFs in the space.
         """
-        print("Constructing FESpace:")
+        LOGGER.info("Constructing FESpace")
+        if progress:
+            self.progress = progress
+        else:
+            self.progress = PROGRESS()
+            self.progress.start()
+        task = self.progress.add_task("Constructing FESpace", total=2)
         self.two_mesh = two_mesh
         self.ptype = ptype
         self.ndofs_per_unknown = []
@@ -50,18 +58,31 @@ class FESpace:
                 self.fespace *= fespace
             else:
                 self.fespace = fespace
+        self.progress.advance(task)
 
+        # calculating DOFs
         self.calculate_dofs()
+        self.progress.advance(task)
+
+        # check
         if self.num_free_dofs != (
             self.num_interior_dofs
             + self.num_coarse_node_dofs
             + self.num_interface_edge_dofs
             + self.num_interface_face_dofs
         ):
-            raise ValueError(
-                "Mismatch in number of DOFs: "
-                f"{self.fespace.ndof} != {self.num_interior_dofs} + {self.num_coarse_node_dofs} + {self.num_interface_edge_dofs} + {self.num_interface_face_dofs}"
+            msg = (
+                f"Mismatch in number of free DOFs: {self.num_free_dofs} != "
+                f"{self.num_interior_dofs} + {self.num_coarse_node_dofs} + "
+                f"{self.num_interface_edge_dofs} + {self.num_interface_face_dofs}"
             )
+            LOGGER.error(msg)
+            raise ValueError(msg)
+
+        LOGGER.info(f"FESpace constructed successfully:\n{self}")
+        self.progress.remove_task(task)
+        if progress is None:
+            self.progress.stop()
 
     def calculate_dofs(self):
         """
@@ -131,14 +152,12 @@ class FESpace:
         """
         domain_dofs = {}
         if self.domain_dofs_path.exists():
-            print(f"\tloading domain DOFs from {self.domain_dofs_path}")
             return self.load_domain_dofs()
         else:
-            for subdomain, subdomain_data in tqdm(
-                self.two_mesh.subdomains.items(),
-                desc="Obtaining subdomain DOFs",
-                total=len(self.two_mesh.subdomains),
-            ):
+            task = self.progress.add_task(
+                "Obtaining subdomain DOFs", total=len(self.two_mesh.subdomains)
+            )
+            for subdomain, subdomain_data in self.two_mesh.subdomains.items():
                 # all subdomain dofs
                 dofs = []
 
@@ -156,11 +175,22 @@ class FESpace:
 
                 domain_dofs[subdomain] = dofs
 
+                # update PROGRESS bar
+                self.progress.update(
+                    task,
+                    advance=1,
+                    description=f"Obtaining subdomain DOFs ({subdomain.nr})",
+                )
+
+            # remove task and log completion
+            self.progress.remove_task(task)
+            LOGGER.substep("Obtained subdomain DOFs")  # type: ignore
+
             # save domain dofs to file for later use
             self.save_domain_dofs(domain_dofs)
         return domain_dofs
 
-    def get_free_coarse_node_dofs(self):
+    def get_free_coarse_node_dofs(self) -> list[list[int]]:
         """
         Get the degrees of freedom (DOFs) associated with coarse nodes.
 
@@ -170,12 +200,18 @@ class FESpace:
         coarse_node_dofs = []
         all_dofs = np.arange(self.fespace.ndof)
         free_dofs = all_dofs[self.fespace.FreeDofs()]
-        for coarse_node in tqdm(
-            self.two_mesh.connected_components["coarse_nodes"],
-            desc="Obtaining free coarse node DOFs",
-        ):
+        task = self.progress.add_task(
+            "Obtaining free coarse node DOFs",
+            total=len(self.two_mesh.connected_components["coarse_nodes"]),
+        )
+        for coarse_node in self.two_mesh.connected_components["coarse_nodes"]:
             dofs = list(self.fespace.GetDofNrs(coarse_node))
             coarse_node_dofs.append(dofs[0])
+            self.progress.update(
+                task,
+                advance=1,
+                description=f"Obtaining free coarse node DOFs ({coarse_node})",
+            )
 
         # filter coarse node dofs to only include free dofs
         coarse_node_dofs_arr = np.array(coarse_node_dofs)
@@ -185,18 +221,25 @@ class FESpace:
 
         # convert to list of lists (desired output format, even if c is only one DOF)
         coarse_node_dofs = [[c] for c in coarse_node_dofs]
+
+        # remove task and log completion
+        self.progress.remove_task(task)
+        LOGGER.substep("Obtained free coarse node DOFs")
         return coarse_node_dofs
 
-    def get_free_edge_component_dofs(self):
+    def get_free_edge_component_dofs(self) -> tuple[list[list[int]], list[ngs.NodeId]]:
         edge_component_dofs = []
         all_dofs = np.arange(self.fespace.ndof)
         free_dofs = all_dofs[self.fespace.FreeDofs()]
         coarse_edges = []
         dofs_arrs = []
-        for coarse_edge, edge_component in tqdm(
-            self.two_mesh.connected_components["edges"].items(),
-            desc="Obtaining free edge component DOFs",
-        ):
+        task = self.progress.add_task(
+            "Obtaining free edge component DOFs",
+            total=len(self.two_mesh.connected_components["edges"]),
+        )
+        for coarse_edge, edge_component in self.two_mesh.connected_components[
+            "edges"
+        ].items():
             coarse_edges.append(coarse_edge)
             dofs = []
             for c in edge_component:
@@ -205,9 +248,15 @@ class FESpace:
             # remove boundary dofs
             dofs_arrs.append(np.array(dofs))
 
+            self.progress.update(
+                task,
+                advance=1,
+                description=f"Obtaining free edge component DOFs ({coarse_edge})",
+            )
+
         # collect all dofs
         dofs_arrs = np.array(dofs_arrs)
-        num_edge_dofs_per_edge = dofs_arrs.shape[1]
+        num_edge_dofs_per_edge: int = dofs_arrs.shape[1]
 
         # filter dofs to only include free dofs
         isin = np.isin(dofs_arrs, free_dofs)
@@ -221,16 +270,20 @@ class FESpace:
         coarse_edges = np.array(coarse_edges)
         free_coarse_edges = coarse_edges[any_free_dofs].tolist()
 
+        # remove task and log completion
+        self.progress.remove_task(task)
+        LOGGER.substep("Obtained free edge component DOFs")
         return edge_component_dofs, free_coarse_edges
 
-    def get_free_face_component_dofs(self):
+    def get_free_face_component_dofs(self) -> list[list[int]]:
         face_component_dofs = []
         all_dofs = np.arange(self.fespace.ndof)
         free_dofs = all_dofs[self.fespace.FreeDofs()]
-        for face_component in tqdm(
-            self.two_mesh.connected_components["faces"].values(),
-            desc="Obtaining free face component DOFs",
-        ):
+        task = self.progress.add_task(
+            "Obtaining free face component DOFs",
+            total=len(self.two_mesh.connected_components["faces"]),
+        )
+        for face_component in self.two_mesh.connected_components["faces"].values():
             dofs = []
             for c in face_component:
                 dofs.extend(self.fespace.GetDofNrs(c))
@@ -241,6 +294,12 @@ class FESpace:
 
             if len(dofs) > 0:
                 face_component_dofs.append(dofs)
+
+            self.progress.update(task)
+
+        # remove task and log completion
+        self.progress.remove_task(task)
+        LOGGER.substep("Obtained free face component DOFs")  # type: ignore
         return face_component_dofs
 
     def get_free_component_tree_dofs(self):
@@ -288,6 +347,7 @@ class FESpace:
                     edge_dofs = list(self.fespace.GetDofNrs(c))
                     dofs.extend(edge_dofs)
                 free_component_tree_dofs[coarse_node]["edges"][coarse_edge] = dofs
+        LOGGER.substep("Obtained free component tree DOFs and edge multiplicities")
         return free_component_tree_dofs, edge_component_multiplicity
 
     def map_global_to_restricted_dofs(self, global_dofs: np.ndarray) -> np.ndarray:
@@ -323,9 +383,9 @@ class FESpace:
             ngs.GridFunction: The grid function representing the DOFs on the mesh.
         """
         vals = np.asarray(vals, dtype=float).flatten()
-        assert (
-            len(vals) == self.fespace.ndof
-        ), f"Length of vals ({len(vals)}) does not match number of DOFs ({self.fespace.ndof})"
+        assert len(vals) == self.fespace.ndof, LOGGER.error(
+            f"Length of vals ({len(vals)}) does not match number of DOFs ({self.fespace.ndof})"
+        )
         grid_function = ngs.GridFunction(self.fespace)
         grid_function.vec.FV().NumPy()[:] = vals
         return grid_function
@@ -341,6 +401,7 @@ class FESpace:
         }
         with open(self.domain_dofs_path, "w") as f:
             json.dump(domain_dofs_data, f, indent=4)
+        LOGGER.substep(f"Saved domain DOFs to {self.domain_dofs_path}")  # type: ignore
 
     def load_domain_dofs(self):
         """
@@ -354,6 +415,7 @@ class FESpace:
         for subdomain_nr, dofs in domain_dofs_data.items():
             el_id = ngs.ElementId(int(subdomain_nr))
             domain_dofs[self.two_mesh.coarse_mesh[el_id]] = dofs
+        LOGGER.substep(f"Loaded domain DOFs from", fp=self.domain_dofs_path)
         return domain_dofs
 
     @property
@@ -399,7 +461,7 @@ class FESpace:
 
 def load_mesh():
     lx, ly = 1.0, 1.0
-    coarse_mesh_size = 1 / 4
+    coarse_mesh_size = 1 / 32
     refinement_levels = 4
     layers = 2
     return TwoLevelMesh.load(
@@ -418,7 +480,6 @@ def example_fespace():
     two_mesh = load_mesh()
     ptype = ProblemType.DIFFUSION
     fespace = FESpace(two_mesh, [HomogeneousDirichlet(ptype)], ptype)
-    print(fespace)
 
 
 def profile_fespace():
@@ -445,5 +506,5 @@ def profile_fespace():
 
 
 if __name__ == "__main__":
-    # example_fespace() # Uncomment to run the example
-    profile_fespace()  # Uncomment to profile the FESpace class
+    example_fespace()  # Uncomment to run the example
+    # profile_fespace()  # Uncomment to profile the FESpace class

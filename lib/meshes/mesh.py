@@ -3,6 +3,7 @@ import json
 from enum import Enum
 from itertools import cycle
 from pathlib import Path
+from typing import Optional
 
 import matplotlib.pyplot as plt
 import netgen.libngpy._NgOCC as occ
@@ -86,6 +87,7 @@ class TwoLevelMesh:
         coarse_mesh_size: float,
         refinement_levels: int = 1,
         layers: int = 0,
+        progress: Optional[PROGRESS] = None,
     ):
         """
         Initialize the TwoLevelMesh with domain size, mesh size, refinement, and layers.
@@ -97,7 +99,15 @@ class TwoLevelMesh:
             refinement_levels (int, optional): Number of uniform refinements for the fine mesh. Defaults to 1.
             layers(int, optional): Number of layers for domain decomposition. Defaults to 0.
         """
+        # intial log
         LOGGER.info("Creating TwoLevelMesh")
+        if progress:
+            self.progress = progress
+        else:
+            self.progress = PROGRESS()
+            self.progress.start()
+        task = self.progress.add_task("Creating TwoLevelMesh", total=8)
+
         # handle input
         self.lx = lx
         self.ly = ly
@@ -105,19 +115,41 @@ class TwoLevelMesh:
         self.refinement_levels = refinement_levels
         self.layers = layers
 
-        # create meshesmesh attributes
+        # create mesh attributes
         self.fine_mesh = self.create_mesh()
+        self.progress.advance(task)
+
+        # get coarse mesh and edges map
         self.coarse_edges_map, self.coarse_mesh = (
             self._refine_mesh_and_get_coarse_edges_map(self.fine_mesh)
         )
+        self.progress.advance(task)
+
+        # calculate subdomains
         self.subdomains = self.get_subdomains()
+        self.progress.advance(task)
+
+        # get connected components
         self.connected_components = self.get_connected_components()
+        self.progress.advance(task)
+
         self.connected_component_tree = self.get_connected_component_tree(
             self.connected_components
         )
+        self.progress.advance(task)
+
+        # extend subdomains and calculate overlapping subdomains
         self.extend_subdomains()
+        self.progress.advance(task)
+
+        # calculate edge slabs
         self.edge_slabs = self.generate_edge_slabs()
+        self.progress.advance(task)
+
         LOGGER.info(f"Created TwoLevelMesh:\n{self}")
+        self.progress.remove_task(task)
+        if progress:
+            self.progress.stop()
 
     # mesh creation
     def create_mesh(self) -> ngs.Mesh:
@@ -185,34 +217,40 @@ class TwoLevelMesh:
         # get all coarse edge line segments
         num_coarse_edges = len(coarse_mesh.edges)
 
-        with PROGRESS() as progress:
-            refinement_task = progress.add_task(
-                "[cyan]Refining mesh and processing coarse edges",
-                total=self.refinement_levels,
+        refinement_task = self.progress.add_task(
+            "refining mesh and processing coarse edges",
+            total=self.refinement_levels,
+        )
+        for ref_level in range(self.refinement_levels):
+            mesh.Refine()
+            vertex_mask = vertex_masks[ref_level]
+            edge_task = self.progress.add_task(
+                f"processing coarse edges (level {ref_level + 1})",
+                total=num_coarse_edges,
             )
-            for ref_level in range(self.refinement_levels):
-                mesh.Refine()
-                vertex_mask = vertex_masks[ref_level]
-                edge_task = progress.add_task(
-                    f"[green]Processing coarse edges (level {ref_level + 1})",
-                    total=num_coarse_edges,
-                )
-                for coarse_edge, data in coarse_edges_map.items():
-                    # update coarse edges map with fine vertices
-                    coarse_edges_map[coarse_edge]["fine_vertices"][vertex_mask] = (
-                        self._get_vertex_ids_on_coarse_edge(
-                            coarse_edge, mesh, ref_level, data["fine_vertices"]
-                        )
+            for coarse_edge, data in coarse_edges_map.items():
+                # update coarse edges map with fine vertices
+                coarse_edges_map[coarse_edge]["fine_vertices"][vertex_mask] = (
+                    self._get_vertex_ids_on_coarse_edge(
+                        coarse_edge, mesh, ref_level, data["fine_vertices"]
                     )
-                    progress.advance(edge_task)
-                progress.remove_task(edge_task)
-                progress.advance(refinement_task)
-                LOGGER.substep(
-                    f"Refined mesh at refinement level {ref_level + 1}/{self.refinement_levels}"
                 )
+                self.progress.advance(edge_task)
+            self.progress.remove_task(edge_task)
+            self.progress.advance(refinement_task)
+            LOGGER.substep(
+                f"Refined mesh at refinement level {ref_level + 1}/{self.refinement_levels}"
+            )
+
+        # remove the refinement task and log the completion
+        self.progress.remove_task(refinement_task)
         LOGGER.substep("refined mesh and found fine vertices on coarse edges")
 
         # find fine edges on coarse edges using the vertices on coarse edges
+        task = self.progress.add_task(
+            "Finding fine edges on coarse edges",
+            total=len(coarse_edges_map),
+        )
         for coarse_edge, data in coarse_edges_map.items():
             # convert numpy array of fine vertices to list
             data["fine_vertices"] = list(data["fine_vertices"])
@@ -226,6 +264,8 @@ class TwoLevelMesh:
                 fine_and_coarse_vertices, mesh
             )
 
+            self.progress.advance(task)
+        self.progress.remove_task(task)
         LOGGER.substep("found fine edges on coarse edges")
         return coarse_edges_map, coarse_mesh
 
@@ -240,7 +280,7 @@ class TwoLevelMesh:
         vertices = coarse_edge.vertices
         if ref_level > 0:  # for refinement level 0, we only have coarse vertices
             fine_vertices = fine_vertices_on_edge[fine_vertices_on_edge != None]
-            vertices = np.concatenate(([vertices[0]], fine_vertices, [vertices[1]]))
+            vertices = np.concatenate(([vertices[0]], fine_vertices, [vertices[1]])) # type: ignore
 
         # get associated edges
         surrounding_edges = set()
@@ -365,6 +405,10 @@ class TwoLevelMesh:
         num_elements_per_coarse_element = 4**self.refinement_levels
 
         # coarse elements are taken to be subdomains
+        task = self.progress.add_task(
+            "Calculating subdomains",
+            total=self.coarse_mesh.ne,
+        )
         for i, subdomain in enumerate(coarse_elements):
 
             interior_elements = [
@@ -378,6 +422,9 @@ class TwoLevelMesh:
                 "interior": interior_elements,
                 "edges": edges,
             }
+
+            self.progress.advance(task)
+        task = self.progress.remove_task(task)
         LOGGER.substep("calculated subdomains")
         return subdomains
 
@@ -388,24 +435,26 @@ class TwoLevelMesh:
         This method iteratively adds layers of fine mesh elements to each subdomain based on the
         vertices on the edges of the subdomain and the interior elements.
         """
-        with PROGRESS() as progress:
-            layer_task = progress.add_task(
-                f"[cyan]Extending subdomains with {self.layers} layers",
-                total=self.layers,
-            )
-            for layer_idx in range(1, self.layers + 1):
-                self._extend_subdomains(layer_idx, progress)
-                progress.advance(layer_task)
+        layer_task = self.progress.add_task(
+            f"[cyan]Extending subdomains with {self.layers} layers",
+            total=self.layers,
+        )
+        for layer_idx in range(1, self.layers + 1):
+            self._extend_subdomains(layer_idx)
+            self.progress.advance(layer_task)
+
+        # remove the layer task and log the completion
+        self.progress.remove_task(layer_task)
         LOGGER.substep(f"extended subdomains with {self.layers} layers")
 
-    def _extend_subdomains(self, layer_idx: int, progress: PROGRESS):
+    def _extend_subdomains(self, layer_idx: int):
         """
         Extend the subdomains by adding layers of fine mesh elements.
 
         Args:
             layer_idx (int, optional): The new layer's index. Defaults to 1.
         """
-        subdomains_task = progress.add_task(
+        subdomains_task = self.progress.add_task(
             f"[green]Extending subdomains (layer {layer_idx})",
             total=len(self.subdomains),
         )
@@ -459,8 +508,10 @@ class TwoLevelMesh:
                 self.fine_mesh[ngs.ElementId(el)] for el in layer_elements
             ]
 
-            progress.advance(subdomains_task)
-        progress.remove_task(subdomains_task)
+            self.progress.advance(subdomains_task)
+
+        # remove the subdomains task and log the completion
+        self.progress.remove_task(subdomains_task)
         LOGGER.substep(f"extended subdomains with layer {layer_idx}/{self.layers}")
 
     ###########################
@@ -566,29 +617,31 @@ class TwoLevelMesh:
         # number of layers in the slab (slab height ~ half the subdomain diameter)
         slab_layers = center_idx // 2
 
-        with PROGRESS() as progress:
-            task = progress.add_task(
-                "[cyan]Generating edge slabs",
-                total=len(self.coarse_edges_map),
+        task = self.progress.add_task(
+            "[cyan]Generating edge slabs",
+            total=len(self.coarse_edges_map),
+        )
+        for coarse_edge in self.coarse_edges_map.keys():
+            single_slab_elements = self.get_slab_elements(
+                coarse_edge,
+                [center_idx],
+                slab_layers=slab_layers,
             )
-            for coarse_edge in self.coarse_edges_map.keys():
-                single_slab_elements = self.get_slab_elements(
-                    coarse_edge,
-                    [center_idx],
-                    slab_layers=slab_layers,
-                )
-                double_slab_elements = self.get_slab_elements(
-                    coarse_edge,
-                    [center_idx - 2, center_idx + 2],
-                    slab_layers=slab_layers,
-                )
+            double_slab_elements = self.get_slab_elements(
+                coarse_edge,
+                [center_idx - 2, center_idx + 2],
+                slab_layers=slab_layers,
+            )
 
-                # store the slab elements in the output dictionary
-                edge_slabs[coarse_edge.nr] = {
-                    "single": single_slab_elements,
-                    "double": double_slab_elements,
-                }
-                progress.advance(task)
+            # store the slab elements in the output dictionary
+            edge_slabs[coarse_edge.nr] = {
+                "single": single_slab_elements,
+                "double": double_slab_elements,
+            }
+            self.progress.advance(task)
+
+        # remove the task and log the completion
+        self.progress.remove_task(task)
         LOGGER.substep("generated edge slabs")
 
         return edge_slabs
@@ -886,15 +939,35 @@ class TwoLevelMesh:
         Args:
             file_name (str, optional): Name of the file to save the mesh and metadata. Defaults to "".
         """
+        progress_not_started = not self.progress.progress_started
+        if progress_not_started:
+            self.progress.start()
+        task = self.progress.add_task(
+            "Saving TwoLevelMesh",
+            total=5 if save_vtk_meshes else 4,
+        )
         if not self.save_dir.exists():
             self.save_dir.mkdir(parents=True, exist_ok=True)
         LOGGER.info(f"Saving TwoLevelMesh to {self.save_dir}")
         self._save_metadata()
+        self.progress.advance(task)
+
         if save_vtk_meshes:
             self._save_vtk_meshes()
+            self.progress.advance(task)
+
         self._save_coarse_edges_map()
+        self.progress.advance(task)
+
         self._save_subdomain_layers()
+        self.progress.advance(task)
+
         self._save_edge_slabs()
+        self.progress.advance(task)
+
+        self.progress.remove_task(task)
+        if progress_not_started:
+            self.progress.stop()
         LOGGER.info(f"Saved TwoLevelMesh to {self.save_dir}")
 
     def _save_metadata(self):
@@ -911,6 +984,7 @@ class TwoLevelMesh:
         metadata_path = self.save_dir / "metadata.json"
         with open(metadata_path, "w") as f:
             json.dump(metadata, f, indent=4)
+
         LOGGER.substep("saved metadata")
 
     def _save_vtk_meshes(self):
@@ -959,6 +1033,7 @@ class TwoLevelMesh:
                 for coarse_edge in self.coarse_mesh.edges
             }
             json.dump(coarse_edges_map, f, indent=4)
+
         LOGGER.substep("saved coarse edges map")
 
     def _save_subdomain_layers(self):
@@ -979,6 +1054,7 @@ class TwoLevelMesh:
                 for subdomain, subdomain_data in self.subdomains.items()
             }
             json.dump(subdomains_data, f, indent=4)
+
         LOGGER.substep("saved subdomain layers")
 
     def _save_edge_slabs(self):
@@ -998,6 +1074,7 @@ class TwoLevelMesh:
         coarse_mesh_size: float,
         refinement_levels: int,
         layers: int,
+        progress: Optional[PROGRESS] = None,
     ):
         """
         Load the mesh and metadata from files and return a TwoLevelMesh instance.
@@ -1015,18 +1092,48 @@ class TwoLevelMesh:
         if fp.exists():
             LOGGER.info(f"Loading TwoLevelMesh from {fp}...")
             obj = cls.__new__(cls)
+            if progress:
+                setattr(obj, "progress", progress)
+            else:
+                setattr(obj, "progress", PROGRESS())
+                obj.progress.start()
+
+            task = obj.progress.add_task(
+                f"Loading TwoLevelMesh from {fp}",
+                total=5,
+            )
+
             obj._load_metadata(fp)
+            obj.progress.advance(task)
+
             obj._load_meshes(fp)
+            obj.progress.advance(task)
+
             obj._load_coarse_edges_map(fp)
+            obj.progress.advance(task)
+
             setattr(obj, "subdomains", obj.get_subdomains())
+            obj.progress.advance(task)
+
             obj._load_subdomain_layers(fp)
+            obj.progress.advance(task)
+
             setattr(obj, "connected_components", obj.get_connected_components())
+            obj.progress.advance(task)
+
             setattr(
                 obj,
                 "connected_component_tree",
                 obj.get_connected_component_tree(obj.connected_components),
             )
+            obj.progress.advance(task)
+
             obj.edge_slabs = obj._load_edge_slabs(fp)
+            obj.progress.advance(task)
+
+            obj.progress.remove_task(task)
+            if progress is None:
+                obj.progress.stop()
             LOGGER.info(f"Finished loading TwoLevelMesh:\n{obj}.")
         else:
             raise FileNotFoundError(f"Metadata file {fp} does not exist.")
