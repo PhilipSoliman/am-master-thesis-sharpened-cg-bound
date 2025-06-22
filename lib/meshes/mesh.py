@@ -106,7 +106,7 @@ class TwoLevelMesh:
         else:
             self.progress = PROGRESS()
             self.progress.start()
-        task = self.progress.add_task("Creating TwoLevelMesh", total=8)
+        task = self.progress.add_task(f"Creating TwoLevelMesh 1/H = {1/coarse_mesh_size:.0f}", total=8)
 
         # handle input
         self.lx = lx
@@ -280,7 +280,7 @@ class TwoLevelMesh:
         vertices = coarse_edge.vertices
         if ref_level > 0:  # for refinement level 0, we only have coarse vertices
             fine_vertices = fine_vertices_on_edge[fine_vertices_on_edge != None]
-            vertices = np.concatenate(([vertices[0]], fine_vertices, [vertices[1]])) # type: ignore
+            vertices = np.concatenate(([vertices[0]], fine_vertices, [vertices[1]]))  # type: ignore
 
         # get associated edges
         surrounding_edges = set()
@@ -939,16 +939,16 @@ class TwoLevelMesh:
         Args:
             file_name (str, optional): Name of the file to save the mesh and metadata. Defaults to "".
         """
-        progress_not_started = not self.progress.progress_started
+        progress_not_started = not self.progress.progress_started()
         if progress_not_started:
             self.progress.start()
         task = self.progress.add_task(
-            "Saving TwoLevelMesh",
+            f"Saving TwoLevelMesh 1/H = {1/self.coarse_mesh_size:.0f}",
             total=5 if save_vtk_meshes else 4,
         )
         if not self.save_dir.exists():
             self.save_dir.mkdir(parents=True, exist_ok=True)
-        LOGGER.info(f"Saving TwoLevelMesh to {self.save_dir}")
+        LOGGER.info(f"Saving TwoLevelMesh to %s", self.save_dir)
         self._save_metadata()
         self.progress.advance(task)
 
@@ -968,7 +968,7 @@ class TwoLevelMesh:
         self.progress.remove_task(task)
         if progress_not_started:
             self.progress.stop()
-        LOGGER.info(f"Saved TwoLevelMesh to {self.save_dir}")
+        LOGGER.info(f"Saved TwoLevelMesh")
 
     def _save_metadata(self):
         """
@@ -1090,7 +1090,7 @@ class TwoLevelMesh:
         )
         fp = DATA_DIR / folder_name
         if fp.exists():
-            LOGGER.info(f"Loading TwoLevelMesh from {fp}...")
+            LOGGER.info("Loading TwoLevelMesh from %s", fp)
             obj = cls.__new__(cls)
             if progress:
                 setattr(obj, "progress", progress)
@@ -1099,12 +1099,12 @@ class TwoLevelMesh:
                 obj.progress.start()
 
             task = obj.progress.add_task(
-                f"Loading TwoLevelMesh from {fp}",
+                "Loading TwoLevelMesh",
                 total=5,
             )
 
             obj._load_metadata(fp)
-            obj.progress.advance(task)
+            obj.progress.update(task, advance=1, description=obj.progress.get_description(task) + f" 1/H = {1/obj.coarse_mesh_size:.0f}")
 
             obj._load_meshes(fp)
             obj.progress.advance(task)
@@ -1136,7 +1136,7 @@ class TwoLevelMesh:
                 obj.progress.stop()
             LOGGER.info(f"Finished loading TwoLevelMesh:\n{obj}.")
         else:
-            raise FileNotFoundError(f"Metadata file {fp} does not exist.")
+            raise FileNotFoundError("Metadata file %s does not exist.", fp)
         return obj
 
     def _load_metadata(self, fp: Path):
@@ -1146,11 +1146,10 @@ class TwoLevelMesh:
         metadata_path = fp / "metadata.json"
         if not metadata_path.exists():
             msg = (
-                f"Metadata file {metadata_path} does not exist. "
-                "Please ensure the TwoLevelMesh has been saved before loading."
+                "Metadata file %s does not exist"
             )
-            LOGGER.error(msg)
-            raise FileNotFoundError(msg)
+            LOGGER.error(msg, metadata_path)
+            raise FileNotFoundError(msg, metadata_path)
         with open(metadata_path, "r") as f:
             metadata = json.load(f)
         self.lx = metadata["lx"]
@@ -1175,11 +1174,10 @@ class TwoLevelMesh:
         coarse_edges_map_path = fp / "coarse_edges_map.json"
         if not coarse_edges_map_path.exists():
             msg = (
-                f"Coarse edges map file {coarse_edges_map_path} does not exist. "
-                "Please ensure the TwoLevelMesh has been saved before loading."
+                "Coarse edges map file %s does not exist. "
             )
-            LOGGER.error(msg)
-            raise FileNotFoundError(msg)
+            LOGGER.error(msg, coarse_edges_map_path)
+            raise FileNotFoundError(msg, coarse_edges_map_path)
         with open(coarse_edges_map_path, "r") as f:
             coarse_edges_map = json.load(f)
         self.coarse_edges_map = {
@@ -1203,11 +1201,10 @@ class TwoLevelMesh:
         subdomains_path = fp / "subdomains_layers.json"
         if not subdomains_path.exists():
             msg = (
-                f"Subdomains layers file {subdomains_path} does not exist. "
-                "Please ensure the TwoLevelMesh has been saved before loading."
+                "Subdomains layers file %s does not exist. "
             )
-            LOGGER.error(msg)
-            raise FileNotFoundError(msg)
+            LOGGER.error(msg, subdomains_path)
+            raise FileNotFoundError(msg, subdomains_path)
         with open(subdomains_path, "r") as f:
             subdomains_data = json.load(f)
 
@@ -1234,11 +1231,10 @@ class TwoLevelMesh:
         edge_slabs_path = fp / "edge_slabs.json"
         if not edge_slabs_path.exists():
             msg = (
-                f"Edge slabs file {edge_slabs_path} does not exist. "
-                "Please ensure the TwoLevelMesh has been saved before loading."
+                "Edge slabs file %s does not exist. "
             )
-            LOGGER.error(msg)
-            raise FileNotFoundError(msg)
+            LOGGER.error(msg, edge_slabs_path)
+            raise FileNotFoundError(msg, edge_slabs_path)
         with open(edge_slabs_path, "r") as f:
             edge_slabs = json.load(f)
         # Convert string keys back to int
@@ -1716,7 +1712,7 @@ class TwoLevelMesh:
 class TwoLevelMeshExamples:
 
     lx, ly = 1.0, 1.0
-    coarse_mesh_size = lx / 64
+    coarse_mesh_size = lx / 16
     refinement_levels = 4
     layers = 2
     SAVE_DIR = DATA_DIR / TwoLevelMesh.SAVE_STRING.format(

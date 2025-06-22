@@ -1,4 +1,5 @@
 import logging
+from pathlib import Path
 from typing import Any, List, Optional
 
 from rich.logging import RichHandler
@@ -14,31 +15,58 @@ from rich.progress import (
     TimeRemainingColumn,
 )
 
-
 ##########
 # LOGGER #
 ##########
+
+
+def format_fp(fp: Optional[Path]) -> str:
+    """Format a file path for logging."""
+    if fp is None:
+        return ""
+    fp_dir = fp.parent.name
+    fp_name = fp.name
+    return f"{fp_dir}/{fp_name}"
+
+
 class CustomLogger(logging.Logger):
     SUBSTEP = 15  # Between INFO (20) and DEBUG (10)
     logging.addLevelName(SUBSTEP, "SUBSTEP")
 
     def substep(self, message, *args, emoji="↳", **kwargs):
         if self.isEnabledFor(self.SUBSTEP):
-            fp = kwargs.pop("fp", None)
-            fp_str = ""
-            if fp:
-                fp_dir = fp.parent.name
-                fp_name = fp.name
-                fp_str = f": [bold magenta]{fp_dir}/{fp_name}[/bold magenta]"
             self._log(
                 self.SUBSTEP,
-                f"{emoji}\t{message}{fp_str}",
+                f"{emoji}\t{message}",
                 args,
                 **kwargs,
             )
 
-
-logging.setLoggerClass(CustomLogger)
+    def _log(
+        self,
+        level,
+        msg,
+        args,
+        exc_info=None,
+        extra=None,
+        stack_info=False,
+        stacklevel=1,
+    ) -> None:
+        # find Paths in args and format them
+        args_new = []
+        for arg in args:
+            if isinstance(arg, Path):
+                arg = format_fp(arg)
+            args_new.append(arg)
+        super()._log(
+            level,
+            msg,
+            tuple(args_new),
+            exc_info=exc_info,
+            extra=extra,
+            stack_info=stack_info,
+            stacklevel=stacklevel,
+        )
 
 
 class ColorLevelFormatter(logging.Formatter):
@@ -49,11 +77,9 @@ class ColorLevelFormatter(logging.Formatter):
     ERROR_COLOR = "red"
 
     def format(self, record):
-        color = self.get_color(record)
-        record.levelname = (
-            f"[{color}]{record.levelname:<{self.LEVEL_NAME_WIDTH}}[/{color}]"
-        )
-        record.message = f"[{color}]{record.getMessage()}[/{color}]"
+        record.levelcolor = self.get_color(record)
+        record.levelname = f"{record.levelname:<{self.LEVEL_NAME_WIDTH}}"
+        record.message = f"{record.getMessage()}"
         return super().format(record)
 
     def get_color(self, record):
@@ -69,18 +95,23 @@ class ColorLevelFormatter(logging.Formatter):
             return "white"
 
 
+# instantiate the custom logger
+logging.setLoggerClass(CustomLogger)
+LOGGER: CustomLogger = logging.getLogger("lib")  # type: ignore[assignment]
+LOGGER = CustomLogger("lib")  # type: ignore[assignment]
+LOGGER.setLevel("DEBUG")
+
+# set rich text handler
 handler = RichHandler(
     rich_tracebacks=True,
     markup=True,
     show_level=False,
     show_time=True,
     show_path=True,
+    log_time_format="[%Y-%m-%d %H:%M:%S.%f]",
 )
 
-handler.setFormatter(ColorLevelFormatter("%(levelname)s %(message)s"))
-
-LOGGER: CustomLogger = logging.getLogger("lib")  # type: ignore[assignment]
-LOGGER.setLevel("DEBUG")
+handler.setFormatter(ColorLevelFormatter("[%(levelcolor)s]%(levelname)s %(message)s[/%(levelcolor)s]"))
 LOGGER.addHandler(handler)
 
 
@@ -96,19 +127,19 @@ class AvgTimePerIterColumn(ProgressColumn):
 
 
 class PROGRESS(Progress):
-    MAX_TASKS = 10
+    MAX_TASKS = 9
 
     TASK_COLORS = {
-        TaskID(9): "[green]",
-        TaskID(8): "[blue]",
-        TaskID(7): "[magenta]",
-        TaskID(6): "[cyan]",
-        TaskID(5): "[yellow]",
-        TaskID(4): "[red]",
-        TaskID(3): "[white]",
-        TaskID(2): "[bright_green]",
-        TaskID(1): "[bright_blue]",
-        TaskID(0): "[bright_magenta]",
+        9: "[green]",
+        8: "[blue]",
+        7: "[magenta]",
+        6: "[cyan]",
+        5: "[yellow]",
+        4: "[red]",
+        3: "[white]",
+        2: "[bright_green]",
+        1: "[bright_blue]",
+        0: "[bright_magenta]",
     }
 
     def __init__(self, *args, **kwargs):
@@ -134,9 +165,12 @@ class PROGRESS(Progress):
         **fields: Any,
     ) -> TaskID:
         with self._lock:
+            fp = fields.pop("fp", None)
+            fp_str = format_fp(fp)
+            desc = self.TASK_COLORS[int(self._task_index)] + description + fp_str
             task = Task(
                 self._task_index,
-                self.TASK_COLORS[self._task_index] + description,
+                desc,
                 total,
                 completed,
                 visible=visible,
@@ -148,10 +182,14 @@ class PROGRESS(Progress):
             if start:
                 self.start_task(self._task_index)
             new_task_index = self._task_index
-            self._task_index = TaskID(int(self._task_index) - 1) # reverse order of tasks
+            self._task_index = TaskID(
+                int(self._task_index) - 1
+            )  # reverse order of tasks
 
             # resort tasks
-            self._tasks = dict(sorted(self._tasks.items())) # ensure tasks are sorted by index
+            self._tasks = dict(
+                sorted(self._tasks.items())
+            )  # ensure tasks are sorted by index
         self.refresh()
         return new_task_index
 
@@ -168,3 +206,8 @@ class PROGRESS(Progress):
 
     def progress_started(self) -> bool:
         return any(task.started for task in self._tasks.values())
+
+    def get_description(self, task_id: TaskID) -> str:
+        """Get the description of a task."""
+        with self._lock:
+            return self._tasks[task_id].description if task_id in self._tasks else ""
