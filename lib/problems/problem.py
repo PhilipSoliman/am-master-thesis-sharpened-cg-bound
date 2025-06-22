@@ -4,6 +4,7 @@ from typing import Optional, Type
 
 import matplotlib.pyplot as plt
 import ngsolve as ngs
+import numpy as np
 import scipy.sparse as sp
 from scipy.sparse.linalg import LinearOperator
 
@@ -14,6 +15,7 @@ from lib.boundary_conditions import (
     HomogeneousDirichlet,
 )
 from lib.fespace import FESpace
+from lib.logger import LOGGER
 from lib.meshes import BoundaryName, TwoLevelMesh
 from lib.operators import Operator
 from lib.preconditioners import (
@@ -62,6 +64,10 @@ class Problem:
         """
         if self.ptype == ProblemType.CUSTOM:
             if fespaces is None or orders is None or dimensions is None:
+                LOGGER.error(
+                    f"For custom problem type all of fespaces = {fespaces},"
+                    f" orders = {orders}, and dimensions = {dimensions} must be provided."
+                )
                 raise ValueError(
                     "For custom problem type, fespaces, orders, and dimensions must be provided."
                 )
@@ -73,7 +79,6 @@ class Problem:
             self.boundary_conditions,
             ptype=self.ptype,
         )
-        print(f"Constructed FESpace for {str(self.ptype)}")
         self._linear_form = ngs.LinearForm(self.fes.fespace)
         self._bilinear_form = ngs.BilinearForm(self.fes.fespace, symmetric=True)
 
@@ -85,58 +90,54 @@ class Problem:
             tuple: A tuple containing the trial and test functions.
         """
         if hasattr(self, "fes") is False:
-            raise ValueError(
-                "Finite element space has not been constructed yet. Call construct_fespace() first."
-            )
+            msg = "Finite element space has not been constructed yet. Call construct_fespace() first."
+            LOGGER.error(msg)
+            raise ValueError(msg)
         u = self.fes.u  # type: ignore
         v = self.fes.v  # type: ignore
         return u, v
 
     @property
-    def linear_form(self):
+    def linear_form(self) -> ngs.LinearForm:
         return self._linear_form
 
     @linear_form.setter
-    def linear_form(self, lf: ngs.LinearForm):
-        if self._linear_form is None:
-            raise ValueError(
-                "Linear form has not been initialized. Call construct_fespace() first."
-            )
-        if isinstance(self._linear_form, ngs.LinearForm):
-            raise ValueError("Linear form must be set using set_linear_form().")
-        self._linear_form = lf
-
-    def set_linear_form(self, lf: ngs.LinearForm):
-        """
-        Set the linear form for the finite element space.
-
-        Args:
-            lf (ngs.LinearForm): The linear form to set.
-        """
+    def linear_form(self, lf: ngs.comp.SumOfIntegrals):
+        if not isinstance(self._linear_form, ngs.LinearForm):
+            msg = "Linear form has not been correctly initialized. Call construct_fespace() first."
+            LOGGER.error(msg)
+            raise ValueError(msg)
+        if not isinstance(lf, ngs.comp.SumOfIntegrals):
+            msg = "Linear form must be an instance of ngs.comp.SumOfIntegrals."
+            LOGGER.error(msg)
+            raise ValueError(msg)
         self._linear_form_set = True
         self._linear_form += lf
 
+    # def set_linear_form(self, lf: ngs.LinearForm):
+    #     """
+    #     Set the linear form for the finite element space.
+
+    #     Args:
+    #         lf (ngs.LinearForm): The linear form to set.
+    #     """
+    #     self._linear_form_set = True
+    #     self._linear_form += lf
+
     @property
-    def bilinear_form(self):
+    def bilinear_form(self) -> ngs.BilinearForm:
         return self._bilinear_form
 
     @bilinear_form.setter
-    def bilinear_form(self, bf: ngs.BilinearForm):
-        if self._bilinear_form is None:
-            raise ValueError(
-                "Bilinear form has not been initialized. Call construct_fespace() first."
-            )
-        if isinstance(self._bilinear_form, ngs.BilinearForm):
-            raise ValueError("Bilinear form must be set using set_bilinear_form().")
-        self._bilinear_form = bf
-
-    def set_bilinear_form(self, bf: ngs.BilinearForm):
-        """
-        Set the bilinear form for the finite element space.
-
-        Args:
-            bf (ngs.FESpace.BilinearForm): The bilinear form to set.
-        """
+    def bilinear_form(self, bf: ngs.comp.SumOfIntegrals):
+        if not isinstance(self._bilinear_form, ngs.BilinearForm):
+            msg = "Bilinear form has not been correctly initialized. Call construct_fespace() first."
+            LOGGER.error(msg)
+            raise ValueError(msg)
+        elif not isinstance(bf, ngs.comp.SumOfIntegrals):
+            msg = "Bilinear form must be an instance of ngs.comp.SumOfIntegrals."
+            LOGGER.error(msg)
+            raise ValueError(msg)
         self._bilinear_form_set = True
         self._bilinear_form += bf
 
@@ -145,35 +146,39 @@ class Problem:
         Assemble the linear and bilinear forms.
         """
         # check if linear and bilinear forms are instantiated on the finite element space
-        if self._linear_form is None or self._bilinear_form is None:
-            raise ValueError(
-                "Linear or bilinear form has not been initialized. Call construct_fespace() first."
-            )
+        if not isinstance(self._linear_form, ngs.LinearForm) or not isinstance(
+            self._bilinear_form, ngs.BilinearForm
+        ):
+            msg = "Linear or bilinear form has not been initialized. Call construct_fespace() first."
+            LOGGER.error(msg)
+            raise ValueError(msg)
 
-        # check if problem type is set
+        # check problem type
         if self.ptype == ProblemType.CUSTOM:
             if not self._linear_form_set:
-                raise ValueError(
-                    "Linear form has not been set. Call set_linear_form() first."
-                )
+                msg = "Linear form has not been set."
+                LOGGER.error(msg)
+                raise ValueError(msg)
             if not self._bilinear_form_set:
-                raise ValueError(
-                    "Bilinear form has not been set. Call set_bilinear_form() first."
-                )
+                msg = "Bilinear form has not been set."
+                LOGGER.error(msg)
+                raise ValueError(msg)
         elif self.ptype == ProblemType.DIFFUSION:
             # check if gfuncs is provided for custom coefficient and source functions
             if gfuncs is None or len(gfuncs) != 2:
-                raise ValueError(
+                msg = (
                     "For diffusion problem type, gfuncs must be provided with two grid functions."
                     "One for coefficient function and one for source function."
                 )
+                LOGGER.error(msg)
+                raise ValueError(msg)
 
             # get trial and test functions
             u_h, v_h = self.get_trial_and_test_functions()
 
             # construct bilinear and linear forms
-            self.set_bilinear_form(gfuncs[0] * ngs.grad(u_h) * ngs.grad(v_h) * ngs.dx)
-            self.set_linear_form(gfuncs[1] * v_h * ngs.dx)
+            self.bilinear_form = gfuncs[0] * ngs.grad(u_h) * ngs.grad(v_h) * ngs.dx
+            self.linear_form = gfuncs[1] * v_h * ngs.dx
         elif self.ptype == ProblemType.NAVIER_STOKES:
             raise NotImplementedError(
                 "Navier-Stokes problem type is not implemented yet."
@@ -193,19 +198,27 @@ class Problem:
             )
 
         # assemble rhs and stiffness matrix
-        b = self._linear_form.Assemble()
-        A = self._bilinear_form.Assemble()
+        b = self.linear_form.Assemble()
+        A = self.bilinear_form.Assemble()
 
         return A, u, b
 
-    def get_homogenized_system(
+    def homogenize_rhs(
         self, A: ngs.Matrix, u: ngs.GridFunction, b: ngs.GridFunction
-    ):
+    ) -> ngs.Vector:
         res = b.vec.CreateVector()
         res.data = b.vec - A.mat * u.vec
 
+        return res
+
+    def restrict_system_to_free_dofs(
+        self, A: ngs.Matrix, u: ngs.GridFunction, b: ngs.GridFunction
+    ) -> tuple[sp.csr_matrix, np.ndarray, np.ndarray]:
+
+        res = self.homogenize_rhs(A, u, b)
+
         # free dofs
-        free_dofs = self.fes.fespace.FreeDofs()
+        free_dofs = self.fes.free_dofs_mask
 
         # export to numpy arrays & sparse matrix
         u_arr = copy(u.vec.FV().NumPy()[free_dofs])
@@ -226,8 +239,7 @@ class Problem:
             load (ngs.Vector): The load vector.
         """
         # homogenization
-        res = b.vec.CreateVector()
-        res.data = b.vec - A.mat * u.vec
+        res = self.homogenize_rhs(A, u, b)
 
         # solve the system using sparse Cholesky factorization
         u.vec.data += (
@@ -247,7 +259,7 @@ class Problem:
         A, self.u, b = self.assemble()
 
         # homogenization of the boundary conditions
-        A_sp_f, u_arr, res_arr = self.get_homogenized_system(A, self.u, b)
+        A_sp_f, u_arr, res_arr = self.restrict_system_to_free_dofs(A, self.u, b)
 
         # setup custom solver
         custom_cg = CustomCG(
@@ -270,36 +282,43 @@ class Problem:
                     )
                 elif preconditioner is TwoLevelSchwarzPreconditioner:
                     if coarse_space is None:
-                        raise ValueError(
-                            "Coarse space must be provided for TwoLevelSchwarzPreconditioner."
-                        )
+                        msg = "Coarse space must be provided for TwoLevelSchwarzPreconditioner."
+                        LOGGER.error(msg)
+                        raise ValueError(msg)
                     precond = TwoLevelSchwarzPreconditioner(
                         A_sp_f, self.fes, self.two_mesh, coarse_space, gpu_device
                     )
                     if save_coarse_bases:
                         coarse_space_bases = precond.get_restriction_operator_bases()
                 else:
-                    raise ValueError(
-                        f"Unknown preconditioner type: {preconditioner.__name__}"
-                    )
+                    msg = f"Unknown preconditioner type: {preconditioner.__name__}"
+                    LOGGER.error(msg)
+                    raise ValueError(msg)
                 if not use_gpu:
                     M_op = precond.as_linear_operator()
         self.precond_name = precond.name if precond is not None else "None"
 
         success = False
         if not use_gpu:
-            print(f"Solving system:" f"\n\tpreconditioner: {self.precond_name}")
+            LOGGER.info(
+                f"Solving system on CPU:" f"\n\tpreconditioner: {self.precond_name}"
+            )
             u_arr[:], success = custom_cg.sparse_solve(
                 M_op, save_residuals=save_cg_info
             )
         else:
-            print(f"Solving system on GPU:" f"\n\tpreconditioner: {self.precond_name}")
+            LOGGER.info(
+                f"Solving system on GPU:" f"\n\tpreconditioner: {self.precond_name}"
+            )
             u_arr[:], success = custom_cg.sparse_solve_gpu(precond, save_residuals=save_cg_info)  # type: ignore
         if not success:
-            print(
+            LOGGER.error(
                 f"Conjugate gradient solver did not converge. Number of iterations: {custom_cg.niters}"
             )
         else:
+            LOGGER.info(
+                f"Conjugate gradient solver converged in {custom_cg.niters} iterations."
+            )
             self.u.vec.FV().NumPy()[self.fes.fespace.FreeDofs()] = u_arr
 
         # save cg coefficients if requested
@@ -323,7 +342,7 @@ class Problem:
             if gfuncs != []:
                 self.save_ngs_functions(gfuncs, names, "coarse_bases")
             else:
-                print("No coarse space bases to save.")
+                LOGGER.warning("No coarse space bases to save.")
 
     def save_ngs_functions(
         self, funcs: list[ngs.GridFunction], names: list[str], category: str
@@ -351,8 +370,8 @@ class Problem:
 if __name__ == "__main__":
     # load mesh
     lx, ly = 1.0, 1.0
-    coarse_mesh_size = 0.15
-    refinement_levels = 2
+    coarse_mesh_size = 1 / 16
+    refinement_levels = 4
     layers = 2
     two_mesh = TwoLevelMesh.load(
         lx=lx,
@@ -374,7 +393,6 @@ if __name__ == "__main__":
             values={0: 32 * ngs.y * (ly - ngs.y)},
         )
     )
-    print(bcs)
 
     # construct finite element space
     problem = Problem(two_mesh, [bcs])
@@ -386,24 +404,13 @@ if __name__ == "__main__":
     u_h, v_h = problem.get_trial_and_test_functions()
 
     # construct bilinear and linear forms
-    problem.set_bilinear_form(ngs.grad(u_h) * ngs.grad(v_h) * ngs.dx)
-    problem.set_linear_form(
+    problem.bilinear_form = ngs.grad(u_h) * ngs.grad(v_h) * ngs.dx
+    problem.linear_form = (
         32 * (ngs.y * (ly - ngs.y) + ngs.x * (lx - ngs.x)) * v_h * ngs.dx
     )
 
     # assemble the forms
     A, u, b = problem.assemble()
-
-    # plot the sparsity pattern of the stiffness matrix
-    import scipy.sparse as sp
-
-    rows, cols, vals = A.mat.COO()
-    A_sp = sp.csr_matrix((vals, (rows, cols)), shape=A.mat.shape)
-    plt.spy(A_sp.toarray(), markersize=1, aspect="equal")
-    plt.title("Sparsity pattern of the stiffness matrix")
-    plt.xlabel("Columns")
-    plt.ylabel("Rows")
-    plt.show()
 
     # direct solve
     problem.direct_ngs_solve(u, b, A)

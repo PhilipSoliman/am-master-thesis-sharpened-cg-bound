@@ -108,11 +108,14 @@ class BoundaryConditions:
             u_tmp = ngs.GridFunction(fespace)
             if len(bc.values) > 1:
                 for component, value in bc.values.items():
-                    u_tmp.components[0].Set(
+                    u_tmp.components[component].Set(
                         value,
                         definedon=mesh.Boundaries(bc.name.value),
-                        component=component,
                     )
+                    LOGGER.info(
+                        f"Set Dirichlet condition on {bc.name.value} boundary for component {component} to {value}"
+                    )
+
             else:
                 u_tmp.Set(bc.values[0], definedon=mesh.Boundaries(bc.name.value))
             u.vec.data += u_tmp.vec
@@ -177,3 +180,6 @@ class HomogeneousDirichlet(BoundaryConditions):
                     values,
                 )
             )
+        LOGGER.info(
+            f"Set homogeneous Dirichlet boundary conditions {self}"
+        )

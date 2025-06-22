@@ -15,11 +15,11 @@ from rich.progress import (
     TimeRemainingColumn,
 )
 
+
 ##########
 # LOGGER #
 ##########
-
-
+# Helper function to format file paths for logging
 def format_fp(fp: Optional[Path]) -> str:
     """Format a file path for logging."""
     if fp is None:
@@ -29,18 +29,12 @@ def format_fp(fp: Optional[Path]) -> str:
     return f"{fp_dir}/{fp_name}"
 
 
+# Custom logger class to handle Path formatting and custom log levels
 class CustomLogger(logging.Logger):
-    SUBSTEP = 15  # Between INFO (20) and DEBUG (10)
-    logging.addLevelName(SUBSTEP, "SUBSTEP")
-
-    def substep(self, message, *args, emoji="↳", **kwargs):
-        if self.isEnabledFor(self.SUBSTEP):
-            self._log(
-                self.SUBSTEP,
-                f"{emoji}\t{message}",
-                args,
-                **kwargs,
-            )
+    DEBUG = logging.DEBUG
+    INFO = logging.INFO
+    WARNING = logging.WARNING
+    ERROR = logging.ERROR
 
     def _log(
         self,
@@ -69,31 +63,54 @@ class CustomLogger(logging.Logger):
         )
 
 
+# Custom formatter to add colors to log levels
 class ColorLevelFormatter(logging.Formatter):
-    LEVEL_NAME_WIDTH = 8
-    INFO_COLOR = "blue"
-    SUBSTEP_COLOR = "cyan"
-    DEBUG_COLOR = "yellow"
+    LEVEL_NAME_WIDTH = 6
     ERROR_COLOR = "red"
+    WARNING_COLOR = "yellow"
+    INFO_COLOR = "green"
+    # SUBSTEP_COLOR = "cyan"
+    DEBUG_COLOR = "blue"
 
-    def format(self, record):
+    def format(self, record) -> str:
         record.levelcolor = self.get_color(record)
-        record.levelname = f"{record.levelname:<{self.LEVEL_NAME_WIDTH}}"
-        record.message = f"{record.getMessage()}"
-        return super().format(record)
+        emoji = self.get_emoji(record)
+        record.levelname = f"{emoji}{record.levelname:<{self.LEVEL_NAME_WIDTH}}"
+        prefix = self.get_prefix(record)
+        record.message = f"{prefix}{record.getMessage()}"
+        return self.formatMessage(record)
 
     def get_color(self, record):
-        if record.levelno == logging.INFO:
+        if record.levelno == logging.ERROR:
+            return self.ERROR_COLOR
+        elif record.levelno == logging.INFO:
             return self.INFO_COLOR
-        elif record.levelno == CustomLogger.SUBSTEP:
-            return self.SUBSTEP_COLOR
         elif record.levelno == logging.DEBUG:
             return self.DEBUG_COLOR
-        elif record.levelno == logging.ERROR:
-            return self.ERROR_COLOR
         else:
             return "white"
 
+    def get_emoji(self, record):
+        """Get the emoji for the log record."""
+        if record.levelno == logging.ERROR:
+            return "❌ "  # exclamation mark emoji
+        elif record.levelno == logging.WARNING:
+            return "⚠️ "  # warning emoji
+        elif record.levelno == logging.INFO:
+            return "✅ "  # information emoji simple
+        # elif record.levelno == logging.SUBSTEP:
+        #     return "[cyan]"
+        elif record.levelno == logging.DEBUG:
+            return "🧿 "  # bug emoji
+        else:
+            return ""
+
+    def get_prefix(self, record):
+        """Get the prefix for the log record."""
+        if record.levelno == logging.DEBUG:
+            return "➥\t"
+        else:
+            return ""
 
 # instantiate the custom logger
 logging.setLoggerClass(CustomLogger)
@@ -111,7 +128,9 @@ handler = RichHandler(
     log_time_format="[%Y-%m-%d %H:%M:%S.%f]",
 )
 
-handler.setFormatter(ColorLevelFormatter("[%(levelcolor)s]%(levelname)s %(message)s[/%(levelcolor)s]"))
+handler.setFormatter(
+    ColorLevelFormatter("[%(levelcolor)s]%(levelname)s %(message)s[/%(levelcolor)s]")
+)
 LOGGER.addHandler(handler)
 
 

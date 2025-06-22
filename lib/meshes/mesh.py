@@ -100,13 +100,13 @@ class TwoLevelMesh:
             layers(int, optional): Number of layers for domain decomposition. Defaults to 0.
         """
         # intial log
-        LOGGER.info("Creating TwoLevelMesh")
+        LOGGER.info(f"Creating TwoLevelMesh 1/H = {1/self.coarse_mesh_size:.0f}")
         if progress:
             self.progress = progress
         else:
             self.progress = PROGRESS()
             self.progress.start()
-        task = self.progress.add_task(f"Creating TwoLevelMesh 1/H = {1/coarse_mesh_size:.0f}", total=8)
+        task = self.progress.add_task(f"Creating TwoLevelMesh", total=8)
 
         # handle input
         self.lx = lx
@@ -181,7 +181,7 @@ class TwoLevelMesh:
         )
         mesh = ngs.Mesh(ngm_coarse)
 
-        LOGGER.substep("created coarse mesh")
+        LOGGER.debug("created coarse mesh")
         return mesh
 
     ###################
@@ -238,13 +238,13 @@ class TwoLevelMesh:
                 self.progress.advance(edge_task)
             self.progress.remove_task(edge_task)
             self.progress.advance(refinement_task)
-            LOGGER.substep(
+            LOGGER.debug(
                 f"Refined mesh at refinement level {ref_level + 1}/{self.refinement_levels}"
             )
 
         # remove the refinement task and log the completion
         self.progress.remove_task(refinement_task)
-        LOGGER.substep("refined mesh and found fine vertices on coarse edges")
+        LOGGER.debug("refined mesh and found fine vertices on coarse edges")
 
         # find fine edges on coarse edges using the vertices on coarse edges
         task = self.progress.add_task(
@@ -266,7 +266,7 @@ class TwoLevelMesh:
 
             self.progress.advance(task)
         self.progress.remove_task(task)
-        LOGGER.substep("found fine edges on coarse edges")
+        LOGGER.debug("found fine edges on coarse edges")
         return coarse_edges_map, coarse_mesh
 
     def _get_vertex_ids_on_coarse_edge(
@@ -425,7 +425,7 @@ class TwoLevelMesh:
 
             self.progress.advance(task)
         task = self.progress.remove_task(task)
-        LOGGER.substep("calculated subdomains")
+        LOGGER.debug("calculated subdomains")
         return subdomains
 
     def extend_subdomains(self):
@@ -445,7 +445,7 @@ class TwoLevelMesh:
 
         # remove the layer task and log the completion
         self.progress.remove_task(layer_task)
-        LOGGER.substep(f"extended subdomains with {self.layers} layers")
+        LOGGER.debug(f"extended subdomains with {self.layers} layers")
 
     def _extend_subdomains(self, layer_idx: int):
         """
@@ -512,7 +512,7 @@ class TwoLevelMesh:
 
         # remove the subdomains task and log the completion
         self.progress.remove_task(subdomains_task)
-        LOGGER.substep(f"extended subdomains with layer {layer_idx}/{self.layers}")
+        LOGGER.debug(f"extended subdomains with layer {layer_idx}/{self.layers}")
 
     ###########################
     # interface decomposition #
@@ -542,7 +542,7 @@ class TwoLevelMesh:
         # NOTE: this code is only necessary for 3D meshes
         connected_components["faces"] = {}
 
-        LOGGER.substep("calculated connected components")
+        LOGGER.debug("calculated connected components")
         return connected_components
 
     def get_connected_component_tree(self, connected_components: dict) -> dict:
@@ -585,7 +585,7 @@ class TwoLevelMesh:
             }
             for coarse_node in connected_components["coarse_nodes"]
         }
-        LOGGER.substep("calculated connected component tree")
+        LOGGER.debug("calculated connected component tree")
         return component_tree
 
     #######################
@@ -642,7 +642,7 @@ class TwoLevelMesh:
 
         # remove the task and log the completion
         self.progress.remove_task(task)
-        LOGGER.substep("generated edge slabs")
+        LOGGER.debug("generated edge slabs")
 
         return edge_slabs
 
@@ -943,12 +943,15 @@ class TwoLevelMesh:
         if progress_not_started:
             self.progress.start()
         task = self.progress.add_task(
-            f"Saving TwoLevelMesh 1/H = {1/self.coarse_mesh_size:.0f}",
+            f"Saving TwoLevelMesh",
             total=5 if save_vtk_meshes else 4,
         )
         if not self.save_dir.exists():
             self.save_dir.mkdir(parents=True, exist_ok=True)
-        LOGGER.info(f"Saving TwoLevelMesh to %s", self.save_dir)
+        LOGGER.info(
+            f"Saving TwoLevelMesh 1/H = {1/self.coarse_mesh_size:.0f} to %s",
+            self.save_dir,
+        )
         self._save_metadata()
         self.progress.advance(task)
 
@@ -985,7 +988,7 @@ class TwoLevelMesh:
         with open(metadata_path, "w") as f:
             json.dump(metadata, f, indent=4)
 
-        LOGGER.substep("saved metadata")
+        LOGGER.debug("saved metadata")
 
     def _save_vtk_meshes(self):
         """
@@ -1009,7 +1012,7 @@ class TwoLevelMesh:
         )
         vtk.Do()
 
-        LOGGER.substep("saved fine and coarse meshes in .vtk formats")
+        LOGGER.debug("saved fine and coarse meshes in .vtk formats")
 
     def _save_coarse_edges_map(self):
         """
@@ -1034,7 +1037,7 @@ class TwoLevelMesh:
             }
             json.dump(coarse_edges_map, f, indent=4)
 
-        LOGGER.substep("saved coarse edges map")
+        LOGGER.debug("saved coarse edges map")
 
     def _save_subdomain_layers(self):
         """
@@ -1055,7 +1058,7 @@ class TwoLevelMesh:
             }
             json.dump(subdomains_data, f, indent=4)
 
-        LOGGER.substep("saved subdomain layers")
+        LOGGER.debug("saved subdomain layers")
 
     def _save_edge_slabs(self):
         """
@@ -1064,7 +1067,7 @@ class TwoLevelMesh:
         edge_slabs_path = self.save_dir / "edge_slabs.json"
         with open(edge_slabs_path, "w") as f:
             json.dump(self.edge_slabs, f, indent=4)
-        LOGGER.substep("saved edge slabs")
+        LOGGER.debug("saved edge slabs")
 
     @classmethod
     def load(
@@ -1104,7 +1107,12 @@ class TwoLevelMesh:
             )
 
             obj._load_metadata(fp)
-            obj.progress.update(task, advance=1, description=obj.progress.get_description(task) + f" 1/H = {1/obj.coarse_mesh_size:.0f}")
+            obj.progress.update(
+                task,
+                advance=1,
+                description=obj.progress.get_description(task)
+                + f" 1/H = {1/obj.coarse_mesh_size:.0f}",
+            )
 
             obj._load_meshes(fp)
             obj.progress.advance(task)
@@ -1134,9 +1142,11 @@ class TwoLevelMesh:
             obj.progress.remove_task(task)
             if progress is None:
                 obj.progress.stop()
-            LOGGER.info(f"Finished loading TwoLevelMesh:\n{obj}.")
+            LOGGER.info(
+                f"Finished loading TwoLevelMesh 1/H = {1/obj.coarse_mesh_size:.0f}:\n{obj}."
+            )
         else:
-            raise FileNotFoundError("Metadata file %s does not exist.", fp)
+            raise FileNotFoundError("Metadata file %s does not exist." % str(fp))
         return obj
 
     def _load_metadata(self, fp: Path):
@@ -1145,11 +1155,9 @@ class TwoLevelMesh:
         """
         metadata_path = fp / "metadata.json"
         if not metadata_path.exists():
-            msg = (
-                "Metadata file %s does not exist"
-            )
+            msg = "Metadata file %s does not exist"
             LOGGER.error(msg, metadata_path)
-            raise FileNotFoundError(msg, metadata_path)
+            raise FileNotFoundError(msg % str(metadata_path))
         with open(metadata_path, "r") as f:
             metadata = json.load(f)
         self.lx = metadata["lx"]
@@ -1157,7 +1165,7 @@ class TwoLevelMesh:
         self.coarse_mesh_size = metadata["coarse_mesh_size"]
         self.refinement_levels = metadata["refinement_levels"]
         self.layers = metadata["layers"]
-        LOGGER.substep(f"loaded metadata")
+        LOGGER.debug(f"loaded metadata")
 
     def _load_meshes(self, fp: Path):
         """
@@ -1165,7 +1173,7 @@ class TwoLevelMesh:
         """
         mesh = self.create_mesh()
         self.fine_mesh, self.coarse_mesh = self._refine_mesh(mesh)
-        LOGGER.substep(f"regenerated meshes")
+        LOGGER.debug(f"regenerated meshes")
 
     def _load_coarse_edges_map(self, fp: Path):
         """
@@ -1173,11 +1181,9 @@ class TwoLevelMesh:
         """
         coarse_edges_map_path = fp / "coarse_edges_map.json"
         if not coarse_edges_map_path.exists():
-            msg = (
-                "Coarse edges map file %s does not exist. "
-            )
+            msg = "Coarse edges map file %s does not exist. "
             LOGGER.error(msg, coarse_edges_map_path)
-            raise FileNotFoundError(msg, coarse_edges_map_path)
+            raise FileNotFoundError(msg % str(coarse_edges_map_path))
         with open(coarse_edges_map_path, "r") as f:
             coarse_edges_map = json.load(f)
         self.coarse_edges_map = {
@@ -1192,7 +1198,7 @@ class TwoLevelMesh:
             }
             for coarse_edge_nr, data in coarse_edges_map.items()
         }
-        LOGGER.substep(f"loaded coarse edges map")
+        LOGGER.debug(f"loaded coarse edges map")
 
     def _load_subdomain_layers(self, fp: Path):
         """
@@ -1200,11 +1206,9 @@ class TwoLevelMesh:
         """
         subdomains_path = fp / "subdomains_layers.json"
         if not subdomains_path.exists():
-            msg = (
-                "Subdomains layers file %s does not exist. "
-            )
+            msg = "Subdomains layers file %s does not exist. "
             LOGGER.error(msg, subdomains_path)
-            raise FileNotFoundError(msg, subdomains_path)
+            raise FileNotFoundError(msg % str(subdomains_path))
         with open(subdomains_path, "r") as f:
             subdomains_data = json.load(f)
 
@@ -1216,7 +1220,7 @@ class TwoLevelMesh:
                     for el in subdomain_data[f"layer_{layer_idx}"]
                 ]
                 self.subdomains[subdomain][f"layer_{layer_idx}"] = layer_elements
-        LOGGER.substep(f"recovered {self.layers} overlap layers for each subdomain")
+        LOGGER.debug(f"recovered {self.layers} overlap layers for each subdomain")
 
     def _load_edge_slabs(self, fp: Path) -> dict:
         """
@@ -1230,16 +1234,14 @@ class TwoLevelMesh:
         """
         edge_slabs_path = fp / "edge_slabs.json"
         if not edge_slabs_path.exists():
-            msg = (
-                "Edge slabs file %s does not exist. "
-            )
+            msg = "Edge slabs file %s does not exist. "
             LOGGER.error(msg, edge_slabs_path)
-            raise FileNotFoundError(msg, edge_slabs_path)
+            raise FileNotFoundError(msg % str(edge_slabs_path))
         with open(edge_slabs_path, "r") as f:
             edge_slabs = json.load(f)
         # Convert string keys back to int
         edge_slabs = {int(k): v for k, v in edge_slabs.items()}
-        LOGGER.substep(f"loaded edge slabs")
+        LOGGER.debug(f"loaded edge slabs")
         return edge_slabs
 
     @property
@@ -1653,33 +1655,33 @@ class TwoLevelMesh:
 
         set_mpl_style()
         fig, ax = plt.subplots(2, 2, figsize=(10, 6), sharex=True, sharey=True)
-        LOGGER.substep("\tcreated figure and axes...")
+        LOGGER.debug("\tcreated figure and axes...")
 
         self.plot_mesh(ax[0, 0], mesh_type="fine")
         self.plot_mesh(ax[0, 0], mesh_type="coarse")
         ax[0, 0].set_title("Fine and Coarse Meshes")
-        LOGGER.substep("\tplotted fine and coarse meshes.")
+        LOGGER.debug("\tplotted fine and coarse meshes.")
 
         # plot the domains
         self.plot_domains(ax[0, 1], domains=3, plot_layers=True)
         ax[0, 1].set_title("Subdomains and Layers")
-        LOGGER.substep("\tplotted subdomains and layers.")
+        LOGGER.debug("\tplotted subdomains and layers.")
 
         # plot all connected components
         self.plot_connected_components(ax[1, 0])
         ax[1, 0].set_title("Interface")
-        LOGGER.substep("\tplotted connected components.")
+        LOGGER.debug("\tplotted connected components.")
 
         # plot the connected component tree
         self.plot_connected_component_tree(ax[1, 1])
         ax[1, 1].set_title("Connected Component Tree")
-        LOGGER.substep("\tplotted connected component tree.")
+        LOGGER.debug("\tplotted connected component tree.")
 
         fig.tight_layout()
-        LOGGER.substep("\tvisualization complete.")
+        LOGGER.debug("\tvisualization complete.")
 
         if show:
-            LOGGER.substep("\tshowing figure...")
+            LOGGER.debug("\tshowing figure...")
             plt.show()
 
         return fig
@@ -1760,7 +1762,7 @@ class TwoLevelMeshExamples:
 
 
 if __name__ == "__main__":
-    LOGGER.setLevel(LOGGER.SUBSTEP)
+    LOGGER.setLevel(LOGGER.DEBUG)
     # TwoLevelMeshExamples.example_creation(
     #     fig_toggle=False
     # )  # Uncomment to create and visualize a new mesh

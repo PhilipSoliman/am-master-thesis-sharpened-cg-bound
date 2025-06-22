@@ -36,13 +36,13 @@ class FESpace:
         Raises:
             - ValueError: If the sum of classified free DOFs does not match the total number of free DOFs in the space.
         """
-        LOGGER.info("Constructing FESpace")
+        LOGGER.info(f"Constructing FESpace for {str(ptype)}")
         if progress:
             self.progress = progress
         else:
             self.progress = PROGRESS()
             self.progress.start()
-        task = self.progress.add_task("Constructing FESpace", total=2)
+        task = self.progress.add_task(f"Constructing FESpace", total=2)
         self.two_mesh = two_mesh
         self.ptype = ptype
         self.ndofs_per_unknown = []
@@ -184,7 +184,7 @@ class FESpace:
 
             # remove task and log completion
             self.progress.remove_task(task)
-            LOGGER.substep("Obtained subdomain DOFs")  # type: ignore
+            LOGGER.debug("Obtained subdomain DOFs")  # type: ignore
 
             # save domain dofs to file for later use
             self.save_domain_dofs(domain_dofs)
@@ -224,7 +224,7 @@ class FESpace:
 
         # remove task and log completion
         self.progress.remove_task(task)
-        LOGGER.substep("Obtained free coarse node DOFs")
+        LOGGER.debug("Obtained free coarse node DOFs")
         return coarse_node_dofs
 
     def get_free_edge_component_dofs(self) -> tuple[list[list[int]], list[ngs.NodeId]]:
@@ -272,7 +272,7 @@ class FESpace:
 
         # remove task and log completion
         self.progress.remove_task(task)
-        LOGGER.substep("Obtained free edge component DOFs")
+        LOGGER.debug("Obtained free edge component DOFs")
         return edge_component_dofs, free_coarse_edges
 
     def get_free_face_component_dofs(self) -> list[list[int]]:
@@ -299,7 +299,7 @@ class FESpace:
 
         # remove task and log completion
         self.progress.remove_task(task)
-        LOGGER.substep("Obtained free face component DOFs")  # type: ignore
+        LOGGER.debug("Obtained free face component DOFs")  # type: ignore
         return face_component_dofs
 
     def get_free_component_tree_dofs(self):
@@ -347,7 +347,7 @@ class FESpace:
                     edge_dofs = list(self.fespace.GetDofNrs(c))
                     dofs.extend(edge_dofs)
                 free_component_tree_dofs[coarse_node]["edges"][coarse_edge] = dofs
-        LOGGER.substep("Obtained free component tree DOFs and edge multiplicities")
+        LOGGER.debug("Obtained free component tree DOFs and edge multiplicities")
         return free_component_tree_dofs, edge_component_multiplicity
 
     def map_global_to_restricted_dofs(self, global_dofs: np.ndarray) -> np.ndarray:
@@ -401,7 +401,7 @@ class FESpace:
         }
         with open(self.domain_dofs_path, "w") as f:
             json.dump(domain_dofs_data, f, indent=4)
-        LOGGER.substep(f"Saved domain DOFs to {self.domain_dofs_path}")  # type: ignore
+        LOGGER.debug(f"Saved domain DOFs to {self.domain_dofs_path}")  # type: ignore
 
     def load_domain_dofs(self):
         """
@@ -415,7 +415,7 @@ class FESpace:
         for subdomain_nr, dofs in domain_dofs_data.items():
             el_id = ngs.ElementId(int(subdomain_nr))
             domain_dofs[self.two_mesh.coarse_mesh[el_id]] = dofs
-        LOGGER.substep(f"Loaded domain DOFs from", fp=self.domain_dofs_path)
+        LOGGER.debug(f"Loaded domain DOFs from %s", self.domain_dofs_path)
         return domain_dofs
 
     @property

@@ -3,7 +3,7 @@ from typing import Optional
 
 import numpy as np
 import torch
-from scipy.sparse import coo_matrix, csc_matrix
+from scipy.sparse import csc_matrix, csr_matrix
 from scipy.sparse import diags as spdiags
 from scipy.sparse.linalg import LinearOperator, aslinearoperator, eigsh
 from tqdm import trange
@@ -31,7 +31,7 @@ class CustomCG:
 
     def __init__(
         self,
-        A: np.ndarray | csc_matrix,
+        A: np.ndarray | csr_matrix,
         b: np.ndarray,
         x_0: np.ndarray,
         tol: float = 1e-6,
@@ -195,7 +195,8 @@ class CustomCG:
         z = psolve(r)
 
         # historic
-        r_i = [np.linalg.norm(r)]
+        r_norm = np.linalg.norm(r)
+        r_i = [r_norm]
         z_i = [np.linalg.norm(z)] if track_z else []
         alphas = []
         betas = []
@@ -205,7 +206,7 @@ class CustomCG:
         success = False
         with trange(self.maxiter, desc="CG iterations", unit="it") as pbar:
             for iteration in range(self.maxiter):
-                if np.linalg.norm(r_i[-1]) < self.tol:
+                if r_norm < self.tol:
                     success = True
                     pbar.n = (
                         iteration + 1
@@ -230,8 +231,9 @@ class CustomCG:
                 x += alpha * p
                 r -= alpha * q
                 z = psolve(r)
+                r_norm = np.linalg.norm(r)
                 if save_residuals:
-                    r_i.append(np.linalg.norm(r))
+                    r_i.append(r_norm)
                 if track_z:
                     z_i.append(np.linalg.norm(z))
                 rho_prev = rho_cur
@@ -375,7 +377,7 @@ class CustomCG:
             return self.z_i / self.z_i[0]
         else:
             raise ValueError("No preconditioner residuals saved")
-    
+
     @property
     def gpu_device(self) -> str:
         """
