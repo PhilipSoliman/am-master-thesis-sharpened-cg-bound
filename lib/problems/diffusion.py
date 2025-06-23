@@ -10,6 +10,7 @@ from lib.meshes import TwoLevelMesh
 from lib.preconditioners import (
     AMSCoarseSpace,
     GDSWCoarseSpace,
+    OneLevelSchwarzPreconditioner,
     RGDSWCoarseSpace,
     TwoLevelSchwarzPreconditioner,
 )
@@ -77,7 +78,12 @@ class DiffusionProblem(Problem):
         except FileNotFoundError:
             LOGGER.info("Mesh file not found. Creating a new mesh.")
             two_mesh = TwoLevelMesh(
-                lx, ly, coarse_mesh_size, refinement_levels, layers, progress=self.progress
+                lx,
+                ly,
+                coarse_mesh_size,
+                refinement_levels,
+                layers,
+                progress=self.progress,
             )
             two_mesh.save()
         self.progress.advance(task)
@@ -99,14 +105,10 @@ class DiffusionProblem(Problem):
         self.source_func = getattr(self, self.source_func_name)()
         self.progress.advance(task)
 
-        if progress is None:
-            self.progress.stop()
-        else:
-            self.progress.remove_task(task)
         LOGGER.info("DiffusionProblem initialized successfully.")
+        self.progress.soft_stop()
 
     def assemble(self, gfuncs=None):
-        print("Assembling system")
         return super().assemble(gfuncs=[self.coef_func, self.source_func])
 
     ####################
@@ -281,16 +283,16 @@ class DiffusionProblemExample:
     # mesh parameters
     lx = 1.0
     ly = 1.0
-    coarse_mesh_size = 1 / 64
+    coarse_mesh_size = 1 / 16
     refinement_levels = 4
     layers = 2
 
     # source and coefficient functions
     source_func = SourceFunc.CONSTANT
-    coef_func = CoefFunc.DOUBLE_SLAB_EDGE_INCLUSIONS
+    coef_func = CoefFunc.CONSTANT
 
     # preconditioner and coarse space
-    preconditioner = TwoLevelSchwarzPreconditioner
+    preconditioner = OneLevelSchwarzPreconditioner  # TwoLevelSchwarzPreconditioner
     coarse_space = AMSCoarseSpace  # GDSWCoarseSpace or RGDSWCoarseSpace
 
     # use GPU for solving
@@ -433,7 +435,7 @@ class DiffusionProblemExample:
 
 def full_example():
     DiffusionProblemExample.example_construction()
-    # DiffusionProblemExample.example_solve()
+    DiffusionProblemExample.example_solve()
     # DiffusionProblemExample.save_functions()
     # DiffusionProblemExample.visualize_convergence()
 

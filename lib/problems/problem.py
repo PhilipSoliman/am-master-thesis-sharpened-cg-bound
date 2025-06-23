@@ -43,11 +43,7 @@ class Problem:
             source_function (callable): Function representing the source term in the PDE.
             boundary_conditions (dict): Dictionary containing boundary conditions for the problem.
         """
-        if progress is not None:
-            self.progress = progress
-        else:
-            self.progress = PROGRESS()
-            self.progress.start()
+        self.progress = PROGRESS.get_active_progress_bar(progress)
         self.two_mesh = two_mesh
         self.boundary_conditions = bcs
         self.ptype = ptype
@@ -141,6 +137,12 @@ class Problem:
     def assemble(self, gfuncs: Optional[list[ngs.GridFunction]] = None):
         """
         Assemble the linear and bilinear forms.
+
+        Assembles the system matrix based either on the provided linear and bilinear forms or problem type.
+
+        Current supported problem types:
+            - ProblemType.CUSTOM: Requires linear and bilinear forms to be set.
+            - ProblemType.DIFFUSION: Requires two grid functions for coefficient and source terms, in that order.
         """
         LOGGER.info(
             f"Assembling system for {str(self.ptype)} and 1/H = {1/self.two_mesh.coarse_mesh_size:.0f}"
@@ -256,15 +258,20 @@ class Problem:
         save_cg_info: bool = False,
         save_coarse_bases: bool = False,
     ):
-        LOGGER.info(
-            f"Solving system for {str(self.ptype)} and 1/H = {1/self.two_mesh.coarse_mesh_size:.0f}"
+        system_str = f"Solving system for {str(self.ptype)} and 1/H = {1/self.two_mesh.coarse_mesh_size:.0f}"
+        self.progress = PROGRESS.get_active_progress_bar(self.progress)
+        task = self.progress.add_task(
+            system_str, total=4 + save_cg_info + save_coarse_bases
         )
+        LOGGER.info(system_str)
 
         # assemble the system
         A, self.u, b = self.assemble()
+        self.progress.advance(task)
 
         # homogenization of the boundary conditions
         A_sp_f, u_arr, res_arr = self.restrict_system_to_free_dofs(A, self.u, b)
+        self.progress.advance(task)
 
         # setup custom solver
         custom_cg = CustomCG(
@@ -272,6 +279,7 @@ class Problem:
             res_arr,
             u_arr,
             tol=rtol,
+            progress=self.progress,
         )
         gpu_device = None if use_gpu is False else custom_cg.gpu_device
 
@@ -283,7 +291,7 @@ class Problem:
             if isinstance(preconditioner, type):
                 if preconditioner is OneLevelSchwarzPreconditioner:
                     precond = OneLevelSchwarzPreconditioner(
-                        A_sp_f, self.fes, gpu_device
+                        A_sp_f, self.fes, gpu_device, progress=self.progress
                     )
                 elif preconditioner is TwoLevelSchwarzPreconditioner:
                     if coarse_space is None:
@@ -291,7 +299,12 @@ class Problem:
                         LOGGER.error(msg)
                         raise ValueError(msg)
                     precond = TwoLevelSchwarzPreconditioner(
-                        A_sp_f, self.fes, self.two_mesh, coarse_space, gpu_device
+                        A_sp_f,
+                        self.fes,
+                        self.two_mesh,
+                        coarse_space,
+                        gpu_device,
+                        progress=self.progress,
                     )
                     if save_coarse_bases:
                         coarse_space_bases = precond.get_restriction_operator_bases()
@@ -302,6 +315,7 @@ class Problem:
                 if not use_gpu:
                     M_op = precond.as_linear_operator()
         self.precond_name = precond.name if precond is not None else "None"
+        self.progress.advance(task)
 
         success = False
         if not use_gpu:
@@ -321,10 +335,9 @@ class Problem:
                 f"Conjugate gradient solver did not converge. Number of iterations: {custom_cg.niters}"
             )
         else:
-            LOGGER.info(
-                f"Conjugate gradient solver converged in {custom_cg.niters} iterations."
-            )
-            self.u.vec.FV().NumPy()[self.fes.fespace.FreeDofs()] = u_arr
+            self.u.vec.FV().NumPy()[self.fes.free_dofs_mask] = u_arr
+            LOGGER.info("Saved solution to grid function.")
+        self.progress.advance(task)
 
         # save cg coefficients if requested
         if save_cg_info:
@@ -336,6 +349,8 @@ class Problem:
                     custom_cg.get_relative_preconditioned_residuals()
                 )
             self.approximate_eigs = custom_cg.get_approximate_eigenvalues()
+            LOGGER.info("Obtained conjugate gradient coefficients and residuals.")
+            self.progress.advance(task)
 
         # save coarse operator grid functions if available
         if save_coarse_bases and coarse_space is not None:
@@ -346,8 +361,13 @@ class Problem:
                 gfuncs.append(basis_gfunc)
             if gfuncs != []:
                 self.save_ngs_functions(gfuncs, names, "coarse_bases")
+                LOGGER.info("Saved coarse space bases to file.")
             else:
                 LOGGER.warning("No coarse space bases to save.")
+            self.progress.advance(task)
+
+        LOGGER.info("Solving system completed.")
+        self.progress.soft_stop()
 
     def save_ngs_functions(
         self, funcs: list[ngs.GridFunction], names: list[str], category: str
@@ -371,13 +391,6 @@ class Problem:
         )
         vtk.Do()
         LOGGER.info(f"Saved grid functions to", tlm_dir / fn)
-
-    def __del__(self):
-        """
-        Destructor to clean up resources.
-        """
-        if self.progress.progress_started:
-            self.progress.stop()
 
 
 if __name__ == "__main__":

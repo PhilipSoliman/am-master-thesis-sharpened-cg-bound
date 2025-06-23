@@ -8,6 +8,7 @@ from scipy.sparse import diags as spdiags
 from scipy.sparse.linalg import LinearOperator, aslinearoperator, eigsh
 from tqdm import trange
 
+from lib.logger import LOGGER, PROGRESS
 from lib.operators import Operator
 from lib.utils import get_root, send_matrix_to_gpu
 
@@ -36,7 +37,10 @@ class CustomCG:
         x_0: np.ndarray,
         tol: float = 1e-6,
         maxiter: Optional[int] = None,
+        progress: Optional[PROGRESS] = None,
     ):
+        self.progress = PROGRESS.get_active_progress_bar(progress)
+
         # system
         self.A = A
         self.b = b
@@ -204,50 +208,52 @@ class CustomCG:
         # main loop
         iteration = -1  # Ensure iteration is always defined
         success = False
-        with trange(self.maxiter, desc="CG iterations", unit="it") as pbar:
-            for iteration in range(self.maxiter):
-                if r_norm < self.tol:
-                    success = True
-                    pbar.n = (
-                        iteration + 1
-                    )  # Set progress bar to actual number of iterations
-                    pbar.last_print_n = (
-                        iteration + 1
-                    )  # Force tqdm to print the final value
-                    pbar.update(0)  # Refresh the bar
-                    break
-                rho_cur = dotprod(r, z)
-                if iteration > 0:
-                    beta = rho_cur / rho_prev  # type: ignore
-                    p *= beta  # type: ignore
-                    p += z  # type: ignore
-                    betas.append(beta)
-                else:
-                    p = np.empty_like(r)
-                    p[:] = z[:]
+        LOGGER.info("Starting CG iterations")
+        task = self.progress.add_task("CG iterations", total=None)
+        desc = self.progress.get_description(task)
+        desc += ": ({0:.0f}/{1:.0f})"
+        desc += " | residual: {2:.2e} | alpha: {3:.2e}"
+        desc += " | beta: {4:.2e}"
+        for iteration in range(self.maxiter):
+            if r_norm < self.tol:
+                success = True
+                LOGGER.info(f"Converged after {iteration} iterations")
+                self.progress.soft_stop()
+                break
+            rho_cur = dotprod(r, z)
+            if iteration > 0:
+                beta = rho_cur / rho_prev  # type: ignore
+                p *= beta  # type: ignore
+                p += z  # type: ignore
+                betas.append(beta)
+            else:
+                p = np.empty_like(r)
+                p[:] = z[:]
 
-                q = matvec(p)
-                alpha = rho_cur / dotprod(p, q)
-                x += alpha * p
-                r -= alpha * q
-                z = psolve(r)
-                r_norm = np.linalg.norm(r)
-                if save_residuals:
-                    r_i.append(r_norm)
-                if track_z:
-                    z_i.append(np.linalg.norm(z))
-                rho_prev = rho_cur
-                alphas.append(alpha)
+            q = matvec(p)
+            alpha = rho_cur / dotprod(p, q)
+            x += alpha * p
+            r -= alpha * q
+            z = psolve(r)
+            r_norm = np.linalg.norm(r)
+            if save_residuals:
+                r_i.append(r_norm)
+            if track_z:
+                z_i.append(np.linalg.norm(z))
+            rho_prev = rho_cur
+            alphas.append(alpha)
 
-                # Update tqdm bar with current residual norm and alpha
-                pbar.set_postfix(
-                    {
-                        "residual": f"{np.linalg.norm(r):.2e}",
-                        "alpha": f"{alpha:.2e}",
-                        "beta": f"{betas[-1]:.2e}" if betas else "N/A",
-                    }
-                )
-                pbar.update(1)
+            # Update progres bar description
+            self.progress.update(
+                task,
+                description=desc.format(
+                    iteration + 1,
+                    self.maxiter,
+                    r_norm,
+                    alpha,
+                    betas[-1] if betas else 0,
+                ),
+            )
 
         if save_residuals:
             self.r_i = np.array(r_i)

@@ -100,13 +100,9 @@ class TwoLevelMesh:
             layers(int, optional): Number of layers for domain decomposition. Defaults to 0.
         """
         # intial log
-        LOGGER.info(f"Creating TwoLevelMesh 1/H = {1/self.coarse_mesh_size:.0f}")
-        if progress:
-            self.progress = progress
-        else:
-            self.progress = PROGRESS()
-            self.progress.start()
+        self.progress = PROGRESS.get_active_progress_bar(progress)
         task = self.progress.add_task(f"Creating TwoLevelMesh", total=8)
+        LOGGER.info(f"Creating TwoLevelMesh 1/H = {1/self.coarse_mesh_size:.0f}")
 
         # handle input
         self.lx = lx
@@ -149,10 +145,7 @@ class TwoLevelMesh:
         LOGGER.info(f"Created TwoLevelMesh")
         LOGGER.debug(str(self))
         
-        if progress is None:
-            self.progress.stop()
-        else:
-            self.progress.remove_task(task)
+        self.progress.soft_stop()
 
     # mesh creation
     def create_mesh(self) -> ngs.Mesh:
@@ -942,13 +935,12 @@ class TwoLevelMesh:
         Args:
             file_name (str, optional): Name of the file to save the mesh and metadata. Defaults to "".
         """
-        progress_not_started = not self.progress.progress_started()
-        if progress_not_started:
-            self.progress.start()
+        self.progress = PROGRESS.get_active_progress_bar(self.progress)
         task = self.progress.add_task(
             f"Saving TwoLevelMesh",
             total=5 if save_vtk_meshes else 4,
         )
+
         if not self.save_dir.exists():
             self.save_dir.mkdir(parents=True, exist_ok=True)
         LOGGER.info(
@@ -972,9 +964,9 @@ class TwoLevelMesh:
         self.progress.advance(task)
 
         self.progress.remove_task(task)
-        if progress_not_started:
-            self.progress.stop()
+        
         LOGGER.info(f"Saved TwoLevelMesh")
+        self.progress.soft_stop()
 
     def _save_metadata(self):
         """
@@ -1096,18 +1088,14 @@ class TwoLevelMesh:
         )
         fp = DATA_DIR / folder_name
         if fp.exists():
-            LOGGER.info("Loading TwoLevelMesh from %s", fp)
+            progress = PROGRESS.get_active_progress_bar(progress)
             obj = cls.__new__(cls)
-            if progress is not None:
-                setattr(obj, "progress", progress)
-            else:
-                setattr(obj, "progress", PROGRESS())
-                obj.progress.start()
-
+            setattr(obj, "progress", progress)
             task = obj.progress.add_task(
                 "Loading TwoLevelMesh",
                 total=5,
             )
+            LOGGER.info("Loading TwoLevelMesh from %s", fp)
 
             obj._load_metadata(fp)
             obj.progress.update(
@@ -1142,13 +1130,11 @@ class TwoLevelMesh:
             obj.edge_slabs = obj._load_edge_slabs(fp)
             obj.progress.advance(task)
 
-            obj.progress.remove_task(task)
-            if progress is None:
-                obj.progress.stop()
             LOGGER.info(
                 f"Finished loading TwoLevelMesh 1/H = {1/obj.coarse_mesh_size:.0f}"
             )
             LOGGER.debug(str(obj))
+            obj.progress.soft_stop()
         else:
             raise FileNotFoundError("Metadata file %s does not exist." % str(fp))
         return obj

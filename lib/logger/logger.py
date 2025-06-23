@@ -7,6 +7,7 @@ from rich.progress import (
     BarColumn,
     Progress,
     ProgressColumn,
+    SpinnerColumn,
     Task,
     TaskID,
     TaskProgressColumn,
@@ -176,6 +177,7 @@ class PROGRESS(Progress):
 
     def __init__(self, *args, **kwargs):
         super().__init__(
+            SpinnerColumn(),
             TextColumn("[progress.description]{task.description}"),
             BarColumn(),
             TaskProgressColumn(),
@@ -185,7 +187,39 @@ class PROGRESS(Progress):
             *args,
             **kwargs,
         )
+        self.already_active: bool = False
         self._task_index: TaskID = TaskID(self.MAX_TASKS)
+
+    @classmethod
+    def get_active_progress_bar(
+        cls, progress: Optional["PROGRESS"] = None
+    ) -> "PROGRESS":
+        if isinstance(progress, PROGRESS):
+            progress_already_active = True
+            if not progress.progress_started():
+                progress_already_active = False
+                progress.start()
+            setattr(progress, "already_active", progress_already_active)
+            return progress
+        elif progress is None:
+            progress_already_active = False
+            obj = cls.__new__(cls)
+            obj.__init__()
+            setattr(obj, "already_active", progress_already_active)
+            obj.start()
+            return obj
+        
+    def soft_start(self) -> None:
+        """Only start progress if it was not already active when get_active_progress_bar was called."""
+        if not self.progress_started():
+            self.start()
+
+    def soft_stop(self) -> None:
+        """Only stop progress if it was not already active when get_active_progress_bar was called."""
+        if not self.already_active:
+            self.stop()
+        else:  # if it was already active, we just remove the most recent added task
+            self.remove_task(TaskID(self._task_index + 1))
 
     def add_task(
         self,
