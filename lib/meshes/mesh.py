@@ -146,10 +146,13 @@ class TwoLevelMesh:
         self.edge_slabs = self.generate_edge_slabs()
         self.progress.advance(task)
 
-        LOGGER.info(f"Created TwoLevelMesh:\n{self}")
-        self.progress.remove_task(task)
-        if progress:
+        LOGGER.info(f"Created TwoLevelMesh")
+        LOGGER.debug(str(self))
+        
+        if progress is None:
             self.progress.stop()
+        else:
+            self.progress.remove_task(task)
 
     # mesh creation
     def create_mesh(self) -> ngs.Mesh:
@@ -1095,7 +1098,7 @@ class TwoLevelMesh:
         if fp.exists():
             LOGGER.info("Loading TwoLevelMesh from %s", fp)
             obj = cls.__new__(cls)
-            if progress:
+            if progress is not None:
                 setattr(obj, "progress", progress)
             else:
                 setattr(obj, "progress", PROGRESS())
@@ -1143,8 +1146,9 @@ class TwoLevelMesh:
             if progress is None:
                 obj.progress.stop()
             LOGGER.info(
-                f"Finished loading TwoLevelMesh 1/H = {1/obj.coarse_mesh_size:.0f}:\n{obj}."
+                f"Finished loading TwoLevelMesh 1/H = {1/obj.coarse_mesh_size:.0f}"
             )
+            LOGGER.debug(str(obj))
         else:
             raise FileNotFoundError("Metadata file %s does not exist." % str(fp))
         return obj

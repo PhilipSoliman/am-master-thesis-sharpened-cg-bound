@@ -37,7 +37,7 @@ class FESpace:
             - ValueError: If the sum of classified free DOFs does not match the total number of free DOFs in the space.
         """
         LOGGER.info(f"Constructing FESpace for {str(ptype)}")
-        if progress:
+        if progress is not None:
             self.progress = progress
         else:
             self.progress = PROGRESS()
@@ -79,10 +79,12 @@ class FESpace:
             LOGGER.error(msg)
             raise ValueError(msg)
 
-        LOGGER.info(f"FESpace constructed successfully:\n{self}")
-        self.progress.remove_task(task)
+        LOGGER.info(f"FESpace constructed successfully")
+        LOGGER.debug(str(self))
         if progress is None:
             self.progress.stop()
+        else:
+            self.progress.remove_task(task)
 
     def calculate_dofs(self):
         """

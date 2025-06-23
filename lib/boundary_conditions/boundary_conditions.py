@@ -180,6 +180,5 @@ class HomogeneousDirichlet(BoundaryConditions):
                     values,
                 )
             )
-        LOGGER.info(
-            f"Set homogeneous Dirichlet boundary conditions {self}"
-        )
+        LOGGER.info(f"Set homogeneous Dirichlet")
+        LOGGER.debug(str(self))

@@ -15,7 +15,7 @@ from lib.boundary_conditions import (
     HomogeneousDirichlet,
 )
 from lib.fespace import FESpace
-from lib.logger import LOGGER
+from lib.logger import LOGGER, PROGRESS
 from lib.meshes import BoundaryName, TwoLevelMesh
 from lib.operators import Operator
 from lib.preconditioners import (
@@ -33,6 +33,7 @@ class Problem:
         two_mesh: TwoLevelMesh,
         bcs: list[BoundaryConditions],
         ptype: ProblemType = ProblemType.CUSTOM,
+        progress: Optional[PROGRESS] = None,
     ):
         """
         Initialize the problem with the given coefficient function, source function, and boundary conditions.
@@ -42,6 +43,11 @@ class Problem:
             source_function (callable): Function representing the source term in the PDE.
             boundary_conditions (dict): Dictionary containing boundary conditions for the problem.
         """
+        if progress is not None:
+            self.progress = progress
+        else:
+            self.progress = PROGRESS()
+            self.progress.start()
         self.two_mesh = two_mesh
         self.boundary_conditions = bcs
         self.ptype = ptype
@@ -78,6 +84,7 @@ class Problem:
             self.two_mesh,
             self.boundary_conditions,
             ptype=self.ptype,
+            progress=self.progress,
         )
         self._linear_form = ngs.LinearForm(self.fes.fespace)
         self._bilinear_form = ngs.BilinearForm(self.fes.fespace, symmetric=True)
@@ -114,16 +121,6 @@ class Problem:
         self._linear_form_set = True
         self._linear_form += lf
 
-    # def set_linear_form(self, lf: ngs.LinearForm):
-    #     """
-    #     Set the linear form for the finite element space.
-
-    #     Args:
-    #         lf (ngs.LinearForm): The linear form to set.
-    #     """
-    #     self._linear_form_set = True
-    #     self._linear_form += lf
-
     @property
     def bilinear_form(self) -> ngs.BilinearForm:
         return self._bilinear_form
@@ -145,6 +142,10 @@ class Problem:
         """
         Assemble the linear and bilinear forms.
         """
+        LOGGER.info(
+            f"Assembling system for {str(self.ptype)} and 1/H = {1/self.two_mesh.coarse_mesh_size:.0f}"
+        )
+
         # check if linear and bilinear forms are instantiated on the finite element space
         if not isinstance(self._linear_form, ngs.LinearForm) or not isinstance(
             self._bilinear_form, ngs.BilinearForm
@@ -255,6 +256,10 @@ class Problem:
         save_cg_info: bool = False,
         save_coarse_bases: bool = False,
     ):
+        LOGGER.info(
+            f"Solving system for {str(self.ptype)} and 1/H = {1/self.two_mesh.coarse_mesh_size:.0f}"
+        )
+
         # assemble the system
         A, self.u, b = self.assemble()
 
@@ -365,6 +370,14 @@ class Problem:
             filename=str(tlm_dir / fn),
         )
         vtk.Do()
+        LOGGER.info(f"Saved grid functions to", tlm_dir / fn)
+
+    def __del__(self):
+        """
+        Destructor to clean up resources.
+        """
+        if self.progress.progress_started:
+            self.progress.stop()
 
 
 if __name__ == "__main__":

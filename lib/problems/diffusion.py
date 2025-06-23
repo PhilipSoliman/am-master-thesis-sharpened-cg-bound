@@ -1,9 +1,11 @@
 from enum import Enum
+from typing import Optional
 
 import ngsolve as ngs
 import numpy as np
 
 from lib.boundary_conditions import BoundaryConditions, HomogeneousDirichlet
+from lib.logger import LOGGER, PROGRESS
 from lib.meshes import TwoLevelMesh
 from lib.preconditioners import (
     AMSCoarseSpace,
@@ -52,7 +54,17 @@ class DiffusionProblem(Problem):
         layers=2,
         coef_func=CoefFunc.VERTEX_INCLUSIONS,
         source_func=SourceFunc.CONSTANT,
+        progress: Optional[PROGRESS] = None,
     ):
+        LOGGER.info(
+            f"Initializing DiffusionProblem for 1/H = {1 / coarse_mesh_size:.0f}"
+        )
+        if progress is not None:
+            self.progress = progress
+        else:
+            self.progress = PROGRESS()
+            self.progress.start()
+        task = self.progress.add_task(f"Initializing DiffusionProblem ", total=4)
         try:
             two_mesh = TwoLevelMesh.load(
                 lx=lx,
@@ -60,27 +72,38 @@ class DiffusionProblem(Problem):
                 coarse_mesh_size=coarse_mesh_size,
                 refinement_levels=refinement_levels,
                 layers=layers,
+                progress=self.progress,
             )
         except FileNotFoundError:
-            print("Mesh file not found. Creating a new mesh.")
-            two_mesh = TwoLevelMesh(lx, ly, coarse_mesh_size, refinement_levels, layers)
-
-            print("Saving newly created mesh to file...")
+            LOGGER.info("Mesh file not found. Creating a new mesh.")
+            two_mesh = TwoLevelMesh(
+                lx, ly, coarse_mesh_size, refinement_levels, layers, progress=self.progress
+            )
             two_mesh.save()
+        self.progress.advance(task)
 
         # initialize the Problem with the TwoLevelMesh
         ptype = ProblemType.DIFFUSION
         self.boundary_conditions = boundary_conditions
-        super().__init__(two_mesh, [boundary_conditions], ptype)
+        super().__init__(two_mesh, [boundary_conditions], ptype, progress=self.progress)
+        self.progress.advance(task)
 
         # construct finite element space
         self.construct_fespace()
+        self.progress.advance(task)
 
         # get coefficient and source functions
         self.coef_func_name = coef_func.value
         self.coef_func = getattr(self, self.coef_func_name)()
         self.source_func_name = source_func.value
         self.source_func = getattr(self, self.source_func_name)()
+        self.progress.advance(task)
+
+        if progress is None:
+            self.progress.stop()
+        else:
+            self.progress.remove_task(task)
+        LOGGER.info("DiffusionProblem initialized successfully.")
 
     def assemble(self, gfuncs=None):
         print("Assembling system")
@@ -103,6 +126,7 @@ class DiffusionProblem(Problem):
     #########################
     def constant_coefficient(self):
         """Constant coefficient function."""
+        LOGGER.info(f"Using constant coefficient function.")
         return 1.0
 
     def hetmaniuk_lehoucq_coefficient(self):
@@ -110,6 +134,7 @@ class DiffusionProblem(Problem):
         c = (
             1.2 + ngs.cos(32 * ngs.pi * ngs.x * (1 - ngs.x) * ngs.y * (1 - ngs.y))
         ) ** -1
+        LOGGER.info(f"Using Hetmaniuk & Lehoucq coefficient function (Eq. 5.6, 2010)")
         return c.Compile()
 
     def sinusoidal_coefficient(self):
@@ -119,6 +144,7 @@ class DiffusionProblem(Problem):
         )
         cy = ngs.cos(25 * ngs.pi * ngs.y / self.two_mesh.ly)
         c = ((2 + 1.8 * sx) / (2 + 1.8 * cy)) + ((2 + sy) / (2 + 1.8 * sx))
+        LOGGER.info(f"Using sinusoidal coefficient function (Eq. 5.8, 2010)")
         return c.Compile()
 
     def heinlein_coefficient(self):
@@ -126,6 +152,7 @@ class DiffusionProblem(Problem):
         sx, sy = ngs.sin(25 * ngs.pi * ngs.x), ngs.sin(25 * ngs.pi * ngs.y)
         cy = ngs.cos(25 * ngs.pi * ngs.y)
         c = ((2 + 1.99 * sx) / (2 + 1.99 * cy)) + ((2 + sy) / (2 + 1.99 * sx))
+        LOGGER.info(f"Using Heinlein coefficient function (Eq. 4.36, 2016)")
         return c.Compile()
 
     def vertex_centered_inclusions_coefficient(self):
@@ -143,6 +170,7 @@ class DiffusionProblem(Problem):
 
         grid_func.vec.FV().NumPy()[:] = coef_array
         coef_func = ngs.CoefficientFunction(grid_func)
+        LOGGER.info(f"Using vertex centered inclusions coefficient function.")
         return coef_func.Compile()
 
     def two_layer_vertex_centered_inclusions_coefficient(self):
@@ -174,6 +202,7 @@ class DiffusionProblem(Problem):
 
         grid_func.vec.FV().NumPy()[:] = coef_array
         coef_func = ngs.CoefficientFunction(grid_func)
+        LOGGER.info(f"Using two layer vertex centered inclusions coefficient function.")
         return coef_func.Compile()
 
     def edge_centered_inclusions_coefficient(self):
@@ -203,6 +232,7 @@ class DiffusionProblem(Problem):
 
         grid_func.vec.FV().NumPy()[:] = coef_array
         coef_func = ngs.CoefficientFunction(grid_func)
+        LOGGER.info(f"Using edge centered inclusions coefficient function.")
         return coef_func.Compile()
 
     def single_slab_edge_inclusions_coefficient(self):
@@ -219,6 +249,7 @@ class DiffusionProblem(Problem):
 
         grid_func.vec.FV().NumPy()[:] = coef_array
         coef_func = ngs.CoefficientFunction(grid_func)
+        LOGGER.info(f"Using single slab edge inclusions coefficient function.")
         return coef_func.Compile()
 
     def double_slab_edge_inclusions_coefficient(self):
@@ -234,6 +265,7 @@ class DiffusionProblem(Problem):
 
         grid_func.vec.FV().NumPy()[:] = coef_array
         coef_func = ngs.CoefficientFunction(grid_func)
+        LOGGER.info(f"Using double slab edge inclusions coefficient function.")
         return coef_func.Compile()
 
     def save_functions(self):
@@ -249,7 +281,7 @@ class DiffusionProblemExample:
     # mesh parameters
     lx = 1.0
     ly = 1.0
-    coarse_mesh_size = 1 / 4
+    coarse_mesh_size = 1 / 64
     refinement_levels = 4
     layers = 2
 
@@ -286,7 +318,6 @@ class DiffusionProblemExample:
             source_func=cls.source_func,
             coef_func=cls.coef_func,
         )
-        print(cls.diffusion_problem.boundary_conditions)
 
     @classmethod
     def example_solve(cls):
@@ -402,9 +433,9 @@ class DiffusionProblemExample:
 
 def full_example():
     DiffusionProblemExample.example_construction()
-    DiffusionProblemExample.example_solve()
-    DiffusionProblemExample.save_functions()
-    DiffusionProblemExample.visualize_convergence()
+    # DiffusionProblemExample.example_solve()
+    # DiffusionProblemExample.save_functions()
+    # DiffusionProblemExample.visualize_convergence()
 
 
 def profile_solve():

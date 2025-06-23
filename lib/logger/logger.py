@@ -65,19 +65,31 @@ class CustomLogger(logging.Logger):
 
 # Custom formatter to add colors to log levels
 class ColorLevelFormatter(logging.Formatter):
-    LEVEL_NAME_WIDTH = 6
+    LEVEL_NAME_WIDTH = 8
     ERROR_COLOR = "red"
     WARNING_COLOR = "yellow"
     INFO_COLOR = "green"
-    # SUBSTEP_COLOR = "cyan"
     DEBUG_COLOR = "blue"
+    LEN_TAB = 4
+    TAB_FORMAT = f"|{'-'* (LEN_TAB - 2)}>"
 
     def format(self, record) -> str:
         record.levelcolor = self.get_color(record)
         emoji = self.get_emoji(record)
-        record.levelname = f"{emoji}{record.levelname:<{self.LEVEL_NAME_WIDTH}}"
+        record.levelname = f"{(emoji + record.levelname):<{self.LEVEL_NAME_WIDTH-1}}"
         prefix = self.get_prefix(record)
-        record.message = f"{prefix}{record.getMessage()}"
+        message = record.getMessage()
+        lines = message.splitlines()
+        formatted_message = ""
+        if len(lines) > 0:
+            formatted_message = f"{prefix}{lines[0]}"
+            if len(lines) > 1:
+                beginning = f"\n{'':<{self.LEVEL_NAME_WIDTH+1}}{'':<{len(prefix)}}"
+                for line in lines[1:]:
+                    line = line.replace("\t", self.TAB_FORMAT)
+                    line = f"{beginning}{line}"
+                    formatted_message += line
+        record.message = formatted_message
         return self.formatMessage(record)
 
     def get_color(self, record):
@@ -108,9 +120,10 @@ class ColorLevelFormatter(logging.Formatter):
     def get_prefix(self, record):
         """Get the prefix for the log record."""
         if record.levelno == logging.DEBUG:
-            return "➥\t"
+            return f"➥{'':<{self.LEN_TAB}}"
         else:
             return ""
+
 
 # instantiate the custom logger
 logging.setLoggerClass(CustomLogger)
