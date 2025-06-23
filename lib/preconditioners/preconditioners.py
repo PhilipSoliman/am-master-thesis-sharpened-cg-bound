@@ -76,10 +76,15 @@ class OneLevelSchwarzPreconditioner(Operator):
     def _get_local_operators(self, A: sp.csr_matrix) -> list[sp.csc_matrix]:
         """Get local solvers for each subdomain."""
         local_operators = []
+        task = self.progress.add_task(
+            "Obtaining local operators", total=len(self.local_free_dofs)
+        )
         for dofs in self.local_free_dofs:
             operator = A[dofs, :][:, dofs].tocsc()
             local_operators.append(operator)
+            self.progress.advance(task)
         LOGGER.debug(f"Obtained local operators for {len(local_operators)} subdomains")
+        self.progress.remove_task(task)
         return local_operators
 
     def _get_local_solvers(

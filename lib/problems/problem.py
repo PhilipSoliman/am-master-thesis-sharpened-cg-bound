@@ -258,7 +258,7 @@ class Problem:
         save_cg_info: bool = False,
         save_coarse_bases: bool = False,
     ):
-        system_str = f"Solving system for {str(self.ptype)} and 1/H = {1/self.two_mesh.coarse_mesh_size:.0f}"
+        system_str = f"Solving system for {str(self.ptype.name)} and 1/H = {1/self.two_mesh.coarse_mesh_size:.0f}"
         self.progress = PROGRESS.get_active_progress_bar(self.progress)
         task = self.progress.add_task(
             system_str, total=4 + save_cg_info + save_coarse_bases
@@ -380,6 +380,7 @@ class Problem:
             name (str): The name of the problem (used for the filename).
         """
         # Get current date and time as a string
+        LOGGER.info("Saving grid functions")
         now_str = datetime.now().strftime("%Y%m%d_%Hh%Mm%Ss")
         fn = f"{category}_{now_str}"
         tlm_dir = self.two_mesh.save_dir
@@ -390,7 +391,7 @@ class Problem:
             filename=str(tlm_dir / fn),
         )
         vtk.Do()
-        LOGGER.info(f"Saved grid functions to", tlm_dir / fn)
+        LOGGER.info("Saved grid functions to %s", tlm_dir / fn)
 
 
 if __name__ == "__main__":

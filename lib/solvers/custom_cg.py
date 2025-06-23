@@ -39,7 +39,7 @@ class CustomCG:
         maxiter: Optional[int] = None,
         progress: Optional[PROGRESS] = None,
     ):
-        self.progress = PROGRESS.get_active_progress_bar(progress)
+        self.progress = progress
 
         # system
         self.A = A
@@ -209,16 +209,16 @@ class CustomCG:
         iteration = -1  # Ensure iteration is always defined
         success = False
         LOGGER.info("Starting CG iterations")
+        self.progress = PROGRESS.get_active_progress_bar(self.progress)
         task = self.progress.add_task("CG iterations", total=None)
         desc = self.progress.get_description(task)
         desc += ": ({0:.0f}/{1:.0f})"
-        desc += " | residual: {2:.2e} | alpha: {3:.2e}"
-        desc += " | beta: {4:.2e}"
+        desc += " | r: {2:.2e} | α: {3:.2e}"
+        desc += " | β: {4:.2e}"
         for iteration in range(self.maxiter):
             if r_norm < self.tol:
                 success = True
                 LOGGER.info(f"Converged after {iteration} iterations")
-                self.progress.soft_stop()
                 break
             rho_cur = dotprod(r, z)
             if iteration > 0:
@@ -264,6 +264,7 @@ class CustomCG:
         self.beta = np.array(betas)
         self.niters = iteration
 
+        self.progress.soft_stop()
         return x, success
 
     def sparse_solve_gpu(

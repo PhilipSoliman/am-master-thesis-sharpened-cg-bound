@@ -34,7 +34,7 @@ class CoarseSpace(object):
         LOGGER.debug("Initialized coarse space (base)")
 
     def assemble_coarse_operator(self, A: sp.csr_matrix) -> sp.csc_matrix:
-        LOGGER.debug("Assembling coarse operator:")
+        LOGGER.info("Assembling coarse operator:")
         if not hasattr(self, "restriction_operator"):
             self.restriction_operator = self.assemble_restriction_operator()
         LOGGER.debug("Applying restriction operator to A")
@@ -176,7 +176,10 @@ class GDSWCoarseSpace(CoarseSpace):
         # discrete harmonic extension
         A_II_csc = A_II.tocsc()
         sparse_solver = DirectSparseSolver(
-            A_II_csc, matrix_type=MatrixType.SPD, multithreaded=False
+            A_II_csc,
+            matrix_type=MatrixType.SPD,
+            multithreaded=False,
+            progress=self.progress,
         )
         rhs = (A_IGamma @ interface_operator).tocsc()
         interior_op = -sparse_solver(rhs)
@@ -490,7 +493,7 @@ class AMSCoarseSpace(GDSWCoarseSpace):
             A_EE += sp.diags(A_EF.sum(axis=1).A1, offsets=0, format="csc")
         A_EV = self.A[self.edge_dofs, :][:, self.coarse_dofs]
         sparse_solver = DirectSparseSolver(
-            A_EE.tocsc(), matrix_type=MatrixType.Symmetric
+            A_EE.tocsc(), matrix_type=MatrixType.Symmetric, progress=self.progress
         )
         edge_restriction = -sparse_solver(A_EV.tocsc())
         LOGGER.debug("Assembled edge restriction operator")
@@ -508,7 +511,7 @@ class AMSCoarseSpace(GDSWCoarseSpace):
             A_FV = self.A[self.face_dofs, :][:, self.coarse_dofs]
             A_FE = self.A[self.face_dofs, :][:, self.edge_dofs]
             sparse_solver = DirectSparseSolver(
-                A_FF.tocsc(), matrix_type=MatrixType.Symmetric
+                A_FF.tocsc(), matrix_type=MatrixType.Symmetric, progress=self.progress
             )
             face_restriction = -sparse_solver(
                 (A_FV @ vertex_restriction + A_FE @ edge_restriction).tocsc()
@@ -525,7 +528,9 @@ class AMSCoarseSpace(GDSWCoarseSpace):
             + A_IE @ edge_restriction
             + A_IF @ face_restriction
         ).tocsc()
-        sparse_solver = DirectSparseSolver(A_II.tocsc(), matrix_type=MatrixType.SPD)
+        sparse_solver = DirectSparseSolver(
+            A_II.tocsc(), matrix_type=MatrixType.SPD, progress=self.progress
+        )
         interior_restriction = -sparse_solver(interface_restriction)
         LOGGER.debug("Assembled interior restriction operator")
 

@@ -208,7 +208,7 @@ class PROGRESS(Progress):
             setattr(obj, "already_active", progress_already_active)
             obj.start()
             return obj
-        
+
     def soft_start(self) -> None:
         """Only start progress if it was not already active when get_active_progress_bar was called."""
         if not self.progress_started():
@@ -216,10 +216,10 @@ class PROGRESS(Progress):
 
     def soft_stop(self) -> None:
         """Only stop progress if it was not already active when get_active_progress_bar was called."""
+        self.remove_task(TaskID(self._task_index + 1))
         if not self.already_active:
             self.stop()
-        else:  # if it was already active, we just remove the most recent added task
-            self.remove_task(TaskID(self._task_index + 1))
+            # print('\r', end='')  # Move cursor to the beginning of the line
 
     def add_task(
         self,

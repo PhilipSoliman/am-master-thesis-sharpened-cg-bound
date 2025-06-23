@@ -195,18 +195,21 @@ class FESpace:
         """
         coarse_node_dofs = []
         all_dofs = np.arange(self.fespace.ndof)
-        free_dofs = all_dofs[self.fespace.FreeDofs()]
+        free_dofs = all_dofs[self.free_dofs_mask]
+        total = len(self.two_mesh.connected_components["coarse_nodes"])
         task = self.progress.add_task(
             "Obtaining free coarse node DOFs",
-            total=len(self.two_mesh.connected_components["coarse_nodes"]),
+            total=total,
         )
+        desc = self.progress.get_description(task)
+        desc += " ({0})"
         for coarse_node in self.two_mesh.connected_components["coarse_nodes"]:
             dofs = list(self.fespace.GetDofNrs(coarse_node))
             coarse_node_dofs.append(dofs[0])
             self.progress.update(
                 task,
                 advance=1,
-                description=f"Obtaining free coarse node DOFs ({coarse_node})",
+                description=desc.format(coarse_node),
             )
 
         # filter coarse node dofs to only include free dofs
@@ -233,6 +236,8 @@ class FESpace:
             "Obtaining free edge component DOFs",
             total=len(self.two_mesh.connected_components["edges"]),
         )
+        desc = self.progress.get_description(task)
+        desc += " ({0})"
         for coarse_edge, edge_component in self.two_mesh.connected_components[
             "edges"
         ].items():
@@ -247,7 +252,7 @@ class FESpace:
             self.progress.update(
                 task,
                 advance=1,
-                description=f"Obtaining free edge component DOFs ({coarse_edge})",
+                description=desc.format(coarse_edge),
             )
 
         # collect all dofs
@@ -291,7 +296,7 @@ class FESpace:
             if len(dofs) > 0:
                 face_component_dofs.append(dofs)
 
-            self.progress.update(task)
+            self.progress.advance(task)
 
         # remove task and log completion
         self.progress.remove_task(task)
@@ -322,6 +327,10 @@ class FESpace:
         free_component_tree_dofs = {}
         edge_component_multiplicity = {}
         component_tree = self.two_mesh.connected_component_tree
+        task = self.progress.add_task(
+            "Obtaining free component tree DOFs",
+            total=len(component_tree),
+        )
         for coarse_node, components in component_tree.items():
             coarse_node_dofs = list(self.fespace.GetDofNrs(coarse_node))
             if coarse_node_dofs in self.free_coarse_node_dofs:
@@ -343,7 +352,11 @@ class FESpace:
                     edge_dofs = list(self.fespace.GetDofNrs(c))
                     dofs.extend(edge_dofs)
                 free_component_tree_dofs[coarse_node]["edges"][coarse_edge] = dofs
+
+            self.progress.advance(task)
+
         LOGGER.debug("Obtained free component tree DOFs and edge multiplicities")
+        self.progress.remove_task(task)
         return free_component_tree_dofs, edge_component_multiplicity
 
     def map_global_to_restricted_dofs(self, global_dofs: np.ndarray) -> np.ndarray:

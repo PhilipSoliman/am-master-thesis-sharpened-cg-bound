@@ -11,6 +11,8 @@ import torch
 from scipy.sparse.linalg import eigsh, factorized, splu, spsolve
 from tqdm import tqdm
 
+from lib.logger import LOGGER, PROGRESS
+
 
 class MatrixType(Enum):
     SPD = "SPD"
@@ -29,6 +31,7 @@ class DirectSparseSolver:
         A: sp.csc_matrix,
         matrix_type: Optional[MatrixType] = None,
         multithreaded: bool = False,
+        progress: Optional[PROGRESS] = None,
     ):
         """
         Initialize a sparse solver. For SPD matrices a sparse Cholesky decomposition is made and efficiently
@@ -46,11 +49,13 @@ class DirectSparseSolver:
             matrix_type (Optional[MatrixType]): The type of the matrix (SPD, Symmetric, General).
             multithreaded (bool): Whether to use multithreaded (only relevant for Symmetric and General matrices).
         """
-        print("Initializing direct sparse solver")
+        LOGGER.debug("Initializing direct sparse solver")
         self.A = A
         self.matrix_type = matrix_type
         self.multithreaded = multithreaded
         self._solver = self.get_solver()
+        self.progress = progress
+        LOGGER.debug("Initialized direct sparse solver")
 
     def __call__(
         self,
@@ -82,17 +87,17 @@ class DirectSparseSolver:
             )
 
     def get_solver(self) -> chol.CholeskySolverD | Callable[[np.ndarray], np.ndarray]:  # type: ignore
-        print(f"\tgetting direct solver for {self.matrix_type} matrix")
+        LOGGER.debug(f"getting direct solver for {self.matrix_type} matrix")
 
         # select solver based on matrix type
         if self.matrix_type == MatrixType.SPD:
-            print(f"\tusing cholesky solver")
+            LOGGER.debug(f"using cholesky solver")
 
             if self.DEVICE == "cuda":
-                print(f"\tusing GPU device: {self.DEVICE}")
+                LOGGER.debug(f"using GPU device: {self.DEVICE}")
                 self.batch_size = self.GPU_BATCH_SIZE
             else:
-                print(f"\tusing CPU device: {self.DEVICE}")
+                LOGGER.debug(f"using CPU device: {self.DEVICE}")
                 self.batch_size = self.CPU_BATCH_SIZE
             n = self.A.shape[0]  # type: ignore
             A_coo = self.A.tocoo()
@@ -104,16 +109,17 @@ class DirectSparseSolver:
             self.matrix_type == MatrixType.Symmetric
             or self.matrix_type == MatrixType.General
         ):
-            print(f"\tusing scipy factorized solver")
+            LOGGER.debug(f"using scipy factorized solver")
             return factorized(self.A)
         else:
-            raise ValueError(
-                f"Direct solver is not available for {self.matrix_type} matrices."
-            )
+            msg = f"Unsupported matrix type: {self.matrix_type}"
+            LOGGER.error(msg)
+            raise ValueError(msg)
+
     @property
     def solver(self) -> Callable[[np.ndarray], np.ndarray] | chol.CholeskySolverD:  # type: ignore
         return self._solver
-    
+
     @property
     def matrix_type(self) -> MatrixType:
         return self._matrix_type
@@ -131,9 +137,9 @@ class DirectSparseSolver:
         elif isinstance(matrix_type, MatrixType):
             self._matrix_type = matrix_type
         else:
-            raise ValueError(
-                f"Invalid matrix type: {matrix_type}. Must be None or an instance of MatrixType."
-            )
+            msg = f"Invalid matrix type: {matrix_type}. Must be None or an instance of MatrixType."
+            LOGGER.error(msg)
+            raise ValueError(msg)
 
     def is_symmetric(self, tol=1e-10) -> bool:
         # For sparse matrices, compare nonzero structure and values
@@ -159,15 +165,13 @@ class DirectSparseSolver:
         Returns:
             sp.csc_matrix: The solved interior operator as a sparse matrix.
         """
+        progress = PROGRESS.get_active_progress_bar(self.progress)
+        LOGGER.debug("Solving using Cholesky decomposition")
         n_rows, n_rhs = rhs.shape  # type: ignore
         num_batches = (n_rhs + self.batch_size - 1) // self.batch_size
         out_cols = []
-        for i in tqdm(
-            range(num_batches),
-            desc="Cholesky solving batches",
-            unit="batch",
-            total=num_batches,
-        ):
+        task = progress.add_task("Cholesky solving batches", total=num_batches)
+        for i in range(num_batches):
             start = i * self.batch_size
             end = min((i + 1) * self.batch_size, n_rhs)
 
@@ -193,8 +197,14 @@ class DirectSparseSolver:
             # Append to output columns
             out_cols.append(sp.csc_matrix(x.numpy()))  # type: ignore
 
+            progress.advance(task)
+
         # Stack all columns into a sparse matrix
-        return sp.hstack(out_cols).tocsc()  # type: ignore
+        out = sp.hstack(out_cols).tocsc()
+        LOGGER.debug("Cholesky solving completed")
+        progress.soft_stop()
+
+        return out  # type: ignore
 
     def lu(self, rhs: sp.csc_matrix) -> sp.csc_matrix:
         """
@@ -207,18 +217,19 @@ class DirectSparseSolver:
         for each column of rhs. This is is not as fast as saving the columns (possibly in batches) and stacking them
         at the end, but it is more memory efficient for large rhs matrices.
         """
+        progress = PROGRESS.get_active_progress_bar(self.progress)
+        LOGGER.debug("Solving using LU decomposition")
         n_rhs = rhs.shape[1]  # type: ignore
         out = sp.csc_matrix(rhs.shape)
-        for i in tqdm(
-            range(n_rhs),
-            desc="Solving interior operators",
-            unit="operator",
-            total=n_rhs,
-        ):
+        task = progress.add_task("LU solving columns", total=n_rhs)
+        for i in range(n_rhs):
             x = self.solver(rhs[:, i].toarray().ravel())
             x_coo = sp.coo_matrix(x.reshape(-1, 1))
             out[x_coo.row, x_coo.col] = x_coo.data
+            progress.advance(task)
 
+        LOGGER.debug("LU solving completed")
+        progress.soft_stop()
         return out.tocsc()  # type: ignore
 
     def lu_threaded(self, rhs: sp.csc_matrix) -> sp.csc_matrix:
@@ -231,16 +242,20 @@ class DirectSparseSolver:
         Returns:
             sp.csc_matrix: The solved interior operator as a sparse matrix.
         """
-        n_rows, n_rhs = rhs.shape  # type: ignore
+        progress = PROGRESS.get_active_progress_bar(self.progress)
+        LOGGER.debug("Solving using LU decomposition with multithreading")
+        n_rhs = rhs.shape[1]  # type: ignore
         num_threads = self.NUM_CPU_THREADS
         chunk_size = (n_rhs + num_threads - 1) // num_threads
 
-        def solve_chunk(col_range, pbar_update):
+        task = progress.add_task("LU solving columns", total=n_rhs)
+
+        def solve_chunk(col_range, advance_task=lambda: progress.advance(task)):
             results = []
             for i in col_range:
                 x = self.solver(rhs[:, i].toarray().ravel())
                 results.append((i, sp.csc_matrix(x.reshape(-1, 1))))
-                pbar_update(1)
+                advance_task()
             return results
 
         # Prepare column ranges for each thread
@@ -249,22 +264,20 @@ class DirectSparseSolver:
         ]
 
         results = []
-        lock = threading.Lock()
-        with tqdm(total=n_rhs, desc="LU solving columns", unit="col") as pbar:
-            tqdm.set_lock(lock)
-            with concurrent.futures.ThreadPoolExecutor(
-                max_workers=num_threads
-            ) as executor:
-                futures = [
-                    executor.submit(solve_chunk, col_range, pbar.update)
-                    for col_range in col_ranges
-                ]
-                for future in concurrent.futures.as_completed(futures):
-                    results.extend(future.result())
+        with concurrent.futures.ThreadPoolExecutor(max_workers=num_threads) as executor:
+            futures = [
+                executor.submit(solve_chunk, col_range) for col_range in col_ranges
+            ]
+            for future in concurrent.futures.as_completed(futures):
+                results.extend(future.result())
 
         # Sort results by column index
         results.sort(key=lambda tup: tup[0])
         sorted_cols = [col for idx, col in results]
 
         # Stack all columns into a sparse matrix in the original order
-        return sp.hstack(sorted_cols).tocsc()  # type: ignore
+        out = sp.hstack(sorted_cols).tocsc()
+        LOGGER.debug("LU solving with multithreading completed")
+        progress.soft_stop()
+
+        return out  # type: ignore

@@ -285,7 +285,7 @@ class DiffusionProblemExample:
     # mesh parameters
     lx = 1.0
     ly = 1.0
-    coarse_mesh_size = 1 / 16
+    coarse_mesh_size = 1 / 32
     refinement_levels = 4
     layers = 2
 
@@ -438,8 +438,8 @@ class DiffusionProblemExample:
 def full_example():
     DiffusionProblemExample.example_construction()
     DiffusionProblemExample.example_solve()
-    # DiffusionProblemExample.save_functions()
-    # DiffusionProblemExample.visualize_convergence()
+    DiffusionProblemExample.save_functions()
+    DiffusionProblemExample.visualize_convergence()
 
 
 def profile_solve():
