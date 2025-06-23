@@ -319,14 +319,14 @@ class Problem:
 
         success = False
         if not use_gpu:
-            LOGGER.info(
+            LOGGER.debug(
                 f"Solving system on CPU:" f"\n\tpreconditioner: {self.precond_name}"
             )
             u_arr[:], success = custom_cg.sparse_solve(
                 M_op, save_residuals=save_cg_info
             )
         else:
-            LOGGER.info(
+            LOGGER.debug(
                 f"Solving system on GPU:" f"\n\tpreconditioner: {self.precond_name}"
             )
             u_arr[:], success = custom_cg.sparse_solve_gpu(precond, save_residuals=save_cg_info)  # type: ignore
@@ -336,7 +336,7 @@ class Problem:
             )
         else:
             self.u.vec.FV().NumPy()[self.fes.free_dofs_mask] = u_arr
-            LOGGER.info("Saved solution to grid function.")
+            LOGGER.debug("Saved solution to grid function.")
         self.progress.advance(task)
 
         # save cg coefficients if requested
@@ -349,7 +349,7 @@ class Problem:
                     custom_cg.get_relative_preconditioned_residuals()
                 )
             self.approximate_eigs = custom_cg.get_approximate_eigenvalues()
-            LOGGER.info("Obtained conjugate gradient coefficients and residuals.")
+            LOGGER.debug("Obtained conjugate gradient coefficients and residuals.")
             self.progress.advance(task)
 
         # save coarse operator grid functions if available
@@ -361,7 +361,7 @@ class Problem:
                 gfuncs.append(basis_gfunc)
             if gfuncs != []:
                 self.save_ngs_functions(gfuncs, names, "coarse_bases")
-                LOGGER.info("Saved coarse space bases to file.")
+                LOGGER.debug("Saved coarse space bases to file.")
             else:
                 LOGGER.warning("No coarse space bases to save.")
             self.progress.advance(task)

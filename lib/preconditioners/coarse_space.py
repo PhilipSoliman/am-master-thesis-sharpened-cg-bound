@@ -1,4 +1,5 @@
 import warnings
+from typing import Optional
 
 import ngsolve as ngs
 import numpy as np
@@ -8,6 +9,7 @@ from scipy.sparse.linalg import factorized, spsolve
 from tqdm import tqdm
 
 from lib.fespace import FESpace
+from lib.logger import LOGGER, PROGRESS
 from lib.meshes import TwoLevelMesh
 from lib.problem_type import ProblemType
 from lib.solvers.direct_sparse import DirectSparseSolver, MatrixType
@@ -22,21 +24,25 @@ class CoarseSpace(object):
         fespace: FESpace,
         two_mesh: TwoLevelMesh,
         ptype: ProblemType = ProblemType.DIFFUSION,
+        progress: Optional[PROGRESS] = None,  # just for type hinting
     ):
-        print("Initializing coarse space")
         self.fespace = fespace
         self.A = A
         self.two_mesh = two_mesh
         self.ptype = ptype
         self.name = "Coarse space (base)"  # to be overridden by subclasses
+        LOGGER.debug("Initialized coarse space (base)")
 
     def assemble_coarse_operator(self, A: sp.csr_matrix) -> sp.csc_matrix:
-        print("Assembling coarse operator:")
+        LOGGER.debug("Assembling coarse operator:")
         if not hasattr(self, "restriction_operator"):
-            print("\tassembling restriction operator")
             self.restriction_operator = self.assemble_restriction_operator()
-        print("\treturning coarse operator")
-        return self.restriction_operator.transpose() @ (A @ self.restriction_operator)
+        LOGGER.debug("Applying restriction operator to A")
+        coarse_op = self.restriction_operator.transpose() @ (
+            A @ self.restriction_operator
+        )
+        LOGGER.info("Obtained coarse operator")
+        return coarse_op
 
     def assemble_restriction_operator(self) -> sp.csc_matrix:
         raise NotImplementedError("This method should be implemented by subclasses.")
@@ -55,26 +61,28 @@ class CoarseSpace(object):
                     )
                     gfunc = self.fespace.get_gridfunc(vals)
                     bases[f"coarse_basis_{i}"] = gfunc
+                LOGGER.debug(
+                    f"Restriction operator bases assembled: {len(bases)} bases"
+                )
                 return bases
             except MemoryError:
-                print(
-                    "MemoryError: The restriction operator bases are too large to fit in memory."
-                    "Returning empty dictionary."
-                )
+                msg = "MemoryError: The restriction operator bases are too large to fit in memory."
+                LOGGER.warning(msg)
                 return {}
         else:
-            raise ValueError("Restriction operator is not assembled yet.")
+            msg = "Restriction operator is not assembled yet."
+            LOGGER.error(msg)
+            raise ValueError(msg)
 
     def __str__(self):
         return self.name
 
-    def _print_init_string(self):
+    def _init_str(self):
         """
         Initialize string representation of the coarse space.
         """
-        print(
-            f"{self.name} initialized:"
-            f"\n\tfree dofs: {self.fespace.num_free_dofs}"
+        return (
+            f"Coarse space info: \n\tfree dofs: {self.fespace.num_free_dofs}"
             f"{self._meta_info()}"
         )
 
@@ -94,37 +102,57 @@ class Q1CoarseSpace(CoarseSpace):
         self.name = "Q1 coarse space"
         self.restriction_operator = self.assemble_restriction_operator()
         self.coarse_dimension = self.restriction_operator.shape[1]  # type: ignore
-        self._print_init_string()
+        LOGGER.info(f"{self.name} initialized")
+        LOGGER.debug(str(self._init_str()))
 
     def assemble_restriction_operator(self) -> sp.csc_matrix:
         prolongation_operator = self.fespace.get_prolongation_operator()
-        return prolongation_operator[self.fespace.free_dofs_mask, :]
+        restrict_operator = prolongation_operator[self.fespace.free_dofs_mask, :]
+        LOGGER.debug("Restriction operator assembled")
+        return restrict_operator
 
     def _meta_info(self) -> str:
         return f"\n\tcoarse dimension: {self.coarse_dimension}"
 
 
 class GDSWCoarseSpace(CoarseSpace):
-    def __init__(self, A: sp.csr_matrix, fespace: FESpace, two_mesh: TwoLevelMesh):
+    def __init__(
+        self,
+        A: sp.csr_matrix,
+        fespace: FESpace,
+        two_mesh: TwoLevelMesh,
+        progress: Optional[PROGRESS] = None,
+    ):
+        name = "GDSW coarse space"
+        self.progress = PROGRESS.get_active_progress_bar(progress)
+        task = self.progress.add_task(f"Initializing {name}", total=3)
+        LOGGER.info(f"Initializing {name}")
+
         super().__init__(A, fespace, two_mesh)
-        self.name = "GDSW coarse space"
+        self.name = name
+        self.progress.advance(task)
 
         # null space basis and dimension
         self.null_space_dim = self._get_null_space_basis()
+        self.progress.advance(task)
 
         # all connected components
         self.num_coarse_node_components = len(fespace.free_coarse_node_dofs)
         self.num_edge_components = len(fespace.free_edge_component_dofs)
         self.num_face_components = len(fespace.free_face_component_dofs)
         self.interface_components = self._get_connected_components()
+        self.progress.advance(task)
 
         # interface component dimension
         self.interface_dimension = len(self.interface_components) * self.null_space_dim
 
-        # print initialization information
-        self._print_init_string()
+        LOGGER.info(f"{self.name} initialized")
+        LOGGER.debug(str(self._init_str()))
+        self.progress.soft_stop()
 
     def assemble_restriction_operator(self) -> sp.csc_matrix:
+        LOGGER.debug(f"Assembling restriction operator for {self.name}")
+
         # get the interface operator
         interface_operator = self._assemble_interface_operator()
 
@@ -133,15 +161,17 @@ class GDSWCoarseSpace(CoarseSpace):
             (self.fespace.num_free_dofs, self.interface_dimension), dtype=float
         )
 
-        # interior operator
+        # interior <- interior matrix
         A_II = self.A[self.fespace.interior_dofs_mask, :][
             :, ~self.fespace.interface_dofs_mask
         ]
+        LOGGER.debug("Assembled interior <- interior matrix A_II")
 
-        # interior <- interface operator
+        # interior <- interface matrix
         A_IGamma = self.A[self.fespace.interior_dofs_mask, :][
             :, self.fespace.interface_dofs_mask
         ]
+        LOGGER.debug("Assembled interior <- interface matrix A_IGamma")
 
         # discrete harmonic extension
         A_II_csc = A_II.tocsc()
@@ -150,6 +180,7 @@ class GDSWCoarseSpace(CoarseSpace):
         )
         rhs = (A_IGamma @ interface_operator).tocsc()
         interior_op = -sparse_solver(rhs)
+        LOGGER.debug("Got interior operator via discrete harmonic extension")
 
         # Efficiently stack the operators
         blocks = [
@@ -157,15 +188,18 @@ class GDSWCoarseSpace(CoarseSpace):
             sp.csc_matrix(interface_operator),  # shape: (num_interface, interface_dim)
         ]
         stacked = sp.vstack(blocks, format="csc")
+        LOGGER.debug("Stacked interior and interface operators")
 
         # Now, permute rows to match the original free DOF ordering
         # Create a permutation array: indices of [interior_dofs, interface_dofs] in the free_dofs_mask
         interior_idx = np.where(~self.fespace.interface_dofs_mask)[0]
         interface_idx = np.where(self.fespace.interface_dofs_mask)[0]
         perm = np.argsort(np.concatenate([interior_idx, interface_idx]))
+        LOGGER.debug("Created permutation array for restriction operator")
 
         # Apply the permutation to the stacked operator
         restriction_operator = stacked[perm, :]  # type: ignore
+        LOGGER.debug("Obtained restriction operator by applying permutation")
 
         return restriction_operator
 
@@ -175,14 +209,14 @@ class GDSWCoarseSpace(CoarseSpace):
         Note: for problems with multiple dimensions, coordinate dofs corresponding to one node are spaced by
         ndofs (so if ndof = 8, then dofs for node 0 are 0, 8, 16, ...).
         """
+        progress = PROGRESS.get_active_progress_bar(self.progress)
+        task = progress.add_task(
+            "Assembling interface operator",
+            total=len(self.interface_components),
+        )
         interface_index = 0
         entries = ([], ([], []))  # data, (rows, cols)
-        for interface_component in tqdm(
-            self.interface_components,
-            desc="Assembling interface operator",
-            total=len(self.interface_components),
-            unit="component",
-        ):
+        for interface_component in self.interface_components:
             self._restrict_null_space_to_interface_component(
                 entries, interface_component, interface_index
             )
@@ -190,16 +224,22 @@ class GDSWCoarseSpace(CoarseSpace):
             # update the interface index for the next interface component with the null space dimension
             interface_index += self.null_space_dim
 
+            progress.advance(task)
+
         interface_operator = sp.coo_array(
             entries,
             shape=(self.fespace.total_dofs, self.interface_dimension),
             dtype=float,
         ).tocsc()
 
-        # restric the interface operator to the free and interface dofs
-        return interface_operator[self.fespace.free_dofs_mask, :][
+        # restrict the interface operator to the free and interface dofs
+        interface_operator = interface_operator[self.fespace.free_dofs_mask, :][
             self.fespace.interface_dofs_mask, :
         ]
+
+        LOGGER.debug("Assembled interface operator")
+        progress.soft_stop()
+        return interface_operator
 
     def _restrict_null_space_to_interface_component(
         self,
@@ -255,10 +295,12 @@ class GDSWCoarseSpace(CoarseSpace):
             null_space_dim = 1
         elif self.ptype == ProblemType.NAVIER_STOKES:
             raise NotImplementedError(
-                "Advection problem type not implemented for coarse space."
+                "N.S. problem type not implemented for coarse space."
             )
         else:
-            raise ValueError(f"Unsupported problem type: {self.ptype}")
+            msg = f"Unsupported problem type: {self.ptype}"
+            LOGGER.error(msg)
+            raise ValueError(msg)
         return null_space_dim
 
     def _get_connected_components(self):
@@ -275,6 +317,9 @@ class GDSWCoarseSpace(CoarseSpace):
         if len(self.fespace.free_face_component_dofs) > 0:
             interface_components.extend(self._get_face_components())
 
+        LOGGER.debug(
+            f"Obtained {len(interface_components)} interface components from coarse space"
+        )
         return interface_components
 
     def _get_coarse_components(self) -> list[np.ndarray]:
@@ -306,34 +351,52 @@ class GDSWCoarseSpace(CoarseSpace):
 
 
 class RGDSWCoarseSpace(GDSWCoarseSpace):
-    def __init__(self, A: sp.csr_matrix, fespace: FESpace, two_mesh: TwoLevelMesh):
+    def __init__(
+        self,
+        A: sp.csr_matrix,
+        fespace: FESpace,
+        two_mesh: TwoLevelMesh,
+        progress: Optional[PROGRESS] = None,
+    ):
+        name = "RGDSW coarse space"
+
+        self.progress = PROGRESS.get_active_progress_bar(progress)
+        task = self.progress.add_task(f"Initializing {name}", total=3)
+        LOGGER.info(f"Initializing {name}")
+
         CoarseSpace.__init__(self, A, fespace, two_mesh)
-        self.name = "RGDSW coarse space"
+        self.name = name
+        self.progress.advance(task)
 
         # null space basis and dimension
         self.null_space_dim = self._get_null_space_basis()
+        self.progress.advance(task)
 
         # interface components
         self.component_tree_dofs = self.fespace.free_component_tree_dofs
         self.edge_component_multiplicities = self.fespace.edge_component_multiplicities
+        self.progress.advance(task)
 
         # interface dimension
         self.interface_dimension = len(self.component_tree_dofs) * self.null_space_dim
         if self.interface_dimension == 0:
             raise ValueError("No RGDSW components with coarse node ancestors found")
 
-        # print initialization information
-        self._print_init_string()
+        LOGGER.info(f"{self} initialized")
+        LOGGER.debug(str(self._init_str()))
+
+        self.progress.soft_stop()
 
     def _assemble_interface_operator(self):
+        progress = PROGRESS.get_active_progress_bar(self.progress)
+        task = progress.add_task(
+            "Assembling interface operator",
+            total=len(self.component_tree_dofs),
+        )
+
         entries = ([], ([], []))  # data, (rows, cols)
         interface_index = 0
-        for component_dofs in tqdm(
-            self.component_tree_dofs.values(),
-            desc="Assembling interface operator",
-            unit="component",
-            total=len(self.component_tree_dofs),
-        ):
+        for component_dofs in self.component_tree_dofs.values():
             node_dofs = component_dofs["node"]
             edge_components = component_dofs["edges"]
             self._restrict_null_space_to_interface_component(
@@ -349,6 +412,8 @@ class RGDSWCoarseSpace(GDSWCoarseSpace):
             # update the interface index for the next interface component with the null space dimension
             interface_index += self.null_space_dim
 
+            progress.advance(task)
+
         interface_operator = sp.coo_array(
             entries,
             shape=(self.fespace.total_dofs, self.interface_dimension),
@@ -356,9 +421,13 @@ class RGDSWCoarseSpace(GDSWCoarseSpace):
         ).tocsc()
 
         # restric the interface operator to the free and interface dofs
-        return interface_operator[self.fespace.free_dofs_mask, :][
+        interface_operator = interface_operator[self.fespace.free_dofs_mask, :][
             self.fespace.interface_dofs_mask, :
         ]
+
+        LOGGER.debug("Assembled interface operator")
+        progress.soft_stop()
+        return interface_operator
 
     def _meta_info(self) -> str:
         return (
@@ -368,59 +437,85 @@ class RGDSWCoarseSpace(GDSWCoarseSpace):
 
 
 class AMSCoarseSpace(GDSWCoarseSpace):
-    def __init__(self, A: sp.csr_matrix, fespace: FESpace, two_mesh: TwoLevelMesh):
+    def __init__(
+        self,
+        A: sp.csr_matrix,
+        fespace: FESpace,
+        two_mesh: TwoLevelMesh,
+        progress: Optional[PROGRESS] = None,
+    ):
+        name = "AMS coarse space"
+        self.progress = PROGRESS.get_active_progress_bar(progress)
+        task = self.progress.add_task(f"Initializing {name}", total=3)
+        LOGGER.info(f"Initializing {name}")
+
         CoarseSpace.__init__(self, A, fespace, two_mesh)
-        self.name = "AMS coarse space"
+        self.name = name
+        self.progress.advance(task)
+
         self.coarse_dofs, self.edge_dofs, self.face_dofs = (
             self._get_interface_component_masks()
         )
+        self.progress.advance(task)
+
         self.interface_dimension = len(self.coarse_dofs)
         self.num_coarse_dofs = self.interface_dimension
         self.num_edge_dofs = len(self.edge_dofs)
         self.num_face_dofs = len(self.face_dofs)
-
         self.interior_dofs_mask = ~self.fespace.interface_dofs_mask
-        self._print_init_string()
+        self.progress.advance(task)
+
+        LOGGER.info(f"{self} initialized")
+        LOGGER.debug(str(self._init_str()))
+        self.progress.soft_stop()
 
     def assemble_restriction_operator(self) -> sp.csc_matrix:
+        LOGGER.debug(f"Assembling restriction operator for {self.name}")
         restriction_operator = sp.csc_matrix(
             (self.fespace.num_free_dofs, self.interface_dimension), dtype=float
         )
 
         # Phi_V
-        print("\tassembling vertex restriction")
         vertex_restriction = sp.eye(self.interface_dimension, dtype=float).tocsc()
+        LOGGER.debug("Assembled vertex restriction operator")
 
         # Phi_E
-        print("\tassembling edge restriction")
         A_EE = self.A[self.edge_dofs, :][:, self.edge_dofs]
         A_EI = self.A[self.edge_dofs, :][:, self.fespace.interior_dofs_mask]
-        A_EE += sp.diags(A_EI.sum(axis=1).A1, offsets=0, format="csc") # NOTE: SPD-ness is lost here
+        A_EE += sp.diags(
+            A_EI.sum(axis=1).A1, offsets=0, format="csc"
+        )  # NOTE: SPD-ness is lost here
         if np.any(self.face_dofs):
             A_EF = self.A[self.edge_dofs, :][:, self.face_dofs]
             A_EE += sp.diags(A_EF.sum(axis=1).A1, offsets=0, format="csc")
         A_EV = self.A[self.edge_dofs, :][:, self.coarse_dofs]
-        sparse_solver = DirectSparseSolver(A_EE.tocsc(), matrix_type=MatrixType.Symmetric)
+        sparse_solver = DirectSparseSolver(
+            A_EE.tocsc(), matrix_type=MatrixType.Symmetric
+        )
         edge_restriction = -sparse_solver(A_EV.tocsc())
+        LOGGER.debug("Assembled edge restriction operator")
 
         # Phi_F
-        print("\tassembling face restriction")
         face_restriction = sp.csc_matrix(
             (self.num_face_dofs, self.interface_dimension), dtype=float
         )
         if np.any(self.face_dofs):
             A_FF = self.A[self.face_dofs, :][:, self.face_dofs]
-            A_FI = self.A[self.face_dofs, :][:, self.fespace.interior_dofs_mask] # NOTE: SPD-ness is lost here
+            A_FI = self.A[self.face_dofs, :][
+                :, self.fespace.interior_dofs_mask
+            ]  # NOTE: SPD-ness is lost here
             A_FF += sp.diags(A_FI.sum(axis=1).A1, offsets=0, format="csc")
             A_FV = self.A[self.face_dofs, :][:, self.coarse_dofs]
             A_FE = self.A[self.face_dofs, :][:, self.edge_dofs]
-            sparse_solver = DirectSparseSolver(A_FF.tocsc(), matrix_type=MatrixType.Symmetric)
+            sparse_solver = DirectSparseSolver(
+                A_FF.tocsc(), matrix_type=MatrixType.Symmetric
+            )
             face_restriction = -sparse_solver(
                 (A_FV @ vertex_restriction + A_FE @ edge_restriction).tocsc()
             )
+            LOGGER.debug("Assembled face restriction operator")
 
         # Phi_I
-        print("\tassembling interior restriction")
         A_II = self.A[self.interior_dofs_mask, :][:, self.interior_dofs_mask]
         A_IV = self.A[self.interior_dofs_mask, :][:, self.coarse_dofs]
         A_IE = self.A[self.interior_dofs_mask, :][:, self.edge_dofs]
@@ -432,25 +527,33 @@ class AMSCoarseSpace(GDSWCoarseSpace):
         ).tocsc()
         sparse_solver = DirectSparseSolver(A_II.tocsc(), matrix_type=MatrixType.SPD)
         interior_restriction = -sparse_solver(interface_restriction)
+        LOGGER.debug("Assembled interior restriction operator")
 
         # Efficiently stack the operators in the order: coarse, edge, face, interior
         blocks = [
-            vertex_restriction,      # shape: (num_coarse_dofs, interface_dim)
-            edge_restriction,        # shape: (num_edge_dofs, interface_dim)
-            face_restriction,        # shape: (num_face_dofs, interface_dim)
-            interior_restriction,    # shape: (num_interior_dofs, interface_dim)
+            vertex_restriction,  # shape: (num_coarse_dofs, interface_dim)
+            edge_restriction,  # shape: (num_edge_dofs, interface_dim)
+            face_restriction,  # shape: (num_face_dofs, interface_dim)
+            interior_restriction,  # shape: (num_interior_dofs, interface_dim)
         ]
         stacked = sp.vstack(blocks, format="csc")
+        LOGGER.debug(
+            f"Stacked restriction operators for coarse, edge, {'face,' if np.any(self.face_dofs) else ''} and interior"
+        )
 
         # Build the permutation array to match the original free DOF ordering
         coarse_idx = np.array(self.coarse_dofs)
         edge_idx = np.array(self.edge_dofs)
         face_idx = np.array(self.face_dofs)
         interior_idx = np.where(self.interior_dofs_mask)[0]
-        perm = np.argsort(np.concatenate([coarse_idx, edge_idx, face_idx, interior_idx]))
+        perm = np.argsort(
+            np.concatenate([coarse_idx, edge_idx, face_idx, interior_idx])
+        )
+        LOGGER.debug("Created permutation array for restriction operator")
 
         # Apply the permutation to the stacked operator
         restriction_operator = stacked[perm, :]  # type: ignore
+        LOGGER.debug("Obtained restriction operator by applying permutation")
 
         return restriction_operator
 
@@ -471,6 +574,9 @@ class AMSCoarseSpace(GDSWCoarseSpace):
             free_dofs = self.fespace.map_global_to_restricted_dofs(face_component)
             face_components.extend(free_dofs.tolist())
 
+        LOGGER.debug(
+            f"Obtained {len(coarse_components)} coarse, {len(edge_components)} edge, and {len(face_components)} face components"
+        )
         return (
             np.array(coarse_components),
             np.array(edge_components),

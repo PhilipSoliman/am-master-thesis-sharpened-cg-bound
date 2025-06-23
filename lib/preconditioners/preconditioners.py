@@ -70,7 +70,7 @@ class OneLevelSchwarzPreconditioner(Operator):
             local_free_dofs.append(
                 self.fespace.map_global_to_restricted_dofs(np.array(subdomain_dofs))
             )
-        LOGGER.info(f"Obtained local free dofs for {len(local_free_dofs)} subdomains")
+        LOGGER.debug(f"Obtained local free dofs for {len(local_free_dofs)} subdomains")
         return local_free_dofs
 
     def _get_local_operators(self, A: sp.csr_matrix) -> list[sp.csc_matrix]:
@@ -79,7 +79,7 @@ class OneLevelSchwarzPreconditioner(Operator):
         for dofs in self.local_free_dofs:
             operator = A[dofs, :][:, dofs].tocsc()
             local_operators.append(operator)
-        LOGGER.info(f"Obtained local operators for {len(local_operators)} subdomains")
+        LOGGER.debug(f"Obtained local operators for {len(local_operators)} subdomains")
         return local_operators
 
     def _get_local_solvers(
@@ -104,7 +104,7 @@ class OneLevelSchwarzPreconditioner(Operator):
                 solver_f = lambda rhs, out: solver.solve(rhs, out)  # type: ignore
             local_solvers.append(solver_f)
             self.progress.advance(task)
-        LOGGER.info(
+        LOGGER.debug(
             f"Obtained local solvers for {len(local_solvers)} subdomains on {'GPU' if self.gpu_device else 'CPU'}"
         )
         self.progress.remove_task(task)
@@ -132,7 +132,7 @@ class TwoLevelSchwarzPreconditioner(OneLevelSchwarzPreconditioner):
         )
 
         # get coarse space
-        self.coarse_space = coarse_space(A, fespace, two_mesh)
+        self.coarse_space = coarse_space(A, fespace, two_mesh, progress=self.progress)
         self.progress.advance(task)
 
         # get coarse operator
@@ -178,7 +178,7 @@ class TwoLevelSchwarzPreconditioner(OneLevelSchwarzPreconditioner):
         | Callable[[torch.Tensor, torch.Tensor], NoneType]
     ):
         if self.gpu_device is None:
-            LOGGER.info("Obtained coarse solver (CPU)")
+            LOGGER.debug("Obtained coarse solver (CPU)")
             return factorized(coarse_op)
         else:
             with suppress_output():
@@ -186,7 +186,7 @@ class TwoLevelSchwarzPreconditioner(OneLevelSchwarzPreconditioner):
                     coarse_op, matrix_type=MatrixType.SPD
                 ).solver
             solver_f = lambda rhs, out: solver.solve(rhs, out)  # type: ignore
-            LOGGER.info("Obtained coarse solver (GPU)")
+            LOGGER.debug("Obtained coarse solver (GPU)")
             return solver_f
 
     def get_restriction_operator_bases(self) -> dict[str, ngs.GridFunction]:

@@ -116,11 +116,13 @@ class DiffusionProblem(Problem):
     ####################
     def constant_source(self):
         """Constant source function."""
+        LOGGER.debug(f"Using constant source function.")
         return 1.0
 
     def parabolic_source(self):
         """Parabolic source function."""
         lx, ly = self.two_mesh.lx, self.two_mesh.ly
+        LOGGER.debug(f"Using parabolic source function.")
         return 32 * (ngs.y * (ly - ngs.y) + ngs.x * (lx - ngs.x))
 
     #########################
@@ -128,7 +130,7 @@ class DiffusionProblem(Problem):
     #########################
     def constant_coefficient(self):
         """Constant coefficient function."""
-        LOGGER.info(f"Using constant coefficient function.")
+        LOGGER.debug(f"Using constant coefficient function.")
         return 1.0
 
     def hetmaniuk_lehoucq_coefficient(self):
@@ -136,7 +138,7 @@ class DiffusionProblem(Problem):
         c = (
             1.2 + ngs.cos(32 * ngs.pi * ngs.x * (1 - ngs.x) * ngs.y * (1 - ngs.y))
         ) ** -1
-        LOGGER.info(f"Using Hetmaniuk & Lehoucq coefficient function (Eq. 5.6, 2010)")
+        LOGGER.debug(f"Using Hetmaniuk & Lehoucq coefficient function (Eq. 5.6, 2010)")
         return c.Compile()
 
     def sinusoidal_coefficient(self):
@@ -146,7 +148,7 @@ class DiffusionProblem(Problem):
         )
         cy = ngs.cos(25 * ngs.pi * ngs.y / self.two_mesh.ly)
         c = ((2 + 1.8 * sx) / (2 + 1.8 * cy)) + ((2 + sy) / (2 + 1.8 * sx))
-        LOGGER.info(f"Using sinusoidal coefficient function (Eq. 5.8, 2010)")
+        LOGGER.debug(f"Using sinusoidal coefficient function (Eq. 5.8, 2010)")
         return c.Compile()
 
     def heinlein_coefficient(self):
@@ -154,7 +156,7 @@ class DiffusionProblem(Problem):
         sx, sy = ngs.sin(25 * ngs.pi * ngs.x), ngs.sin(25 * ngs.pi * ngs.y)
         cy = ngs.cos(25 * ngs.pi * ngs.y)
         c = ((2 + 1.99 * sx) / (2 + 1.99 * cy)) + ((2 + sy) / (2 + 1.99 * sx))
-        LOGGER.info(f"Using Heinlein coefficient function (Eq. 4.36, 2016)")
+        LOGGER.debug(f"Using Heinlein coefficient function (Eq. 4.36, 2016)")
         return c.Compile()
 
     def vertex_centered_inclusions_coefficient(self):
@@ -172,7 +174,7 @@ class DiffusionProblem(Problem):
 
         grid_func.vec.FV().NumPy()[:] = coef_array
         coef_func = ngs.CoefficientFunction(grid_func)
-        LOGGER.info(f"Using vertex centered inclusions coefficient function.")
+        LOGGER.debug(f"Using vertex centered inclusions coefficient function.")
         return coef_func.Compile()
 
     def two_layer_vertex_centered_inclusions_coefficient(self):
@@ -204,7 +206,7 @@ class DiffusionProblem(Problem):
 
         grid_func.vec.FV().NumPy()[:] = coef_array
         coef_func = ngs.CoefficientFunction(grid_func)
-        LOGGER.info(f"Using two layer vertex centered inclusions coefficient function.")
+        LOGGER.debug(f"Using two layer vertex centered inclusions coefficient function.")
         return coef_func.Compile()
 
     def edge_centered_inclusions_coefficient(self):
@@ -234,7 +236,7 @@ class DiffusionProblem(Problem):
 
         grid_func.vec.FV().NumPy()[:] = coef_array
         coef_func = ngs.CoefficientFunction(grid_func)
-        LOGGER.info(f"Using edge centered inclusions coefficient function.")
+        LOGGER.debug(f"Using edge centered inclusions coefficient function.")
         return coef_func.Compile()
 
     def single_slab_edge_inclusions_coefficient(self):
@@ -251,7 +253,7 @@ class DiffusionProblem(Problem):
 
         grid_func.vec.FV().NumPy()[:] = coef_array
         coef_func = ngs.CoefficientFunction(grid_func)
-        LOGGER.info(f"Using single slab edge inclusions coefficient function.")
+        LOGGER.debug(f"Using single slab edge inclusions coefficient function.")
         return coef_func.Compile()
 
     def double_slab_edge_inclusions_coefficient(self):
@@ -267,7 +269,7 @@ class DiffusionProblem(Problem):
 
         grid_func.vec.FV().NumPy()[:] = coef_array
         coef_func = ngs.CoefficientFunction(grid_func)
-        LOGGER.info(f"Using double slab edge inclusions coefficient function.")
+        LOGGER.debug(f"Using double slab edge inclusions coefficient function.")
         return coef_func.Compile()
 
     def save_functions(self):
@@ -292,7 +294,7 @@ class DiffusionProblemExample:
     coef_func = CoefFunc.CONSTANT
 
     # preconditioner and coarse space
-    preconditioner = OneLevelSchwarzPreconditioner  # TwoLevelSchwarzPreconditioner
+    preconditioner = TwoLevelSchwarzPreconditioner  # TwoLevelSchwarzPreconditioner
     coarse_space = AMSCoarseSpace  # GDSWCoarseSpace or RGDSWCoarseSpace
 
     # use GPU for solving
