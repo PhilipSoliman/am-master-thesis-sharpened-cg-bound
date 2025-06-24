@@ -291,11 +291,11 @@ class DiffusionProblemExample:
 
     # source and coefficient functions
     source_func = SourceFunc.CONSTANT
-    coef_func = CoefFunc.CONSTANT
+    coef_func = CoefFunc.DOUBLE_SLAB_EDGE_INCLUSIONS
 
     # preconditioner and coarse space
     preconditioner = TwoLevelSchwarzPreconditioner  # TwoLevelSchwarzPreconditioner
-    coarse_space = AMSCoarseSpace  # GDSWCoarseSpace or RGDSWCoarseSpace
+    coarse_space = RGDSWCoarseSpace  # GDSWCoarseSpace or RGDSWCoarseSpace
 
     # use GPU for solving
     use_gpu = False
@@ -397,16 +397,24 @@ class DiffusionProblemExample:
             )
 
             # Plot each spectrum at a different y
+            y = -0.5
+            y_gpu = 0.5
             axs_bottom.plot(
                 np.real(cls.diffusion_problem.approximate_eigs),
-                np.full_like(cls.diffusion_problem.approximate_eigs, 0),
+                np.full_like(cls.diffusion_problem.approximate_eigs, y),
+                marker="x",
+                linestyle="None",
+            )
+            axs_bottom.plot(
+                np.real(cls.diffusion_problem.approximate_eigs_gpu),
+                np.full_like(cls.diffusion_problem.approximate_eigs_gpu, y_gpu),
                 marker="x",
                 linestyle="None",
             )
 
             # Set y-ticks and labels
-            axs_bottom.set_ylim(-0.5, 0.5)
-            axs_bottom.set_yticks([0], ["$\\mathbf{\\sigma(T_m)}$"])
+            axs_bottom.set_ylim(-1.5, 1.5)
+            axs_bottom.set_yticks([y, y_gpu], ["$\\mathbf{\\sigma(T_m)}$", "$\\mathbf{\\sigma(T_m)}$ (GPU)"])
             axs_bottom.set_xscale("log")
             axs_bottom.grid(axis="x")
             axs_bottom.grid()
@@ -423,8 +431,11 @@ class DiffusionProblemExample:
             cond = np.max(cls.diffusion_problem.approximate_eigs) / np.min(
                 cls.diffusion_problem.approximate_eigs
             )
+            cond_gpu = np.max(cls.diffusion_problem.approximate_eigs_gpu) / np.min(
+                cls.diffusion_problem.approximate_eigs_gpu
+            )
             ax2.set_ylim(axs_bottom.get_ylim())
-            ax2.set_yticks([0], [format_cond(cond)])
+            ax2.set_yticks([y, y_gpu], [format_cond(cond), format_cond(cond_gpu)])
 
             plt.tight_layout()
             plt.show()

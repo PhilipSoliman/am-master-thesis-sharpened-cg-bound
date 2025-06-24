@@ -491,12 +491,12 @@ def visualize_profile(fp: Path):
         print(f"File {fp} does not exist. Skipping visualization.")
 
 
-def send_matrix_to_gpu(mat: sp.csc_matrix | sp.csr_matrix, device: str) -> torch.Tensor:
-    coo = mat.tocoo()  # convert to COO format for sparse tensor creation
-    # rows = torch.tensor(coo.row, dtype=torch.float64, device=device)
-    # cols = torch.tensor(coo.col, dtype=torch.float64, device=device)
-    # data = torch.tensor(coo.data, dtype=torch.float64, device=device)
-    return torch.sparse_coo_tensor(np.array([coo.row, coo.col]), coo.data, coo.shape, device=device)  # type: ignore
+def send_matrix_to_gpu(mat: sp.csc_matrix | sp.csr_matrix, device: str, dense: bool = False) -> torch.Tensor:
+    if not dense: 
+        coo = mat.tocoo()
+        return torch.sparse_coo_tensor(np.array([coo.row, coo.col]), coo.data, coo.shape, device=device)  # type: ignore
+    else:
+        return torch.tensor(mat.toarray(), dtype=torch.float64, device=device)  # type: ignore
 
 
 @contextmanager

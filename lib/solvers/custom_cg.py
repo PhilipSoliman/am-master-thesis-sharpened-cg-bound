@@ -441,12 +441,24 @@ class CustomCG:
         Returns the approximate eigenvalues of the system A using the Lanczos matrix.
         The eigenvalues are computed from the diagonal and off-diagonal elements of the Lanczos matrix.
         """
-        return eigsh(
+        LOGGER.debug("Calculating approximate eigenvalues using Lanczos matrix")
+        num_eigs = min(100, self.niters - 1) # limit to 1000 to save computation time
+        eigenvalues = eigsh(
             self.get_lanczos_matrix(),
-            k=self.niters - 1,
+            k=num_eigs,
             which="BE",  # gets eigenvalues on both ends of the spectrum
             return_eigenvectors=False,
         )
+        LOGGER.debug(f"Calculated {len(eigenvalues)} approximate eigenvalues")
+        return eigenvalues  
+    
+    def get_approximate_eigenvalues_gpu(self):
+        LOGGER.debug("Calculating approximate eigenvalues using Lanczos matrix (GPU)")
+        lanczos_matrix = self.get_lanczos_matrix()
+        lanczos_matrix_gpu = send_matrix_to_gpu(lanczos_matrix, self.DEVICE, dense=True)
+        eigenvalues = torch.linalg.eigvalsh(lanczos_matrix_gpu).cpu().numpy()
+        LOGGER.debug(f"Calculated {len(eigenvalues)} approximate eigenvalues (GPU)")
+        return eigenvalues
 
     def get_lanczos_matrix(self) -> csc_matrix:
         delta = 1 / self.alpha + np.append(0, self.beta / self.alpha[:-1])

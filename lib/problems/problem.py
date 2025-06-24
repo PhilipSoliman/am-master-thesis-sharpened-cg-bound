@@ -348,8 +348,10 @@ class Problem:
                 self.cg_precond_residuals = (
                     custom_cg.get_relative_preconditioned_residuals()
                 )
+                LOGGER.debug("Obtained conjugate gradient preconditioned residuals.")
             self.approximate_eigs = custom_cg.get_approximate_eigenvalues()
-            LOGGER.debug("Obtained conjugate gradient coefficients and residuals.")
+            self.approximate_eigs_gpu = custom_cg.get_approximate_eigenvalues_gpu()  # type: ignore
+            LOGGER.debug("Obtained CG info")
             self.progress.advance(task)
 
         # save coarse operator grid functions if available
