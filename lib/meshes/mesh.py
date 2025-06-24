@@ -98,18 +98,18 @@ class TwoLevelMesh:
             coarse_mesh_size (float): Mesh size for the coarse mesh.
             refinement_levels (int, optional): Number of uniform refinements for the fine mesh. Defaults to 1.
             layers(int, optional): Number of layers for domain decomposition. Defaults to 0.
-        """
-        # intial log
-        self.progress = PROGRESS.get_active_progress_bar(progress)
-        task = self.progress.add_task(f"Creating TwoLevelMesh", total=8)
-        LOGGER.info(f"Creating TwoLevelMesh 1/H = {1/self.coarse_mesh_size:.0f}")
-
+        """        
         # handle input
         self.lx = lx
         self.ly = ly
         self.coarse_mesh_size = coarse_mesh_size
         self.refinement_levels = refinement_levels
         self.layers = layers
+
+        # intial log
+        self.progress = PROGRESS.get_active_progress_bar(progress)
+        task = self.progress.add_task(f"Creating TwoLevelMesh", total=8)
+        LOGGER.info(f"Creating TwoLevelMesh H = 1/{1/self.coarse_mesh_size:.0f}")
 
         # create mesh attributes
         self.fine_mesh = self.create_mesh()
@@ -947,23 +947,27 @@ class TwoLevelMesh:
             f"Saving TwoLevelMesh 1/H = {1/self.coarse_mesh_size:.0f} to %s",
             self.save_dir,
         )
+
+        # mesh and metadata
         self._save_metadata()
         self.progress.advance(task)
 
+        # meshes (vtk)
         if save_vtk_meshes:
             self._save_vtk_meshes()
             self.progress.advance(task)
 
+        # coarse edges map
         self._save_coarse_edges_map()
         self.progress.advance(task)
 
+        # overlap layers
         self._save_subdomain_layers()
         self.progress.advance(task)
 
+        # edge slabs for edge inclusions
         self._save_edge_slabs()
         self.progress.advance(task)
-
-        self.progress.remove_task(task)
         
         LOGGER.info(f"Saved TwoLevelMesh")
         self.progress.soft_stop()
@@ -1097,6 +1101,7 @@ class TwoLevelMesh:
             )
             LOGGER.info("Loading TwoLevelMesh from %s", fp)
 
+            # metadata
             obj._load_metadata(fp)
             obj.progress.update(
                 task,
@@ -1105,21 +1110,27 @@ class TwoLevelMesh:
                 + f" 1/H = {1/obj.coarse_mesh_size:.0f}",
             )
 
+            # meshes
             obj._load_meshes(fp)
             obj.progress.advance(task)
 
+            # coarse edges map
             obj._load_coarse_edges_map(fp)
             obj.progress.advance(task)
 
+            # subdomains
             setattr(obj, "subdomains", obj.get_subdomains())
             obj.progress.advance(task)
 
+            # overlap layers
             obj._load_subdomain_layers(fp)
             obj.progress.advance(task)
 
+            # connected components
             setattr(obj, "connected_components", obj.get_connected_components())
             obj.progress.advance(task)
 
+            # connected component tree
             setattr(
                 obj,
                 "connected_component_tree",
@@ -1127,6 +1138,7 @@ class TwoLevelMesh:
             )
             obj.progress.advance(task)
 
+            # edge slabs for edge inclusions
             obj.edge_slabs = obj._load_edge_slabs(fp)
             obj.progress.advance(task)
 

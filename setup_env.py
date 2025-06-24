@@ -71,7 +71,11 @@ def install_requirements(root_path):
 
 def generate_meshes_for_experiments(root_path):
     mesh_script = os.path.join(root_path, "generate_meshes.py")
-    print(f"Generating meshes for experiments using {mesh_script}...")
+    user_input = input(f"Generate meshes for experiments? Yes/No [y/n]: ")
+
+    if user_input.lower() != "y":
+        print("Skipping mesh generation.")
+        return
 
     result = subprocess.run(
         [PYTHON_EXEC, mesh_script],
