@@ -43,7 +43,7 @@ class Problem:
             source_function (callable): Function representing the source term in the PDE.
             boundary_conditions (dict): Dictionary containing boundary conditions for the problem.
         """
-        self.progress = PROGRESS.get_active_progress_bar(progress)
+        self.progress = progress
         self.two_mesh = two_mesh
         self.boundary_conditions = bcs
         self.ptype = ptype
