@@ -60,11 +60,7 @@ class DiffusionProblem(Problem):
         LOGGER.info(
             f"Initializing DiffusionProblem for 1/H = {1 / coarse_mesh_size:.0f}"
         )
-        if progress is not None:
-            self.progress = progress
-        else:
-            self.progress = PROGRESS()
-            self.progress.start()
+        self.progress = PROGRESS.get_active_progress_bar(progress)
         task = self.progress.add_task(f"Initializing DiffusionProblem ", total=4)
         try:
             two_mesh = TwoLevelMesh.load(
