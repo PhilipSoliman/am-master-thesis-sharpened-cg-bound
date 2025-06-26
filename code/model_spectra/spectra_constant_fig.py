@@ -3,6 +3,7 @@ from typing import Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
+import scipy.sparse as sp
 
 from lib import gpu_interface as gpu
 from lib.boundary_conditions import HomogeneousDirichlet
@@ -35,14 +36,14 @@ FIGHEIGHT = 4
 problem_type = ProblemType.DIFFUSION
 boundary_conditions = HomogeneousDirichlet(problem_type)
 lx, ly = 1.0, 1.0  # Length of the domain in x and y directions
-coarse_mesh_size = 0.3  # Size of the coarse mesh
+coarse_mesh_size = 1 / 4  # Size of the coarse mesh
 refinement_levels = 4  # Number of times to refine the mesh
 layers = 2  # Number of overlapping layers in the Schwarz Domain Decomposition
 source_func = SourceFunc.CONSTANT  # Source function
 coef_funcs = [
     CoefFunc.CONSTANT,
     CoefFunc.DOUBLE_SLAB_EDGE_INCLUSIONS,
-]  # Coefficient function
+]  # Coefficient functions
 
 # Initialize progress bar
 progress = PROGRESS.get_active_progress_bar()
@@ -70,7 +71,6 @@ for coef_func, ax in zip(coef_funcs, axs):
     A, u, b = diffusion_problem.restrict_system_to_free_dofs(
         *diffusion_problem.assemble()
     )
-    n = A.shape[0]
 
     # get preconditioners
     precond_task = progress.add_task("Getting preconditioners", total=6)
@@ -81,34 +81,34 @@ for coef_func, ax in zip(coef_funcs, axs):
         "1-OAS": OneLevelSchwarzPreconditioner(
             A, diffusion_problem.fes, progress=progress, gpu_device=gpu.DEVICE
         ),
-        # "2-Q1": TwoLevelSchwarzPreconditioner(
-        #     A,
-        #     diffusion_problem.fes,
-        #     diffusion_problem.two_mesh,
-        #     coarse_space=Q1CoarseSpace,
-        #     progress=progress,
-        # ),
-        # "2-GDSW": TwoLevelSchwarzPreconditioner(
-        #     A,
-        #     diffusion_problem.fes,
-        #     diffusion_problem.two_mesh,
-        #     coarse_space=GDSWCoarseSpace,
-        #     progress=progress,
-        # ),
-        # "2-RGDSW": TwoLevelSchwarzPreconditioner(
-        #     A,
-        #     diffusion_problem.fes,
-        #     diffusion_problem.two_mesh,
-        #     coarse_space=RGDSWCoarseSpace,
-        #     progress=progress,
-        # ),
-        # "2-AMS": TwoLevelSchwarzPreconditioner(
-        #     A,
-        #     diffusion_problem.fes,
-        #     diffusion_problem.two_mesh,
-        #     coarse_space=AMSCoarseSpace,
-        #     progress=progress,
-        # ),
+        "2-Q1": TwoLevelSchwarzPreconditioner(
+            A,
+            diffusion_problem.fes,
+            diffusion_problem.two_mesh,
+            coarse_space=Q1CoarseSpace,
+            progress=progress,
+        ),
+        "2-GDSW": TwoLevelSchwarzPreconditioner(
+            A,
+            diffusion_problem.fes,
+            diffusion_problem.two_mesh,
+            coarse_space=GDSWCoarseSpace,
+            progress=progress,
+        ),
+        "2-RGDSW": TwoLevelSchwarzPreconditioner(
+            A,
+            diffusion_problem.fes,
+            diffusion_problem.two_mesh,
+            coarse_space=RGDSWCoarseSpace,
+            progress=progress,
+        ),
+        "2-AMS": TwoLevelSchwarzPreconditioner(
+            A,
+            diffusion_problem.fes,
+            diffusion_problem.two_mesh,
+            coarse_space=AMSCoarseSpace,
+            progress=progress,
+        ),
     }
     progress.remove_task(precond_task)
 
@@ -116,14 +116,13 @@ for coef_func, ax in zip(coef_funcs, axs):
     spectra_task = progress.add_task("Computing spectra", total=len(preconditioners))
     spectra = {}
     cond_numbers = np.zeros(len(preconditioners))
-    for shorthand, preconditioner in preconditioners.items():
-        # eigenvalues = eigs(
-        #     preconditioner.as_linear_operator() if preconditioner is not None else A,
-        #     library="scipy",
-        #     num_eigs=n-2,
-        #     which="BE",  # gets eigenvalues on both ends of the spectrum
-        # )
-        system = preconditioner.as_full_system() if preconditioner is not None else A
+    M1 = sp.csc_matrix(A.shape, dtype=float)
+    for i, (shorthand, preconditioner) in enumerate(preconditioners.items()):
+        system = A
+        if i == 1:
+            M1 = preconditioner.as_full_system()  # calculate M1 only once
+        elif i > 1:
+            system = preconditioner.as_full_system(coarse_only=True) + M1
         eigenvalues = eigs(system)
         spectra[shorthand] = eigenvalues
         cond_numbers[len(spectra) - 1] = (
