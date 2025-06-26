@@ -97,7 +97,13 @@ class CoarseSpace(object):
 
 
 class Q1CoarseSpace(CoarseSpace):
-    def __init__(self, A: sp.csr_matrix, fespace: FESpace, two_mesh: TwoLevelMesh):
+    def __init__(
+        self,
+        A: sp.csr_matrix,
+        fespace: FESpace,
+        two_mesh: TwoLevelMesh,
+        progress: Optional[PROGRESS] = None,
+    ):
         super().__init__(A, fespace, two_mesh)
         self.name = "Q1 coarse space"
         self.restriction_operator = self.assemble_restriction_operator()
