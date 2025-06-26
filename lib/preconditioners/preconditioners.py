@@ -5,9 +5,9 @@ import ngsolve as ngs
 import numpy as np
 import scipy.sparse as sp
 import torch
-from scipy.sparse.linalg import LinearOperator, SuperLU, factorized
-from tqdm import tqdm
+from scipy.sparse.linalg import LinearOperator, SuperLU, factorized, spsolve
 
+from lib import gpu_interface as gpu
 from lib.fespace import FESpace
 from lib.logger import LOGGER, PROGRESS
 from lib.meshes import TwoLevelMesh
@@ -63,6 +63,21 @@ class OneLevelSchwarzPreconditioner(Operator):
         """Return the preconditioner as a linear operator."""
         return LinearOperator(self.shape, lambda x: self.apply(x))
 
+    def as_full_system(self) -> sp.csc_matrix:
+        MinvA = sp.lil_matrix(self.shape, dtype=float)
+        if self.gpu_device is None:
+            LOGGER.debug("Returning preconditioner as full system (CPU)")
+            for dofs, operator in zip(self.local_free_dofs, self.local_operators):
+                MinvA[dofs, :][:, dofs] += spsolve(operator, sp.eye(operator.shape[0]))  # type: ignore
+        else:
+            LOGGER.debug("Returning preconditioner as full system (GPU)")
+            for dofs, operator in zip(self.local_free_dofs, self.local_operators):
+                solver = DirectSparseSolver(operator, matrix_type=MatrixType.SPD, progress=self.progress)
+                eye = sp.eye(operator.shape[0], dtype=float).tocsc()
+                out = solver(eye)  # type: ignore
+                MinvA[np.ix_(dofs, dofs)] += out
+        MinvA = MinvA.reshape(self.shape).tocsc()
+        return MinvA
     def _get_local_free_dofs(self) -> list[np.ndarray]:
         """Get local free dofs for each subdomain."""
         local_free_dofs = []
@@ -102,10 +117,7 @@ class OneLevelSchwarzPreconditioner(Operator):
             if self.gpu_device is None:
                 solver_f = factorized(operator)
             else:
-                with suppress_output():
-                    solver = DirectSparseSolver(
-                        operator, matrix_type=MatrixType.SPD
-                    ).solver
+                solver = DirectSparseSolver(operator, matrix_type=MatrixType.SPD).solver
                 solver_f = lambda rhs, out: solver.solve(rhs, out)  # type: ignore
             local_solvers.append(solver_f)
             self.progress.advance(task)
