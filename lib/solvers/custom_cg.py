@@ -5,12 +5,14 @@ import numpy as np
 import torch
 from scipy.sparse import csc_matrix, csr_matrix
 from scipy.sparse import diags as spdiags
-from scipy.sparse.linalg import LinearOperator, aslinearoperator, eigsh
+from scipy.sparse.linalg import LinearOperator, aslinearoperator
 from tqdm import trange
 
+from lib import gpu_interface as gpu
 from lib.logger import LOGGER, PROGRESS
 from lib.operators import Operator
-from lib.utils import get_root, send_matrix_to_gpu
+from lib.eigenvalues import eigs
+from lib.utils import get_root
 
 # constants
 DLL_FOLDER = "lib/solvers/clib"
@@ -277,16 +279,16 @@ class CustomCG:
 
         # matrix-vector product with A
         if isinstance(self.A, csc_matrix):
-            A_device = send_matrix_to_gpu(self.A, self.DEVICE)
+            A_device = gpu.send_matrix(self.A, self.DEVICE)
         else:
-            A_device = send_matrix_to_gpu(csc_matrix(self.A), self.DEVICE)
+            A_device = gpu.send_matrix(csc_matrix(self.A), self.DEVICE)
         matvec = lambda x: torch.mv(A_device, x)
 
         # preconditioner matrix-vector product
         track_z = save_residuals and M is not None
         psolve = lambda x: x
         if isinstance(M, csc_matrix):
-            M_device = send_matrix_to_gpu(M, self.DEVICE)
+            M_device = gpu.send_matrix(M, self.DEVICE)
             psolve = lambda x: torch.mv(M_device, x)
         elif isinstance(M, Operator):
             psolve = lambda x: M.apply_gpu(x)
@@ -442,21 +444,17 @@ class CustomCG:
         The eigenvalues are computed from the diagonal and off-diagonal elements of the Lanczos matrix.
         """
         LOGGER.debug("Calculating approximate eigenvalues using Lanczos matrix")
-        num_eigs = min(100, self.niters - 1) # limit to 1000 to save computation time
-        eigenvalues = eigsh(
-            self.get_lanczos_matrix(),
-            k=num_eigs,
-            which="BE",  # gets eigenvalues on both ends of the spectrum
-            return_eigenvectors=False,
+        num_eigs = min(100, self.niters - 1)  # limit to 100 to save computation time
+        eigenvalues = eigs(
+            self.get_lanczos_matrix(), library="scipy", num_eigs=num_eigs, which="BE"
         )
         LOGGER.debug(f"Calculated {len(eigenvalues)} approximate eigenvalues")
-        return eigenvalues  
-    
+        return eigenvalues
+
     def get_approximate_eigenvalues_gpu(self):
         LOGGER.debug("Calculating approximate eigenvalues using Lanczos matrix (GPU)")
         lanczos_matrix = self.get_lanczos_matrix()
-        lanczos_matrix_gpu = send_matrix_to_gpu(lanczos_matrix, self.DEVICE, dense=True)
-        eigenvalues = torch.linalg.eigvalsh(lanczos_matrix_gpu).cpu().numpy()
+        eigenvalues = eigs(lanczos_matrix, library="torch")
         LOGGER.debug(f"Calculated {len(eigenvalues)} approximate eigenvalues (GPU)")
         return eigenvalues
 

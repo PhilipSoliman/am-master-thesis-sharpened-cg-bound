@@ -11,6 +11,7 @@ import torch
 from scipy.sparse.linalg import eigsh, factorized, splu, spsolve
 from tqdm import tqdm
 
+from lib import gpu_interface as gpu
 from lib.logger import LOGGER, PROGRESS
 
 
@@ -24,7 +25,7 @@ class DirectSparseSolver:
     NUM_CPU_THREADS = multiprocessing.cpu_count()
     GPU_BATCH_SIZE = 128
     CPU_BATCH_SIZE = 32
-    DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+    DEVICE = gpu.DEVICE
 
     def __init__(
         self,
@@ -93,11 +94,9 @@ class DirectSparseSolver:
         if self.matrix_type == MatrixType.SPD:
             LOGGER.debug(f"using cholesky solver")
 
-            if self.DEVICE == "cuda":
-                LOGGER.debug(f"using GPU device: {self.DEVICE}")
+            if gpu.AVAILABLE:
                 self.batch_size = self.GPU_BATCH_SIZE
             else:
-                LOGGER.debug(f"using CPU device: {self.DEVICE}")
                 self.batch_size = self.CPU_BATCH_SIZE
             n = self.A.shape[0]  # type: ignore
             A_coo = self.A.tocoo()
@@ -180,22 +179,25 @@ class DirectSparseSolver:
             rhs_batch = rhs[:, start:end].tocoo()
             rhs_batch_array = np.zeros(shape, dtype=np.float64)
             rhs_batch_array[rhs_batch.row, rhs_batch.col] = rhs_batch.data
-            rhs_device = torch.tensor(
-                rhs_batch_array, dtype=torch.float64, device=self.DEVICE
-            )
+            # rhs_device = torch.tensor(
+            #     rhs_batch_array, dtype=torch.float64, device=self.DEVICE
+            # )
+            rhs_device = gpu.send_array(rhs_batch_array, device=self.DEVICE, dtype=torch.float64)
 
             # output
             x = np.zeros_like(rhs_batch_array)
-            x_device = torch.tensor(x, dtype=torch.float64, device=self.DEVICE)
+            # x_device = torch.tensor(x, dtype=torch.float64, device=self.DEVICE)
+            x_device = gpu.send_array(x, device=self.DEVICE, dtype=torch.float64)
 
-            # solve on GPU
+            # solve on GPU (if available) or CPU
             self.solver.solve(rhs_device, x_device)  # type: ignore
 
             # Move to CPU if necessary
-            x = x_device.cpu()
+            # x = x_device.cpu()
+            x = gpu.retrieve_array(x_device)
 
             # Append to output columns
-            out_cols.append(sp.csc_matrix(x.numpy()))  # type: ignore
+            out_cols.append(sp.csc_matrix(x))  # type: ignore
 
             progress.advance(task)
 
