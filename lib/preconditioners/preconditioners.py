@@ -38,7 +38,7 @@ class OneLevelSchwarzPreconditioner(Operator):
         self.progress.advance(task)
         self.local_operators = self._get_local_operators(A)
         self.progress.advance(task)
-        self.local_solvers = self._get_local_solvers(A)
+        self.local_solvers = self._get_local_solvers()
         self.progress.advance(task)
         self.name = "1-level Schwarz preconditioner"
 
@@ -72,12 +72,15 @@ class OneLevelSchwarzPreconditioner(Operator):
         else:
             LOGGER.debug("Returning preconditioner as full system (GPU)")
             for dofs, operator in zip(self.local_free_dofs, self.local_operators):
-                solver = DirectSparseSolver(operator, matrix_type=MatrixType.SPD, progress=self.progress)
+                solver = DirectSparseSolver(
+                    operator, matrix_type=MatrixType.SPD, progress=self.progress
+                )
                 eye = sp.eye(operator.shape[0], dtype=float).tocsc()
                 out = solver(eye)  # type: ignore
                 MinvA[np.ix_(dofs, dofs)] += out
         MinvA = MinvA.reshape(self.shape).tocsc()
         return MinvA
+
     def _get_local_free_dofs(self) -> list[np.ndarray]:
         """Get local free dofs for each subdomain."""
         local_free_dofs = []
@@ -103,7 +106,7 @@ class OneLevelSchwarzPreconditioner(Operator):
         return local_operators
 
     def _get_local_solvers(
-        self, A: sp.csr_matrix
+        self,
     ) -> list[
         Callable[[np.ndarray], np.ndarray]
         | Callable[[torch.Tensor, torch.Tensor], NoneType]
@@ -153,16 +156,16 @@ class TwoLevelSchwarzPreconditioner(OneLevelSchwarzPreconditioner):
         self.progress.advance(task)
 
         # get coarse operator
-        coarse_op = self.coarse_space.assemble_coarse_operator(A)
+        self.coarse_op = self.coarse_space.assemble_coarse_operator(A)
         self.progress.advance(task)
         if self.gpu_device is not None:
-            self.restriction_operator = send_matrix_to_gpu(self.coarse_space.restriction_operator, self.gpu_device)  # type: ignore
-            self.restriction_operator_T = send_matrix_to_gpu(self.coarse_space.restriction_operator.transpose(), self.gpu_device)  # type: ignore
+            self.restriction_operator = gpu.send_matrix(self.coarse_space.restriction_operator)  # type: ignore
+            self.restriction_operator_T = gpu.send_matrix(self.coarse_space.restriction_operator.transpose())  # type: ignore
             LOGGER.info("Restriction operators sent to GPU")
             self.progress.advance(task)
 
         # get coarse solver
-        self.coarse_solver = self._get_coarse_solver(coarse_op)
+        self.coarse_solver = self._get_coarse_solver()
         self.progress.advance(task)
 
         # set preconditioner name
@@ -187,20 +190,34 @@ class TwoLevelSchwarzPreconditioner(OneLevelSchwarzPreconditioner):
         x_2 = torch.mv(self.restriction_operator, tmp)  # type: ignore
         return x_1 + x_2
 
+    def as_full_system(self, coarse_only: bool = False) -> sp.csc_matrix:
+        MinvA = sp.csc_matrix(self.shape, dtype=float)
+        if not coarse_only:
+            MinvA = super().as_full_system()
+        solver = DirectSparseSolver(
+            self.coarse_op, matrix_type=MatrixType.SPD, progress=self.progress
+        )
+        eye = sp.eye(
+            self.coarse_space.restriction_operator.shape[0], dtype=float
+        ).tocsc()
+        MinvA = MinvA + self.coarse_space.restriction_operator @ solver(
+            self.coarse_space.restriction_operator.transpose() @ eye
+        )
+        return MinvA
+
     def _get_coarse_solver(
         self,
-        coarse_op: sp.csc_matrix,
     ) -> (
         Callable[[np.ndarray], np.ndarray]
         | Callable[[torch.Tensor, torch.Tensor], NoneType]
     ):
         if self.gpu_device is None:
             LOGGER.debug("Obtained coarse solver (CPU)")
-            return factorized(coarse_op)
+            return factorized(self.coarse_op)
         else:
             with suppress_output():
                 solver = DirectSparseSolver(
-                    coarse_op, matrix_type=MatrixType.SPD
+                    self.coarse_op, matrix_type=MatrixType.SPD
                 ).solver
             solver_f = lambda rhs, out: solver.solve(rhs, out)  # type: ignore
             LOGGER.debug("Obtained coarse solver (GPU)")
