@@ -179,21 +179,16 @@ class DirectSparseSolver:
             rhs_batch = rhs[:, start:end].tocoo()
             rhs_batch_array = np.zeros(shape, dtype=np.float64)
             rhs_batch_array[rhs_batch.row, rhs_batch.col] = rhs_batch.data
-            # rhs_device = torch.tensor(
-            #     rhs_batch_array, dtype=torch.float64, device=self.DEVICE
-            # )
-            rhs_device = gpu.send_array(rhs_batch_array, device=self.DEVICE, dtype=torch.float64)
+            rhs_device = gpu.send_array(rhs_batch_array, dtype=torch.float64)
 
             # output
             x = np.zeros_like(rhs_batch_array)
-            # x_device = torch.tensor(x, dtype=torch.float64, device=self.DEVICE)
-            x_device = gpu.send_array(x, device=self.DEVICE, dtype=torch.float64)
+            x_device = gpu.send_array(x, dtype=torch.float64)
 
             # solve on GPU (if available) or CPU
             self.solver.solve(rhs_device, x_device)  # type: ignore
 
             # Move to CPU if necessary
-            # x = x_device.cpu()
             x = gpu.retrieve_array(x_device)
 
             # Append to output columns

@@ -58,6 +58,6 @@ def _scipy_eigs(
 
 
 def _torch_eigs(A: sp.csc_matrix | sp.csr_matrix) -> np.ndarray:
-    A_gpu = gpu.send_matrix(A, gpu.DEVICE, dense=True)
+    A_gpu = gpu.send_matrix(A, dense=True)
     eigenvalues = gpu.retrieve_array(trl.eigvalsh(A_gpu))
     return eigenvalues

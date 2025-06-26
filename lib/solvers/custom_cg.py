@@ -9,9 +9,9 @@ from scipy.sparse.linalg import LinearOperator, aslinearoperator
 from tqdm import trange
 
 from lib import gpu_interface as gpu
+from lib.eigenvalues import eigs
 from lib.logger import LOGGER, PROGRESS
 from lib.operators import Operator
-from lib.eigenvalues import eigs
 from lib.utils import get_root
 
 # constants
@@ -279,26 +279,26 @@ class CustomCG:
 
         # matrix-vector product with A
         if isinstance(self.A, csc_matrix):
-            A_device = gpu.send_matrix(self.A, self.DEVICE)
+            A_device = gpu.send_matrix(self.A)
         else:
-            A_device = gpu.send_matrix(csc_matrix(self.A), self.DEVICE)
+            A_device = gpu.send_matrix(csc_matrix(self.A))
         matvec = lambda x: torch.mv(A_device, x)
 
         # preconditioner matrix-vector product
         track_z = save_residuals and M is not None
         psolve = lambda x: x
         if isinstance(M, csc_matrix):
-            M_device = gpu.send_matrix(M, self.DEVICE)
+            M_device = gpu.send_matrix(M)
             psolve = lambda x: torch.mv(M_device, x)
         elif isinstance(M, Operator):
             psolve = lambda x: M.apply_gpu(x)
 
         # initial guess
-        x = torch.tensor(self.x_0.copy(), dtype=torch.float64, device=self.DEVICE)
+        x = gpu.send_array(self.x_0.copy())
 
         # initial residual
         r = self.b - self.A @ self.x_0 if self.x_0.any() else self.b.copy()
-        r = torch.tensor(r, dtype=torch.float64, device=self.DEVICE)
+        r = gpu.send_array(r)
         rho_prev, p = None, None
 
         # intitial z vector
@@ -361,13 +361,13 @@ class CustomCG:
         if save_residuals:
             self.r_i = np.array(r_i)
         if track_z:
-            self.z_i = torch.stack(z_i).cpu().numpy()  # Convert to numpy array
+            self.z_i = gpu.retrieve_array(torch.stack(z_i))
 
-        self.alpha = torch.stack(alphas).cpu().numpy()  # Convert to numpy array
-        self.beta = torch.stack(betas).cpu().numpy()  # Convert to numpy array
+        self.alpha = gpu.retrieve_array(torch.stack(alphas))
+        self.beta = gpu.retrieve_array(torch.stack(betas))
         self.niters = iteration
 
-        return x.cpu().numpy(), success
+        return gpu.retrieve_array(x), success
 
     def get_relative_errors(self) -> np.ndarray:
         if np.any(self.e_i):
@@ -386,14 +386,6 @@ class CustomCG:
             return self.z_i / self.z_i[0]
         else:
             raise ValueError("No preconditioner residuals saved")
-
-    @property
-    def gpu_device(self) -> str:
-        """
-        Returns the GPU device being used for computations.
-        If no GPU is available, returns 'cpu'.
-        """
-        return self.DEVICE
 
     def cg_polynomial(
         self,
@@ -454,7 +446,7 @@ class CustomCG:
     def get_approximate_eigenvalues_gpu(self):
         LOGGER.debug("Calculating approximate eigenvalues using Lanczos matrix (GPU)")
         lanczos_matrix = self.get_lanczos_matrix()
-        eigenvalues = eigs(lanczos_matrix, library="torch")
+        eigenvalues = eigs(lanczos_matrix)
         LOGGER.debug(f"Calculated {len(eigenvalues)} approximate eigenvalues (GPU)")
         return eigenvalues
 
