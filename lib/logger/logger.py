@@ -96,6 +96,8 @@ class ColorLevelFormatter(logging.Formatter):
     def get_color(self, record):
         if record.levelno == logging.ERROR:
             return self.ERROR_COLOR
+        elif record.levelno == logging.WARNING:
+            return self.WARNING_COLOR
         elif record.levelno == logging.INFO:
             return self.INFO_COLOR
         elif record.levelno == logging.DEBUG:
@@ -108,7 +110,7 @@ class ColorLevelFormatter(logging.Formatter):
         if record.levelno == logging.ERROR:
             return "❌ "  # exclamation mark emoji
         elif record.levelno == logging.WARNING:
-            return "⚠️ "  # warning emoji
+            return "⚠️  "  # warning emoji
         elif record.levelno == logging.INFO:
             return "✅ "  # information emoji simple
         # elif record.levelno == logging.SUBSTEP:
@@ -122,9 +124,14 @@ class ColorLevelFormatter(logging.Formatter):
         """Get the prefix for the log record."""
         if record.levelno == logging.DEBUG:
             return f"➥{'':<{self.LEN_TAB}}"
+        elif record.levelno == logging.WARNING:
+            return " "
         else:
             return ""
 
+
+# shorten warn name
+logging.addLevelName(logging.WARNING, "WARN")
 
 # instantiate the custom logger
 logging.setLoggerClass(CustomLogger)
@@ -187,7 +194,6 @@ class PROGRESS(Progress):
             *args,
             **kwargs,
         )
-        self.already_active: bool = False
         self._task_index: TaskID = TaskID(self.MAX_TASKS)
 
     @classmethod
@@ -197,15 +203,12 @@ class PROGRESS(Progress):
         if isinstance(progress, PROGRESS):
             progress_already_active = True
             if not progress.progress_started():
-                progress_already_active = False
                 progress.start()
-            setattr(progress, "already_active", progress_already_active)
             return progress
         elif progress is None:
             progress_already_active = False
             obj = cls.__new__(cls)
             obj.__init__()
-            setattr(obj, "already_active", progress_already_active)
             obj.start()
             return obj
 
@@ -215,11 +218,15 @@ class PROGRESS(Progress):
             self.start()
 
     def soft_stop(self) -> None:
-        """Only stop progress if it was not already active when get_active_progress_bar was called."""
-        self.remove_task(TaskID(self._task_index + 1))
-        if not self.already_active:
+        """Only stop progress if there are is just one task left."""
+        task_index = TaskID(self._task_index + 1)
+        if task_index > TaskID(self.MAX_TASKS):
+            LOGGER.debug("Last task already removed, skipping")
+        else:
+            self.remove_task(task_index)
+        if task_index == TaskID(self.MAX_TASKS):
+            LOGGER.debug("All tasks removed, stopping progress bar")
             self.stop()
-            # print('\r', end='')  # Move cursor to the beginning of the line
 
     def add_task(
         self,
