@@ -601,6 +601,14 @@ class TwoLevelMesh:
 
         This functions can generates two sets of edge inclusions: single and double slabs.
         """
+        # prevent creation of slabs if refinement level is too low
+        if self.refinement_levels < 4:
+            LOGGER.warning(
+                "Refinement level is too low for edge slab generation. "
+                "Please set refinement_levels >= 4."
+            )
+            return {}
+        
         # main output dictionary
         edge_slabs = {}
 
@@ -1239,6 +1247,11 @@ class TwoLevelMesh:
             msg = "Edge slabs file %s does not exist. "
             LOGGER.error(msg, edge_slabs_path)
             raise FileNotFoundError(msg % str(edge_slabs_path))
+        elif self.refinement_levels < 4:
+            LOGGER.warning(
+                "No edge slabs generated for refinement level < 4."
+            )
+            return {}
         with open(edge_slabs_path, "r") as f:
             edge_slabs = json.load(f)
         # Convert string keys back to int
@@ -1716,7 +1729,7 @@ class TwoLevelMesh:
 class TwoLevelMeshExamples:
 
     lx, ly = 1.0, 1.0
-    coarse_mesh_size = lx / 16
+    coarse_mesh_size = lx / 8
     refinement_levels = 4
     layers = 2
     SAVE_DIR = DATA_DIR / TwoLevelMesh.SAVE_STRING.format(
@@ -1764,9 +1777,8 @@ class TwoLevelMeshExamples:
 
 
 if __name__ == "__main__":
-    LOGGER.setLevel(LOGGER.DEBUG)
-    # TwoLevelMeshExamples.example_creation(
-    #     fig_toggle=False
-    # )  # Uncomment to create and visualize a new mesh
+    TwoLevelMeshExamples.example_creation(
+        fig_toggle=False
+    )  # Uncomment to create and visualize a new mesh
     TwoLevelMeshExamples.example_load()  # Uncomment to load an existing mesh
     # TwoLevelMeshExamples.profile()  # Uncomment to profile the mesh creation & loading
