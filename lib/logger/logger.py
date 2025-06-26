@@ -201,12 +201,10 @@ class PROGRESS(Progress):
         cls, progress: Optional["PROGRESS"] = None
     ) -> "PROGRESS":
         if isinstance(progress, PROGRESS):
-            progress_already_active = True
             if not progress.progress_started():
                 progress.start()
             return progress
         elif progress is None:
-            progress_already_active = False
             obj = cls.__new__(cls)
             obj.__init__()
             obj.start()
@@ -218,7 +216,7 @@ class PROGRESS(Progress):
             self.start()
 
     def soft_stop(self) -> None:
-        """Only stop progress if there are is just one task left."""
+        """Only stop progress if there is just one task left."""
         task_index = TaskID(self._task_index + 1)
         if task_index > TaskID(self.MAX_TASKS):
             LOGGER.debug("Last task already removed, skipping")
