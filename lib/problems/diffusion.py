@@ -6,7 +6,7 @@ import numpy as np
 
 from lib.boundary_conditions import BoundaryConditions, HomogeneousDirichlet
 from lib.logger import LOGGER, PROGRESS
-from lib.meshes import TwoLevelMesh
+from lib.meshes import DefaultMeshParams, MeshParams, TwoLevelMesh
 from lib.preconditioners import (
     AMSCoarseSpace,
     GDSWCoarseSpace,
@@ -48,46 +48,24 @@ class DiffusionProblem(Problem):
     def __init__(
         self,
         boundary_conditions: BoundaryConditions,
-        lx=1.0,
-        ly=1.0,
-        coarse_mesh_size=0.15,
-        refinement_levels=2,
-        layers=2,
-        coef_func=CoefFunc.VERTEX_INCLUSIONS,
-        source_func=SourceFunc.CONSTANT,
+        mesh: TwoLevelMesh | MeshParams = DefaultMeshParams.Nc4,
+        coef_func: CoefFunc = CoefFunc.VERTEX_INCLUSIONS,
+        source_func: SourceFunc = SourceFunc.CONSTANT,
         progress: Optional[PROGRESS] = None,
     ):
-        LOGGER.info(
-            f"Initializing DiffusionProblem for 1/H = {1 / coarse_mesh_size:.0f}"
-        )
         self.progress = PROGRESS.get_active_progress_bar(progress)
-        task = self.progress.add_task(f"Initializing DiffusionProblem ", total=4)
-        try:
-            two_mesh = TwoLevelMesh.load(
-                lx=lx,
-                ly=ly,
-                coarse_mesh_size=coarse_mesh_size,
-                refinement_levels=refinement_levels,
-                layers=layers,
-                progress=self.progress,
-            )
-        except FileNotFoundError:
-            LOGGER.info("Mesh file not found. Creating a new mesh.")
-            two_mesh = TwoLevelMesh(
-                lx,
-                ly,
-                coarse_mesh_size,
-                refinement_levels,
-                layers,
-                progress=self.progress,
-            )
-            two_mesh.save()
-        self.progress.advance(task)
+        task = self.progress.add_task(f"Initializing DiffusionProblem ", total=3)
+        LOGGER.info(
+            f"Initializing DiffusionProblem for 1/H = {1 / mesh.coarse_mesh_size:.0f}"
+        )
 
         # initialize the Problem with the TwoLevelMesh
-        ptype = ProblemType.DIFFUSION
-        self.boundary_conditions = boundary_conditions
-        super().__init__(two_mesh, [boundary_conditions], ptype, progress=self.progress)
+        super().__init__(
+            [boundary_conditions],
+            mesh=mesh,
+            ptype=ProblemType.DIFFUSION,
+            progress=self.progress,
+        )
         self.progress.advance(task)
 
         # construct finite element space
@@ -202,7 +180,9 @@ class DiffusionProblem(Problem):
 
         grid_func.vec.FV().NumPy()[:] = coef_array
         coef_func = ngs.CoefficientFunction(grid_func)
-        LOGGER.debug(f"Using two layer vertex centered inclusions coefficient function.")
+        LOGGER.debug(
+            f"Using two layer vertex centered inclusions coefficient function."
+        )
         return coef_func.Compile()
 
     def edge_centered_inclusions_coefficient(self):
@@ -278,13 +258,6 @@ class DiffusionProblem(Problem):
 
 
 class DiffusionProblemExample:
-    # mesh parameters
-    lx = 1.0
-    ly = 1.0
-    coarse_mesh_size = 1 / 32
-    refinement_levels = 4
-    layers = 2
-
     # source and coefficient functions
     source_func = SourceFunc.CONSTANT
     coef_func = CoefFunc.DOUBLE_SLAB_EDGE_INCLUSIONS
@@ -310,11 +283,7 @@ class DiffusionProblemExample:
         # create diffusion problem
         cls.diffusion_problem = DiffusionProblem(
             HomogeneousDirichlet(ProblemType.DIFFUSION),
-            lx=cls.lx,
-            ly=cls.ly,
-            coarse_mesh_size=cls.coarse_mesh_size,
-            refinement_levels=cls.refinement_levels,
-            layers=cls.layers,
+            DefaultMeshParams.Nc16,
             source_func=cls.source_func,
             coef_func=cls.coef_func,
         )
@@ -410,7 +379,10 @@ class DiffusionProblemExample:
 
             # Set y-ticks and labels
             axs_bottom.set_ylim(-1.5, 1.5)
-            axs_bottom.set_yticks([y, y_gpu], ["$\\mathbf{\\sigma(T_m)}$", "$\\mathbf{\\sigma(T_m)}$ (GPU)"])
+            axs_bottom.set_yticks(
+                [y, y_gpu],
+                ["$\\mathbf{\\sigma(T_m)}$", "$\\mathbf{\\sigma(T_m)}$ (GPU)"],
+            )
             axs_bottom.set_xscale("log")
             axs_bottom.grid(axis="x")
             axs_bottom.grid()
@@ -464,5 +436,6 @@ def profile_solve():
 
 
 if __name__ == "__main__":
+    LOGGER.setLevel("INFO")  # Set logging level to INFO for the example
     full_example()  # Uncomment this line to run a full diffusion problem example
     # profile_solve()  # Uncomment this line to profile problem solving

@@ -7,7 +7,7 @@ import scipy.sparse as sp
 
 from lib.boundary_conditions import BoundaryConditions, HomogeneousDirichlet
 from lib.logger import LOGGER, PROGRESS
-from lib.meshes import TwoLevelMesh
+from lib.meshes import DefaultMeshParams, TwoLevelMesh
 from lib.problem_type import ProblemType
 
 
@@ -153,6 +153,8 @@ class FESpace:
             task = self.progress.add_task(
                 "Obtaining subdomain DOFs", total=len(self.two_mesh.subdomains)
             )
+            desc = self.progress.get_description(task)
+            desc += " ({0})"
             for subdomain, subdomain_data in self.two_mesh.subdomains.items():
                 # all subdomain dofs
                 dofs = []
@@ -175,7 +177,7 @@ class FESpace:
                 self.progress.update(
                     task,
                     advance=1,
-                    description=f"Obtaining subdomain DOFs ({subdomain.nr})",
+                    description=desc.format(subdomain.nr),
                 )
 
             # remove task and log completion
@@ -410,7 +412,7 @@ class FESpace:
         }
         with open(self.domain_dofs_path, "w") as f:
             json.dump(domain_dofs_data, f, indent=4)
-        LOGGER.debug(f"Saved domain DOFs to {self.domain_dofs_path}")  # type: ignore
+        LOGGER.debug("Saved domain DOFs to  %s", self.domain_dofs_path)
 
     def load_domain_dofs(self):
         """
@@ -469,17 +471,7 @@ class FESpace:
 
 
 def load_mesh():
-    lx, ly = 1.0, 1.0
-    coarse_mesh_size = 1 / 32
-    refinement_levels = 4
-    layers = 2
-    return TwoLevelMesh.load(
-        lx=lx,
-        ly=ly,
-        coarse_mesh_size=coarse_mesh_size,
-        refinement_levels=refinement_levels,
-        layers=layers,
-    )
+    return TwoLevelMesh.load(DefaultMeshParams.Nc4)
 
 
 def example_fespace():

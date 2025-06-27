@@ -16,7 +16,7 @@ from lib.boundary_conditions import (
 )
 from lib.fespace import FESpace
 from lib.logger import LOGGER, PROGRESS
-from lib.meshes import BoundaryName, TwoLevelMesh
+from lib.meshes import BoundaryName, DefaultMeshParams, MeshParams, TwoLevelMesh
 from lib.operators import Operator
 from lib.preconditioners import (
     CoarseSpace,
@@ -30,8 +30,8 @@ from lib.solvers import CustomCG
 class Problem:
     def __init__(
         self,
-        two_mesh: TwoLevelMesh,
         bcs: list[BoundaryConditions],
+        mesh: TwoLevelMesh | MeshParams = DefaultMeshParams.Nc4,
         ptype: ProblemType = ProblemType.CUSTOM,
         progress: Optional[PROGRESS] = None,
     ):
@@ -44,9 +44,36 @@ class Problem:
             boundary_conditions (dict): Dictionary containing boundary conditions for the problem.
         """
         self.progress = progress
-        self.two_mesh = two_mesh
+
+        # get mesh
+        if isinstance(mesh, MeshParams):
+            try:
+                self.two_mesh = TwoLevelMesh.load(
+                    mesh,
+                    progress=self.progress,
+                )
+            except FileNotFoundError:
+                LOGGER.info("Mesh file not found. Creating a new mesh.")
+                self.two_mesh = TwoLevelMesh(
+                    mesh,
+                    progress=self.progress,
+                )
+                self.two_mesh.save()
+        elif isinstance(mesh, TwoLevelMesh):
+            LOGGER.info("Using existing TwoLevelMesh.")
+            self.two_mesh = mesh
+        else:
+            msg = (
+                f"Invalid mesh type: {type(mesh)}. Expected TwoLevelMesh or MeshParams."
+            )
+            LOGGER.error(msg)
+            raise TypeError(msg)
+        
+        # handle remaining input
         self.boundary_conditions = bcs
         self.ptype = ptype
+
+        # set defaults
         self._linear_form = None
         self._linear_form_set = False
         self._bilinear_form = None
@@ -397,34 +424,21 @@ class Problem:
 
 
 if __name__ == "__main__":
-    # load mesh
-    lx, ly = 1.0, 1.0
-    coarse_mesh_size = 1 / 16
-    refinement_levels = 4
-    layers = 2
-    two_mesh = TwoLevelMesh.load(
-        lx=lx,
-        ly=ly,
-        coarse_mesh_size=coarse_mesh_size,
-        refinement_levels=refinement_levels,
-        layers=layers,
-    )
-
-    # define problem type
-    ptype = ProblemType.DIFFUSION
+    # get mesh parameters
+    mesh_params = DefaultMeshParams.Nc16
 
     # define boundary conditions
-    bcs = HomogeneousDirichlet(ptype)
+    bcs = HomogeneousDirichlet(ProblemType.DIFFUSION)
     bcs.set_boundary_condition(
         BoundaryCondition(
             name=BoundaryName.LEFT,
             btype=BoundaryType.DIRICHLET,
-            values={0: 32 * ngs.y * (ly - ngs.y)},
+            values={0: 32 * ngs.y * (mesh_params.ly - ngs.y)},
         )
     )
 
     # construct finite element space
-    problem = Problem(two_mesh, [bcs])
+    problem = Problem([bcs], mesh=mesh_params)
 
     # construct finite element space
     problem.construct_fespace([ngs.H1], [1], [1])
@@ -435,7 +449,7 @@ if __name__ == "__main__":
     # construct bilinear and linear forms
     problem.bilinear_form = ngs.grad(u_h) * ngs.grad(v_h) * ngs.dx
     problem.linear_form = (
-        32 * (ngs.y * (ly - ngs.y) + ngs.x * (lx - ngs.x)) * v_h * ngs.dx
+        32 * (ngs.y * (mesh_params.ly - ngs.y) + ngs.x * (mesh_params.lx - ngs.x)) * v_h * ngs.dx
     )
 
     # assemble the forms
