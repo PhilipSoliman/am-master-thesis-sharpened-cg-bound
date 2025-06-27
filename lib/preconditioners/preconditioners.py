@@ -22,7 +22,7 @@ class OneLevelSchwarzPreconditioner(Operator):
         self,
         A: sp.csr_matrix,
         fespace: FESpace,
-        gpu_device: str | None = None,
+        use_gpu: bool = False,
         progress: Optional[PROGRESS] = None,
     ):
         self.progress = PROGRESS.get_active_progress_bar(progress)
@@ -33,7 +33,7 @@ class OneLevelSchwarzPreconditioner(Operator):
 
         self.shape = A.shape
         self.fespace = fespace
-        self.gpu_device = gpu_device
+        self.use_gpu = use_gpu
         self.local_free_dofs = self._get_local_free_dofs()
         self.progress.advance(task)
         self.local_operators = self._get_local_operators(A)
@@ -41,6 +41,7 @@ class OneLevelSchwarzPreconditioner(Operator):
         self.local_solvers = self._get_local_solvers()
         self.progress.advance(task)
         self.name = "1-level Schwarz preconditioner"
+        self.short_name = "1-OAS"
 
         LOGGER.info("1-level Schwarz preconditioner initialized")
         self.progress.soft_stop()
@@ -63,23 +64,22 @@ class OneLevelSchwarzPreconditioner(Operator):
         """Return the preconditioner as a linear operator."""
         return LinearOperator(self.shape, lambda x: self.apply(x))
 
-    def as_full_system(self) -> sp.csc_matrix:
-        MinvA = sp.lil_matrix(self.shape, dtype=float)
-        if self.gpu_device is None:
-            LOGGER.debug("Returning preconditioner as full system (CPU)")
-            for dofs, operator in zip(self.local_free_dofs, self.local_operators):
-                MinvA[dofs, :][:, dofs] += spsolve(operator, sp.eye(operator.shape[0]))  # type: ignore
-        else:
+    def as_full_system(self, solve_gpu: bool = True) -> sp.csc_matrix:
+        Minv = sp.lil_matrix(self.shape, dtype=float)
+        if solve_gpu:
             LOGGER.debug("Returning preconditioner as full system (GPU)")
             for dofs, operator in zip(self.local_free_dofs, self.local_operators):
                 solver = DirectSparseSolver(
                     operator, matrix_type=MatrixType.SPD, progress=self.progress
                 )
                 eye = sp.eye(operator.shape[0], dtype=float).tocsc()
-                out = solver(eye)  # type: ignore
-                MinvA[np.ix_(dofs, dofs)] += out
-        MinvA = MinvA.reshape(self.shape).tocsc()
-        return MinvA
+                Minv[np.ix_(dofs, dofs)] += solver(eye)
+        else:
+            LOGGER.debug("Returning preconditioner as full system (CPU)")
+            for dofs, operator in zip(self.local_free_dofs, self.local_operators):
+                Minv[np.ix_(dofs, dofs)] += spsolve(operator, sp.eye(operator.shape[0]))  # type: ignore
+        Minv = Minv.reshape(self.shape).tocsc()
+        return Minv
 
     def _get_local_free_dofs(self) -> list[np.ndarray]:
         """Get local free dofs for each subdomain."""
@@ -117,7 +117,7 @@ class OneLevelSchwarzPreconditioner(Operator):
             "Obtaining local solvers", total=len(self.local_operators)
         )
         for operator in self.local_operators:
-            if self.gpu_device is None:
+            if not self.use_gpu:
                 solver_f = factorized(operator)
             else:
                 solver = DirectSparseSolver(operator, matrix_type=MatrixType.SPD).solver
@@ -125,7 +125,7 @@ class OneLevelSchwarzPreconditioner(Operator):
             local_solvers.append(solver_f)
             self.progress.advance(task)
         LOGGER.debug(
-            f"Obtained local solvers for {len(local_solvers)} subdomains on {'GPU' if self.gpu_device else 'CPU'}"
+            f"Obtained local solvers for {len(local_solvers)} subdomains on {'GPU' if self.use_gpu else 'CPU'}"
         )
         self.progress.remove_task(task)
         return local_solvers
@@ -141,16 +141,25 @@ class TwoLevelSchwarzPreconditioner(OneLevelSchwarzPreconditioner):
         fespace: FESpace,
         two_mesh: TwoLevelMesh,
         coarse_space: Type[CoarseSpace],
-        gpu_device: str | None = None,
+        coarse_only: bool = False, # only use coarse space, skip 1-level preconditioner
+        use_gpu: bool = False, # construct preconditioner on GPU
         progress: Optional[PROGRESS] = None,
     ):
-        super().__init__(A, fespace, gpu_device, progress)
         self.progress = PROGRESS.get_active_progress_bar(progress)
         task = self.progress.add_task(
             "Initializing 2-level Schwarz preconditioner",
-            total=3 if gpu_device is None else 4,
+            total=3 - coarse_only + use_gpu,
         )
 
+        self.coarse_only = coarse_only
+        if not coarse_only:
+            super().__init__(A, fespace, use_gpu, progress)
+            self.progress.advance(task)
+        else:
+            self.shape = A.shape
+            self.fespace = fespace
+            self.use_gpu = use_gpu
+        
         # get coarse space
         self.coarse_space = coarse_space(A, fespace, two_mesh, progress=self.progress)
         self.progress.advance(task)
@@ -158,7 +167,7 @@ class TwoLevelSchwarzPreconditioner(OneLevelSchwarzPreconditioner):
         # get coarse operator
         self.coarse_op = self.coarse_space.assemble_coarse_operator(A)
         self.progress.advance(task)
-        if self.gpu_device is not None:
+        if use_gpu:
             self.restriction_operator = gpu.send_matrix(self.coarse_space.restriction_operator)  # type: ignore
             self.restriction_operator_T = gpu.send_matrix(self.coarse_space.restriction_operator.transpose())  # type: ignore
             LOGGER.info("Restriction operators sent to GPU")
@@ -170,6 +179,7 @@ class TwoLevelSchwarzPreconditioner(OneLevelSchwarzPreconditioner):
 
         # set preconditioner name
         self.name = f"2-level Schwarz preconditioner with {self.coarse_space}"
+        self.short_name = f"2-{self.coarse_space.short_name}"
 
         LOGGER.info(f"{self.name} initialized")
         self.progress.soft_stop()
@@ -185,16 +195,18 @@ class TwoLevelSchwarzPreconditioner(OneLevelSchwarzPreconditioner):
         return out
 
     def apply_gpu(self, x: torch.Tensor) -> torch.Tensor:
-        x_1 = super().apply_gpu(x)
-        x_2 = torch.mv(self.restriction_operator_T, x)
-        tmp = torch.zeros_like(x_2, dtype=torch.float64)
-        self.coarse_solver(x_2, tmp)  # type: ignore
-        x_2 = torch.mv(self.restriction_operator, tmp)  # type: ignore
-        return x_1 + x_2
+        out = torch.zeros_like(x, dtype=torch.float64)
+        if not self.coarse_only:
+            out += super().apply_gpu(x)
+        x_coarse = torch.mv(self.restriction_operator_T, x)
+        tmp = torch.zeros_like(x_coarse, dtype=torch.float64)
+        self.coarse_solver(x_coarse, tmp)  # type: ignore
+        out += torch.mv(self.restriction_operator, tmp)  # type: ignore
+        return out
 
-    def as_full_system(self, coarse_only: bool = False) -> sp.csc_matrix:
+    def as_full_system(self) -> sp.csc_matrix:
         MinvA = sp.csc_matrix(self.shape, dtype=float)
-        if not coarse_only:
+        if not self.coarse_only:
             MinvA = super().as_full_system()
         solver = DirectSparseSolver(
             self.coarse_op, matrix_type=MatrixType.SPD, progress=self.progress
@@ -213,7 +225,7 @@ class TwoLevelSchwarzPreconditioner(OneLevelSchwarzPreconditioner):
         Callable[[np.ndarray], np.ndarray]
         | Callable[[torch.Tensor, torch.Tensor], NoneType]
     ):
-        if self.gpu_device is None:
+        if not self.use_gpu:
             LOGGER.debug("Obtained coarse solver (CPU)")
             return factorized(self.coarse_op)
         else:

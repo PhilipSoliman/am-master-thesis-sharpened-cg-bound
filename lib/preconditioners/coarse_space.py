@@ -31,6 +31,7 @@ class CoarseSpace(object):
         self.two_mesh = two_mesh
         self.ptype = ptype
         self.name = "Coarse space (base)"  # to be overridden by subclasses
+        self.short_name = "CS (base)" # to be overridden by subclasses
         LOGGER.debug("Initialized coarse space (base)")
 
     def assemble_coarse_operator(self, A: sp.csr_matrix) -> sp.csc_matrix:
@@ -106,6 +107,7 @@ class Q1CoarseSpace(CoarseSpace):
     ):
         super().__init__(A, fespace, two_mesh)
         self.name = "Q1 coarse space"
+        self.short_name = "Q1"
         self.restriction_operator = self.assemble_restriction_operator()
         self.coarse_dimension = self.restriction_operator.shape[1]  # type: ignore
         LOGGER.info(f"{self.name} initialized")
@@ -136,6 +138,7 @@ class GDSWCoarseSpace(CoarseSpace):
 
         super().__init__(A, fespace, two_mesh)
         self.name = name
+        self.short_name = "GDSW"
         self.progress.advance(task)
 
         # null space basis and dimension
@@ -375,6 +378,7 @@ class RGDSWCoarseSpace(GDSWCoarseSpace):
 
         CoarseSpace.__init__(self, A, fespace, two_mesh)
         self.name = name
+        self.short_name = "RGDSW"
         self.progress.advance(task)
 
         # null space basis and dimension
@@ -460,6 +464,7 @@ class AMSCoarseSpace(GDSWCoarseSpace):
 
         CoarseSpace.__init__(self, A, fespace, two_mesh)
         self.name = name
+        self.short_name = "AMS"
         self.progress.advance(task)
 
         self.coarse_dofs, self.edge_dofs, self.face_dofs = (
