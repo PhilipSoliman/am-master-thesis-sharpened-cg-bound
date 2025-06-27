@@ -23,7 +23,6 @@ class GPUInterface:
         if not self.available():
             LOGGER.warning(self.AVAILABILTY_MSG)
         self.AVAILABLE = True
-        LOGGER.debug(f"GPU Interface initialized. Using device: {self.DEVICE}")
 
     def available(self) -> bool:
         """
