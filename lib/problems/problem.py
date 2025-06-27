@@ -308,7 +308,6 @@ class Problem:
             tol=rtol,
             progress=self.progress,
         )
-        gpu_device = None if use_gpu is False else custom_cg.gpu_device
 
         # get preconditioner
         M_op = None
@@ -318,7 +317,7 @@ class Problem:
             if isinstance(preconditioner, type):
                 if preconditioner is OneLevelSchwarzPreconditioner:
                     precond = OneLevelSchwarzPreconditioner(
-                        A_sp_f, self.fes, gpu_device, progress=self.progress
+                        A_sp_f, self.fes, use_gpu=use_gpu, progress=self.progress
                     )
                 elif preconditioner is TwoLevelSchwarzPreconditioner:
                     if coarse_space is None:
@@ -330,7 +329,7 @@ class Problem:
                         self.fes,
                         self.two_mesh,
                         coarse_space,
-                        gpu_device,
+                        use_gpu=use_gpu,
                         progress=self.progress,
                     )
                     if save_coarse_bases:
