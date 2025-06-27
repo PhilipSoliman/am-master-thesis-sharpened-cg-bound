@@ -124,6 +124,7 @@ for coef_func, ax in zip(COEF_FUNCS, axs):
         M = sp.eye(A.shape[0], dtype=float).tocsc()  # identity matrix
         if i == 1:  # 1-level schwarz preconditioner
             M1 = preconditioner.as_full_system()  # calculate M1 only once
+            M = M1
         elif i > 1:  # 2-level schwarz preconditioners
             M2 = preconditioner.as_full_system()
             M = M1 + M2  # combine M1 and M2
