@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import Any, List, Optional
+from typing import Any, Optional
 
 from rich.logging import RichHandler
 from rich.progress import (
@@ -62,6 +62,13 @@ class CustomLogger(logging.Logger):
             stack_info=stack_info,
             stacklevel=stacklevel,
         )
+    
+    def setLevel(self, level: int | str) -> None:
+        """Set the logging level for the logger."""
+        super().setLevel(level)
+        # also set the level for all handlers
+        for handler in self.handlers:
+            handler.setLevel(level)
 
 
 # Custom formatter to add colors to log levels
@@ -113,8 +120,6 @@ class ColorLevelFormatter(logging.Formatter):
             return "⚠️  "  # warning emoji
         elif record.levelno == logging.INFO:
             return "✅ "  # information emoji simple
-        # elif record.levelno == logging.SUBSTEP:
-        #     return "[cyan]"
         elif record.levelno == logging.DEBUG:
             return "🧿 "  # bug emoji
         else:
@@ -137,7 +142,6 @@ logging.addLevelName(logging.WARNING, "WARN")
 logging.setLoggerClass(CustomLogger)
 LOGGER: CustomLogger = logging.getLogger("lib")  # type: ignore[assignment]
 LOGGER = CustomLogger("lib")  # type: ignore[assignment]
-LOGGER.setLevel("DEBUG")
 
 # set rich text handler
 handler = RichHandler(
