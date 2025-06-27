@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Optional
+from typing import Callable, Optional
 
 import ngsolve as ngs
 import numpy as np
@@ -21,22 +21,66 @@ from lib.problems.problem import Problem
 class SourceFunc(Enum):
     """Enumeration for source functions used in the diffusion problem."""
 
-    CONSTANT = "constant_source"
-    PARABOLIC = "parabolic_source"
+    CONSTANT = ("constant_source", r"$\mathcal{S}_{\text{const}}$")
+    PARABOLIC = ("parabolic_source", r"$\mathcal{S}_{\text{par}}$")
+
+    def __init__(self, func_name: str, latex: str):
+        self._func_name = func_name
+        self._latex = latex
+
+    def get_func(self, obj: "DiffusionProblem") -> Callable:
+        """Return the function name associated with the coefficient function."""
+        return getattr(obj, self._func_name)
+    
+    @property
+    def latex(self):
+        """Return the LaTeX representation associated with the coefficient function."""
+        return self._latex
 
 
 class CoefFunc(Enum):
     """Enumeration for coefficient functions used in the diffusion problem."""
 
-    SINUSOIDAL = "sinusoidal_coefficient"
-    VERTEX_INCLUSIONS = "vertex_centered_inclusions_coefficient"
-    TWO_LAYER_VERTEX_INCLUSIONS = "two_layer_vertex_centered_inclusions_coefficient"
-    EDGE_CENTERED_INCLUSIONS = "edge_centered_inclusions_coefficient"
-    SINGLE_SLAB_EDGE_INCLUSIONS = "single_slab_edge_inclusions_coefficient"
-    DOUBLE_SLAB_EDGE_INCLUSIONS = "double_slab_edge_inclusions_coefficient"
-    CONSTANT = "constant_coefficient"
-    HETMANIUK_LEHOUCQ = "hetmaniuk_lehoucq_coefficient"
-    HEINLEIN = "heinlein_coefficient"
+    SINUSOIDAL = ("sinusoidal_coefficient", r"$\mathcal{C}_{\text{sin}}$")
+    VERTEX_INCLUSIONS = (
+        "vertex_centered_inclusions_coefficient",
+        r"$\mathcal{C}_{\text{vert}}$",
+    )
+    TWO_LAYER_VERTEX_INCLUSIONS = (
+        "two_layer_vertex_centered_inclusions_coefficient",
+        r"$\mathcal{C}_{\text{2layer, vert}}$",
+    )
+    EDGE_CENTERED_INCLUSIONS = (
+        "edge_centered_inclusions_coefficient",
+        r"$\mathcal{C}_{\text{edge}}$",
+    )
+    SINGLE_SLAB_EDGE_INCLUSIONS = (
+        "single_slab_edge_inclusions_coefficient",
+        r"$\mathcal{C}_{\text{single slab, edge}}$",
+    )
+    DOUBLE_SLAB_EDGE_INCLUSIONS = (
+        "double_slab_edge_inclusions_coefficient",
+        r"$\mathcal{C}_{\text{double slab, edge}}$",
+    )
+    CONSTANT = ("constant_coefficient", r"$\mathcal{C}_{\text{const}}$")
+    HETMANIUK_LEHOUCQ = (
+        "hetmaniuk_lehoucq_coefficient",
+        r"$\mathcal{C}_{\text{hetmaniuk}}$",
+    )
+    HEINLEIN = ("heinlein_coefficient", r"$\mathcal{C}_{\text{heinlein}}$")
+
+    def __init__(self, func_name: str, latex: str):
+        self._func_name = func_name
+        self._latex = latex
+
+    def get_func(self, obj: "DiffusionProblem") -> Callable:
+        """Return the function name associated with the coefficient function."""
+        return getattr(obj, self._func_name)
+
+    @property
+    def latex(self):
+        """Return the LaTeX representation associated with the coefficient function."""
+        return self._latex
 
 
 class DiffusionProblem(Problem):
@@ -73,10 +117,11 @@ class DiffusionProblem(Problem):
         self.progress.advance(task)
 
         # get coefficient and source functions
-        self.coef_func_name = coef_func.value
-        self.coef_func = getattr(self, self.coef_func_name)()
-        self.source_func_name = source_func.value
-        self.source_func = getattr(self, self.source_func_name)()
+        # self.coef_func_name = coef_func.value
+        self.coef_func_name = coef_func.latex
+        self.coef_func = coef_func.get_func(self)()
+        self.source_func_name = source_func.latex
+        self.source_func = source_func.get_func(self)()
         self.progress.advance(task)
 
         LOGGER.info("DiffusionProblem initialized successfully.")
@@ -283,7 +328,7 @@ class DiffusionProblemExample:
         # create diffusion problem
         cls.diffusion_problem = DiffusionProblem(
             HomogeneousDirichlet(ProblemType.DIFFUSION),
-            DefaultMeshParams.Nc16,
+            DefaultMeshParams.Nc4,
             source_func=cls.source_func,
             coef_func=cls.coef_func,
         )
@@ -354,9 +399,9 @@ class DiffusionProblemExample:
             plt.suptitle(
                 f"CG convergence ("
                 + r"$\mathcal{C}$"
-                + f" = {cls.coef_func.name}, "
+                + f" = {cls.coef_func.latex}, "
                 + r"$f$"
-                + f" = {cls.source_func.name}, "
+                + f" = {cls.source_func.latex}, "
                 + r"$M^{-1}$"
                 + f" = {cls.diffusion_problem.precond_name})"
             )
