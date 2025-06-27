@@ -174,13 +174,15 @@ class TwoLevelSchwarzPreconditioner(OneLevelSchwarzPreconditioner):
         LOGGER.info(f"{self.name} initialized")
         self.progress.soft_stop()
 
-    def apply(self, x: np.ndarray) -> np.ndarray:
-        x_1 = super().apply(x)
-        x_2 = self.coarse_space.restriction_operator.transpose() @ x
-        x_2 = self.coarse_solver(x_2)  # type: ignore
-        x_2 = self.coarse_space.restriction_operator @ x_2
+    def apply(self, x: np.ndarray, coarse_only: bool = False) -> np.ndarray:
+        out = np.zeros_like(x, dtype=float)
+        if not coarse_only:
+            out += super().apply(x)
+        x_coarse = self.coarse_space.restriction_operator.transpose() @ x
+        x_coarse = self.coarse_solver(x_coarse)  # type: ignore
+        out += self.coarse_space.restriction_operator @ x_coarse
 
-        return x_1 + x_2
+        return out
 
     def apply_gpu(self, x: torch.Tensor) -> torch.Tensor:
         x_1 = super().apply_gpu(x)
