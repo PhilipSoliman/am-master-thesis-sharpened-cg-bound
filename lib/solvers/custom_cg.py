@@ -430,13 +430,14 @@ class CustomCG:
 
         return x, r, e
 
-    def get_approximate_eigenvalues(self):
+    def get_approximate_eigenvalues(self, num_eigs: Optional[int] = None):
         """
         Returns the approximate eigenvalues of the system A using the Lanczos matrix.
         The eigenvalues are computed from the diagonal and off-diagonal elements of the Lanczos matrix.
         """
         LOGGER.debug("Calculating approximate eigenvalues using Lanczos matrix")
-        num_eigs = min(100, self.niters - 1)  # limit to 100 to save computation time
+        if num_eigs is None:
+            num_eigs = min(100, self.niters - 1)  # limit to 100 to save computation time
         eigenvalues = eigs(
             self.get_lanczos_matrix(), library="scipy", num_eigs=num_eigs, which="BE"
         )
