@@ -21,9 +21,10 @@ from lib.problem_type import ProblemType
 from lib.problems import CoefFunc, DiffusionProblem, SourceFunc
 from lib.utils import get_cli_args, save_latex_figure, set_mpl_cycler, set_mpl_style
 
-LOGGER.setLevel("DEBUG")  # Set logger level to DEBUG for detailed output
+# set logging level
+LOGGER.setLevel("WARN")
 
-# Set matplotlib style & cycler
+# set matplotlib style & cycler
 set_mpl_style()
 set_mpl_cycler(colors=True)
 
@@ -36,7 +37,9 @@ FIGHEIGHT = 4
 problem_type = ProblemType.DIFFUSION
 boundary_conditions = HomogeneousDirichlet(problem_type)
 lx, ly = 1.0, 1.0  # Length of the domain in x and y directions
-coarse_mesh_size = 1 / 4  # Size of the coarse mesh
+coarse_mesh_size = (
+    1 / 4
+)  # Size of the coarse mesh (NOTE: this script only works for H = 1/4, any finer mesh will lead to a torch memory error!)
 refinement_levels = 4  # Number of times to refine the mesh
 layers = 2  # Number of overlapping layers in the Schwarz Domain Decomposition
 source_func = SourceFunc.CONSTANT  # Source function
@@ -45,14 +48,18 @@ coef_funcs = [
     CoefFunc.DOUBLE_SLAB_EDGE_INCLUSIONS,
 ]  # Coefficient functions
 
-# Initialize progress bar
+# initialize progress bar
 progress = PROGRESS.get_active_progress_bar()
 main_task = progress.add_task(
     "Calculating spectra for coefficient functions", total=len(coef_funcs)
 )
+
+# initialize figure and axes
 fig, axs = plt.subplots(
     len(coef_funcs), 1, figsize=(FIGWIDTH, FIGHEIGHT), squeeze=True, sharex=True
 )
+
+# main loop over coefficient functions & axes
 for coef_func, ax in zip(coef_funcs, axs):
     # Create the diffusion problem instance
     diffusion_problem = DiffusionProblem(
@@ -118,12 +125,13 @@ for coef_func, ax in zip(coef_funcs, axs):
     cond_numbers = np.zeros(len(preconditioners))
     M1 = sp.csc_matrix(A.shape, dtype=float)
     for i, (shorthand, preconditioner) in enumerate(preconditioners.items()):
-        system = A
-        if i == 1:
+        M = sp.eye(A.shape[0], dtype=float).tocsc()  # identity matrix
+        if i == 1:  # 1-level schwarz preconditioner
             M1 = preconditioner.as_full_system()  # calculate M1 only once
-        elif i > 1:
-            system = preconditioner.as_full_system(coarse_only=True) + M1
-        eigenvalues = eigs(system)
+        elif i > 1:  # 2-level schwarz preconditioners
+            M2 = preconditioner.as_full_system(coarse_only=True)
+            M = M1 + M2  # combine M1 and M2
+        eigenvalues = eigs(M @ A)
         spectra[shorthand] = eigenvalues
         cond_numbers[len(spectra) - 1] = (
             np.max(np.abs(eigenvalues)) / np.min(np.abs(eigenvalues))
