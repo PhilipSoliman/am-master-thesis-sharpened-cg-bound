@@ -34,6 +34,63 @@ class BoundaryName(Enum):
     LEFT = "left"
 
 
+class MeshParams:
+    """
+    Class for mesh parameters used in the TwoLevelMesh class.
+    """
+
+    def __init__(
+        self,
+        lx: float,
+        ly: float,
+        Nc: int,
+        refinement_levels: int,
+        layers: int,
+    ):
+        """
+        Initialize the mesh parameters.
+        Args:
+            lx (float): Length of the domain in the x-direction.
+            ly (float): Length of the domain in the y-direction.
+            Nc (int): Number of coarse mesh cells along one dimension (H = 1/Nc).
+            refinement_levels (int): Number of uniform refinements for the fine mesh.
+            layers (int): Number of layers for domain decomposition.
+        """
+        self.lx = lx
+        self.ly = ly
+        self.coarse_mesh_size = 1 / Nc
+        self.refinement_levels = refinement_levels
+        self.layers = layers
+
+
+class DefaultMeshParamsMeta(type):
+    def __iter__(cls):
+        items = []
+        for attr in dir(cls):
+            if attr.startswith("Nc") and attr[2:].isdigit():
+                value = getattr(cls, attr)
+                if isinstance(value, MeshParams):
+                    items.append((int(attr[2:]), value))
+        for _, value in sorted(items):
+            yield value
+
+    def __len__(cls):
+        return sum(
+            1
+            for attr in dir(cls)
+            if attr.startswith("Nc")
+            and attr[2:].isdigit()
+            and isinstance(getattr(cls, attr), MeshParams)
+        )
+
+
+class DefaultMeshParams(metaclass=DefaultMeshParamsMeta):
+    Nc4 = MeshParams(lx=1.0, ly=1.0, Nc=4, refinement_levels=4, layers=2)
+    Nc8 = MeshParams(lx=1.0, ly=1.0, Nc=8, refinement_levels=4, layers=2)
+    Nc16 = MeshParams(lx=1.0, ly=1.0, Nc=16, refinement_levels=4, layers=2)
+    Nc32 = MeshParams(lx=1.0, ly=1.0, Nc=32, refinement_levels=4, layers=2)
+    Nc64 = MeshParams(lx=1.0, ly=1.0, Nc=64, refinement_levels=4, layers=2)
+
 class TwoLevelMesh:
     """
     TwoLevelMesh
@@ -72,7 +129,7 @@ class TwoLevelMesh:
         - Visualize mesh domains and layerss for debugging or analysis.
     """
 
-    SAVE_STRING = "tlm_lx={0:.1f}_ly={1:.1f}_H={2:.2f}_lvl={3:.0f}_lyr={4:.0f}"
+    SAVE_STRING = "tlm_lx={0:.1f}_ly={1:.1f}_Nc={2:.0f}_lvl={3:.0f}_lyr={4:.0f}"
     ZORDERS = {
         "elements": 1.0,
         "layers": 1.5,
@@ -82,11 +139,7 @@ class TwoLevelMesh:
 
     def __init__(
         self,
-        lx: float,
-        ly: float,
-        coarse_mesh_size: float,
-        refinement_levels: int = 1,
-        layers: int = 0,
+        mesh_params: MeshParams = DefaultMeshParams.Nc4,
         progress: Optional[PROGRESS] = None,
     ):
         """
@@ -98,13 +151,13 @@ class TwoLevelMesh:
             coarse_mesh_size (float): Mesh size for the coarse mesh.
             refinement_levels (int, optional): Number of uniform refinements for the fine mesh. Defaults to 1.
             layers(int, optional): Number of layers for domain decomposition. Defaults to 0.
-        """        
+        """
         # handle input
-        self.lx = lx
-        self.ly = ly
-        self.coarse_mesh_size = coarse_mesh_size
-        self.refinement_levels = refinement_levels
-        self.layers = layers
+        self.lx = mesh_params.lx
+        self.ly = mesh_params.ly
+        self.coarse_mesh_size = mesh_params.coarse_mesh_size
+        self.refinement_levels = mesh_params.refinement_levels
+        self.layers = mesh_params.layers
 
         # intial log
         self.progress = PROGRESS.get_active_progress_bar(progress)
@@ -144,7 +197,7 @@ class TwoLevelMesh:
 
         LOGGER.info(f"Created TwoLevelMesh")
         LOGGER.debug(str(self))
-        
+
         self.progress.soft_stop()
 
     # mesh creation
@@ -608,7 +661,7 @@ class TwoLevelMesh:
                 "Please set refinement_levels >= 4."
             )
             return {}
-        
+
         # main output dictionary
         edge_slabs = {}
 
@@ -976,7 +1029,7 @@ class TwoLevelMesh:
         # edge slabs for edge inclusions
         self._save_edge_slabs()
         self.progress.advance(task)
-        
+
         LOGGER.info(f"Saved TwoLevelMesh")
         self.progress.soft_stop()
 
@@ -1079,11 +1132,7 @@ class TwoLevelMesh:
     @classmethod
     def load(
         cls,
-        lx: float,
-        ly: float,
-        coarse_mesh_size: float,
-        refinement_levels: int,
-        layers: int,
+        mesh_params: MeshParams,
         progress: Optional[PROGRESS] = None,
     ):
         """
@@ -1096,7 +1145,11 @@ class TwoLevelMesh:
             TwoLevelMesh: Loaded TwoLevelMesh instance.
         """
         folder_name = cls.SAVE_STRING.format(
-            lx, ly, coarse_mesh_size, refinement_levels, layers
+            mesh_params.lx,
+            mesh_params.ly,
+            1/mesh_params.coarse_mesh_size,
+            mesh_params.refinement_levels,
+            mesh_params.layers,
         )
         fp = DATA_DIR / folder_name
         if fp.exists():
@@ -1248,9 +1301,7 @@ class TwoLevelMesh:
             LOGGER.error(msg, edge_slabs_path)
             raise FileNotFoundError(msg % str(edge_slabs_path))
         elif self.refinement_levels < 4:
-            LOGGER.warning(
-                "No edge slabs generated for refinement level < 4."
-            )
+            LOGGER.warning("No edge slabs generated for refinement level < 4.")
             return {}
         with open(edge_slabs_path, "r") as f:
             edge_slabs = json.load(f)
@@ -1267,7 +1318,7 @@ class TwoLevelMesh:
         folder_name = self.SAVE_STRING.format(
             self.lx,
             self.ly,
-            self.coarse_mesh_size,
+            1 / self.coarse_mesh_size,
             self.refinement_levels,
             self.layers,
         )
@@ -1728,32 +1779,25 @@ class TwoLevelMesh:
 ##################
 class TwoLevelMeshExamples:
 
-    lx, ly = 1.0, 1.0
-    coarse_mesh_size = lx / 8
-    refinement_levels = 4
-    layers = 2
+    mesh_params = MeshParams(lx=1.0, ly=1.0, Nc=4, refinement_levels=4, layers=2)
     SAVE_DIR = DATA_DIR / TwoLevelMesh.SAVE_STRING.format(
-        lx, ly, coarse_mesh_size, refinement_levels, layers
+        mesh_params.lx,
+        mesh_params.ly,
+        1/mesh_params.coarse_mesh_size,
+        mesh_params.refinement_levels,
+        mesh_params.layers,
     )
 
     @classmethod
     def example_creation(cls, fig_toggle: bool = True):
-        two_mesh = TwoLevelMesh(
-            cls.lx,
-            cls.ly,
-            cls.coarse_mesh_size,
-            refinement_levels=cls.refinement_levels,
-            layers=cls.layers,
-        )
+        two_mesh = TwoLevelMesh(mesh_params=cls.mesh_params)
         two_mesh.save()  # Save the mesh and subdomains
         if fig_toggle:
             fig = two_mesh.visualize_two_level_mesh(show=True)
 
     @classmethod
     def example_load(cls):
-        two_mesh = TwoLevelMesh.load(
-            cls.lx, cls.ly, cls.coarse_mesh_size, cls.refinement_levels, cls.layers
-        )
+        two_mesh = TwoLevelMesh.load(cls.mesh_params)
 
     # Profiling the mesh creation & loading
     @classmethod
