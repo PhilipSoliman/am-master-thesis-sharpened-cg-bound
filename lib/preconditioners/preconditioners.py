@@ -184,9 +184,9 @@ class TwoLevelSchwarzPreconditioner(OneLevelSchwarzPreconditioner):
         LOGGER.info(f"{self.name} initialized")
         self.progress.soft_stop()
 
-    def apply(self, x: np.ndarray, coarse_only: bool = False) -> np.ndarray:
+    def apply(self, x: np.ndarray) -> np.ndarray:
         out = np.zeros_like(x, dtype=float)
-        if not coarse_only:
+        if not self.coarse_only:
             out += super().apply(x)
         x_coarse = self.coarse_space.restriction_operator.transpose() @ x
         x_coarse = self.coarse_solver(x_coarse)  # type: ignore
