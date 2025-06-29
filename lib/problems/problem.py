@@ -2,11 +2,9 @@ from copy import copy
 from datetime import datetime
 from typing import Optional, Type
 
-import matplotlib.pyplot as plt
 import ngsolve as ngs
 import numpy as np
 import scipy.sparse as sp
-from scipy.sparse.linalg import LinearOperator
 
 from lib.boundary_conditions import (
     BoundaryCondition,
@@ -16,7 +14,7 @@ from lib.boundary_conditions import (
 )
 from lib.fespace import FESpace
 from lib.logger import LOGGER, PROGRESS
-from lib.meshes import BoundaryName, DefaultMeshParams, MeshParams, TwoLevelMesh
+from lib.meshes import BoundaryName, DefaultQuadMeshParams, MeshParams, TwoLevelMesh
 from lib.operators import Operator
 from lib.preconditioners import (
     CoarseSpace,
@@ -31,7 +29,7 @@ class Problem:
     def __init__(
         self,
         bcs: list[BoundaryConditions],
-        mesh: TwoLevelMesh | MeshParams = DefaultMeshParams.Nc4,
+        mesh: TwoLevelMesh | MeshParams = DefaultQuadMeshParams.Nc4,
         ptype: ProblemType = ProblemType.CUSTOM,
         progress: Optional[PROGRESS] = None,
     ):

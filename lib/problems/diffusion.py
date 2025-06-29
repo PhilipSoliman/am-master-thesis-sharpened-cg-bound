@@ -6,7 +6,7 @@ import numpy as np
 
 from lib.boundary_conditions import BoundaryConditions, HomogeneousDirichlet
 from lib.logger import LOGGER, PROGRESS
-from lib.meshes import DefaultMeshParams, MeshParams, TwoLevelMesh
+from lib.meshes import DefaultQuadMeshParams, MeshParams, TwoLevelMesh
 from lib.preconditioners import (
     AMSCoarseSpace,
     GDSWCoarseSpace,
@@ -110,7 +110,7 @@ class DiffusionProblem(Problem):
     def __init__(
         self,
         boundary_conditions: BoundaryConditions,
-        mesh: TwoLevelMesh | MeshParams = DefaultMeshParams.Nc4,
+        mesh: TwoLevelMesh | MeshParams = DefaultQuadMeshParams.Nc4,
         coef_func: CoefFunc = CoefFunc.VERTEX_INCLUSIONS,
         source_func: SourceFunc = SourceFunc.CONSTANT,
         progress: Optional[PROGRESS] = None,
@@ -346,7 +346,7 @@ class DiffusionProblemExample:
         # create diffusion problem
         cls.diffusion_problem = DiffusionProblem(
             HomogeneousDirichlet(ProblemType.DIFFUSION),
-            DefaultMeshParams.Nc4,
+            DefaultQuadMeshParams.Nc4,
             source_func=cls.source_func,
             coef_func=cls.coef_func,
         )

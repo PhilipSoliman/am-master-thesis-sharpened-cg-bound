@@ -1,8 +1,9 @@
-from .mesh import BoundaryName, DefaultMeshParams, MeshParams, TwoLevelMesh
+from .mesh import BoundaryName, DefaultQuadMeshParams, DefaultTriMeshParams, MeshParams, TwoLevelMesh
 
 __all__ = [
     "BoundaryName",
     "MeshParams",
-    "DefaultMeshParams",
+    "DefaultQuadMeshParams",
+    "DefaultTriMeshParams",
     "TwoLevelMesh",
 ]

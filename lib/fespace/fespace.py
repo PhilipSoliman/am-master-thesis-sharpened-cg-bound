@@ -7,7 +7,7 @@ import scipy.sparse as sp
 
 from lib.boundary_conditions import BoundaryConditions, HomogeneousDirichlet
 from lib.logger import LOGGER, PROGRESS
-from lib.meshes import DefaultMeshParams, TwoLevelMesh
+from lib.meshes import DefaultQuadMeshParams, TwoLevelMesh
 from lib.problem_type import ProblemType
 
 
@@ -471,7 +471,7 @@ class FESpace:
 
 
 def load_mesh():
-    return TwoLevelMesh.load(DefaultMeshParams.Nc4)
+    return TwoLevelMesh.load(DefaultQuadMeshParams.Nc4)
 
 
 def example_fespace():
