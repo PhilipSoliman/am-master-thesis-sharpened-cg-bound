@@ -18,6 +18,9 @@ from lib.utils import send_matrix_to_gpu, suppress_output
 
 
 class OneLevelSchwarzPreconditioner(Operator):
+    NAME = "1-level Schwarz preconditioner"
+    SHORT_NAME = "1-OAS"
+
     def __init__(
         self,
         A: sp.csr_matrix,
@@ -26,9 +29,7 @@ class OneLevelSchwarzPreconditioner(Operator):
         progress: Optional[PROGRESS] = None,
     ):
         self.progress = PROGRESS.get_active_progress_bar(progress)
-        task = self.progress.add_task(
-            "Initializing 1-level Schwarz preconditioner", total=3
-        )
+        task = self.progress.add_task(f"Initializing {self}", total=3)
         LOGGER.info("Initializing 1-level Schwarz preconditioner")
 
         self.shape = A.shape
@@ -40,8 +41,6 @@ class OneLevelSchwarzPreconditioner(Operator):
         self.progress.advance(task)
         self.local_solvers = self._get_local_solvers()
         self.progress.advance(task)
-        self.name = "1-level Schwarz preconditioner"
-        self.short_name = "1-OAS"
 
         LOGGER.info("1-level Schwarz preconditioner initialized")
         self.progress.soft_stop()
@@ -131,18 +130,21 @@ class OneLevelSchwarzPreconditioner(Operator):
         return local_solvers
 
     def __str__(self):
-        return self.name
+        return self.NAME
 
 
 class TwoLevelSchwarzPreconditioner(OneLevelSchwarzPreconditioner):
+    NAME = "2-level Schwarz preconditioner"
+    SHORT_NAME = "2-OAS"
+
     def __init__(
         self,
         A: sp.csr_matrix,
         fespace: FESpace,
         two_mesh: TwoLevelMesh,
         coarse_space: Type[CoarseSpace],
-        coarse_only: bool = False, # only use coarse space, skip 1-level preconditioner
-        use_gpu: bool = False, # construct preconditioner on GPU
+        coarse_only: bool = False,  # only use coarse space, skip 1-level preconditioner
+        use_gpu: bool = False,  # construct preconditioner on GPU
         progress: Optional[PROGRESS] = None,
     ):
         self.progress = PROGRESS.get_active_progress_bar(progress)
@@ -159,7 +161,7 @@ class TwoLevelSchwarzPreconditioner(OneLevelSchwarzPreconditioner):
             self.shape = A.shape
             self.fespace = fespace
             self.use_gpu = use_gpu
-        
+
         # get coarse space
         self.coarse_space = coarse_space(A, fespace, two_mesh, progress=self.progress)
         self.progress.advance(task)
@@ -178,10 +180,10 @@ class TwoLevelSchwarzPreconditioner(OneLevelSchwarzPreconditioner):
         self.progress.advance(task)
 
         # set preconditioner name
-        self.name = f"2-level Schwarz preconditioner with {self.coarse_space}"
-        self.short_name = f"2-{self.coarse_space.short_name}"
+        self.NAME += f" with {self.coarse_space}"
+        self.SHORT_NAME += f"-{self.coarse_space.SHORT_NAME}"
 
-        LOGGER.info(f"{self.name} initialized")
+        LOGGER.info(f"{self} initialized")
         self.progress.soft_stop()
 
     def apply(self, x: np.ndarray) -> np.ndarray:

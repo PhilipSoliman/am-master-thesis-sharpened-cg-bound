@@ -18,6 +18,9 @@ warnings.simplefilter("ignore", SparseEfficiencyWarning)
 
 
 class CoarseSpace(object):
+    NAME = "Coarse space (base)"
+    SHORT_NAME = "CS (base)"
+
     def __init__(
         self,
         A: sp.csr_matrix,
@@ -30,9 +33,7 @@ class CoarseSpace(object):
         self.A = A
         self.two_mesh = two_mesh
         self.ptype = ptype
-        self.name = "Coarse space (base)"  # to be overridden by subclasses
-        self.short_name = "CS (base)" # to be overridden by subclasses
-        LOGGER.debug("Initialized coarse space (base)")
+        LOGGER.debug(f"Initialized {self.NAME}")
 
     def assemble_coarse_operator(self, A: sp.csr_matrix) -> sp.csc_matrix:
         LOGGER.info("Assembling coarse operator:")
@@ -76,7 +77,7 @@ class CoarseSpace(object):
             raise ValueError(msg)
 
     def __str__(self):
-        return self.name
+        return self.NAME
 
     def _init_str(self):
         """
@@ -98,6 +99,9 @@ class CoarseSpace(object):
 
 
 class Q1CoarseSpace(CoarseSpace):
+    NAME = "Q1 coarse space"
+    SHORT_NAME = "Q1"
+
     def __init__(
         self,
         A: sp.csr_matrix,
@@ -106,11 +110,9 @@ class Q1CoarseSpace(CoarseSpace):
         progress: Optional[PROGRESS] = None,
     ):
         super().__init__(A, fespace, two_mesh)
-        self.name = "Q1 coarse space"
-        self.short_name = "Q1"
         self.restriction_operator = self.assemble_restriction_operator()
         self.coarse_dimension = self.restriction_operator.shape[1]  # type: ignore
-        LOGGER.info(f"{self.name} initialized")
+        LOGGER.info(f"{self} initialized")
         LOGGER.debug(str(self._init_str()))
 
     def assemble_restriction_operator(self) -> sp.csc_matrix:
@@ -124,6 +126,9 @@ class Q1CoarseSpace(CoarseSpace):
 
 
 class GDSWCoarseSpace(CoarseSpace):
+    NAME = "GDSW coarse space"
+    SHORT_NAME = "GDSW"
+
     def __init__(
         self,
         A: sp.csr_matrix,
@@ -131,14 +136,11 @@ class GDSWCoarseSpace(CoarseSpace):
         two_mesh: TwoLevelMesh,
         progress: Optional[PROGRESS] = None,
     ):
-        name = "GDSW coarse space"
         self.progress = PROGRESS.get_active_progress_bar(progress)
-        task = self.progress.add_task(f"Initializing {name}", total=3)
-        LOGGER.info(f"Initializing {name}")
+        task = self.progress.add_task(f"Initializing {self.NAME}", total=3)
+        LOGGER.info(f"Initializing {self.NAME}")
 
         super().__init__(A, fespace, two_mesh)
-        self.name = name
-        self.short_name = "GDSW"
         self.progress.advance(task)
 
         # null space basis and dimension
@@ -155,12 +157,12 @@ class GDSWCoarseSpace(CoarseSpace):
         # interface component dimension
         self.interface_dimension = len(self.interface_components) * self.null_space_dim
 
-        LOGGER.info(f"{self.name} initialized")
+        LOGGER.info(f"{self} initialized")
         LOGGER.debug(str(self._init_str()))
         self.progress.soft_stop()
 
     def assemble_restriction_operator(self) -> sp.csc_matrix:
-        LOGGER.debug(f"Assembling restriction operator for {self.name}")
+        LOGGER.debug(f"Assembling restriction operator for {self.NAME}")
 
         # get the interface operator
         interface_operator = self._assemble_interface_operator()
@@ -363,6 +365,9 @@ class GDSWCoarseSpace(CoarseSpace):
 
 
 class RGDSWCoarseSpace(GDSWCoarseSpace):
+    NAME = "RGDSW coarse space"
+    SHORT_NAME = "RGDSW"
+
     def __init__(
         self,
         A: sp.csr_matrix,
@@ -370,15 +375,11 @@ class RGDSWCoarseSpace(GDSWCoarseSpace):
         two_mesh: TwoLevelMesh,
         progress: Optional[PROGRESS] = None,
     ):
-        name = "RGDSW coarse space"
-
         self.progress = PROGRESS.get_active_progress_bar(progress)
-        task = self.progress.add_task(f"Initializing {name}", total=3)
-        LOGGER.info(f"Initializing {name}")
+        task = self.progress.add_task(f"Initializing {self.NAME}", total=3)
+        LOGGER.info(f"Initializing {self.NAME}")
 
         CoarseSpace.__init__(self, A, fespace, two_mesh)
-        self.name = name
-        self.short_name = "RGDSW"
         self.progress.advance(task)
 
         # null space basis and dimension
@@ -450,21 +451,21 @@ class RGDSWCoarseSpace(GDSWCoarseSpace):
 
 
 class AMSCoarseSpace(GDSWCoarseSpace):
+    NAME = "AMS coarse space"
+    SHORT_NAME = "AMS"
+
     def __init__(
         self,
         A: sp.csr_matrix,
         fespace: FESpace,
         two_mesh: TwoLevelMesh,
         progress: Optional[PROGRESS] = None,
-    ):
-        name = "AMS coarse space"
+    ):        
         self.progress = PROGRESS.get_active_progress_bar(progress)
-        task = self.progress.add_task(f"Initializing {name}", total=3)
-        LOGGER.info(f"Initializing {name}")
+        task = self.progress.add_task(f"Initializing {self.NAME}", total=3)
+        LOGGER.info(f"Initializing {self.NAME}")
 
         CoarseSpace.__init__(self, A, fespace, two_mesh)
-        self.name = name
-        self.short_name = "AMS"
         self.progress.advance(task)
 
         self.coarse_dofs, self.edge_dofs, self.face_dofs = (
@@ -484,7 +485,7 @@ class AMSCoarseSpace(GDSWCoarseSpace):
         self.progress.soft_stop()
 
     def assemble_restriction_operator(self) -> sp.csc_matrix:
-        LOGGER.debug(f"Assembling restriction operator for {self.name}")
+        LOGGER.debug(f"Assembling restriction operator for {self}")
         restriction_operator = sp.csc_matrix(
             (self.fespace.num_free_dofs, self.interface_dimension), dtype=float
         )
