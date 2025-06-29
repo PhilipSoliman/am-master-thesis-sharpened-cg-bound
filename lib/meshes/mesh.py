@@ -87,12 +87,19 @@ class DefaultMeshParamsMeta(type):
         )
 
 
-class DefaultMeshParams(metaclass=DefaultMeshParamsMeta):
+class DefaultQuadMeshParams(metaclass=DefaultMeshParamsMeta):
     Nc4 = MeshParams(lx=1.0, ly=1.0, Nc=4, refinement_levels=4, layers=2, quad=True)
     Nc8 = MeshParams(lx=1.0, ly=1.0, Nc=8, refinement_levels=4, layers=2, quad=True)
     Nc16 = MeshParams(lx=1.0, ly=1.0, Nc=16, refinement_levels=4, layers=2, quad=True)
     Nc32 = MeshParams(lx=1.0, ly=1.0, Nc=32, refinement_levels=4, layers=2, quad=True)
     Nc64 = MeshParams(lx=1.0, ly=1.0, Nc=64, refinement_levels=4, layers=2, quad=True)
+
+class DefaultTriMeshParams(metaclass=DefaultMeshParamsMeta):
+    Nc4 = MeshParams(lx=1.0, ly=1.0, Nc=4, refinement_levels=4, layers=2, quad=False)
+    Nc8 = MeshParams(lx=1.0, ly=1.0, Nc=8, refinement_levels=4, layers=2, quad=False)
+    Nc16 = MeshParams(lx=1.0, ly=1.0, Nc=16, refinement_levels=4, layers=2, quad=False)
+    Nc32 = MeshParams(lx=1.0, ly=1.0, Nc=32, refinement_levels=4, layers=2, quad=False)
+    Nc64 = MeshParams(lx=1.0, ly=1.0, Nc=64, refinement_levels=4, layers=2, quad=False)
 
 
 class TwoLevelMesh:
@@ -143,7 +150,7 @@ class TwoLevelMesh:
 
     def __init__(
         self,
-        mesh_params: MeshParams = DefaultMeshParams.Nc4,
+        mesh_params: MeshParams = DefaultQuadMeshParams.Nc4,
         progress: Optional[PROGRESS] = None,
     ):
         """
@@ -157,6 +164,7 @@ class TwoLevelMesh:
             layers(int, optional): Number of layers for domain decomposition. Defaults to 0.
         """
         # handle input
+        self.mesh_params = mesh_params
         self.lx = mesh_params.lx
         self.ly = mesh_params.ly
         self.coarse_mesh_size = mesh_params.coarse_mesh_size
@@ -461,7 +469,7 @@ class TwoLevelMesh:
         subdomains = {}
         coarse_elements = self.coarse_mesh.Elements()
         num_coarse_elements = self.coarse_mesh.ne
-        num_elements_per_coarse_element = 4**self.refinement_levels
+        num_elements_per_coarse_element = 4**self.refinement_levels #NOTE: True for any 2D object, see https://www.youtube.com/watch?v=FnRhnZbDprE
 
         # coarse elements are taken to be subdomains
         task = self.progress.add_task(
@@ -1161,15 +1169,7 @@ class TwoLevelMesh:
         Returns:
             TwoLevelMesh: Loaded TwoLevelMesh instance.
         """
-        folder_name = cls.SAVE_STRING.format(
-            "quad" if mesh_params.quad else "tri",
-            mesh_params.lx,
-            mesh_params.ly,
-            1 / mesh_params.coarse_mesh_size,
-            mesh_params.refinement_levels,
-            mesh_params.layers,
-        )
-        fp = DATA_DIR / folder_name
+        fp = cls.get_save_dir(mesh_params)
         if fp.exists():
             progress = PROGRESS.get_active_progress_bar(progress)
             obj = cls.__new__(cls)
@@ -1247,6 +1247,14 @@ class TwoLevelMesh:
         self.refinement_levels = metadata["refinement_levels"]
         self.layers = metadata["layers"]
         self.quad = metadata["quad"]
+        self.mesh_params = MeshParams(
+            lx=self.lx,
+            ly=self.ly,
+            Nc=int(1/self.coarse_mesh_size),
+            refinement_levels=self.refinement_levels,
+            layers=self.layers,
+            quad=self.quad,
+        )
         LOGGER.debug(f"loaded metadata")
 
     def _load_meshes(self, fp: Path):
@@ -1334,13 +1342,26 @@ class TwoLevelMesh:
         """
         Directory where the mesh and subdomain data are saved.
         """
-        folder_name = self.SAVE_STRING.format(
-            "quad" if self.quad else "tri",
-            self.lx,
-            self.ly,
-            1 / self.coarse_mesh_size,
-            self.refinement_levels,
-            self.layers,
+        return self.get_save_dir(self.mesh_params)
+    
+    @classmethod
+    def get_save_dir(cls, mesh_params: MeshParams) -> Path:
+        """
+        Get the save directory based on mesh parameters.
+
+        Args:
+            mesh_params (MeshParams): Parameters for the mesh.
+
+        Returns:
+            Path: The save directory path.
+        """
+        folder_name = cls.SAVE_STRING.format(
+            "quad" if mesh_params.quad else "tri",
+            mesh_params.lx,
+            mesh_params.ly,
+            1 / mesh_params.coarse_mesh_size,
+            mesh_params.refinement_levels,
+            mesh_params.layers,
         )
         return DATA_DIR / folder_name
 
@@ -1756,7 +1777,7 @@ class TwoLevelMesh:
         from lib.utils import set_mpl_style
 
         set_mpl_style()
-        fig, ax = plt.subplots(3, 2, figsize=(10, 6), sharex=True, sharey=True)
+        fig, ax = plt.subplots(3, 2, figsize=(8, 12), sharex=True, sharey=True)
         LOGGER.debug("\tcreated figure and axes...")
 
         self.plot_mesh(ax[0, 0], mesh_type="fine")
@@ -1827,26 +1848,19 @@ class TwoLevelMesh:
 ##################
 class TwoLevelMeshExamples:
 
-    mesh_params = MeshParams(lx=1.0, ly=1.0, Nc=4, refinement_levels=4, layers=2)
-    SAVE_DIR = DATA_DIR / TwoLevelMesh.SAVE_STRING.format(
-        "quad" if mesh_params.quad else "tri",
-        mesh_params.lx,
-        mesh_params.ly,
-        1 / mesh_params.coarse_mesh_size,
-        mesh_params.refinement_levels,
-        mesh_params.layers,
-    )
+    MESH_PARAMS = MeshParams(lx=1.0, ly=1.0, Nc=4, refinement_levels=4, layers=2)
+    SAVE_DIR = TwoLevelMesh.get_save_dir(MESH_PARAMS)
 
     @classmethod
     def example_creation(cls, fig_toggle: bool = True):
-        two_mesh = TwoLevelMesh(mesh_params=cls.mesh_params)
+        two_mesh = TwoLevelMesh(mesh_params=cls.MESH_PARAMS)
         two_mesh.save()  # Save the mesh and subdomains
         if fig_toggle:
-            fig = two_mesh.visualize_two_level_mesh(show=True)
+            _ = two_mesh.visualize_two_level_mesh(show=True)
 
     @classmethod
     def example_load(cls):
-        two_mesh = TwoLevelMesh.load(cls.mesh_params)
+        _ = TwoLevelMesh.load(cls.MESH_PARAMS)
 
     # Profiling the mesh creation & loading
     @classmethod
@@ -1871,7 +1885,7 @@ class TwoLevelMeshExamples:
 
 if __name__ == "__main__":
     TwoLevelMeshExamples.example_creation(
-        fig_toggle=False
-    )  # Uncomment to create and visualize a new mesh
+        fig_toggle=True
+    )  # Uncomment to create and (optionally) visualize a new mesh
     TwoLevelMeshExamples.example_load()  # Uncomment to load an existing mesh
     # TwoLevelMeshExamples.profile()  # Uncomment to profile the mesh creation & loading
