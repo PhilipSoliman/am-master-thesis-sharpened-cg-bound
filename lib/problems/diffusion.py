@@ -21,12 +21,13 @@ from lib.problems.problem import Problem
 class SourceFunc(Enum):
     """Enumeration for source functions used in the diffusion problem."""
 
-    CONSTANT = ("constant_source", r"$\mathcal{S}_{\text{const}}$")
-    PARABOLIC = ("parabolic_source", r"$\mathcal{S}_{\text{par}}$")
+    CONSTANT = ("constant_source", r"$\mathcal{S}_{\text{const}}$", "const")
+    PARABOLIC = ("parabolic_source", r"$\mathcal{S}_{\text{par}}$", "par")
 
-    def __init__(self, func_name: str, latex: str):
+    def __init__(self, func_name: str, latex: str, short_name: str):
         self._func_name = func_name
         self._latex = latex
+        self._short_name = short_name
 
     def get_func(self, obj: "DiffusionProblem") -> Callable:
         """Return the function name associated with the coefficient function."""
@@ -37,41 +38,53 @@ class SourceFunc(Enum):
         """Return the LaTeX representation associated with the coefficient function."""
         return self._latex
 
+    @property
+    def short_name(self):
+        """Return the short name associated with the coefficient function."""
+        return self._short_name
+
 
 class CoefFunc(Enum):
     """Enumeration for coefficient functions used in the diffusion problem."""
 
-    SINUSOIDAL = ("sinusoidal_coefficient", r"$\mathcal{C}_{\text{sin}}$")
+    SINUSOIDAL = ("sinusoidal_coefficient", r"$\mathcal{C}_{\text{sin}}$", "sin")
     VERTEX_INCLUSIONS = (
         "vertex_centered_inclusions_coefficient",
         r"$\mathcal{C}_{\text{vert}}$",
+        "vert"
     )
     TWO_LAYER_VERTEX_INCLUSIONS = (
         "two_layer_vertex_centered_inclusions_coefficient",
         r"$\mathcal{C}_{\text{2layer, vert}}$",
+        "2lvert"
     )
     EDGE_CENTERED_INCLUSIONS = (
         "edge_centered_inclusions_coefficient",
         r"$\mathcal{C}_{\text{edge}}$",
+        "edge"
     )
     SINGLE_SLAB_EDGE_INCLUSIONS = (
         "single_slab_edge_inclusions_coefficient",
         r"$\mathcal{C}_{\text{single slab, edge}}$",
+        "sslab_edge",
     )
     DOUBLE_SLAB_EDGE_INCLUSIONS = (
         "double_slab_edge_inclusions_coefficient",
         r"$\mathcal{C}_{\text{double slab, edge}}$",
+        "dslab_edge"
     )
-    CONSTANT = ("constant_coefficient", r"$\mathcal{C}_{\text{const}}$")
+    CONSTANT = ("constant_coefficient", r"$\mathcal{C}_{\text{const}}$", "const")
     HETMANIUK_LEHOUCQ = (
         "hetmaniuk_lehoucq_coefficient",
         r"$\mathcal{C}_{\text{hetmaniuk}}$",
+        "hetmaniuk"
     )
-    HEINLEIN = ("heinlein_coefficient", r"$\mathcal{C}_{\text{heinlein}}$")
+    HEINLEIN = ("heinlein_coefficient", r"$\mathcal{C}_{\text{heinlein}}$", "heinlein")
 
-    def __init__(self, func_name: str, latex: str):
+    def __init__(self, func_name: str, latex: str, short_name: str):
         self._func_name = func_name
         self._latex = latex
+        self._short_name = short_name
 
     def get_func(self, obj: "DiffusionProblem") -> Callable:
         """Return the function name associated with the coefficient function."""
@@ -81,6 +94,11 @@ class CoefFunc(Enum):
     def latex(self):
         """Return the LaTeX representation associated with the coefficient function."""
         return self._latex
+    
+    @property
+    def short_name(self):
+        """Return the short name associated with the coefficient function."""
+        return self._short_name
 
 
 class DiffusionProblem(Problem):

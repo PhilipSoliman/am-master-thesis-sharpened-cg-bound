@@ -37,7 +37,7 @@ FIGWIDTH = 5
 FIGHEIGHT = 4
 
 # setup for a diffusion problem
-MESHES = [DefaultMeshParams.Nc4, DefaultMeshParams.Nc8, DefaultMeshParams.Nc16]
+MESHES = [DefaultMeshParams.Nc64]
 PROBLEM_TYPE = ProblemType.DIFFUSION
 BOUNDARY_CONDITIONS = HomogeneousDirichlet(PROBLEM_TYPE)
 SOURCE_FUNC = SourceFunc.CONSTANT
@@ -69,7 +69,14 @@ fig, axs = plt.subplots(
 for i, mesh_params in enumerate(MESHES):
     two_mesh = TwoLevelMesh.load(mesh_params, progress=progress)
     axes = axs[:, i] if axs.ndim == 2 else axs
+
+    # output directory
+    output_dir_mesh = two_mesh.save_dir / "diffusion_spectra"
     for coef_func, ax in zip(COEF_FUNCS, axes):
+        # output directory 
+        output_dir_coef = output_dir_mesh / f"coef={coef_func.short_name}"
+        output_dir_coef.mkdir(parents=True, exist_ok=True)
+
         # Create the diffusion problem instance
         diffusion_problem = DiffusionProblem(
             boundary_conditions=BOUNDARY_CONDITIONS,
@@ -92,15 +99,6 @@ for i, mesh_params in enumerate(MESHES):
             # None, NOTE: original system can take a long time to solve, so we skip it here.
             # Also causes GPU memory issues due to large lanczos matrices. Even estimating condition number with scipy is troublesome.
             # This should be treated elsewhere.
-            OneLevelSchwarzPreconditioner(A, diffusion_problem.fes, progress=progress),
-            # TwoLevelSchwarzPreconditioner(
-            #     A,
-            #     diffusion_problem.fes,
-            #     diffusion_problem.two_mesh,
-            #     coarse_space=Q1CoarseSpace,
-            #     progress=progress,
-            #     coarse_only=True,
-            # ),
             TwoLevelSchwarzPreconditioner(
                 A,
                 diffusion_problem.fes,
@@ -117,14 +115,14 @@ for i, mesh_params in enumerate(MESHES):
                 progress=progress,
                 coarse_only=True,
             ),
-            TwoLevelSchwarzPreconditioner(
-                A,
-                diffusion_problem.fes,
-                diffusion_problem.two_mesh,
-                coarse_space=AMSCoarseSpace,
-                progress=progress,
-                coarse_only=True,
-            ),
+            # TwoLevelSchwarzPreconditioner( # NOTE: AMS is not robust, might be something wrong with the coarse space.
+            #     A,
+            #     diffusion_problem.fes,
+            #     diffusion_problem.two_mesh,
+            #     coarse_space=AMSCoarseSpace,
+            #     progress=progress,
+            #     coarse_only=True,
+            # ),
         ]
         progress.remove_task(precond_task)
 
@@ -143,27 +141,28 @@ for i, mesh_params in enumerate(MESHES):
         )
         spectra = {}
         cond_numbers = []
-        M1 = sp.csc_matrix(A.shape, dtype=float)
+        M1 = OneLevelSchwarzPreconditioner(A, diffusion_problem.fes, progress=progress).as_linear_operator()
         for i, preconditioner in enumerate(preconditioners):
             # get shorthand for preconditioner
-            shorthand = getattr(preconditioner, "short_name", "None")
+            shorthand = preconditioner.short_name
+
+            # output filename
+            fn = output_dir_coef / f"{shorthand}.npy"
 
             # get preconditioner as linear operator
-            M: None | sp.linalg.LinearOperator = None
-            if i == 0:  # 1-level schwarz preconditioner
-                M1 = preconditioner.as_linear_operator()
-                M = M1
-                continue  # skip spectrum of 1-level schwarz to save time and memory
-            elif i > 0:  # 2-level schwarz preconditioners
-                M2 = preconditioner.as_linear_operator()
-                M = sp.linalg.LinearOperator(
-                    A.shape, lambda x: M1.matvec(x) + M2.matvec(x)
-                )
+            M2 = preconditioner.as_linear_operator()
+            M = sp.linalg.LinearOperator(
+                A.shape, lambda x: M1.matvec(x) + M2.matvec(x)
+            )
 
             # get eigenvalues from CG iterations
+            LOGGER.info(f"Performing PCG iterations with {shorthand} preconditioner")
             _, success = custom_cg.sparse_solve(M, save_residuals=False)
-            LOGGER.info(f"Computing spectrum of {shorthand} preconditioner")
+            LOGGER.info("Computing approximate eigenvalues")
             eigenvalues = custom_cg.get_approximate_eigenvalues_gpu()
+
+            # save eigenvalues to numpy array
+            np.save(fn, eigenvalues)
 
             # save eigenvalues and condition numbers
             spectra[f"{shorthand:<10}"] = eigenvalues
