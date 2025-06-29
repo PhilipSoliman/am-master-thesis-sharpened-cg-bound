@@ -1,29 +1,19 @@
 from pathlib import Path
-from typing import Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
-import scipy.sparse as sp
-
-from lib import gpu_interface as gpu
-from lib.boundary_conditions import HomogeneousDirichlet
-from lib.eigenvalues import eigs
-from lib.logger import LOGGER, PROGRESS
-from lib.meshes import DefaultMeshParams, TwoLevelMesh
-from lib.preconditioners import (
-    AMSCoarseSpace,
-    GDSWCoarseSpace,
-    OneLevelSchwarzPreconditioner,
-    Q1CoarseSpace,
-    RGDSWCoarseSpace,
-    TwoLevelSchwarzPreconditioner,
+from approximate_spectra import (
+    COEF_FUNCS,
+    MESHES,
+    PRECONDITIONERS,
+    get_spectrum_save_path,
 )
-from lib.problem_type import ProblemType
-from lib.problems import CoefFunc, DiffusionProblem, SourceFunc
+
+from lib.logger import LOGGER
 from lib.utils import get_cli_args, save_latex_figure, set_mpl_cycler, set_mpl_style
 
 # set logging level
-LOGGER.setLevel("WARN")
+LOGGER.setLevel("INFO")
 
 # set matplotlib style & cycler
 set_mpl_style()
@@ -31,160 +21,140 @@ set_mpl_cycler(colors=True)
 
 # get cli args
 ARGS = get_cli_args()
-FIGWIDTH = 6
+FIGWIDTH = 5
 FIGHEIGHT = 4
-
-# setup for a diffusion problem
-PROBLEM_TYPE = ProblemType.DIFFUSION
-BOUNDARY_CONDITIONS = HomogeneousDirichlet(PROBLEM_TYPE)
-SOURCE_FUNC = SourceFunc.CONSTANT  # Source function
-COEF_FUNCS = [
-    CoefFunc.CONSTANT,
-    CoefFunc.DOUBLE_SLAB_EDGE_INCLUSIONS,
-]
-
-# initialize progress bar
-progress = PROGRESS.get_active_progress_bar()
-main_task = progress.add_task(
-    "Calculating spectra for coefficient functions", total=len(COEF_FUNCS)
-)
-
-# load mesh
-TWO_MESH = TwoLevelMesh.load(DefaultMeshParams.Nc4, progress=progress)
 
 # initialize figure and axes
 fig, axs = plt.subplots(
-    len(COEF_FUNCS), 1, figsize=(FIGWIDTH, FIGHEIGHT), squeeze=True, sharex=True
+    len(COEF_FUNCS),
+    len(MESHES),
+    figsize=(FIGWIDTH * len(MESHES), FIGHEIGHT),
+    squeeze=True,
+    sharex=True,
+    sharey=True,
 )
 
-# main loop over coefficient functions & axes
-for coef_func, ax in zip(COEF_FUNCS, axs):
-    # Create the diffusion problem instance
-    diffusion_problem = DiffusionProblem(
-        boundary_conditions=BOUNDARY_CONDITIONS,
-        mesh=TWO_MESH,
-        source_func=SOURCE_FUNC,
-        coef_func=coef_func,
-        progress=progress,
-    )
+# main plot loop
+for i, mesh_params in enumerate(MESHES):
+    axes = axs[:, i] if axs.ndim == 2 else axs
+    for coef_func, ax in zip(COEF_FUNCS, axes):
+        spectra = {}
+        cond_numbers = []
+        niters = []
+        global_min = None
+        global_max = None
+        for preconditioner_cls, coarse_space_cls in PRECONDITIONERS:
+            # Load the eigenvalues from the saved numpy file
+            fp = get_spectrum_save_path(
+                mesh_params, coef_func, preconditioner_cls, coarse_space_cls
+            )
+            if fp.exists():
+                eigenvalues = np.load(fp)
+                shorthand = (
+                    f"{preconditioner_cls.SHORT_NAME}-{coarse_space_cls.SHORT_NAME}"
+                )
+                spectra[f"{shorthand:<12}"] = eigenvalues
+                min_eig = np.min(np.abs(eigenvalues))
+                max_eig = np.max(np.abs(eigenvalues))
+                cond_numbers.append(
+                    np.abs(max_eig / min_eig)
+                    if len(eigenvalues) > 0 and min_eig > 0
+                    else np.nan
+                )
+                niters.append(len(eigenvalues) - 1)
+                if global_min is None or min_eig < global_min:
+                    global_min = min_eig
+                if global_max is None or max_eig > global_max:
+                    global_max = max_eig
+            else:
+                # Provide a clickable link to the script in the repo using Rich markup with absolute path
+                approx_path = Path(__file__).parent / "approximate_spectra.py"
+                LOGGER.error(
+                    f"File %s does not exist. Run '[link=file:{approx_path}]approximate_spectra.py[/link]' first.",
+                    fp,
+                )
+                exit()
 
-    # get discrete problem
-    A, u, b = diffusion_problem.restrict_system_to_free_dofs(
-        *diffusion_problem.assemble()
-    )
+        # spectra
+        for idx, (shorthand, eigenvalues) in enumerate(spectra.items()):
+            ax.plot(
+                np.real(eigenvalues),
+                np.full_like(eigenvalues, idx),
+                marker="x",
+                linestyle="None",
+            )
+        ax.set_xscale("log")
 
-    # get preconditioners
-    precond_task = progress.add_task("Getting preconditioners", total=6)
-    preconditioners: list[
-        None | OneLevelSchwarzPreconditioner | TwoLevelSchwarzPreconditioner
-    ] = [
-        None,
-        OneLevelSchwarzPreconditioner(A, diffusion_problem.fes, progress=progress),
-        TwoLevelSchwarzPreconditioner(
-            A,
-            diffusion_problem.fes,
-            diffusion_problem.two_mesh,
-            coarse_space=Q1CoarseSpace,
-            progress=progress,
-            coarse_only=True,
-        ),
-        TwoLevelSchwarzPreconditioner(
-            A,
-            diffusion_problem.fes,
-            diffusion_problem.two_mesh,
-            coarse_space=GDSWCoarseSpace,
-            progress=progress,
-            coarse_only=True,
-        ),
-        TwoLevelSchwarzPreconditioner(
-            A,
-            diffusion_problem.fes,
-            diffusion_problem.two_mesh,
-            coarse_space=RGDSWCoarseSpace,
-            progress=progress,
-            coarse_only=True,
-        ),
-        TwoLevelSchwarzPreconditioner(
-            A,
-            diffusion_problem.fes,
-            diffusion_problem.two_mesh,
-            coarse_space=AMSCoarseSpace,
-            progress=progress,
-            coarse_only=True,
-        ),
-    ]
-    progress.remove_task(precond_task)
-
-    # get spectrum of (preconditioned) systems
-    spectra_task = progress.add_task("Computing spectra", total=len(preconditioners))
-    spectra = {}
-    cond_numbers = np.zeros(len(preconditioners))
-    M1 = sp.csc_matrix(A.shape, dtype=float)
-    for i, preconditioner in enumerate(preconditioners):
-        M = sp.eye(A.shape[0], dtype=float).tocsc()  # identity matrix
-        if i == 1:  # 1-level schwarz preconditioner
-            M1 = preconditioner.as_full_system()  # calculate M1 only once
-            M = M1
-        elif i > 1:  # 2-level schwarz preconditioners
-            M2 = preconditioner.as_full_system()
-            M = M1 + M2  # combine M1 and M2
-        eigenvalues = eigs(M @ A)
-        spectra[f"{getattr(preconditioner, 'short_name', 'None'):<10}"] = eigenvalues
-        cond_numbers[len(spectra) - 1] = (
-            np.max(np.abs(eigenvalues)) / np.min(np.abs(eigenvalues))
-            if len(eigenvalues) > 0 and np.min(np.abs(eigenvalues)) > 0
-            else np.nan
+        # preconditioner names
+        ax.set_yticks(
+            range(len(spectra)), list(spectra.keys()), fontsize=9, fontweight="bold"
         )
-        progress.advance(spectra_task)
-    progress.remove_task(spectra_task)
+        ax.set_ylim(-0.5, len(spectra) - 1 + 0.5)
 
-    # plot spectrum of A
-    plot_task = progress.add_task(
-        "Plotting spectra", total=len(spectra) + 1
-    )  # + 1 for formatting
-    for idx, (shorthand, eigenvalues) in enumerate(spectra.items()):
-        ax.plot(
-            np.real(eigenvalues),
-            np.full_like(eigenvalues, idx),
-            marker="x",
-            linestyle="None",
+        # condition numbers
+        ax2 = ax.twinx()
+        def format_cond(c):
+            if np.isnan(c):
+                return "n/a"
+            mantissa, exp = f"{c:.1e}".split("e")
+            exp = int(exp)
+            return rf"${mantissa} \times 10^{{{exp}}}$"
+
+        ax2.set_ylim(ax.get_ylim())
+        ax2.set_yticks(range(len(cond_numbers)))
+        ax2.set_yticklabels(
+            [format_cond(c) if not np.isnan(c) else "n/a" for c in cond_numbers],
+            fontsize=9,
         )
-        progress.advance(plot_task)
 
-    # Set y-ticks and labels
-    ax.set_yticks(range(len(spectra)), list(spectra.keys()))
-    ax.set_xscale("log")
-    ax.set_title(
-        f"$\sigma({{M^{{-1}}}}A)$ for $\mathcal{{C}}$ = {coef_func.name}, $f=$ {SOURCE_FUNC.name}"
+        # iteration counts
+        x_niter = 10 ** (0.5 * (np.log10(global_min) + np.log10(global_max)))
+        for idx, niter in enumerate(niters):
+            y_niter = idx + 0.25
+            ax.text(
+                x_niter,
+                y_niter,
+                rf"$m = {niter}$",
+                ha="center",
+                va="center",
+                fontsize=10,
+                color="black",
+                clip_on=False,
+            )
+
+        # grid settings
+        ax.grid(axis="x", which="both", linestyle="--", linewidth=0.7)
+        ax.grid(axis="y", which="both", linestyle=":", linewidth=0.5)
+
+# Add column titles (LaTeX, Nc as integer, no bold for compatibility)
+for col_idx, mesh_params in enumerate(MESHES):
+    H = mesh_params.coarse_mesh_size
+    Nc = int(1 / H)
+    ax = axs[0, col_idx] if axs.ndim == 2 else axs[0]
+    ax.set_title(rf"$\mathbf{{H = 1/{Nc}}}$", fontsize=11)
+
+# Add row labels (rotated, bold, fontsize 9) at the beginning of each row
+for row_idx, coef_func in enumerate(COEF_FUNCS):
+    # Get the y-position as the center of the row of axes
+    if axs.ndim == 2:
+        ax = axs[row_idx, 0]
+    else:
+        ax = axs[row_idx]
+    # Use axes coordinates to place the text just outside the left of the axes
+    fig.text(
+        0,  # x-position (fraction of figure width, adjust as needed)
+        ax.get_position().y0
+        + ax.get_position().height / 2,  # y-position (center of the row)
+        coef_func.latex,  # use LaTeX representation
+        va="center",
+        ha="left",
+        rotation=90,
+        fontweight="bold",
+        fontsize=14,
     )
-    ax.grid(axis="x")
-    ax.grid()
-    ax2 = ax.twinx()
-
-    # add condition numbers on right axis
-    def format_cond(c):
-        if np.isnan(c):
-            return "n/a"
-        mantissa, exp = f"{c:.1e}".split("e")
-        exp = int(exp)
-        return rf"${mantissa} \times 10^{{{exp}}}$"
-
-    ax2.set_ylim(ax.get_ylim())
-    ax2.set_yticks(range(len(cond_numbers)))
-    ax2.set_yticklabels(
-        [format_cond(c) if not np.isnan(c) else "n/a" for c in cond_numbers]
-    )
-    progress.advance(plot_task)
-    progress.remove_task(plot_task)
-
-    # main task progress update
-    progress.advance(main_task)
 
 # tight layout for the figure
-fig.tight_layout()
-
-# stop progress bar
-progress.soft_stop()
+fig.tight_layout(pad=1.3)
 
 if ARGS.generate_output:
     fn = Path(__file__).name.replace("_fig.py", "")
