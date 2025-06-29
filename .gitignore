@@ -37,7 +37,8 @@ figures/
 ./build/
 
 # ignore FEM mesh folders
-data/tlm_*
+data/tri_tlm_*
+data/quad_tlm_*
 
 # ignore python profiling files
 **/*.prof

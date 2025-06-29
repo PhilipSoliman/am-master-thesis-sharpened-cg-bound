@@ -3,7 +3,7 @@ import json
 from enum import Enum
 from itertools import cycle
 from pathlib import Path
-from typing import Optional
+from typing import Literal, Optional
 
 import matplotlib.pyplot as plt
 import netgen.libngpy._NgOCC as occ
@@ -12,6 +12,7 @@ import numpy as np
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from matplotlib.patches import Polygon
+from ngsolve.meshes import MakeQuadMesh
 
 from lib.logger import LOGGER, PROGRESS
 from lib.utils import CUSTOM_COLORS_SIMPLE, get_root
@@ -46,6 +47,7 @@ class MeshParams:
         Nc: int,
         refinement_levels: int,
         layers: int,
+        quad: bool = True,
     ):
         """
         Initialize the mesh parameters.
@@ -61,6 +63,7 @@ class MeshParams:
         self.coarse_mesh_size = 1 / Nc
         self.refinement_levels = refinement_levels
         self.layers = layers
+        self.quad = quad
 
 
 class DefaultMeshParamsMeta(type):
@@ -85,11 +88,12 @@ class DefaultMeshParamsMeta(type):
 
 
 class DefaultMeshParams(metaclass=DefaultMeshParamsMeta):
-    Nc4 = MeshParams(lx=1.0, ly=1.0, Nc=4, refinement_levels=4, layers=2)
-    Nc8 = MeshParams(lx=1.0, ly=1.0, Nc=8, refinement_levels=4, layers=2)
-    Nc16 = MeshParams(lx=1.0, ly=1.0, Nc=16, refinement_levels=4, layers=2)
-    Nc32 = MeshParams(lx=1.0, ly=1.0, Nc=32, refinement_levels=4, layers=2)
-    Nc64 = MeshParams(lx=1.0, ly=1.0, Nc=64, refinement_levels=4, layers=2)
+    Nc4 = MeshParams(lx=1.0, ly=1.0, Nc=4, refinement_levels=4, layers=2, quad=True)
+    Nc8 = MeshParams(lx=1.0, ly=1.0, Nc=8, refinement_levels=4, layers=2, quad=True)
+    Nc16 = MeshParams(lx=1.0, ly=1.0, Nc=16, refinement_levels=4, layers=2, quad=True)
+    Nc32 = MeshParams(lx=1.0, ly=1.0, Nc=32, refinement_levels=4, layers=2, quad=True)
+    Nc64 = MeshParams(lx=1.0, ly=1.0, Nc=64, refinement_levels=4, layers=2, quad=True)
+
 
 class TwoLevelMesh:
     """
@@ -129,7 +133,7 @@ class TwoLevelMesh:
         - Visualize mesh domains and layerss for debugging or analysis.
     """
 
-    SAVE_STRING = "tlm_lx={0:.1f}_ly={1:.1f}_Nc={2:.0f}_lvl={3:.0f}_lyr={4:.0f}"
+    SAVE_STRING = "{0}_tlm_lx={1:.1f}_ly={2:.1f}_Nc={3:.0f}_lvl={4:.0f}_lyr={5:.0f}"
     ZORDERS = {
         "elements": 1.0,
         "layers": 1.5,
@@ -158,6 +162,7 @@ class TwoLevelMesh:
         self.coarse_mesh_size = mesh_params.coarse_mesh_size
         self.refinement_levels = mesh_params.refinement_levels
         self.layers = mesh_params.layers
+        self.quad = mesh_params.quad
 
         # intial log
         self.progress = PROGRESS.get_active_progress_bar(progress)
@@ -212,23 +217,28 @@ class TwoLevelMesh:
             fine_mesh (ngs.Mesh): Refined NGSolve mesh.
             coarse_mesh (ngs.Mesh): Original coarse NGSolve mesh.
         """
-        # Create rectangle geometry
-        domain = OCCRectangle(self.lx, self.ly)
-        face = domain.Face()
+        if self.quad:
+            Nc = int(1 / self.coarse_mesh_size)
+            mesh = MakeQuadMesh(nx=Nc, ny=Nc)  # bbpts=..., bbnames=...
+        else:
+            # Create rectangle geometry
+            domain = OCCRectangle(self.lx, self.ly)
+            face = domain.Face()
 
-        # Set boundary labels (as before)
-        face.edges.Max(occ.Y).name = BoundaryName.TOP.value
-        face.edges.Min(occ.Y).name = BoundaryName.BOTTOM.value
-        face.edges.Max(occ.X).name = BoundaryName.RIGHT.value
-        face.edges.Min(occ.X).name = BoundaryName.LEFT.value
+            # Set boundary labels (as before)
+            face.edges.Max(occ.Y).name = BoundaryName.TOP.value
+            face.edges.Min(occ.Y).name = BoundaryName.BOTTOM.value
+            face.edges.Max(occ.X).name = BoundaryName.RIGHT.value
+            face.edges.Min(occ.X).name = BoundaryName.LEFT.value
 
-        geo = occ.OCCGeometry(face, dim=2)
+            geo = occ.OCCGeometry(face, dim=2)
 
-        # Generate coarse mesh
-        ngm_coarse = geo.GenerateMesh(
-            minh=self.coarse_mesh_size, maxh=self.coarse_mesh_size
-        )
-        mesh = ngs.Mesh(ngm_coarse)
+            # Generate coarse mesh
+            ngm_coarse = geo.GenerateMesh(
+                minh=self.coarse_mesh_size,
+                maxh=self.coarse_mesh_size,
+            )
+            mesh = ngs.Mesh(ngm_coarse)
 
         LOGGER.debug("created coarse mesh")
         return mesh
@@ -725,18 +735,24 @@ class TwoLevelMesh:
 
         # get the center vertex and the edge corners
         fine_vertices = np.array(self.coarse_edges_map[coarse_edge]["fine_vertices"])
+
+        # get main edge direction
+        v0, v1 = self.fine_mesh[coarse_edge].vertices
+        p0, p1 = (
+            self.fine_mesh[v0].point,
+            self.fine_mesh[v1].point,
+        )
+        main_edge_direction = np.array(p1) - np.array(p0)
+        main_edge_direction /= np.linalg.norm(main_edge_direction)
+
+        # skip edge if current mesh is quad and direction parrallel to the y axis
+        if self.quad and np.isclose(main_edge_direction[0], 0):
+            return [[] for _ in range(len(idxs))]
+
+        # main loop over the indices in idxs
         for idx in idxs:
             center_vertex = fine_vertices[idx]
             edge_corners = fine_vertices[[idx - 1, idx + 1]].tolist()
-
-            # get main edge direction
-            v0, v1 = self.fine_mesh[coarse_edge].vertices
-            p0, p1 = (
-                self.fine_mesh[v0].point,
-                self.fine_mesh[v1].point,
-            )
-            main_edge_direction = np.array(p1) - np.array(p0)
-            main_edge_direction /= np.linalg.norm(main_edge_direction)
 
             # get extrusion directions
             upper_direction, lower_direction = self.get_extrusion_directions(
@@ -1043,6 +1059,7 @@ class TwoLevelMesh:
             "coarse_mesh_size": self.coarse_mesh_size,
             "refinement_levels": self.refinement_levels,
             "layers": self.layers,
+            "quad": self.quad,
         }
         metadata_path = self.save_dir / "metadata.json"
         with open(metadata_path, "w") as f:
@@ -1145,9 +1162,10 @@ class TwoLevelMesh:
             TwoLevelMesh: Loaded TwoLevelMesh instance.
         """
         folder_name = cls.SAVE_STRING.format(
+            "quad" if mesh_params.quad else "tri",
             mesh_params.lx,
             mesh_params.ly,
-            1/mesh_params.coarse_mesh_size,
+            1 / mesh_params.coarse_mesh_size,
             mesh_params.refinement_levels,
             mesh_params.layers,
         )
@@ -1228,6 +1246,7 @@ class TwoLevelMesh:
         self.coarse_mesh_size = metadata["coarse_mesh_size"]
         self.refinement_levels = metadata["refinement_levels"]
         self.layers = metadata["layers"]
+        self.quad = metadata["quad"]
         LOGGER.debug(f"loaded metadata")
 
     def _load_meshes(self, fp: Path):
@@ -1316,6 +1335,7 @@ class TwoLevelMesh:
         Directory where the mesh and subdomain data are saved.
         """
         folder_name = self.SAVE_STRING.format(
+            "quad" if self.quad else "tri",
             self.lx,
             self.ly,
             1 / self.coarse_mesh_size,
@@ -1561,6 +1581,22 @@ class TwoLevelMesh:
 
         return ax
 
+    def plot_edge_slabs(self, ax: Axes, which: Literal["single", "double"]):
+        for coarse_edge in self.coarse_edges_map.keys():
+            slab_elements = self.edge_slabs[coarse_edge.nr][which]
+            for el_nrs in slab_elements:
+                for el_nr in el_nrs:
+                    self.plot_element(
+                        ax,
+                        self.fine_mesh[ngs.ElementId(el_nr)],
+                        self.fine_mesh,
+                        fillcolor="red",
+                        edgecolor="black",
+                        alpha=0.5,
+                        linewidth=1.0,
+                        zorder=TwoLevelMesh.ZORDERS["elements"] + 0.1,
+                    )
+
     @staticmethod
     def plot_element(
         ax: Axes,
@@ -1720,7 +1756,7 @@ class TwoLevelMesh:
         from lib.utils import set_mpl_style
 
         set_mpl_style()
-        fig, ax = plt.subplots(2, 2, figsize=(10, 6), sharex=True, sharey=True)
+        fig, ax = plt.subplots(3, 2, figsize=(10, 6), sharex=True, sharey=True)
         LOGGER.debug("\tcreated figure and axes...")
 
         self.plot_mesh(ax[0, 0], mesh_type="fine")
@@ -1742,6 +1778,18 @@ class TwoLevelMesh:
         self.plot_connected_component_tree(ax[1, 1])
         ax[1, 1].set_title("Connected Component Tree")
         LOGGER.debug("\tplotted connected component tree.")
+
+        # plot slab elements (single)
+        self.plot_mesh(ax[2, 0], mesh_type="coarse")
+        self.plot_edge_slabs(ax[2, 0], which="single")
+        ax[2, 0].set_title("Edge Slabs (Single)")
+        LOGGER.debug("\tplotted edge slabs (single).")
+
+        # plot slab elements (double)
+        self.plot_mesh(ax[2, 1], mesh_type="coarse")
+        self.plot_edge_slabs(ax[2, 1], which="double")
+        ax[2, 1].set_title("Edge Slabs (Double)")
+        LOGGER.debug("\tplotted edge slabs (double).")
 
         fig.tight_layout()
         LOGGER.debug("\tvisualization complete.")
@@ -1781,9 +1829,10 @@ class TwoLevelMeshExamples:
 
     mesh_params = MeshParams(lx=1.0, ly=1.0, Nc=4, refinement_levels=4, layers=2)
     SAVE_DIR = DATA_DIR / TwoLevelMesh.SAVE_STRING.format(
+        "quad" if mesh_params.quad else "tri",
         mesh_params.lx,
         mesh_params.ly,
-        1/mesh_params.coarse_mesh_size,
+        1 / mesh_params.coarse_mesh_size,
         mesh_params.refinement_levels,
         mesh_params.layers,
     )
