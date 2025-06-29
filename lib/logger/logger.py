@@ -16,6 +16,10 @@ from rich.progress import (
     TimeRemainingColumn,
 )
 
+from lib.utils import get_root
+
+ROOT = get_root()
+
 
 ##########
 # LOGGER #
@@ -25,9 +29,11 @@ def format_fp(fp: Optional[Path]) -> str:
     """Format a file path for logging."""
     if fp is None:
         return ""
-    fp_dir = fp.parent.name
-    fp_name = fp.name
-    return f"{fp_dir}/{fp_name}"
+    # Return the path relative to ROOT if possible, else absolute path
+    try:
+        return str("..." / fp.relative_to(ROOT))
+    except ValueError:
+        return str(fp)
 
 
 # Custom logger class to handle Path formatting and custom log levels
@@ -62,7 +68,7 @@ class CustomLogger(logging.Logger):
             stack_info=stack_info,
             stacklevel=stacklevel,
         )
-    
+
     def setLevel(self, level: int | str) -> None:
         """Set the logging level for the logger."""
         super().setLevel(level)
