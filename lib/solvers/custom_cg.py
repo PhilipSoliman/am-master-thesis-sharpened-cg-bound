@@ -215,10 +215,10 @@ class CustomCG:
         task = self.progress.add_task("CG iterations", total=None)
         desc = self.progress.get_description(task)
         desc += ": ({0:.0f}/{1:.0f})"
-        desc += " | r: {2:.2e} | α: {3:.2e}"
-        desc += " | β: {4:.2e}"
+        desc += " [bold]| rel. r: {2:.2e} | α: {3:.2e}"
+        desc += " | β: {4:.2e}[/bold]"
         for iteration in range(self.maxiter):
-            if r_norm < self.tol:
+            if r_norm/r_i[0] < self.tol: # relative residual tolerance
                 success = True
                 LOGGER.info(f"Converged after {iteration} iterations")
                 break
@@ -251,7 +251,7 @@ class CustomCG:
                 description=desc.format(
                     iteration + 1,
                     self.maxiter,
-                    r_norm,
+                    r_norm/r_i[0],
                     alpha,
                     betas[-1] if betas else 0,
                 ),
