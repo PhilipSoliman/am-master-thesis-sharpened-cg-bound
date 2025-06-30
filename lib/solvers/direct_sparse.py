@@ -221,8 +221,7 @@ class DirectSparseSolver:
         task = progress.add_task("LU solving columns", total=n_rhs)
         for i in range(n_rhs):
             x = self.solver(rhs[:, i].toarray().ravel())
-            x_coo = sp.coo_matrix(x.reshape(-1, 1))
-            out[x_coo.row, x_coo.col] = x_coo.data
+            out[:, i] = sp.csc_matrix(x[:, None])
             progress.advance(task)
 
         LOGGER.debug("LU solving completed")
