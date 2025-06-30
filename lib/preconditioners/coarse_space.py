@@ -36,7 +36,7 @@ class CoarseSpace(object):
         LOGGER.debug(f"Initialized {self.NAME}")
 
     def assemble_coarse_operator(self, A: sp.csr_matrix) -> sp.csc_matrix:
-        LOGGER.info("Assembling coarse operator:")
+        LOGGER.info("Assembling coarse operator")
         if not hasattr(self, "restriction_operator"):
             self.restriction_operator = self.assemble_restriction_operator()
         LOGGER.debug("Applying restriction operator to A")
@@ -460,7 +460,7 @@ class AMSCoarseSpace(GDSWCoarseSpace):
         fespace: FESpace,
         two_mesh: TwoLevelMesh,
         progress: Optional[PROGRESS] = None,
-    ):        
+    ):
         self.progress = PROGRESS.get_active_progress_bar(progress)
         task = self.progress.add_task(f"Initializing {self.NAME}", total=3)
         LOGGER.info(f"Initializing {self.NAME}")
@@ -471,6 +471,10 @@ class AMSCoarseSpace(GDSWCoarseSpace):
         self.coarse_dofs, self.edge_dofs, self.face_dofs = (
             self._get_interface_component_masks()
         )
+        self.coarse_dofs_argsort = np.argsort(self.coarse_dofs)
+        self.coarse_dofs_sorted = self.coarse_dofs[self.coarse_dofs_argsort]
+        self.edge_dofs_argsort = np.argsort(self.edge_dofs)
+        self.edge_dofs_sorted = self.edge_dofs[self.edge_dofs_argsort]
         self.progress.advance(task)
 
         self.interface_dimension = len(self.coarse_dofs)
@@ -494,23 +498,77 @@ class AMSCoarseSpace(GDSWCoarseSpace):
         vertex_restriction = sp.eye(self.interface_dimension, dtype=float).tocsc()
         LOGGER.debug("Assembled vertex restriction operator")
 
-        # Phi_E
+        # A_EE
         A_EE = self.A[self.edge_dofs, :][:, self.edge_dofs]
         A_EI = self.A[self.edge_dofs, :][:, self.fespace.interior_dofs_mask]
         A_EE += sp.diags(
             A_EI.sum(axis=1).A1, offsets=0, format="csc"
-        )  # NOTE: SPD-ness is lost here
+        )  # NOTE: SPD-ness is (possibly) lost here
         if np.any(self.face_dofs):
             A_EF = self.A[self.edge_dofs, :][:, self.face_dofs]
             A_EE += sp.diags(A_EF.sum(axis=1).A1, offsets=0, format="csc")
-        A_EV = self.A[self.edge_dofs, :][:, self.coarse_dofs]
+        LOGGER.debug("Assembled edge <- edge matrix A_EE")
+
+        # solve for edge restriction operator
         sparse_solver = DirectSparseSolver(
             A_EE.tocsc(), matrix_type=MatrixType.Symmetric, progress=self.progress
         )
-        edge_restriction = -sparse_solver(A_EV.tocsc())
+        A_EV = self.A[self.edge_dofs, :][:, self.coarse_dofs]
+        edge_restriction = -sparse_solver(A_EV)
+        # task = self.progress.add_task(
+        #     "Assembling edge restriction operator",
+        #     total=len(self.fespace.free_component_tree_dofs) + 1,
+        # )
+        # # filter out any edge dofs that are not in the support of coarse nodes
+        # edge_restriction_rows, edge_restriction_cols, edge_restriction_data = [], [], []
+        # for dofs in self.fespace.free_component_tree_dofs.values():
+        #     coarse_dofs = dofs["node"]
+
+        #     # restrict coarse dofs to the free coarse dofs
+        #     coarse_dofs = self.fespace.map_global_to_restricted_dofs(
+        #         np.array(coarse_dofs)
+        #     )
+
+        #     # get edge dofs in the support of the coarse node
+        #     edge_dofs = []
+        #     for edge in dofs["edges"].values():
+        #         edge_dofs.extend(edge)
+
+        #     # restrict edge dofs to the free edge dofs
+        #     edge_dofs = self.fespace.map_global_to_restricted_dofs(np.array(edge_dofs))
+
+        #     # fill the matrix by looping of coarse dofs
+        #     for coarse_dof in coarse_dofs:
+        #         # get coarse dof index in list of coarse dofs
+        #         coarse_idx = np.searchsorted(self.coarse_dofs_sorted, coarse_dof)
+        #         coarse_idx = self.coarse_dofs_argsort[coarse_idx]
+
+        #         # get edge indices in the list of edge dofs
+        #         edge_idxs = np.searchsorted(self.edge_dofs_sorted, edge_dofs)
+        #         edge_idxs = self.edge_dofs_argsort[edge_idxs]
+
+        #         # save rows, cols and data for the edge restriction operator
+        #         edge_restriction_rows.extend(edge_idxs)
+        #         edge_restriction_cols.extend([coarse_idx] * len(edge_idxs))
+        #         edge_restriction_data.extend(
+        #             edge_restriction[edge_idxs, coarse_idx].toarray().flatten()
+        #         )
+        #     self.progress.advance(task)
+        # edge_restriction = sp.csc_matrix(
+        #     (edge_restriction_data, (edge_restriction_rows, edge_restriction_cols)),
+        #     shape=(self.num_edge_dofs, self.num_coarse_dofs),
+        #     dtype=float,
+        # )
+        # LOGGER.debug("Filtered edge restriction operator to coarse node support")
+
+        # # normalize the edge restriction operator
+        # normalization = sp.diags(
+        #     edge_restriction.sum(axis=1).A.flatten() ** (-1), offsets=0, format="csr"
+        # )
+        # edge_restriction = normalization @ edge_restriction
         LOGGER.debug("Assembled edge restriction operator")
 
-        # Phi_F
+        # Phi_F #TODO: probably need to do similar filtering to A_EV for face dofs
         face_restriction = sp.csc_matrix(
             (self.num_face_dofs, self.interface_dimension), dtype=float
         )
@@ -530,7 +588,7 @@ class AMSCoarseSpace(GDSWCoarseSpace):
             )
             LOGGER.debug("Assembled face restriction operator")
 
-        # Phi_I
+        # Phi_Gamma
         A_II = self.A[self.interior_dofs_mask, :][:, self.interior_dofs_mask]
         A_IV = self.A[self.interior_dofs_mask, :][:, self.coarse_dofs]
         A_IE = self.A[self.interior_dofs_mask, :][:, self.edge_dofs]
@@ -540,6 +598,9 @@ class AMSCoarseSpace(GDSWCoarseSpace):
             + A_IE @ edge_restriction
             + A_IF @ face_restriction
         ).tocsc()
+        LOGGER.debug("Assembled interface restriction operator")
+
+        # Phi_I
         sparse_solver = DirectSparseSolver(
             A_II.tocsc(), matrix_type=MatrixType.SPD, progress=self.progress
         )
