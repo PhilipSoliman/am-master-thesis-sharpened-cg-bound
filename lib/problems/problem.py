@@ -338,7 +338,7 @@ class Problem:
                     raise ValueError(msg)
                 if not use_gpu:
                     M_op = precond.as_linear_operator()
-        self.precond_name = precond.name if precond is not None else "None"
+        self.precond_name = f"{precond}" if precond is not None else "None"
         self.progress.advance(task)
 
         success = False
@@ -373,8 +373,7 @@ class Problem:
                     custom_cg.get_relative_preconditioned_residuals()
                 )
                 LOGGER.debug("Obtained conjugate gradient preconditioned residuals.")
-            self.approximate_eigs = custom_cg.get_approximate_eigenvalues()
-            self.approximate_eigs_gpu = custom_cg.get_approximate_eigenvalues_gpu()  # type: ignore
+            self.approximate_eigs = custom_cg.get_approximate_eigenvalues_gpu()  # type: ignore
             LOGGER.debug("Obtained CG info")
             self.progress.advance(task)
 

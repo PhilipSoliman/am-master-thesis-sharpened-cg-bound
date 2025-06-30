@@ -32,7 +32,7 @@ class SourceFunc(Enum):
     def get_func(self, obj: "DiffusionProblem") -> Callable:
         """Return the function name associated with the coefficient function."""
         return getattr(obj, self._func_name)
-    
+
     @property
     def latex(self):
         """Return the LaTeX representation associated with the coefficient function."""
@@ -51,17 +51,17 @@ class CoefFunc(Enum):
     VERTEX_INCLUSIONS = (
         "vertex_centered_inclusions_coefficient",
         r"$\mathcal{C}_{\text{vert}}$",
-        "vert"
+        "vert",
     )
     TWO_LAYER_VERTEX_INCLUSIONS = (
         "two_layer_vertex_centered_inclusions_coefficient",
         r"$\mathcal{C}_{\text{2layer, vert}}$",
-        "2lvert"
+        "2lvert",
     )
     EDGE_CENTERED_INCLUSIONS = (
         "edge_centered_inclusions_coefficient",
         r"$\mathcal{C}_{\text{edge}}$",
-        "edge"
+        "edge",
     )
     SINGLE_SLAB_EDGE_INCLUSIONS = (
         "single_slab_edge_inclusions_coefficient",
@@ -71,13 +71,13 @@ class CoefFunc(Enum):
     DOUBLE_SLAB_EDGE_INCLUSIONS = (
         "double_slab_edge_inclusions_coefficient",
         r"$\mathcal{C}_{\text{double slab, edge}}$",
-        "dslab_edge"
+        "dslab_edge",
     )
     CONSTANT = ("constant_coefficient", r"$\mathcal{C}_{\text{const}}$", "const")
     HETMANIUK_LEHOUCQ = (
         "hetmaniuk_lehoucq_coefficient",
         r"$\mathcal{C}_{\text{hetmaniuk}}$",
-        "hetmaniuk"
+        "hetmaniuk",
     )
     HEINLEIN = ("heinlein_coefficient", r"$\mathcal{C}_{\text{heinlein}}$", "heinlein")
 
@@ -94,7 +94,7 @@ class CoefFunc(Enum):
     def latex(self):
         """Return the LaTeX representation associated with the coefficient function."""
         return self._latex
-    
+
     @property
     def short_name(self):
         """Return the short name associated with the coefficient function."""
@@ -135,7 +135,6 @@ class DiffusionProblem(Problem):
         self.progress.advance(task)
 
         # get coefficient and source functions
-        # self.coef_func_name = coef_func.value
         self.coef_func_name = coef_func.latex
         self.coef_func = coef_func.get_func(self)()
         self.source_func_name = source_func.latex
@@ -327,7 +326,7 @@ class DiffusionProblemExample:
 
     # preconditioner and coarse space
     preconditioner = TwoLevelSchwarzPreconditioner  # TwoLevelSchwarzPreconditioner
-    coarse_space = RGDSWCoarseSpace  # GDSWCoarseSpace or RGDSWCoarseSpace
+    coarse_space = AMSCoarseSpace  # GDSWCoarseSpace or RGDSWCoarseSpace
 
     # use GPU for solving
     use_gpu = False
@@ -339,14 +338,14 @@ class DiffusionProblemExample:
     get_cg_info = True
 
     # save source, coefficient and solution as VTK files
-    save_functions_toggle = True
+    save_functions_toggle = False
 
     @classmethod
     def example_construction(cls):
         # create diffusion problem
         cls.diffusion_problem = DiffusionProblem(
             HomogeneousDirichlet(ProblemType.DIFFUSION),
-            DefaultQuadMeshParams.Nc4,
+            DefaultQuadMeshParams.Nc16,
             source_func=cls.source_func,
             coef_func=cls.coef_func,
         )
@@ -425,26 +424,19 @@ class DiffusionProblemExample:
             )
 
             # Plot each spectrum at a different y
-            y = -0.5
-            y_gpu = 0.5
+            y = 0
             axs_bottom.plot(
                 np.real(cls.diffusion_problem.approximate_eigs),
                 np.full_like(cls.diffusion_problem.approximate_eigs, y),
                 marker="x",
                 linestyle="None",
             )
-            axs_bottom.plot(
-                np.real(cls.diffusion_problem.approximate_eigs_gpu),
-                np.full_like(cls.diffusion_problem.approximate_eigs_gpu, y_gpu),
-                marker="x",
-                linestyle="None",
-            )
 
             # Set y-ticks and labels
-            axs_bottom.set_ylim(-1.5, 1.5)
+            axs_bottom.set_ylim(-0.5, 0.5)
             axs_bottom.set_yticks(
-                [y, y_gpu],
-                ["$\\mathbf{\\sigma(T_m)}$", "$\\mathbf{\\sigma(T_m)}$ (GPU)"],
+                [y],
+                ["$\\mathbf{\\sigma(T_m)}$"],
             )
             axs_bottom.set_xscale("log")
             axs_bottom.grid(axis="x")
@@ -462,11 +454,8 @@ class DiffusionProblemExample:
             cond = np.max(cls.diffusion_problem.approximate_eigs) / np.min(
                 cls.diffusion_problem.approximate_eigs
             )
-            cond_gpu = np.max(cls.diffusion_problem.approximate_eigs_gpu) / np.min(
-                cls.diffusion_problem.approximate_eigs_gpu
-            )
             ax2.set_ylim(axs_bottom.get_ylim())
-            ax2.set_yticks([y, y_gpu], [format_cond(cond), format_cond(cond_gpu)])
+            ax2.set_yticks([y], [format_cond(cond)])
 
             plt.tight_layout()
             plt.show()
@@ -499,6 +488,7 @@ def profile_solve():
 
 
 if __name__ == "__main__":
-    LOGGER.setLevel("INFO")  # Set logging level to INFO for the example
+    LOGGER.setLevel("DEBUG")  # Set logging level to INFO for the example
+    # PROGRESS.turn_off()  # Turn off progress bar for the example
     full_example()  # Uncomment this line to run a full diffusion problem example
     # profile_solve()  # Uncomment this line to profile problem solving
