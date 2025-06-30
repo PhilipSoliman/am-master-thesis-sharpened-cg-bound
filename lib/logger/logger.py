@@ -31,7 +31,7 @@ def format_fp(fp: Optional[Path]) -> str:
         return ""
     # Return the path relative to ROOT if possible, else absolute path
     try:
-        return str("..." / fp.relative_to(ROOT))
+        return "...[bold]project root[/bold]\\" + str(fp.relative_to(ROOT))
     except ValueError:
         return str(fp)
 
@@ -178,6 +178,7 @@ class AvgTimePerIterColumn(ProgressColumn):
 
 class PROGRESS(Progress):
     MAX_TASKS = 9
+    MIN_TASK_INDEX = 0
 
     TASK_COLORS = {
         9: "[green]",
@@ -211,13 +212,17 @@ class PROGRESS(Progress):
         cls, progress: Optional["PROGRESS"] = None
     ) -> "PROGRESS":
         if isinstance(progress, PROGRESS):
-            if not progress.progress_started():
+            if (
+                not progress.progress_started()
+                and progress._task_index > cls.MIN_TASK_INDEX
+            ):
                 progress.start()
             return progress
         elif progress is None:
             obj = cls.__new__(cls)
             obj.__init__()
-            obj.start()
+            if obj._task_index > cls.MIN_TASK_INDEX:
+                obj.start()
             return obj
 
     def soft_start(self) -> None:
@@ -246,6 +251,11 @@ class PROGRESS(Progress):
         **fields: Any,
     ) -> TaskID:
         with self._lock:
+            if self._task_index == self.MIN_TASK_INDEX:
+                LOGGER.debug(
+                    f"Task {description} was not added, due to minimum task index reached."
+                )
+                return self._task_index  # no more tasks can be added
             fp = fields.pop("fp", None)
             fp_str = format_fp(fp)
             desc = self.TASK_COLORS[int(self._task_index)] + description + fp_str
@@ -273,6 +283,14 @@ class PROGRESS(Progress):
             )  # ensure tasks are sorted by index
         self.refresh()
         return new_task_index
+    
+    def update(self, task_id: TaskID, **kwargs) -> None:
+        if task_id in self._tasks.keys():
+            super().update(task_id, **kwargs)
+
+    def advance(self, task_id: TaskID, **kwargs) -> None:
+        if task_id in self._tasks.keys():
+            super().advance(task_id, **kwargs)
 
     def remove_task(self, task_id: TaskID) -> None:
         """Delete a task if it exists.
@@ -281,9 +299,10 @@ class PROGRESS(Progress):
             task_id (TaskID): A task ID.
 
         """
-        with self._lock:
-            del self._tasks[task_id]
-            self._task_index = TaskID(int(self._task_index) + 1)  # increment index
+        if task_id in self._tasks.keys():
+            with self._lock:
+                del self._tasks[task_id]
+                self._task_index = TaskID(int(self._task_index) + 1)  # increment index
 
     def progress_started(self) -> bool:
         return any(task.started for task in self._tasks.values())
@@ -292,3 +311,12 @@ class PROGRESS(Progress):
         """Get the description of a task."""
         with self._lock:
             return self._tasks[task_id].description if task_id in self._tasks else ""
+
+    @classmethod
+    def set_minimum_task_index(cls, index: int) -> None:
+        cls.MIN_TASK_INDEX = index
+
+    @classmethod
+    def turn_off(cls) -> None:
+        """Turn off the progress bar."""
+        cls.set_minimum_task_index(cls.MAX_TASKS)
