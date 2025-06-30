@@ -314,11 +314,13 @@ class FESpace:
         The result is a dictionary very similar to the component tree, only now it looks like this:
         {
             coarse_node_i1: {
-                "dof": int, # DOF of the coarse node
-                coarse_edge_j1: [dof1, dof2, ...], # DOFs of the coarse edge
-                coarse_edge_j2: {...}
-                ...
-                coarse_edge_jk: {...}
+                "node": int, # DOF of the coarse node
+                "edges" : {
+                    coarse_edge_j1: [dof1, dof2, ...], # DOFs of the coarse edge
+                    coarse_edge_j2: {...}
+                    ...
+                    coarse_edge_jk: {...}
+                    }
             },
             coarse_node_i2: {
                 coarse_edge_j1: {...},
@@ -326,6 +328,8 @@ class FESpace:
             },
         })
         """
+        all_dofs = np.arange(self.fespace.ndof)
+        free_dofs = all_dofs[self.fespace.FreeDofs()]
         free_component_tree_dofs = {}
         edge_component_multiplicity = {}
         component_tree = self.two_mesh.connected_component_tree
@@ -348,7 +352,8 @@ class FESpace:
                 edge_component_multiplicity[coarse_edge] = (
                     edge_component_multiplicity.get(coarse_edge, 0) + 1
                 )
-                # save all DOFs of the edge component
+
+                # get all DOFs of the edge component (free by construction)
                 dofs = []
                 for c in edge_components:
                     edge_dofs = list(self.fespace.GetDofNrs(c))
