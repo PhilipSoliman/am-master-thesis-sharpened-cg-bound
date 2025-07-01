@@ -5,9 +5,11 @@ import scipy.sparse as sp
 import scipy.sparse.linalg as spl
 import torch.linalg as trl
 
-from lib import gpu_interface as gpu
+from lib.gpu_interface import GPUInterface
 from lib.logger import LOGGER
 
+# initialize gpu
+gpu = GPUInterface()
 
 def eigs(
     A: sp.csc_matrix | sp.csr_matrix,
