@@ -94,6 +94,7 @@ class DefaultQuadMeshParams(metaclass=DefaultMeshParamsMeta):
     Nc32 = MeshParams(lx=1.0, ly=1.0, Nc=32, refinement_levels=4, layers=2, quad=True)
     Nc64 = MeshParams(lx=1.0, ly=1.0, Nc=64, refinement_levels=4, layers=2, quad=True)
 
+
 class DefaultTriMeshParams(metaclass=DefaultMeshParamsMeta):
     Nc4 = MeshParams(lx=1.0, ly=1.0, Nc=4, refinement_levels=4, layers=2, quad=False)
     Nc8 = MeshParams(lx=1.0, ly=1.0, Nc=8, refinement_levels=4, layers=2, quad=False)
@@ -469,7 +470,9 @@ class TwoLevelMesh:
         subdomains = {}
         coarse_elements = self.coarse_mesh.Elements()
         num_coarse_elements = self.coarse_mesh.ne
-        num_elements_per_coarse_element = 4**self.refinement_levels #NOTE: True for any 2D object, see https://www.youtube.com/watch?v=FnRhnZbDprE
+        num_elements_per_coarse_element = (
+            4**self.refinement_levels
+        )  # NOTE: True for any 2D object, see https://www.youtube.com/watch?v=FnRhnZbDprE
 
         # coarse elements are taken to be subdomains
         task = self.progress.add_task(
@@ -714,6 +717,26 @@ class TwoLevelMesh:
                 "double": double_slab_elements,
             }
             self.progress.advance(task)
+
+        # edge slabs around coarse nodes
+        idx = num_edge_vertices // 4
+        edge_slabs["around_coarse_nodes"] = {}
+        coarse_edges_processed = []
+        for coarse_node in self.coarse_mesh.vertices:
+            edge_slabs["around_coarse_nodes"][coarse_node.nr] = []
+            for coarse_edge in self.coarse_mesh[coarse_node].edges:
+                _idx = idx
+                if np.isin(coarse_edge.nr, coarse_edges_processed):
+                    # invert index if coarse edge was already processed
+                    # NOTE: this prevents getting overlapping slabs
+                    _idx = num_edge_vertices - _idx
+                slabs = self.get_slab_elements(
+                    coarse_edge,
+                    [_idx],
+                    slab_layers=slab_layers,
+                )
+                edge_slabs["around_coarse_nodes"][coarse_node.nr].extend(*slabs)
+                coarse_edges_processed.append(coarse_edge.nr)
 
         # remove the task and log the completion
         self.progress.remove_task(task)
@@ -1250,7 +1273,7 @@ class TwoLevelMesh:
         self.mesh_params = MeshParams(
             lx=self.lx,
             ly=self.ly,
-            Nc=int(1/self.coarse_mesh_size),
+            Nc=int(1 / self.coarse_mesh_size),
             refinement_levels=self.refinement_levels,
             layers=self.layers,
             quad=self.quad,
@@ -1331,9 +1354,14 @@ class TwoLevelMesh:
             LOGGER.warning("No edge slabs generated for refinement level < 4.")
             return {}
         with open(edge_slabs_path, "r") as f:
-            edge_slabs = json.load(f)
+            _edge_slabs = json.load(f)
         # Convert string keys back to int
-        edge_slabs = {int(k): v for k, v in edge_slabs.items()}
+        edge_slabs = {}
+        for k, v in _edge_slabs.items():
+            if k == "around_coarse_nodes":
+                edge_slabs[k] = {int(k2): v2 for k2, v2 in v.items()}
+            else:
+                edge_slabs[int(k)] = v
         LOGGER.debug(f"loaded edge slabs")
         return edge_slabs
 
@@ -1343,7 +1371,7 @@ class TwoLevelMesh:
         Directory where the mesh and subdomain data are saved.
         """
         return self.get_save_dir(self.mesh_params)
-    
+
     @classmethod
     def get_save_dir(cls, mesh_params: MeshParams) -> Path:
         """
@@ -1602,11 +1630,25 @@ class TwoLevelMesh:
 
         return ax
 
-    def plot_edge_slabs(self, ax: Axes, which: Literal["single", "double"]):
-        for coarse_edge in self.coarse_edges_map.keys():
-            slab_elements = self.edge_slabs[coarse_edge.nr][which]
-            for el_nrs in slab_elements:
-                for el_nr in el_nrs:
+    def plot_edge_slabs(self, ax: Axes, which: Literal["single", "double", "vertices"]):
+        if which in ["single", "double"]:
+            for coarse_edge in self.coarse_edges_map.keys():
+                slab_elements = self.edge_slabs[coarse_edge.nr][which]
+                for el_nrs in slab_elements:
+                    for el_nr in el_nrs:
+                        self.plot_element(
+                            ax,
+                            self.fine_mesh[ngs.ElementId(el_nr)],
+                            self.fine_mesh,
+                            fillcolor="red",
+                            edgecolor="black",
+                            alpha=0.5,
+                            linewidth=1.0,
+                            zorder=TwoLevelMesh.ZORDERS["elements"] + 0.1,
+                        )
+        elif which == "vertices":
+            for slab_elements in self.edge_slabs["around_coarse_nodes"].values():
+                for el_nr in slab_elements:
                     self.plot_element(
                         ax,
                         self.fine_mesh[ngs.ElementId(el_nr)],
@@ -1617,6 +1659,10 @@ class TwoLevelMesh:
                         linewidth=1.0,
                         zorder=TwoLevelMesh.ZORDERS["elements"] + 0.1,
                     )
+        else:
+            msg = "Invalid 'which' parameter. Use 'single', 'double', or 'vertices'"
+            LOGGER.error(msg)
+            raise ValueError(msg)
 
     @staticmethod
     def plot_element(
@@ -1802,15 +1848,15 @@ class TwoLevelMesh:
 
         # plot slab elements (single)
         self.plot_mesh(ax[2, 0], mesh_type="coarse")
-        self.plot_edge_slabs(ax[2, 0], which="single")
-        ax[2, 0].set_title("Edge Slabs (Single)")
-        LOGGER.debug("\tplotted edge slabs (single).")
+        self.plot_edge_slabs(ax[2, 0], which="double")
+        ax[2, 0].set_title("Edge Slabs (Double)")
+        LOGGER.debug("\tplotted edge slabs (double).")
 
         # plot slab elements (double)
         self.plot_mesh(ax[2, 1], mesh_type="coarse")
-        self.plot_edge_slabs(ax[2, 1], which="double")
-        ax[2, 1].set_title("Edge Slabs (Double)")
-        LOGGER.debug("\tplotted edge slabs (double).")
+        self.plot_edge_slabs(ax[2, 1], which="vertices")
+        ax[2, 1].set_title("Edge Slabs (Around Vertices)")
+        LOGGER.debug("\tplotted edge slabs (around vertices).")
 
         fig.tight_layout()
         LOGGER.debug("\tvisualization complete.")

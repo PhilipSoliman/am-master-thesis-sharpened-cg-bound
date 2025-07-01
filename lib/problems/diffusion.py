@@ -73,6 +73,11 @@ class CoefFunc(Enum):
         r"$\mathcal{C}_{\text{double slab, edge}}$",
         "dslab_edge",
     )
+    EDGE_SLABS_AROUND_VERTICES_INCLUSIONS = (
+        "edge_slabs_around_vertices_inclusions_coefficient",
+        r"$\mathcal{C}_{\text{edge slabs, around vertices}}$",
+        "slabs_around_vertices",
+    )
     CONSTANT = ("constant_coefficient", r"$\mathcal{C}_{\text{const}}$", "const")
     HETMANIUK_LEHOUCQ = (
         "hetmaniuk_lehoucq_coefficient",
@@ -310,6 +315,25 @@ class DiffusionProblem(Problem):
         LOGGER.debug(f"Using double slab edge inclusions coefficient function.")
         return coef_func.Compile()
 
+    def edge_slabs_around_vertices_inclusions_coefficient(self):
+        constant_fes = ngs.L2(self.two_mesh.fine_mesh, order=0)
+        grid_func = ngs.GridFunction(constant_fes)
+
+        # construct the coefficient array
+        coef_array = np.full(self.two_mesh.fine_mesh.ne, self.BACKGROUND_COEF)
+        for coarse_node in self.fes.free_component_tree_dofs.keys():
+            slab_elements = self.two_mesh.edge_slabs["around_coarse_nodes"][
+                coarse_node.nr
+            ]
+            coef_array[slab_elements] = self.CONTRAST_COEF
+
+        grid_func.vec.FV().NumPy()[:] = coef_array
+        coef_func = ngs.CoefficientFunction(grid_func)
+        LOGGER.debug(
+            f"Using edge slabs around vertices inclusions coefficient function."
+        )
+        return coef_func.Compile()
+
     def save_functions(self):
         """Save the source and coefficient functions to vtk."""
         self.save_ngs_functions(
@@ -321,11 +345,11 @@ class DiffusionProblem(Problem):
 
 class DiffusionProblemExample:
     # mesh parameters
-    mesh_params = DefaultQuadMeshParams.Nc16  # DefaultQuadMeshParams.Nc4
+    mesh_params = DefaultQuadMeshParams.Nc4  # DefaultQuadMeshParams.Nc4
 
     # source and coefficient functions
     source_func = SourceFunc.CONSTANT
-    coef_func = CoefFunc.DOUBLE_SLAB_EDGE_INCLUSIONS
+    coef_func = CoefFunc.EDGE_SLABS_AROUND_VERTICES_INCLUSIONS
 
     # preconditioner and coarse space
     preconditioner = TwoLevelSchwarzPreconditioner  # TwoLevelSchwarzPreconditioner
@@ -335,7 +359,7 @@ class DiffusionProblemExample:
     use_gpu = False
 
     # save coarse bases
-    save_coarse_bases = False
+    save_coarse_bases = True
 
     # save CG convergence information
     get_cg_info = True
