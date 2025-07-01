@@ -217,16 +217,17 @@ class DirectSparseSolver:
         progress = PROGRESS.get_active_progress_bar(self.progress)
         LOGGER.debug("Solving using LU decomposition")
         n_rhs = rhs.shape[1]  # type: ignore
-        out = sp.csc_matrix(rhs.shape)
         task = progress.add_task("LU solving columns", total=n_rhs)
+        cols = []
         for i in range(n_rhs):
             x = self.solver(rhs[:, i].toarray().ravel())
-            out[:, i] = sp.csc_matrix(x[:, None])
+            cols.append(sp.csc_matrix(x.reshape(-1, 1)))
             progress.advance(task)
 
+        out = sp.hstack(cols).tocsc()
         LOGGER.debug("LU solving completed")
         progress.soft_stop()
-        return out.tocsc()  # type: ignore
+        return out
 
     def lu_threaded(self, rhs: sp.csc_matrix) -> sp.csc_matrix:
         """
