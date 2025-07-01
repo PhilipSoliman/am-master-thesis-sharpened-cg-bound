@@ -29,7 +29,9 @@ class OneLevelSchwarzPreconditioner(Operator):
         progress: Optional[PROGRESS] = None,
     ):
         self.progress = PROGRESS.get_active_progress_bar(progress)
-        task = self.progress.add_task(f"Initializing {self}", total=3)
+        task = self.progress.add_task(
+            f"Initializing 1-level Schwarz preconditioner", total=3
+        )
         LOGGER.info("Initializing 1-level Schwarz preconditioner")
 
         self.shape = A.shape
@@ -229,7 +231,7 @@ class TwoLevelSchwarzPreconditioner(OneLevelSchwarzPreconditioner):
     ):
         if not self.use_gpu:
             LOGGER.debug("Obtained coarse solver (CPU)")
-            return factorized(self.coarse_op)
+            return factorized(self.coarse_op.tocsc())
         else:
             with suppress_output():
                 solver = DirectSparseSolver(
