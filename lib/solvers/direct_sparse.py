@@ -11,9 +11,11 @@ import torch
 from scipy.sparse.linalg import eigsh, factorized, splu, spsolve
 from tqdm import tqdm
 
-from lib import gpu_interface as gpu
+from lib.gpu_interface import GPUInterface
 from lib.logger import LOGGER, PROGRESS
 
+# initialize GPU interface
+gpu = GPUInterface()    
 
 class MatrixType(Enum):
     SPD = "SPD"
@@ -24,7 +26,7 @@ class MatrixType(Enum):
 class DirectSparseSolver:
     NUM_CPU_THREADS = multiprocessing.cpu_count()
     GPU_BATCH_SIZE = 128
-    CPU_BATCH_SIZE = 32
+    CPU_BATCH_SIZE = 64
     DEVICE = gpu.DEVICE
 
     def __init__(
@@ -216,15 +218,18 @@ class DirectSparseSolver:
         """
         progress = PROGRESS.get_active_progress_bar(self.progress)
         LOGGER.debug("Solving using LU decomposition")
-        n_rhs = rhs.shape[1]  # type: ignore
-        task = progress.add_task("LU solving columns", total=n_rhs)
-        cols = []
-        for i in range(n_rhs):
-            x = self.solver(rhs[:, i].toarray().ravel())
-            cols.append(sp.csc_matrix(x.reshape(-1, 1)))
+        n_rows, n_rhs = rhs.shape  # type: ignore
+        out_cols = []
+        num_batches = (n_rhs + self.CPU_BATCH_SIZE - 1) // self.CPU_BATCH_SIZE
+        task = progress.add_task("LU solving batches", total=num_batches)
+        for b in range(num_batches):
+            start = b * self.CPU_BATCH_SIZE
+            end = min((b + 1) * self.CPU_BATCH_SIZE, n_rhs)
+            rhs_batch = rhs[:, start:end].toarray()
+            x_batch = np.column_stack([self.solver(rhs_batch[:, i]) for i in range(rhs_batch.shape[1])])
+            out_cols.append(sp.csc_matrix(x_batch))
             progress.advance(task)
-
-        out = sp.hstack(cols).tocsc()
+        out = sp.hstack(out_cols).tocsc()
         LOGGER.debug("LU solving completed")
         progress.soft_stop()
         return out

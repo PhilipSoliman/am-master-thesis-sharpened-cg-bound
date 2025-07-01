@@ -8,7 +8,7 @@ from scipy.sparse import diags as spdiags
 from scipy.sparse.linalg import LinearOperator, aslinearoperator
 from tqdm import trange
 
-from lib import gpu_interface as gpu
+from lib.gpu_interface import GPUInterface
 from lib.eigenvalues import eigs
 from lib.logger import LOGGER, PROGRESS
 from lib.operators import Operator
@@ -26,6 +26,9 @@ lib_path = root / DLL_FOLDER / DLL_NAME
 
 # load shared library
 custom_cg_lib = CDLL(lib_path.as_posix())
+
+# initialize GPU interface
+gpu = GPUInterface()
 
 
 class CustomCG:
