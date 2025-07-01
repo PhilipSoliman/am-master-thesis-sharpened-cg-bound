@@ -26,7 +26,7 @@ for mesh_params in DefaultQuadMeshParams:
     # generate and save the subdomain DOFs
     ptype = ProblemType.DIFFUSION
     boundary_conditions = [HomogeneousDirichlet(ptype)]
-    fespace = FESpace(two_mesh, [HomogeneousDirichlet(ptype)], ptype, progress=progress)
+    fespace = FESpace(two_mesh, boundary_conditions, ptype, progress=progress)
 
     # increment the progress bar
     progress.advance(task)
