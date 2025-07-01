@@ -320,8 +320,8 @@ class DiffusionProblem(Problem):
 
 
 class DiffusionProblemExample:
-    # load the mesh
-    two_mesh = TwoLevelMesh.load(DefaultQuadMeshParams.Nc64)
+    # mesh parameters
+    mesh_params = DefaultQuadMeshParams.Nc16  # DefaultQuadMeshParams.Nc4
 
     # source and coefficient functions
     source_func = SourceFunc.CONSTANT
@@ -348,7 +348,7 @@ class DiffusionProblemExample:
         # create diffusion problem
         cls.diffusion_problem = DiffusionProblem(
             HomogeneousDirichlet(ProblemType.DIFFUSION),
-            mesh=cls.two_mesh,
+            mesh=cls.mesh_params,
             source_func=cls.source_func,
             coef_func=cls.coef_func,
         )
@@ -466,7 +466,7 @@ class DiffusionProblemExample:
     @classmethod
     def get_save_dir(cls):
         """Get the directory where the problem files are saved."""
-        return cls.two_mesh.save_dir
+        return TwoLevelMesh.get_save_dir(cls.mesh_params)
 
 
 def full_example():
