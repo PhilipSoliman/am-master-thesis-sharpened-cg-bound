@@ -345,7 +345,7 @@ class DiffusionProblem(Problem):
 
 class DiffusionProblemExample:
     # mesh parameters
-    mesh_params = DefaultQuadMeshParams.Nc4  # DefaultQuadMeshParams.Nc4
+    mesh_params = DefaultQuadMeshParams.Nc16  # DefaultQuadMeshParams.Nc4
 
     # source and coefficient functions
     source_func = SourceFunc.CONSTANT
@@ -355,11 +355,11 @@ class DiffusionProblemExample:
     preconditioner = TwoLevelSchwarzPreconditioner  # TwoLevelSchwarzPreconditioner
     coarse_space = AMSCoarseSpace  # GDSWCoarseSpace or RGDSWCoarseSpace
 
-    # use GPU for solving
+    # use GPU for solving (not working yet)
     use_gpu = False
 
     # save coarse bases
-    save_coarse_bases = True
+    save_coarse_bases = False
 
     # save CG convergence information
     get_cg_info = True
