@@ -320,6 +320,9 @@ class DiffusionProblem(Problem):
 
 
 class DiffusionProblemExample:
+    # load the mesh
+    two_mesh = TwoLevelMesh.load(DefaultQuadMeshParams.Nc64)
+
     # source and coefficient functions
     source_func = SourceFunc.CONSTANT
     coef_func = CoefFunc.DOUBLE_SLAB_EDGE_INCLUSIONS
@@ -345,7 +348,7 @@ class DiffusionProblemExample:
         # create diffusion problem
         cls.diffusion_problem = DiffusionProblem(
             HomogeneousDirichlet(ProblemType.DIFFUSION),
-            DefaultQuadMeshParams.Nc16,
+            mesh=cls.two_mesh,
             source_func=cls.source_func,
             coef_func=cls.coef_func,
         )
@@ -463,7 +466,7 @@ class DiffusionProblemExample:
     @classmethod
     def get_save_dir(cls):
         """Get the directory where the problem files are saved."""
-        return cls.diffusion_problem.two_mesh.save_dir
+        return cls.two_mesh.save_dir
 
 
 def full_example():
@@ -471,6 +474,19 @@ def full_example():
     DiffusionProblemExample.example_solve()
     DiffusionProblemExample.save_functions()
     DiffusionProblemExample.visualize_convergence()
+
+
+def profile_construction():
+    import cProfile
+    import pstats
+
+    from lib.utils import visualize_profile
+
+    fp = DiffusionProblemExample.get_save_dir() / "diffusion_problem_construction.prof"
+    cProfile.run("DiffusionProblemExample.example_construction()", str(fp))
+    p = pstats.Stats(str(fp))
+    p.sort_stats("cumulative").print_stats(10)
+    visualize_profile(fp)
 
 
 def profile_solve():
@@ -488,7 +504,8 @@ def profile_solve():
 
 
 if __name__ == "__main__":
-    LOGGER.setLevel("DEBUG")  # Set logging level to INFO for the example
-    # PROGRESS.turn_off()  # Turn off progress bar for the example
+    LOGGER.setLevel(LOGGER.INFO)
+    # PROGRESS.turn_off()
     full_example()  # Uncomment this line to run a full diffusion problem example
+    # profile_construction()  # Uncomment this line to profile problem construction
     # profile_solve()  # Uncomment this line to profile problem solving
