@@ -697,7 +697,7 @@ class TwoLevelMesh:
 
         task = self.progress.add_task(
             "[cyan]Generating edge slabs",
-            total=len(self.coarse_edges_map),
+            total=len(self.coarse_edges_map) + len(self.coarse_mesh.vertices),
         )
         for coarse_edge in self.coarse_edges_map.keys():
             single_slab_elements = self.get_slab_elements(
@@ -737,6 +737,7 @@ class TwoLevelMesh:
                 )
                 edge_slabs["around_coarse_nodes"][coarse_node.nr].extend(*slabs)
                 coarse_edges_processed.append(coarse_edge.nr)
+                self.progress.advance(task)
 
         # remove the task and log the completion
         self.progress.remove_task(task)
