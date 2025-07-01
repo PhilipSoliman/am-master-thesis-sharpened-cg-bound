@@ -120,14 +120,11 @@ def make_c_library(root_path):
 
 
 def activate_environment():
-    if os.name == "nt":
-        activation_script = os.path.join(VENV_NAME, "Scripts", "activate.bat")
-        input("Press Enter to activate the environment.")
-        subprocess.run(["cmd.exe", "/k", activation_script])
-    else:
-        activation_script = f"{VENV_NAME}/bin/activate"
-        print("To activate the environment, run:")
-        print(f"source {activation_script}")
+    subprocess.run(
+        [PYTHON_EXEC, "activate_env.py"],
+        shell=True,
+        check=True,
+    )
 
 
 def _get_cuda_version():
