@@ -20,10 +20,10 @@ from lib.problems import CoefFunc, DiffusionProblem, SourceFunc
 from lib.solvers import CustomCG
 
 # set logging level
-LOGGER.setLevel("INFO")
+LOGGER.setLevel("DEBUG")
 
 # setup for a diffusion problem
-MESHES = DefaultQuadMeshParams
+MESHES = [DefaultQuadMeshParams.Nc32, DefaultQuadMeshParams.Nc64]
 PROBLEM_TYPE = ProblemType.DIFFUSION
 if __name__ == "__main__":
     BOUNDARY_CONDITIONS = HomogeneousDirichlet(PROBLEM_TYPE)
@@ -41,8 +41,8 @@ PRECONDITIONERS: list[tuple[Type[TwoLevelSchwarzPreconditioner], Type[CoarseSpac
     # None, NOTE: original system can take a long time to solve, so we skip it here.
     # Also causes GPU memory issues due to large lanczos matrices. Even estimating condition number with scipy is troublesome.
     # This should be treated elsewhere.
-    (TwoLevelSchwarzPreconditioner, GDSWCoarseSpace),
-    (TwoLevelSchwarzPreconditioner, RGDSWCoarseSpace),
+    # (TwoLevelSchwarzPreconditioner, GDSWCoarseSpace),
+    # (TwoLevelSchwarzPreconditioner, RGDSWCoarseSpace),
     (TwoLevelSchwarzPreconditioner, AMSCoarseSpace),
 ]
 
@@ -109,6 +109,7 @@ def calculate_spectra() -> None:
                     two_mesh,
                     coarse_space=coarse_space_cls,
                     progress=progress,
+                    coarse_only=True
                 )
                 preconditioners.append(preconditioner)
 
