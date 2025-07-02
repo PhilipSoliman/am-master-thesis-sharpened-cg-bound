@@ -18,12 +18,18 @@ from lib.preconditioners import (
 from lib.problem_type import ProblemType
 from lib.problems import CoefFunc, DiffusionProblem, SourceFunc
 from lib.solvers import CustomCG
+from lib.utils import get_cli_args
 
-# set logging level
-LOGGER.setLevel("INFO")
+# get command line arguments
+ARGS = get_cli_args()
+
+# log settings
+LOGGER.setLevel(ARGS.loglvl if ARGS.loglvl else "INFO")
+# PROGRESS.turn_off()
+LOGGER.generate_log_file()
 
 # setup for a diffusion problem
-MESHES = DefaultQuadMeshParams
+MESHES = [DefaultQuadMeshParams.Nc64]
 PROBLEM_TYPE = ProblemType.DIFFUSION
 if __name__ == "__main__":
     BOUNDARY_CONDITIONS = HomogeneousDirichlet(PROBLEM_TYPE)
@@ -41,8 +47,8 @@ PRECONDITIONERS: list[tuple[Type[TwoLevelSchwarzPreconditioner], Type[CoarseSpac
     # None, NOTE: original system can take a long time to solve, so we skip it here.
     # Also causes (GPU) memory issues due to large lanczos matrices. Even estimating condition number with scipy is troublesome.
     # This should be treated elsewhere.
-    (TwoLevelSchwarzPreconditioner, GDSWCoarseSpace),
-    (TwoLevelSchwarzPreconditioner, RGDSWCoarseSpace),
+    # (TwoLevelSchwarzPreconditioner, GDSWCoarseSpace),
+    # (TwoLevelSchwarzPreconditioner, RGDSWCoarseSpace),
     (TwoLevelSchwarzPreconditioner, AMSCoarseSpace),
 ]
 
@@ -108,26 +114,20 @@ def calculate_spectra() -> None:
                 "Computing spectra", total=len(PRECONDITIONERS)
             )
             for preconditioner_cls, coarse_space_cls in PRECONDITIONERS:
-                try:
-                    # initialize preconditioner
-                    preconditioner = preconditioner_cls(
-                        A,
-                        diffusion_problem.fes,
-                        two_mesh,
-                        coarse_space=coarse_space_cls,
-                        progress=progress,
-                        coarse_only=True,
-                    )
+                # initialize preconditioner
+                preconditioner = preconditioner_cls(
+                    A,
+                    diffusion_problem.fes,
+                    two_mesh,
+                    coarse_space=coarse_space_cls,
+                    progress=progress,
+                    coarse_only=True,
+                )
 
-                    # get save directory for the preconditioner
-                    save_dir = get_spectrum_save_path(
-                        mesh_params, coef_func, preconditioner_cls, coarse_space_cls
-                    )
-                except Exception as e:
-                    LOGGER.warning(
-                        f"Failed to initialize preconditioner {preconditioner_cls.SHORT_NAME} with coarse space {coarse_space_cls.SHORT_NAME if coarse_space_cls else 'None'}: {e}"
-                    )
-                    continue
+                # get save directory for the preconditioner
+                save_dir = get_spectrum_save_path(
+                    mesh_params, coef_func, preconditioner_cls, coarse_space_cls
+                )
 
                 # get shorthand for preconditioner
                 shorthand = preconditioner.SHORT_NAME
