@@ -37,6 +37,7 @@ class DirectSparseSolver:
         multithreaded: bool = False,
         progress: Optional[PROGRESS] = None,
         batch_size: Optional[int] = None,
+        delete_rhs: bool = False,
     ):
         """
         Initialize a sparse solver. For SPD matrices a sparse Cholesky decomposition is made and efficiently
@@ -61,7 +62,7 @@ class DirectSparseSolver:
         self.progress = progress
         if batch_size is not None:
             self._batch_size = batch_size
-
+        self.delete_rhs = delete_rhs
         self._solver = self.get_solver()
         LOGGER.debug("Initialized direct sparse solver")
 
@@ -178,18 +179,32 @@ class DirectSparseSolver:
         n_rows, n_rhs = rhs.shape  # type: ignore
         num_batches = (n_rhs + self.batch_size - 1) // self.batch_size
         task = progress.add_task("Cholesky solving batches", total=num_batches)
+        out_cols = []
         try:
             LOGGER.debug("Solving using Cholesky decomposition")
-            out_cols = []
             for i in range(num_batches):
-                start = i * self.batch_size
-                end = min((i + 1) * self.batch_size, n_rhs)
+                # delete rhs to free memory if delete_rhs is True
+                if self.delete_rhs:
+                    n_rhs = rhs.shape[1]  # type: ignore
+                    start = 0
+                    end = min(self.batch_size, n_rhs)
+                    rhs_batch = rhs[:, start:end].tocoo()
+                    if end < n_rhs:
+                        rhs = rhs[:, end:] # overwrite rhs with remaining columns
+                    else:
+                        LOGGER.debug("Deleting rhs to free memory")
+                        del rhs  # delete rhs to free memory
+                else:
+                    start = i * self.batch_size
+                    end = min((i + 1) * self.batch_size, n_rhs)
+                    rhs_batch = rhs[:, start:end].tocoo()
 
                 # rhs
                 shape = (n_rows, end - start)
-                rhs_batch = rhs[:, start:end].tocoo()
                 rhs_batch_array = np.zeros(shape, dtype=np.float64)
                 rhs_batch_array[rhs_batch.row, rhs_batch.col] = rhs_batch.data
+
+                # send rhs to GPU
                 rhs_device = gpu.send_array(rhs_batch_array, dtype=torch.float64)
 
                 # output
@@ -198,6 +213,9 @@ class DirectSparseSolver:
 
                 # solve on GPU (if available) or CPU
                 self.solver.solve(rhs_device, x_device)  # type: ignore
+
+                # delete the rhs_device to free memory
+                gpu.delete_array(rhs_device)
 
                 # Move to CPU if necessary
                 x = gpu.retrieve_array(x_device).reshape(shape)
@@ -208,24 +226,25 @@ class DirectSparseSolver:
                 out_cols.append(x_csc)
 
                 progress.advance(task)
-
-            # Stack all columns into a sparse matrix
-            out = sp.hstack(out_cols).tocsc()
-            LOGGER.debug("Cholesky solving completed")
-            progress.soft_stop()
         except Exception as e:
             if isinstance(e, MemoryError):
                 progress.remove_task(task)
                 LOGGER.exception(
                     f"MemoryError during solving {e}. Halving the batch size and retrying."
                 )
+                
+                remaining_rhs = rhs[:, i * self.batch_size :]
                 self.batch_size //= 2
-                return self.cholesky(rhs)
+                return sp.hstack([out_cols, self.cholesky(remaining_rhs)])
             else:
                 progress.soft_stop()
                 LOGGER.exception(f"Error during solving: {e}")
                 raise e
-
+            
+        # Stack all columns into a sparse matrix
+        out = sp.hstack(out_cols).tocsc()
+        LOGGER.debug("Cholesky solving completed")
+        progress.soft_stop()
         return out  # type: ignore
 
     def lu(self, rhs: sp.csc_matrix) -> sp.csc_matrix:
