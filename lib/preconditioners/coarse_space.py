@@ -490,7 +490,7 @@ class AMSCoarseSpace(GDSWCoarseSpace):
         LOGGER.debug(str(self._init_str()))
         self.progress.soft_stop()
 
-    def assemble_restriction_operator(self, mesh_threshold: float = 1/32) -> sp.csc_matrix:
+    def assemble_restriction_operator(self, mesh_threshold: float = 1/64) -> sp.csc_matrix:
         LOGGER.debug(f"Assembling restriction operator for {self}")
         restriction_operator = sp.csc_matrix(
             (self.fespace.num_free_dofs, self.interface_dimension), dtype=float
@@ -613,16 +613,21 @@ class AMSCoarseSpace(GDSWCoarseSpace):
         LOGGER.debug("Assembled interface restriction operator")
 
         # Phi_I
-        batch_size = None
-        if self.two_mesh.coarse_mesh_size <= mesh_threshold: # for large meshes decrease batch size
-            batch_size = 32
-        sparse_solver = DirectSparseSolver(
-            A_II.tocsc(),
-            matrix_type=MatrixType.SPD,
-            progress=self.progress,
-            batch_size=batch_size,
-            delete_rhs=True,
-        )
+        if self.two_mesh.coarse_mesh_size > mesh_threshold: # for small use GPU solver
+            sparse_solver = DirectSparseSolver(
+                A_II.tocsc(),
+                matrix_type=MatrixType.SPD,
+                progress=self.progress,
+                delete_rhs=True,
+            )
+        else:  # for big meshes use CPU solver
+            sparse_solver = DirectSparseSolver(
+                A_II.tocsc(), 
+                matrix_type=MatrixType.Symmetric,
+                progress=self.progress,
+                batch_size=32,
+                delete_rhs=True,
+            )
         interior_restriction = -sparse_solver(interface_restriction)
         LOGGER.debug("Assembled interior restriction operator")
 

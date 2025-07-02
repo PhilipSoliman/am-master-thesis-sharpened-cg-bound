@@ -229,10 +229,12 @@ class DirectSparseSolver:
                 LOGGER.exception(
                     f"MemoryError during solving {e}. Halving the batch size and retrying."
                 )
-                
-                remaining_rhs = rhs[:, i * self.batch_size :]
+                if not self.delete_rhs:
+                    remaining_rhs = rhs[:, end:]
+                else:
+                    remaining_rhs = rhs
                 self.batch_size //= 2
-                return sp.hstack([out_cols, self.cholesky(remaining_rhs)])
+                return sp.hstack([out_cols, self.lu(remaining_rhs)])
             else:
                 progress.soft_stop()
                 LOGGER.exception(f"Error during solving: {e}")
@@ -256,20 +258,49 @@ class DirectSparseSolver:
         at the end, but it is more memory efficient for large rhs matrices.
         """
         progress = PROGRESS.get_active_progress_bar(self.progress)
-        LOGGER.debug("Solving using LU decomposition")
         n_rows, n_rhs = rhs.shape  # type: ignore
         out_cols = []
         num_batches = (n_rhs + self.CPU_BATCH_SIZE - 1) // self.CPU_BATCH_SIZE
         task = progress.add_task("LU solving batches", total=num_batches)
-        for b in range(num_batches):
-            start = b * self.CPU_BATCH_SIZE
-            end = min((b + 1) * self.CPU_BATCH_SIZE, n_rhs)
-            rhs_batch = rhs[:, start:end].toarray()
-            x_batch = np.column_stack(
-                [self.solver(rhs_batch[:, i]) for i in range(rhs_batch.shape[1])]
-            )
-            out_cols.append(sp.csc_matrix(x_batch))
-            progress.advance(task)
+        try:
+            LOGGER.debug("Solving using LU decomposition")
+            for b in range(num_batches):
+                # delete rhs to free memory if delete_rhs is True
+                if self.delete_rhs:
+                    n_rhs = rhs.shape[1]  # type: ignore
+                    start = 0
+                    end = min(self.batch_size, n_rhs)
+                    rhs_batch = rhs[:, start:end]
+                    if end < n_rhs:
+                        rhs = rhs[:, end:] # overwrite rhs with remaining columns
+                    else:
+                        LOGGER.debug("Deleting rhs to free memory")
+                        rhs = sp.csc_matrix((n_rows, 0))  # empty matrix
+                else:
+                    start = b * self.batch_size
+                    end = min((b + 1) * self.batch_size, n_rhs)
+                    rhs_batch = rhs[:, start:end]
+                x_batch = np.column_stack(
+                    [self.solver(rhs_batch[:, i].toarray().ravel()) for i in range(rhs_batch.shape[1])]
+                )
+                out_cols.append(sp.csc_matrix(x_batch))
+                progress.advance(task)
+        except Exception as e:
+            if isinstance(e, MemoryError):
+                progress.remove_task(task)
+                LOGGER.exception(
+                    f"MemoryError during solving {e}. Halving the batch size and retrying."
+                )
+                if not self.delete_rhs:
+                    remaining_rhs = rhs[:, end:]
+                else:
+                    remaining_rhs = rhs
+                self.batch_size //= 2
+                return sp.hstack([out_cols, self.lu(remaining_rhs)])
+            else:
+                progress.soft_stop()
+                LOGGER.exception(f"Error during solving: {e}")
+                raise e
         out = sp.hstack(out_cols).tocsc()
         LOGGER.debug("LU solving completed")
         progress.soft_stop()
