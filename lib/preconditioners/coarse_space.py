@@ -621,6 +621,7 @@ class AMSCoarseSpace(GDSWCoarseSpace):
             matrix_type=MatrixType.SPD,
             progress=self.progress,
             batch_size=batch_size,
+            delete_rhs=True,
         )
         interior_restriction = -sparse_solver(interface_restriction)
         LOGGER.debug("Assembled interior restriction operator")
