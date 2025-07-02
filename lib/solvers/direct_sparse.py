@@ -61,7 +61,7 @@ class DirectSparseSolver:
         self.multithreaded = multithreaded
         self.progress = progress
         if batch_size is not None:
-            self._batch_size = batch_size
+            self.batch_size = batch_size
         self.delete_rhs = delete_rhs
         self._solver = self.get_solver()
         LOGGER.debug("Initialized direct sparse solver")
@@ -193,7 +193,7 @@ class DirectSparseSolver:
                         rhs = rhs[:, end:] # overwrite rhs with remaining columns
                     else:
                         LOGGER.debug("Deleting rhs to free memory")
-                        del rhs  # delete rhs to free memory
+                        rhs = sp.csc_matrix((n_rows, 0))  # empty matrix
                 else:
                     start = i * self.batch_size
                     end = min((i + 1) * self.batch_size, n_rhs)
