@@ -1,4 +1,7 @@
+import inspect
 import logging
+from datetime import datetime
+from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Any, Optional
 
@@ -43,6 +46,10 @@ class CustomLogger(logging.Logger):
     WARNING = logging.WARNING
     ERROR = logging.ERROR
 
+    # Setup log directory and file
+    LOG_DIR = ROOT / "logs"
+    LOG_DIR.mkdir(exist_ok=True)
+
     def _log(
         self,
         level,
@@ -75,6 +82,37 @@ class CustomLogger(logging.Logger):
         # also set the level for all handlers
         for handler in self.handlers:
             handler.setLevel(level)
+
+    def generate_log_file(
+        self,
+        level: int = logging.DEBUG,
+    ) -> None:
+        # Get the calling script's filename
+        frame = inspect.stack()[1]
+        module = inspect.getmodule(frame[0])
+        script_name = "unknown"
+        if module and hasattr(module, "__file__"):
+            script_name = Path(module.__file__).stem
+
+        # construct the log filename with timestamp
+        log_filename = (
+            self.LOG_DIR / f"{script_name}_run_{datetime.now():%Y%m%d_%H%M%S}.log"
+        )
+
+        # Create a file handler with rotation
+        file_handler = RotatingFileHandler(
+            log_filename, maxBytes=5_000_000, backupCount=5, encoding="utf-8"
+        )
+
+        # set log level for the file handler
+        file_handler.setLevel(level)
+
+        # # set log file format the same as the main logger first handler's formatter or a default one
+        formatter = logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s")
+        file_handler.setFormatter(formatter)
+
+        # add the file handler to the logger
+        self.addHandler(file_handler)
 
 
 # Custom formatter to add colors to log levels
@@ -283,7 +321,7 @@ class PROGRESS(Progress):
             )  # ensure tasks are sorted by index
         self.refresh()
         return new_task_index
-    
+
     def update(self, task_id: TaskID, **kwargs) -> None:
         if task_id in self._tasks.keys():
             super().update(task_id, **kwargs)
