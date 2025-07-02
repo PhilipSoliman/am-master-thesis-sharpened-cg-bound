@@ -35,6 +35,7 @@ class DirectSparseSolver:
         matrix_type: Optional[MatrixType] = None,
         multithreaded: bool = False,
         progress: Optional[PROGRESS] = None,
+        batch_size: Optional[int] = None,
     ):
         """
         Initialize a sparse solver. For SPD matrices a sparse Cholesky decomposition is made and efficiently
@@ -58,6 +59,8 @@ class DirectSparseSolver:
         self.multithreaded = multithreaded
         self._solver = self.get_solver()
         self.progress = progress
+        if batch_size is not None:
+            self._batch_size = batch_size
         LOGGER.debug("Initialized direct sparse solver")
 
     def __call__(
@@ -107,9 +110,9 @@ class DirectSparseSolver:
         if self.matrix_type == MatrixType.SPD:
             LOGGER.debug(f"using cholesky solver")
 
-            if gpu.AVAILABLE:
+            if gpu.AVAILABLE and not hasattr(self, "_batch_size"):
                 self.batch_size = self.GPU_BATCH_SIZE
-            else:
+            elif not gpu.AVAILABLE and not hasattr(self, "_batch_size"):
                 self.batch_size = self.CPU_BATCH_SIZE
             n = self.A.shape[0]  # type: ignore
             A_coo = self.A.tocoo()
@@ -121,7 +124,8 @@ class DirectSparseSolver:
             self.matrix_type == MatrixType.Symmetric
             or self.matrix_type == MatrixType.General
         ):
-            self.batch_size = self.CPU_BATCH_SIZE
+            if not hasattr(self, "batch_size"):
+                self.batch_size = self.CPU_BATCH_SIZE
             LOGGER.debug(f"using scipy factorized solver")
             return factorized(self.A)
         else:
