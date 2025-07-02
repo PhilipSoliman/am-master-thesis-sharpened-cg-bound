@@ -214,9 +214,6 @@ class DirectSparseSolver:
                 # solve on GPU (if available) or CPU
                 self.solver.solve(rhs_device, x_device)  # type: ignore
 
-                # delete the rhs_device to free memory
-                gpu.delete_array(rhs_device)
-
                 # Move to CPU if necessary
                 x = gpu.retrieve_array(x_device).reshape(shape)
 
