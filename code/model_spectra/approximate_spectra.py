@@ -35,7 +35,7 @@ if __name__ == "__main__":
     BOUNDARY_CONDITIONS = HomogeneousDirichlet(PROBLEM_TYPE)
 SOURCE_FUNC = SourceFunc.CONSTANT
 COEF_FUNCS = [
-    CoefFunc.CONSTANT,
+    # CoefFunc.CONSTANT,
     CoefFunc.EDGE_SLABS_AROUND_VERTICES_INCLUSIONS,
 ]
 
@@ -74,14 +74,22 @@ def get_spectrum_save_path(
 def calculate_spectra() -> None:
     # initialize progress bar
     progress = PROGRESS.get_active_progress_bar()
-    main_task = progress.add_task(
-        "Calculating spectra for coefficient functions", total=len(MESHES)
-    )
+    main_task = progress.add_task("Calculating spectra", total=len(MESHES))
+    desc = progress.get_description(main_task)
+    desc += " ([bold]H = 1/{0:.0f}, coef. = {1}[/bold])"
 
     # main loop over meshes, coefficients, and preconditioners
     for i, mesh_params in enumerate(MESHES):
         two_mesh = TwoLevelMesh.load(mesh_params, progress=progress)
         for coef_func in COEF_FUNCS:
+            # set description for the current mesh and coefficient function
+            progress.update(
+                main_task,
+                description=desc.format(
+                    1 / two_mesh.coarse_mesh_size, coef_func.short_name
+                ),
+            )
+
             # create the diffusion problem instance
             diffusion_problem = DiffusionProblem(
                 boundary_conditions=BOUNDARY_CONDITIONS,
