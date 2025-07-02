@@ -75,9 +75,8 @@ def calculate_spectra() -> None:
     # main loop over meshes, coefficients, and preconditioners
     for i, mesh_params in enumerate(MESHES):
         two_mesh = TwoLevelMesh.load(mesh_params, progress=progress)
-
         for coef_func in COEF_FUNCS:
-            # Create the diffusion problem instance
+            # create the diffusion problem instance
             diffusion_problem = DiffusionProblem(
                 boundary_conditions=BOUNDARY_CONDITIONS,
                 mesh=two_mesh,
@@ -91,16 +90,23 @@ def calculate_spectra() -> None:
                 *diffusion_problem.assemble()
             )
 
-            # get preconditioners
-            precond_task = progress.add_task(
-                "Getting preconditioners", total=len(PRECONDITIONERS) + 1
+            # initialize CG solver
+            custom_cg = CustomCG(
+                A,
+                b,
+                u,
+                tol=RTOL,
+                progress=progress,
             )
+            # NOTE: we cache the 1-lvl preconditioner to save time for the 2-lvl preconditioners.
             M1 = OneLevelSchwarzPreconditioner(
                 A, diffusion_problem.fes, progress=progress
-            ).as_linear_operator()  # NOTE: we cache the 1-lvl preconditioner to save time for the 2-lvl preconditioners.
-            progress.advance(precond_task)
-            preconditioners = []
-            save_paths = []
+            ).as_linear_operator()
+
+            # get spectra
+            spectra_task = progress.add_task(
+                "Computing spectra", total=len(PRECONDITIONERS)
+            )
             for preconditioner_cls, coarse_space_cls in PRECONDITIONERS:
                 try:
                     # initialize preconditioner
@@ -112,36 +118,17 @@ def calculate_spectra() -> None:
                         progress=progress,
                         coarse_only=True,
                     )
-                    preconditioners.append(preconditioner)
 
                     # get save directory for the preconditioner
                     save_dir = get_spectrum_save_path(
                         mesh_params, coef_func, preconditioner_cls, coarse_space_cls
                     )
-                    save_paths.append(save_dir)
                 except Exception as e:
                     LOGGER.warning(
                         f"Failed to initialize preconditioner {preconditioner_cls.SHORT_NAME} with coarse space {coarse_space_cls.SHORT_NAME if coarse_space_cls else 'None'}: {e}"
                     )
                     continue
 
-                progress.advance(precond_task)
-            progress.remove_task(precond_task)
-
-            # initialize CG solver
-            custom_cg = CustomCG(
-                A,
-                b,
-                u,
-                tol=RTOL,
-                progress=progress,
-            )
-
-            # get spectrum of (preconditioned) systems
-            spectra_task = progress.add_task(
-                "Computing spectra", total=len(preconditioners)
-            )
-            for i, preconditioner in enumerate(preconditioners):
                 # get shorthand for preconditioner
                 shorthand = preconditioner.SHORT_NAME
 
@@ -160,7 +147,7 @@ def calculate_spectra() -> None:
                 eigenvalues = custom_cg.get_approximate_eigenvalues_gpu()
 
                 # save eigenvalues to numpy array
-                np.save(save_paths[i], eigenvalues)
+                np.save(save_dir, eigenvalues)
 
                 progress.advance(spectra_task)
             progress.remove_task(spectra_task)
