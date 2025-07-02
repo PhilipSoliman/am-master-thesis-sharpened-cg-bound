@@ -1,3 +1,5 @@
+import os
+import tempfile
 import warnings
 from typing import Optional
 
@@ -488,7 +490,7 @@ class AMSCoarseSpace(GDSWCoarseSpace):
         LOGGER.debug(str(self._init_str()))
         self.progress.soft_stop()
 
-    def assemble_restriction_operator(self) -> sp.csc_matrix:
+    def assemble_restriction_operator(self, mesh_threshold: float = 1/64) -> sp.csc_matrix:
         LOGGER.debug(f"Assembling restriction operator for {self}")
         restriction_operator = sp.csc_matrix(
             (self.fespace.num_free_dofs, self.interface_dimension), dtype=float
@@ -514,7 +516,17 @@ class AMSCoarseSpace(GDSWCoarseSpace):
             A_EE.tocsc(), matrix_type=MatrixType.Symmetric, progress=self.progress
         )
         A_EV = self.A[self.edge_dofs, :][:, self.coarse_dofs]
-        edge_restriction = -sparse_solver(A_EV)
+        if self.two_mesh.coarse_mesh_size > mesh_threshold:
+            edge_restriction = -sparse_solver(A_EV)
+        else:  # for fine meshes we save edge restriction to a temporary file to save memory
+            with tempfile.NamedTemporaryFile(
+                mode="w+b", suffix=".npz", delete=False
+            ) as edge_restriction_file:
+                edge_restriction = -sparse_solver(A_EV)
+                sp.save_npz(edge_restriction_file.name, edge_restriction)
+                edge_restriction_file_name = edge_restriction_file.name
+                LOGGER.debug(f"Saved edge restriction operator to {edge_restriction_file_name}")
+
         # task = self.progress.add_task(
         #     "Assembling edge restriction operator",
         #     total=len(self.fespace.free_component_tree_dofs) + 1,
@@ -601,13 +613,23 @@ class AMSCoarseSpace(GDSWCoarseSpace):
         LOGGER.debug("Assembled interface restriction operator")
 
         # Phi_I
+        batch_size = None
+        if self.two_mesh.coarse_mesh_size <= mesh_threshold: # for large meshes decrease batch size
+            batch_size = 32
         sparse_solver = DirectSparseSolver(
-            A_II.tocsc(), matrix_type=MatrixType.SPD, progress=self.progress
+            A_II.tocsc(),
+            matrix_type=MatrixType.SPD,
+            progress=self.progress,
+            batch_size=batch_size,
         )
         interior_restriction = -sparse_solver(interface_restriction)
         LOGGER.debug("Assembled interior restriction operator")
 
         # Efficiently stack the operators in the order: coarse, edge, face, interior
+        if self.two_mesh.coarse_mesh_size <= mesh_threshold:
+            edge_restriction = sp.load_npz(edge_restriction_file_name)
+            LOGGER.debug(f"Loaded edge restriction operator from {edge_restriction_file_name}")
+
         blocks = [
             vertex_restriction,  # shape: (num_coarse_dofs, interface_dim)
             edge_restriction,  # shape: (num_edge_dofs, interface_dim)
@@ -618,6 +640,9 @@ class AMSCoarseSpace(GDSWCoarseSpace):
         LOGGER.debug(
             f"Stacked restriction operators for coarse, edge, {'face,' if np.any(self.face_dofs) else ''} and interior"
         )
+        if self.two_mesh.coarse_mesh_size <= mesh_threshold:
+            os.remove(edge_restriction_file_name)
+            LOGGER.debug(f"Removed temporary file {edge_restriction_file_name}")
 
         # Build the permutation array to match the original free DOF ordering
         coarse_idx = np.array(self.coarse_dofs)
