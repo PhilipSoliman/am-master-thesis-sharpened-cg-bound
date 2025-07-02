@@ -473,10 +473,6 @@ class AMSCoarseSpace(GDSWCoarseSpace):
         self.coarse_dofs, self.edge_dofs, self.face_dofs = (
             self._get_interface_component_masks()
         )
-        self.coarse_dofs_argsort = np.argsort(self.coarse_dofs)
-        self.coarse_dofs_sorted = self.coarse_dofs[self.coarse_dofs_argsort]
-        self.edge_dofs_argsort = np.argsort(self.edge_dofs)
-        self.edge_dofs_sorted = self.edge_dofs[self.edge_dofs_argsort]
         self.progress.advance(task)
 
         self.interface_dimension = len(self.coarse_dofs)
@@ -484,13 +480,16 @@ class AMSCoarseSpace(GDSWCoarseSpace):
         self.num_edge_dofs = len(self.edge_dofs)
         self.num_face_dofs = len(self.face_dofs)
         self.interior_dofs_mask = ~self.fespace.interface_dofs_mask
+        self.num_interior_dofs = np.sum(self.interior_dofs_mask)
         self.progress.advance(task)
 
         LOGGER.info(f"{self} initialized")
         LOGGER.debug(str(self._init_str()))
         self.progress.soft_stop()
 
-    def assemble_restriction_operator(self, mesh_threshold: float = 1/64) -> sp.csc_matrix:
+    def assemble_restriction_operator(
+        self, mesh_threshold: float = 1 / 64
+    ) -> sp.csc_matrix:
         LOGGER.debug(f"Assembling restriction operator for {self}")
         restriction_operator = sp.csc_matrix(
             (self.fespace.num_free_dofs, self.interface_dimension), dtype=float
@@ -506,78 +505,33 @@ class AMSCoarseSpace(GDSWCoarseSpace):
         A_EE += sp.diags(
             A_EI.sum(axis=1).A1, offsets=0, format="csc"
         )  # NOTE: SPD-ness is (possibly) lost here
+
+        # free up memory
+        A_EI = sp.csc_matrix(A_EI.shape, dtype=float)
+
         if np.any(self.face_dofs):
             A_EF = self.A[self.edge_dofs, :][:, self.face_dofs]
             A_EE += sp.diags(A_EF.sum(axis=1).A1, offsets=0, format="csc")
+
+            # free up memory
+            A_EF = sp.csc_matrix(A_EF.shape, dtype=float)
         LOGGER.debug("Assembled edge <- edge matrix A_EE")
 
         # solve for edge restriction operator
         sparse_solver = DirectSparseSolver(
-            A_EE.tocsc(), matrix_type=MatrixType.Symmetric, progress=self.progress
+            A_EE.tocsc(),
+            matrix_type=MatrixType.Symmetric,
+            progress=self.progress,
+            delete_rhs=True,
         )
-        A_EV = self.A[self.edge_dofs, :][:, self.coarse_dofs]
-        if self.two_mesh.coarse_mesh_size > mesh_threshold:
-            edge_restriction = -sparse_solver(A_EV)
-        else:  # for fine meshes we save edge restriction to a temporary file to save memory
-            with tempfile.NamedTemporaryFile(
-                mode="w+b", suffix=".npz", delete=False
-            ) as edge_restriction_file:
-                edge_restriction = -sparse_solver(A_EV)
-                sp.save_npz(edge_restriction_file.name, edge_restriction)
-                edge_restriction_file_name = edge_restriction_file.name
-                LOGGER.debug(f"Saved edge restriction operator to {edge_restriction_file_name}")
 
-        # task = self.progress.add_task(
-        #     "Assembling edge restriction operator",
-        #     total=len(self.fespace.free_component_tree_dofs) + 1,
-        # )
-        # # filter out any edge dofs that are not in the support of coarse nodes
-        # edge_restriction_rows, edge_restriction_cols, edge_restriction_data = [], [], []
-        # for dofs in self.fespace.free_component_tree_dofs.values():
-        #     coarse_dofs = dofs["node"]
+        # Set A_EE to empty matrix to free memory
+        A_EE = sp.csc_matrix(A_EE.shape, dtype=float)
 
-        #     # restrict coarse dofs to the free coarse dofs
-        #     coarse_dofs = self.fespace.map_global_to_restricted_dofs(
-        #         np.array(coarse_dofs)
-        #     )
-
-        #     # get edge dofs in the support of the coarse node
-        #     edge_dofs = []
-        #     for edge in dofs["edges"].values():
-        #         edge_dofs.extend(edge)
-
-        #     # restrict edge dofs to the free edge dofs
-        #     edge_dofs = self.fespace.map_global_to_restricted_dofs(np.array(edge_dofs))
-
-        #     # fill the matrix by looping of coarse dofs
-        #     for coarse_dof in coarse_dofs:
-        #         # get coarse dof index in list of coarse dofs
-        #         coarse_idx = np.searchsorted(self.coarse_dofs_sorted, coarse_dof)
-        #         coarse_idx = self.coarse_dofs_argsort[coarse_idx]
-
-        #         # get edge indices in the list of edge dofs
-        #         edge_idxs = np.searchsorted(self.edge_dofs_sorted, edge_dofs)
-        #         edge_idxs = self.edge_dofs_argsort[edge_idxs]
-
-        #         # save rows, cols and data for the edge restriction operator
-        #         edge_restriction_rows.extend(edge_idxs)
-        #         edge_restriction_cols.extend([coarse_idx] * len(edge_idxs))
-        #         edge_restriction_data.extend(
-        #             edge_restriction[edge_idxs, coarse_idx].toarray().flatten()
-        #         )
-        #     self.progress.advance(task)
-        # edge_restriction = sp.csc_matrix(
-        #     (edge_restriction_data, (edge_restriction_rows, edge_restriction_cols)),
-        #     shape=(self.num_edge_dofs, self.num_coarse_dofs),
-        #     dtype=float,
-        # )
-        # LOGGER.debug("Filtered edge restriction operator to coarse node support")
-
-        # # normalize the edge restriction operator
-        # normalization = sp.diags(
-        #     edge_restriction.sum(axis=1).A.flatten() ** (-1), offsets=0, format="csr"
-        # )
-        # edge_restriction = normalization @ edge_restriction
+        # A_EV = self.A[self.edge_dofs, :][:, self.coarse_dofs]
+        edge_restriction = -sparse_solver(
+            self.A[self.edge_dofs, :][:, self.coarse_dofs]
+        )
         LOGGER.debug("Assembled edge restriction operator")
 
         # Phi_F #TODO: probably need to do similar filtering to A_EV for face dofs
@@ -600,42 +554,96 @@ class AMSCoarseSpace(GDSWCoarseSpace):
             )
             LOGGER.debug("Assembled face restriction operator")
 
-        # Phi_Gamma
+        # Phi_I
+        LOGGER.debug("Assembling interior restriction operator")
         A_II = self.A[self.interior_dofs_mask, :][:, self.interior_dofs_mask]
         A_IV = self.A[self.interior_dofs_mask, :][:, self.coarse_dofs]
         A_IE = self.A[self.interior_dofs_mask, :][:, self.edge_dofs]
         A_IF = self.A[self.interior_dofs_mask, :][:, self.face_dofs]
-        interface_restriction = (
-            A_IV @ vertex_restriction
-            + A_IE @ edge_restriction
-            + A_IF @ face_restriction
-        ).tocsc()
-        LOGGER.debug("Assembled interface restriction operator")
+        if self.two_mesh.coarse_mesh_size > mesh_threshold:
+            # Phi_Gamma
+            interface_restriction = (
+                A_IV @ vertex_restriction
+                + A_IE @ edge_restriction
+                + A_IF @ face_restriction
+            ).tocsc()
 
-        # Phi_I
-        if self.two_mesh.coarse_mesh_size > mesh_threshold: # for small use GPU solver
+            # instantiate the sparse solver
             sparse_solver = DirectSparseSolver(
                 A_II.tocsc(),
                 matrix_type=MatrixType.SPD,
                 progress=self.progress,
                 delete_rhs=True,
             )
-        else:  # for big meshes use CPU solver
+
+            # free up memory
+            A_II = sp.csc_matrix(A_II.shape, dtype=float)
+            A_IV = sp.csc_matrix(A_IV.shape, dtype=float)
+            A_IE = sp.csc_matrix(A_IE.shape, dtype=float)
+            A_IF = sp.csc_matrix(A_IF.shape, dtype=float)
+
+            LOGGER.debug("Solving full interface restriction")
+            interior_restriction = -sparse_solver(interface_restriction)
+        else:
+            batch_size = 16
             sparse_solver = DirectSparseSolver(
-                A_II.tocsc(), 
-                matrix_type=MatrixType.Symmetric,
+                A_II.tocsc(),
+                matrix_type=MatrixType.SPD,
                 progress=self.progress,
-                batch_size=32,
+                batch_size=batch_size,
                 delete_rhs=True,
             )
-        interior_restriction = -sparse_solver(interface_restriction)
+
+            # free up memory
+            A_II = sp.csc_matrix(A_II.shape, dtype=float)
+            A_IV = sp.csc_matrix(A_IV.shape, dtype=float)
+            A_IE = sp.csc_matrix(A_IE.shape, dtype=float)
+            A_IF = sp.csc_matrix(A_IF.shape, dtype=float)
+
+            # set log level to WARNING to avoid too many debug messages
+            loglevel = LOGGER.level
+            LOGGER.setLevel(LOGGER.WARNING)
+            progress = PROGRESS.get_active_progress_bar(self.progress)
+            num_batches = (self.interface_dimension + batch_size - 1) // batch_size
+            cols = []
+            LOGGER.debug("Iteratively solving interface restriction columns")
+            task = progress.add_task(
+                "Solving interface restriction columns",
+                total=num_batches,
+            )
+            for b in range(num_batches):
+                # get start and end indices for the current batch
+                start_idx = b * batch_size
+                end_idx = min((b + 1) * batch_size, self.interface_dimension)
+
+                # get the current batch of interface restriction columns
+                interface_restriction_col = (
+                    A_IV @ vertex_restriction[:, start_idx:end_idx]
+                    + A_IE @ edge_restriction[:, start_idx:end_idx]
+                    + A_IF @ face_restriction[:, start_idx:end_idx]
+                ).tocsc()
+
+                # solve for each column of the interface restriction operator
+                interior_restriction_cols = -sparse_solver(interface_restriction_col)
+                cols.append(interior_restriction_cols)
+                progress.advance(task)
+
+            # stack the columns to form the interior restriction operator
+            interior_restriction = sp.hstack(cols, format="csc")
+
+            # stop progress bar
+            progress.soft_stop()
+
+            # restore log level
+            LOGGER.setLevel(loglevel)
+
+        # set interface restriction to empty matrix to save memory
+        interface_restriction = sp.csc_matrix(
+            (self.num_interior_dofs, self.interface_dimension), dtype=float
+        )
         LOGGER.debug("Assembled interior restriction operator")
 
         # Efficiently stack the operators in the order: coarse, edge, face, interior
-        if self.two_mesh.coarse_mesh_size <= mesh_threshold:
-            edge_restriction = sp.load_npz(edge_restriction_file_name)
-            LOGGER.debug(f"Loaded edge restriction operator from {edge_restriction_file_name}")
-
         blocks = [
             vertex_restriction,  # shape: (num_coarse_dofs, interface_dim)
             edge_restriction,  # shape: (num_edge_dofs, interface_dim)
@@ -646,9 +654,6 @@ class AMSCoarseSpace(GDSWCoarseSpace):
         LOGGER.debug(
             f"Stacked restriction operators for coarse, edge, {'face,' if np.any(self.face_dofs) else ''} and interior"
         )
-        if self.two_mesh.coarse_mesh_size <= mesh_threshold:
-            os.remove(edge_restriction_file_name)
-            LOGGER.debug(f"Removed temporary file {edge_restriction_file_name}")
 
         # Build the permutation array to match the original free DOF ordering
         coarse_idx = np.array(self.coarse_dofs)
