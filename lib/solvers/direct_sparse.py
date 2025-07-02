@@ -15,7 +15,8 @@ from lib.gpu_interface import GPUInterface
 from lib.logger import LOGGER, PROGRESS
 
 # initialize GPU interface
-gpu = GPUInterface()    
+gpu = GPUInterface()
+
 
 class MatrixType(Enum):
     SPD = "SPD"
@@ -57,10 +58,11 @@ class DirectSparseSolver:
         self.A = A
         self.matrix_type = matrix_type
         self.multithreaded = multithreaded
-        self._solver = self.get_solver()
         self.progress = progress
         if batch_size is not None:
             self._batch_size = batch_size
+
+        self._solver = self.get_solver()
         LOGGER.debug("Initialized direct sparse solver")
 
     def __call__(
@@ -77,31 +79,21 @@ class DirectSparseSolver:
         Returns:
             sp.csc_matrix: The solved interior operator as a sparse matrix.
         """
-        try: 
-            if self.matrix_type == MatrixType.SPD:
-                return self.cholesky(rhs)
+        if self.matrix_type == MatrixType.SPD:
+            return self.cholesky(rhs)
 
-            elif (
-                self.matrix_type == MatrixType.Symmetric
-                or self.matrix_type == MatrixType.General
-            ):
-                if self.multithreaded:
-                    return self.lu_threaded(rhs)
-                else:
-                    return self.lu(rhs)
+        elif (
+            self.matrix_type == MatrixType.Symmetric
+            or self.matrix_type == MatrixType.General
+        ):
+            if self.multithreaded:
+                return self.lu_threaded(rhs)
             else:
-                raise ValueError(
-                    f"No direct solver available for matrix type {self.matrix_type}."
-                )
-        except Exception as e:
-            if isinstance(e, MemoryError):
-                LOGGER.exception(
-                    f"MemoryError during solving {e}. Halving the batch size and retrying.")
-                self.batch_size //= 2
-                return self.__call__(rhs)
-            else:
-                LOGGER.exception(f"Error during solving: {e}")
-                raise e
+                return self.lu(rhs)
+        else:
+            raise ValueError(
+                f"No direct solver available for matrix type {self.matrix_type}."
+            )
 
     def get_solver(self) -> chol.CholeskySolverD | Callable[[np.ndarray], np.ndarray]:  # type: ignore
         LOGGER.debug(f"getting direct solver for {self.matrix_type} matrix")
@@ -183,43 +175,56 @@ class DirectSparseSolver:
             sp.csc_matrix: The solved interior operator as a sparse matrix.
         """
         progress = PROGRESS.get_active_progress_bar(self.progress)
-        LOGGER.debug("Solving using Cholesky decomposition")
         n_rows, n_rhs = rhs.shape  # type: ignore
         num_batches = (n_rhs + self.batch_size - 1) // self.batch_size
-        out_cols = []
         task = progress.add_task("Cholesky solving batches", total=num_batches)
-        for i in range(num_batches):
-            start = i * self.batch_size
-            end = min((i + 1) * self.batch_size, n_rhs)
+        try:
+            LOGGER.debug("Solving using Cholesky decomposition")
+            out_cols = []
+            for i in range(num_batches):
+                start = i * self.batch_size
+                end = min((i + 1) * self.batch_size, n_rhs)
 
-            # rhs
-            shape = (n_rows, end - start)
-            rhs_batch = rhs[:, start:end].tocoo()
-            rhs_batch_array = np.zeros(shape, dtype=np.float64)
-            rhs_batch_array[rhs_batch.row, rhs_batch.col] = rhs_batch.data
-            rhs_device = gpu.send_array(rhs_batch_array, dtype=torch.float64)
+                # rhs
+                shape = (n_rows, end - start)
+                rhs_batch = rhs[:, start:end].tocoo()
+                rhs_batch_array = np.zeros(shape, dtype=np.float64)
+                rhs_batch_array[rhs_batch.row, rhs_batch.col] = rhs_batch.data
+                rhs_device = gpu.send_array(rhs_batch_array, dtype=torch.float64)
 
-            # output
-            x = np.zeros_like(rhs_batch_array)
-            x_device = gpu.send_array(x, dtype=torch.float64)
+                # output
+                x = np.zeros_like(rhs_batch_array)
+                x_device = gpu.send_array(x, dtype=torch.float64)
 
-            # solve on GPU (if available) or CPU
-            self.solver.solve(rhs_device, x_device)  # type: ignore
+                # solve on GPU (if available) or CPU
+                self.solver.solve(rhs_device, x_device)  # type: ignore
 
-            # Move to CPU if necessary
-            x = gpu.retrieve_array(x_device).reshape(shape)
+                # Move to CPU if necessary
+                x = gpu.retrieve_array(x_device).reshape(shape)
 
-            # Append to output columns
-            x_csc = sp.csc_matrix(x)
-            x_csc.eliminate_zeros()
-            out_cols.append(x_csc)
+                # Append to output columns
+                x_csc = sp.csc_matrix(x)
+                x_csc.eliminate_zeros()
+                out_cols.append(x_csc)
 
-            progress.advance(task)
+                progress.advance(task)
 
-        # Stack all columns into a sparse matrix
-        out = sp.hstack(out_cols).tocsc()
-        LOGGER.debug("Cholesky solving completed")
-        progress.soft_stop()
+            # Stack all columns into a sparse matrix
+            out = sp.hstack(out_cols).tocsc()
+            LOGGER.debug("Cholesky solving completed")
+            progress.soft_stop()
+        except Exception as e:
+            if isinstance(e, MemoryError):
+                progress.remove_task(task)
+                LOGGER.exception(
+                    f"MemoryError during solving {e}. Halving the batch size and retrying."
+                )
+                self.batch_size //= 2
+                return self.cholesky(rhs)
+            else:
+                progress.soft_stop()
+                LOGGER.exception(f"Error during solving: {e}")
+                raise e
 
         return out  # type: ignore
 
@@ -244,7 +249,9 @@ class DirectSparseSolver:
             start = b * self.CPU_BATCH_SIZE
             end = min((b + 1) * self.CPU_BATCH_SIZE, n_rhs)
             rhs_batch = rhs[:, start:end].toarray()
-            x_batch = np.column_stack([self.solver(rhs_batch[:, i]) for i in range(rhs_batch.shape[1])])
+            x_batch = np.column_stack(
+                [self.solver(rhs_batch[:, i]) for i in range(rhs_batch.shape[1])]
+            )
             out_cols.append(sp.csc_matrix(x_batch))
             progress.advance(task)
         out = sp.hstack(out_cols).tocsc()
@@ -308,7 +315,7 @@ class DirectSparseSolver:
         Get the batch size for the solver.
         """
         return self._batch_size
-    
+
     @batch_size.setter
     def batch_size(self, size: int) -> None:
         """
