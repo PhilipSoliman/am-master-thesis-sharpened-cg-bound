@@ -74,20 +74,31 @@ class DirectSparseSolver:
         Returns:
             sp.csc_matrix: The solved interior operator as a sparse matrix.
         """
-        if self.matrix_type == MatrixType.SPD:
-            return self.cholesky(rhs)
-        elif (
-            self.matrix_type == MatrixType.Symmetric
-            or self.matrix_type == MatrixType.General
-        ):
-            if self.multithreaded:
-                return self.lu_threaded(rhs)
+        try: 
+            if self.matrix_type == MatrixType.SPD:
+                return self.cholesky(rhs)
+
+            elif (
+                self.matrix_type == MatrixType.Symmetric
+                or self.matrix_type == MatrixType.General
+            ):
+                if self.multithreaded:
+                    return self.lu_threaded(rhs)
+                else:
+                    return self.lu(rhs)
             else:
-                return self.lu(rhs)
-        else:
-            raise ValueError(
-                f"No direct solver available for matrix type {self.matrix_type}."
-            )
+                raise ValueError(
+                    f"No direct solver available for matrix type {self.matrix_type}."
+                )
+        except Exception as e:
+            if isinstance(e, MemoryError):
+                LOGGER.exception(
+                    f"MemoryError during solving {e}. Halving the batch size and retrying.")
+                self.batch_size //= 2
+                return self.__call__(rhs)
+            else:
+                LOGGER.exception(f"Error during solving: {e}")
+                raise e
 
     def get_solver(self) -> chol.CholeskySolverD | Callable[[np.ndarray], np.ndarray]:  # type: ignore
         LOGGER.debug(f"getting direct solver for {self.matrix_type} matrix")
@@ -110,6 +121,7 @@ class DirectSparseSolver:
             self.matrix_type == MatrixType.Symmetric
             or self.matrix_type == MatrixType.General
         ):
+            self.batch_size = self.CPU_BATCH_SIZE
             LOGGER.debug(f"using scipy factorized solver")
             return factorized(self.A)
         else:
@@ -191,10 +203,12 @@ class DirectSparseSolver:
             self.solver.solve(rhs_device, x_device)  # type: ignore
 
             # Move to CPU if necessary
-            x = gpu.retrieve_array(x_device)
+            x = gpu.retrieve_array(x_device).reshape(shape)
 
             # Append to output columns
-            out_cols.append(sp.csc_matrix(x))  # type: ignore
+            x_csc = sp.csc_matrix(x)
+            x_csc.eliminate_zeros()
+            out_cols.append(x_csc)
 
             progress.advance(task)
 
@@ -283,3 +297,20 @@ class DirectSparseSolver:
         progress.soft_stop()
 
         return out  # type: ignore
+
+    @property
+    def batch_size(self) -> int:
+        """
+        Get the batch size for the solver.
+        """
+        return self._batch_size
+    
+    @batch_size.setter
+    def batch_size(self, size: int) -> None:
+        """
+        Set the batch size for the solver.
+        """
+        if size <= 0:
+            raise ValueError("Batch size must be a positive integer.")
+        self._batch_size = size
+        LOGGER.debug(f"Batch size set to {self._batch_size}")
