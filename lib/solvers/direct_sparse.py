@@ -175,13 +175,13 @@ class DirectSparseSolver:
         Returns:
             sp.csc_matrix: The solved interior operator as a sparse matrix.
         """
+        LOGGER.debug("Solving using Cholesky decomposition")
         progress = PROGRESS.get_active_progress_bar(self.progress)
         n_rows, n_rhs = rhs.shape  # type: ignore
         num_batches = (n_rhs + self.batch_size - 1) // self.batch_size
         task = progress.add_task("Cholesky solving batches", total=num_batches)
         out_cols = []
         try:
-            LOGGER.debug("Solving using Cholesky decomposition")
             for i in range(num_batches):
                 # delete rhs to free memory if delete_rhs is True
                 if self.delete_rhs:
@@ -192,7 +192,6 @@ class DirectSparseSolver:
                     if end < n_rhs:
                         rhs = rhs[:, end:] # overwrite rhs with remaining columns
                     else:
-                        LOGGER.debug("Deleting rhs to free memory")
                         rhs = sp.csc_matrix((n_rows, 0))  # empty matrix
                 else:
                     start = i * self.batch_size
@@ -257,13 +256,13 @@ class DirectSparseSolver:
         for each column of rhs. This is is not as fast as saving the columns (possibly in batches) and stacking them
         at the end, but it is more memory efficient for large rhs matrices.
         """
+        LOGGER.debug("Solving using LU decomposition")
         progress = PROGRESS.get_active_progress_bar(self.progress)
         n_rows, n_rhs = rhs.shape  # type: ignore
         out_cols = []
-        num_batches = (n_rhs + self.CPU_BATCH_SIZE - 1) // self.CPU_BATCH_SIZE
+        num_batches = (n_rhs + self.batch_size - 1) // self.batch_size
         task = progress.add_task("LU solving batches", total=num_batches)
         try:
-            LOGGER.debug("Solving using LU decomposition")
             for b in range(num_batches):
                 # delete rhs to free memory if delete_rhs is True
                 if self.delete_rhs:
@@ -274,7 +273,6 @@ class DirectSparseSolver:
                     if end < n_rhs:
                         rhs = rhs[:, end:] # overwrite rhs with remaining columns
                     else:
-                        LOGGER.debug("Deleting rhs to free memory")
                         rhs = sp.csc_matrix((n_rows, 0))  # empty matrix
                 else:
                     start = b * self.batch_size
