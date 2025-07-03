@@ -462,20 +462,22 @@ class AMSCoarseSpace(GDSWCoarseSpace):
         fespace: FESpace,
         two_mesh: TwoLevelMesh,
         progress: Optional[PROGRESS] = None,
-        mesh_size_threshold: float = 1/64 ,  # threshold for mesh size
+        mesh_size_threshold: float = 0,  # threshold for mesh size
     ):
         self.progress = PROGRESS.get_active_progress_bar(progress)
         task = self.progress.add_task(f"Initializing {self.NAME}", total=3)
         LOGGER.info(f"Initializing {self.NAME}")
 
+        # base initialization
         CoarseSpace.__init__(self, A, fespace, two_mesh)
+
+        # get dofs
         self.progress.advance(task)
 
         self.coarse_dofs, self.edge_dofs, self.face_dofs = (
             self._get_interface_component_masks()
         )
         self.progress.advance(task)
-
         self.interface_dimension = len(self.coarse_dofs)
         self.num_coarse_dofs = self.interface_dimension
         self.num_edge_dofs = len(self.edge_dofs)
@@ -484,6 +486,13 @@ class AMSCoarseSpace(GDSWCoarseSpace):
         self.num_interior_dofs = np.sum(self.interior_dofs_mask)
         self.progress.advance(task)
 
+        # get sorted dofs for clipping edge and face restriction operators
+        self.coarse_dofs_argsort = np.argsort(self.coarse_dofs)
+        self.coarse_dofs_sorted = self.coarse_dofs[self.coarse_dofs_argsort]
+        self.edge_dofs_argsort = np.argsort(self.edge_dofs)
+        self.edge_dofs_sorted = self.edge_dofs[self.edge_dofs_argsort]
+
+        # handle large meshes
         self.mesh_size_threshold = mesh_size_threshold
         if self.two_mesh.coarse_mesh_size <= self.mesh_size_threshold:
             self.batch_size = 16
@@ -540,6 +549,56 @@ class AMSCoarseSpace(GDSWCoarseSpace):
         )
         sparse_solver = None  # free up memory
         LOGGER.debug("Assembled edge restriction operator")
+
+        # clip edge restriction operator to be non-zero only on their respective connected components
+        task = self.progress.add_task(
+            "Clipping edge restriction operator to coarse node support",
+            total=len(self.fespace.free_component_tree_dofs) + 1,
+        )
+
+        # filter out any edge dofs that are not in the support of coarse nodes
+        edge_restriction_rows, edge_restriction_cols, edge_restriction_data = [], [], []
+        for dofs in self.fespace.free_component_tree_dofs.values():
+            coarse_dofs = dofs["node"]
+
+            # restrict coarse dofs to the free coarse dofs
+            coarse_dofs = self.fespace.map_global_to_restricted_dofs(
+                np.array(coarse_dofs)
+            )
+
+            # get edge dofs in the support of the coarse node
+            edge_dofs = []
+            for edge in dofs["edges"].values():
+                edge_dofs.extend(edge)
+
+            # restrict edge dofs to the free edge dofs
+            edge_dofs = self.fespace.map_global_to_restricted_dofs(np.array(edge_dofs))
+
+            # fill the matrix by looping of coarse dofs
+            for coarse_dof in coarse_dofs:
+                # get coarse dof index in list of coarse dofs
+                coarse_idx = np.searchsorted(self.coarse_dofs_sorted, coarse_dof)
+                coarse_idx = self.coarse_dofs_argsort[coarse_idx]
+
+                # get edge indices in the list of edge dofs
+                edge_idxs = np.searchsorted(self.edge_dofs_sorted, edge_dofs)
+                edge_idxs = self.edge_dofs_argsort[edge_idxs]
+
+                # save rows, cols and data for the edge restriction operator
+                edge_restriction_rows.extend(edge_idxs)
+                edge_restriction_cols.extend([coarse_idx] * len(edge_idxs))
+                edge_restriction_data.extend(
+                    edge_restriction[edge_idxs, coarse_idx].toarray().flatten()
+                )
+            self.progress.advance(task)
+
+        edge_restriction = sp.csc_matrix(
+            (edge_restriction_data, (edge_restriction_rows, edge_restriction_cols)),
+            shape=(self.num_edge_dofs, self.num_coarse_dofs),
+            dtype=float,
+        )
+        self.progress.remove_task(task)
+        LOGGER.debug("Filtered edge restriction operator to coarse node support")
 
         # Phi_F #TODO: probably need to do similar filtering to A_EV for face dofs
         face_restriction = sp.csc_matrix(
@@ -610,13 +669,13 @@ class AMSCoarseSpace(GDSWCoarseSpace):
             progress = PROGRESS.get_active_progress_bar(self.progress)
             loglevel = LOGGER.level
 
-            cols = []
             LOGGER.debug("Iteratively solving interface restriction columns")
             task = progress.add_task(
                 "Solving interface restriction columns",
                 total=self.num_batches,
             )
             LOGGER.setLevel(LOGGER.WARNING)
+            cols = []
             with tempfile.TemporaryDirectory() as tempdir:
                 for b in range(self.num_batches):
                     # get start and end indices for the current batch
@@ -630,13 +689,14 @@ class AMSCoarseSpace(GDSWCoarseSpace):
                         + A_IF @ face_restriction[:, start_idx:end_idx]
                     ).tocsc()
 
-                    fp = os.path.join(tempdir, f"interface_restriction_col_{b}.npz")
-                    with open(fp, "wb") as temp_file:
-                        sp.save_npz(
-                            temp_file,
-                            -sparse_solver(interface_restriction_col),
-                            compressed=True,
-                        )
+                    # fp = os.path.join(tempdir, f"interface_restriction_col_{b}.npz")
+                    # with open(fp, "wb") as temp_file:
+                    #     sp.save_npz(
+                    #         temp_file,
+                    #         -sparse_solver(interface_restriction_col),
+                    #         compressed=True,
+                    #     )
+                    cols.append(-sparse_solver(interface_restriction_col))
 
                     progress.advance(task)
                 progress.remove_task(task)
@@ -650,20 +710,20 @@ class AMSCoarseSpace(GDSWCoarseSpace):
                 A_IF = sp.csc_matrix(A_IF.shape, dtype=float)
                 sparse_solver = None
 
-                # load data from the temporary file
-                task = progress.add_task(
-                    "Loading interface restriction columns from temporary file",
-                    total=self.num_batches,
-                )
-                LOGGER.debug(
-                    "Loading interior restriction columns from temporary files"
-                )
-                cols = []
-                for b in range(self.num_batches):
-                    fp = os.path.join(tempdir, f"interface_restriction_col_{b}.npz")
-                    with open(fp, "rb") as temp_file:
-                        cols.append(sp.load_npz(temp_file).tocsc())
-                    progress.advance(task)
+                # # load data from the temporary file
+                # task = progress.add_task(
+                #     "Loading interface restriction columns from temporary file",
+                #     total=self.num_batches,
+                # )
+                # LOGGER.debug(
+                #     "Loading interior restriction columns from temporary files"
+                # )
+                # cols = []
+                # for b in range(self.num_batches):
+                #     fp = os.path.join(tempdir, f"interface_restriction_col_{b}.npz")
+                #     with open(fp, "rb") as temp_file:
+                #         cols.append(sp.load_npz(temp_file).tocsc())
+                #     progress.advance(task)
 
                 LOGGER.debug("Stacking interior restriction columns")
                 interior_restriction = sp.hstack(cols, format="csc")
@@ -673,7 +733,6 @@ class AMSCoarseSpace(GDSWCoarseSpace):
 
             # stop progress bar
             progress.soft_stop()
-
 
         # set interface restriction to empty matrix to save memory
         interface_restriction = sp.csc_matrix(
