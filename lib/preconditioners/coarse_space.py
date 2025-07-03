@@ -462,6 +462,7 @@ class AMSCoarseSpace(GDSWCoarseSpace):
         fespace: FESpace,
         two_mesh: TwoLevelMesh,
         progress: Optional[PROGRESS] = None,
+        mesh_size_threshold: float = 1 / 8,  # threshold for mesh size
     ):
         self.progress = PROGRESS.get_active_progress_bar(progress)
         task = self.progress.add_task(f"Initializing {self.NAME}", total=3)
@@ -483,13 +484,18 @@ class AMSCoarseSpace(GDSWCoarseSpace):
         self.num_interior_dofs = np.sum(self.interior_dofs_mask)
         self.progress.advance(task)
 
+        self.mesh_size_threshold = mesh_size_threshold
+        if self.two_mesh.coarse_mesh_size <= self.mesh_size_threshold:
+            self.batch_size = 16
+            self.num_batches = (
+                self.interface_dimension + self.batch_size - 1
+            ) // self.batch_size
+
         LOGGER.info(f"{self} initialized")
         LOGGER.debug(str(self._init_str()))
         self.progress.soft_stop()
 
-    def assemble_restriction_operator(
-        self, mesh_threshold: float = 1 / 32
-    ) -> sp.csc_matrix:
+    def assemble_restriction_operator(self) -> sp.csc_matrix:
         LOGGER.debug(f"Assembling restriction operator for {self}")
         restriction_operator = sp.csc_matrix(
             (self.fespace.num_free_dofs, self.interface_dimension), dtype=float
@@ -532,6 +538,7 @@ class AMSCoarseSpace(GDSWCoarseSpace):
         edge_restriction = -sparse_solver(
             self.A[self.edge_dofs, :][:, self.coarse_dofs]
         )
+        sparse_solver = None  # free up memory
         LOGGER.debug("Assembled edge restriction operator")
 
         # Phi_F #TODO: probably need to do similar filtering to A_EV for face dofs
@@ -560,7 +567,7 @@ class AMSCoarseSpace(GDSWCoarseSpace):
         A_IV = self.A[self.interior_dofs_mask, :][:, self.coarse_dofs]
         A_IE = self.A[self.interior_dofs_mask, :][:, self.edge_dofs]
         A_IF = self.A[self.interior_dofs_mask, :][:, self.face_dofs]
-        if self.two_mesh.coarse_mesh_size > mesh_threshold:
+        if self.two_mesh.coarse_mesh_size > self.mesh_size_threshold:
             # Phi_Gamma
             interface_restriction = (
                 A_IV @ vertex_restriction
@@ -584,52 +591,83 @@ class AMSCoarseSpace(GDSWCoarseSpace):
 
             LOGGER.debug("Solving full interface restriction")
             interior_restriction = -sparse_solver(interface_restriction)
+
+            sparse_solver = None  # free up memory
         else:
+            # get solver
             batch_size = 16
             sparse_solver = DirectSparseSolver(
                 A_II.tocsc(),
-                matrix_type=MatrixType.SPD,
+                matrix_type=MatrixType.Symmetric,
                 progress=self.progress,
                 batch_size=batch_size,
                 delete_rhs=True,
             )
 
+            # free up memory
+            A_II = sp.csc_matrix(A_II.shape, dtype=float)
+
             # set log level to WARNING to avoid too many debug messages
             loglevel = LOGGER.level
             LOGGER.setLevel(LOGGER.WARNING)
             progress = PROGRESS.get_active_progress_bar(self.progress)
-            num_batches = (self.interface_dimension + batch_size - 1) // batch_size
+
             cols = []
             LOGGER.debug("Iteratively solving interface restriction columns")
             task = progress.add_task(
                 "Solving interface restriction columns",
-                total=num_batches,
+                total=self.num_batches,
             )
-            for b in range(num_batches):
-                # get start and end indices for the current batch
-                start_idx = b * batch_size
-                end_idx = min((b + 1) * batch_size, self.interface_dimension)
+            with tempfile.TemporaryDirectory() as tempdir:
+                for b in range(self.num_batches):
+                    # get start and end indices for the current batch
+                    start_idx = b * self.batch_size
+                    end_idx = min((b + 1) * self.batch_size, self.interface_dimension)
 
-                # get the current batch of interface restriction columns
-                interface_restriction_col = (
-                    A_IV @ vertex_restriction[:, start_idx:end_idx]
-                    + A_IE @ edge_restriction[:, start_idx:end_idx]
-                    + A_IF @ face_restriction[:, start_idx:end_idx]
-                ).tocsc()
+                    # get the current batch of interface restriction columns
+                    interface_restriction_col = (
+                        A_IV @ vertex_restriction[:, start_idx:end_idx]
+                        + A_IE @ edge_restriction[:, start_idx:end_idx]
+                        + A_IF @ face_restriction[:, start_idx:end_idx]
+                    ).tocsc()
 
-                # solve for each column of the interface restriction operator
-                interior_restriction_cols = -sparse_solver(interface_restriction_col)
-                cols.append(interior_restriction_cols)
-                progress.advance(task)
+                    fp = os.path.join(tempdir, f"interface_restriction_col_{b}.npz")
+                    with open(fp, "wb") as temp_file:
+                        sp.save_npz(
+                            temp_file,
+                            -sparse_solver(interface_restriction_col),
+                            compressed=True,
+                        )
 
-            # free up memory
-            A_II = sp.csc_matrix(A_II.shape, dtype=float)
-            A_IV = sp.csc_matrix(A_IV.shape, dtype=float)
-            A_IE = sp.csc_matrix(A_IE.shape, dtype=float)
-            A_IF = sp.csc_matrix(A_IF.shape, dtype=float)
+                    progress.advance(task)
 
-            # stack the columns to form the interior restriction operator
-            interior_restriction = sp.hstack(cols, format="csc")
+                progress.remove_task(task)
+
+                # free up memory
+                A_IV = sp.csc_matrix(A_IV.shape, dtype=float)
+                A_IE = sp.csc_matrix(A_IE.shape, dtype=float)
+                A_IF = sp.csc_matrix(A_IF.shape, dtype=float)
+                sparse_solver = None
+
+                # load data from the temporary file
+                task = progress.add_task(
+                    "Loading interface restriction columns from temporary file",
+                    total=self.num_batches,
+                )
+                LOGGER.debug(
+                    "Stacking interior restriction columns into a sparse matrix"
+                )
+                for b in range(self.num_batches):
+                    fp = os.path.join(tempdir, f"interface_restriction_col_{b}.npz")
+                    with open(fp, "rb") as temp_file:
+                        if b == 0:
+                            interior_restriction = sp.load_npz(temp_file)
+                        else:
+                            interior_restriction = sp.hstack(
+                                (interior_restriction, sp.load_npz(temp_file)),
+                                format="csc",
+                            )
+                    progress.advance(task)
 
             # stop progress bar
             progress.soft_stop()
