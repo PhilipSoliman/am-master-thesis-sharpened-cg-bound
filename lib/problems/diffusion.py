@@ -58,6 +58,11 @@ class CoefFunc(Enum):
         r"$\mathcal{C}_{\text{2layer, vert}}$",
         "2lvert",
     )
+    THREE_LAYER_VERTEX_INCLUSIONS = (
+        "three_layer_vertex_centered_inclusions_coefficient",
+        r"$\mathcal{C}_{\text{3layer, vert}}$",
+        "3lvert",
+    )
     EDGE_CENTERED_INCLUSIONS = (
         "edge_centered_inclusions_coefficient",
         r"$\mathcal{C}_{\text{edge}}$",
@@ -141,8 +146,10 @@ class DiffusionProblem(Problem):
 
         # get coefficient and source functions
         self.coef_func_name = coef_func.latex
+        self.coef_func_short_name = coef_func.short_name
         self.coef_func = coef_func.get_func(self)()
         self.source_func_name = source_func.latex
+        self.source_func_short_name = source_func.short_name
         self.source_func = source_func.get_func(self)()
         self.progress.advance(task)
 
@@ -233,17 +240,80 @@ class DiffusionProblem(Problem):
             mesh_el = self.two_mesh.fine_mesh[coarse_node]
             elements = set(mesh_el.elements)
             for el in elements:
+                # add first layer
                 coef_array[el.nr] = self.CONTRAST_COEF
-                # add second layer
+
+                # get second layer elements
                 outer_vertices = set(self.two_mesh.fine_mesh[el].vertices) - set(
                     [coarse_node]
                 )
                 for vertex in outer_vertices:
+                    # filter inner elements
                     outer_elements = (
                         set(self.two_mesh.fine_mesh[vertex].elements) - elements
                     )
                     for outer_el in outer_elements:
+                        # add second layer
                         coef_array[outer_el.nr] = self.CONTRAST_COEF
+
+        grid_func.vec.FV().NumPy()[:] = coef_array
+        coef_func = ngs.CoefficientFunction(grid_func)
+        LOGGER.debug(
+            f"Using two layer vertex centered inclusions coefficient function."
+        )
+        return coef_func.Compile()
+
+    def three_layer_vertex_centered_inclusions_coefficient(self):
+        """High coefficient inclusions around the coarse nodes with 3 layers of elements."""
+        # setup piecewise constant coefficient function
+        constant_fes = ngs.L2(self.two_mesh.fine_mesh, order=0)
+        grid_func = ngs.GridFunction(constant_fes)
+
+        # Get all free coarse node coordinates
+        free_coarse_nodes = list(self.fes.free_component_tree_dofs.keys())
+
+        # Loop over coarse nodes and set high contrast to 3 layers of elements around them
+        coef_array = np.full(self.two_mesh.fine_mesh.ne, self.BACKGROUND_COEF)
+        for coarse_node in free_coarse_nodes:
+            mesh_el = self.two_mesh.fine_mesh[coarse_node]
+            elements_first_layer = set(mesh_el.elements)
+            for element_first_layer in elements_first_layer:
+                coef_array[element_first_layer.nr] = self.CONTRAST_COEF
+
+                # get second layer elements
+                outer_vertices_first_layer = set(
+                    self.two_mesh.fine_mesh[element_first_layer].vertices
+                ) - set([coarse_node])
+                for outer_vertex_first_layer in outer_vertices_first_layer:
+                    # filter inner elements
+                    elements_second_layer = (
+                        set(self.two_mesh.fine_mesh[outer_vertex_first_layer].elements)
+                        - elements_first_layer
+                    )
+                    for element_second_layer in elements_second_layer:
+                        # add second layer
+                        coef_array[element_second_layer.nr] = self.CONTRAST_COEF
+
+                        # get third layer elements
+                        outer_vertices_second_layer = (
+                            set(self.two_mesh.fine_mesh[element_second_layer].vertices)
+                            - outer_vertices_first_layer
+                            - set([coarse_node])
+                        )
+                        for outer_vertex_second_layer in outer_vertices_second_layer:
+                            # filter inner elements
+                            elements_third_layer = (
+                                set(
+                                    self.two_mesh.fine_mesh[
+                                        outer_vertex_second_layer
+                                    ].elements
+                                )
+                                - elements_first_layer
+                                - elements_second_layer
+                            )
+                            for element_third_layer in elements_third_layer:
+                                # add third layer
+                                coef_array[element_third_layer.nr] = self.CONTRAST_COEF
 
         grid_func.vec.FV().NumPy()[:] = coef_array
         coef_func = ngs.CoefficientFunction(grid_func)
@@ -338,18 +408,18 @@ class DiffusionProblem(Problem):
         """Save the source and coefficient functions to vtk."""
         self.save_ngs_functions(
             funcs=[self.source_func, self.coef_func, self.u],
-            names=[self.source_func_name, self.coef_func_name, "solution"],
+            names=[self.source_func_short_name, self.coef_func_short_name, "solution"],
             category="diffusion",
         )
 
 
 class DiffusionProblemExample:
     # mesh parameters
-    mesh_params = DefaultQuadMeshParams.Nc16  # DefaultQuadMeshParams.Nc4
+    mesh_params = DefaultQuadMeshParams.Nc4  # DefaultQuadMeshParams.Nc4
 
     # source and coefficient functions
     source_func = SourceFunc.CONSTANT
-    coef_func = CoefFunc.EDGE_SLABS_AROUND_VERTICES_INCLUSIONS
+    coef_func = CoefFunc.THREE_LAYER_VERTEX_INCLUSIONS
 
     # preconditioner and coarse space
     preconditioner = TwoLevelSchwarzPreconditioner  # TwoLevelSchwarzPreconditioner
@@ -365,7 +435,7 @@ class DiffusionProblemExample:
     get_cg_info = True
 
     # save source, coefficient and solution as VTK files
-    save_functions_toggle = False
+    save_functions_toggle = True
 
     @classmethod
     def example_construction(cls):
