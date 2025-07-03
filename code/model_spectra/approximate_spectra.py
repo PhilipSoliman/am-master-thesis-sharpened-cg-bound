@@ -29,13 +29,13 @@ LOGGER.setLevel(ARGS.loglvl if ARGS.loglvl else "INFO")
 LOGGER.generate_log_file()
 
 # setup for a diffusion problem
-MESHES = [DefaultQuadMeshParams.Nc64]
+MESHES = DefaultQuadMeshParams
 PROBLEM_TYPE = ProblemType.DIFFUSION
 if __name__ == "__main__":
     BOUNDARY_CONDITIONS = HomogeneousDirichlet(PROBLEM_TYPE)
 SOURCE_FUNC = SourceFunc.CONSTANT
 COEF_FUNCS = [
-    # CoefFunc.CONSTANT,
+    CoefFunc.CONSTANT,
     CoefFunc.EDGE_SLABS_AROUND_VERTICES_INCLUSIONS,
 ]
 
@@ -47,8 +47,8 @@ PRECONDITIONERS: list[tuple[Type[TwoLevelSchwarzPreconditioner], Type[CoarseSpac
     # None, NOTE: original system can take a long time to solve, so we skip it here.
     # Also causes (GPU) memory issues due to large lanczos matrices. Even estimating condition number with scipy is troublesome.
     # This should be treated elsewhere.
-    # (TwoLevelSchwarzPreconditioner, GDSWCoarseSpace),
-    # (TwoLevelSchwarzPreconditioner, RGDSWCoarseSpace),
+    (TwoLevelSchwarzPreconditioner, GDSWCoarseSpace),
+    (TwoLevelSchwarzPreconditioner, RGDSWCoarseSpace),
     (TwoLevelSchwarzPreconditioner, AMSCoarseSpace),
 ]
 
@@ -112,6 +112,7 @@ def calculate_spectra() -> None:
                 tol=RTOL,
                 progress=progress,
             )
+            
             # NOTE: we cache the 1-lvl preconditioner to save time for the 2-lvl preconditioners.
             M1 = OneLevelSchwarzPreconditioner(
                 A, diffusion_problem.fes, progress=progress
