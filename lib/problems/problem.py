@@ -421,7 +421,7 @@ class Problem:
 
 if __name__ == "__main__":
     # get mesh parameters
-    mesh_params = DefaultMeshParams.Nc16
+    mesh_params = DefaultQuadMeshParams.Nc16
 
     # define boundary conditions
     bcs = HomogeneousDirichlet(ProblemType.DIFFUSION)
