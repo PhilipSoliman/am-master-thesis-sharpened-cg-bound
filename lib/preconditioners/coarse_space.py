@@ -462,7 +462,7 @@ class AMSCoarseSpace(GDSWCoarseSpace):
         fespace: FESpace,
         two_mesh: TwoLevelMesh,
         progress: Optional[PROGRESS] = None,
-        mesh_size_threshold: float = 1 / 8,  # threshold for mesh size
+        mesh_size_threshold: float = 1/64 ,  # threshold for mesh size
     ):
         self.progress = PROGRESS.get_active_progress_bar(progress)
         task = self.progress.add_task(f"Initializing {self.NAME}", total=3)
@@ -595,12 +595,11 @@ class AMSCoarseSpace(GDSWCoarseSpace):
             sparse_solver = None  # free up memory
         else:
             # get solver
-            batch_size = 16
             sparse_solver = DirectSparseSolver(
                 A_II.tocsc(),
                 matrix_type=MatrixType.Symmetric,
                 progress=self.progress,
-                batch_size=batch_size,
+                batch_size=self.batch_size,
                 delete_rhs=True,
             )
 
@@ -608,9 +607,8 @@ class AMSCoarseSpace(GDSWCoarseSpace):
             A_II = sp.csc_matrix(A_II.shape, dtype=float)
 
             # set log level to WARNING to avoid too many debug messages
-            loglevel = LOGGER.level
-            LOGGER.setLevel(LOGGER.WARNING)
             progress = PROGRESS.get_active_progress_bar(self.progress)
+            loglevel = LOGGER.level
 
             cols = []
             LOGGER.debug("Iteratively solving interface restriction columns")
@@ -618,6 +616,7 @@ class AMSCoarseSpace(GDSWCoarseSpace):
                 "Solving interface restriction columns",
                 total=self.num_batches,
             )
+            LOGGER.setLevel(LOGGER.WARNING)
             with tempfile.TemporaryDirectory() as tempdir:
                 for b in range(self.num_batches):
                     # get start and end indices for the current batch
@@ -640,8 +639,10 @@ class AMSCoarseSpace(GDSWCoarseSpace):
                         )
 
                     progress.advance(task)
-
                 progress.remove_task(task)
+
+                # restore log level
+                LOGGER.setLevel(loglevel)
 
                 # free up memory
                 A_IV = sp.csc_matrix(A_IV.shape, dtype=float)
@@ -655,25 +656,24 @@ class AMSCoarseSpace(GDSWCoarseSpace):
                     total=self.num_batches,
                 )
                 LOGGER.debug(
-                    "Stacking interior restriction columns into a sparse matrix"
+                    "Loading interior restriction columns from temporary files"
                 )
+                cols = []
                 for b in range(self.num_batches):
                     fp = os.path.join(tempdir, f"interface_restriction_col_{b}.npz")
                     with open(fp, "rb") as temp_file:
-                        if b == 0:
-                            interior_restriction = sp.load_npz(temp_file)
-                        else:
-                            interior_restriction = sp.hstack(
-                                (interior_restriction, sp.load_npz(temp_file)),
-                                format="csc",
-                            )
+                        cols.append(sp.load_npz(temp_file).tocsc())
                     progress.advance(task)
+
+                LOGGER.debug("Stacking interior restriction columns")
+                interior_restriction = sp.hstack(cols, format="csc")
+
+                # free up memory
+                del cols
 
             # stop progress bar
             progress.soft_stop()
 
-            # restore log level
-            LOGGER.setLevel(loglevel)
 
         # set interface restriction to empty matrix to save memory
         interface_restriction = sp.csc_matrix(
@@ -689,6 +689,9 @@ class AMSCoarseSpace(GDSWCoarseSpace):
             interior_restriction,  # shape: (num_interior_dofs, interface_dim)
         ]
         stacked = sp.vstack(blocks, format="csc")
+
+        # free up memory
+        del blocks
         LOGGER.debug(
             f"Stacked restriction operators for coarse, edge, {'face,' if np.any(self.face_dofs) else ''} and interior"
         )
