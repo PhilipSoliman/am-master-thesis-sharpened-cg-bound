@@ -488,7 +488,7 @@ class AMSCoarseSpace(GDSWCoarseSpace):
         self.progress.soft_stop()
 
     def assemble_restriction_operator(
-        self, mesh_threshold: float = 1 / 64
+        self, mesh_threshold: float = 1 / 32
     ) -> sp.csc_matrix:
         LOGGER.debug(f"Assembling restriction operator for {self}")
         restriction_operator = sp.csc_matrix(
@@ -594,12 +594,6 @@ class AMSCoarseSpace(GDSWCoarseSpace):
                 delete_rhs=True,
             )
 
-            # free up memory
-            A_II = sp.csc_matrix(A_II.shape, dtype=float)
-            A_IV = sp.csc_matrix(A_IV.shape, dtype=float)
-            A_IE = sp.csc_matrix(A_IE.shape, dtype=float)
-            A_IF = sp.csc_matrix(A_IF.shape, dtype=float)
-
             # set log level to WARNING to avoid too many debug messages
             loglevel = LOGGER.level
             LOGGER.setLevel(LOGGER.WARNING)
@@ -628,6 +622,12 @@ class AMSCoarseSpace(GDSWCoarseSpace):
                 cols.append(interior_restriction_cols)
                 progress.advance(task)
 
+            # free up memory
+            A_II = sp.csc_matrix(A_II.shape, dtype=float)
+            A_IV = sp.csc_matrix(A_IV.shape, dtype=float)
+            A_IE = sp.csc_matrix(A_IE.shape, dtype=float)
+            A_IF = sp.csc_matrix(A_IF.shape, dtype=float)
+
             # stack the columns to form the interior restriction operator
             interior_restriction = sp.hstack(cols, format="csc")
 
@@ -653,6 +653,20 @@ class AMSCoarseSpace(GDSWCoarseSpace):
         stacked = sp.vstack(blocks, format="csc")
         LOGGER.debug(
             f"Stacked restriction operators for coarse, edge, {'face,' if np.any(self.face_dofs) else ''} and interior"
+        )
+
+        # free up memory
+        vertex_restriction = sp.csc_matrix(
+            (self.num_coarse_dofs, self.interface_dimension), dtype=float
+        )
+        edge_restriction = sp.csc_matrix(
+            (self.num_edge_dofs, self.interface_dimension), dtype=float
+        )
+        face_restriction = sp.csc_matrix(
+            (self.num_face_dofs, self.interface_dimension), dtype=float
+        )
+        interior_restriction = sp.csc_matrix(
+            (self.num_interior_dofs, self.interface_dimension), dtype=float
         )
 
         # Build the permutation array to match the original free DOF ordering
