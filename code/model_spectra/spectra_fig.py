@@ -22,21 +22,21 @@ set_mpl_cycler(colors=True)
 # get cli args
 ARGS = get_cli_args()
 FIGWIDTH = 5
-FIGHEIGHT = 4
+FIGHEIGHT = 2
 
 # initialize figure and axes
 fig, axs = plt.subplots(
     len(COEF_FUNCS),
     len(MESHES),
-    figsize=(FIGWIDTH * len(MESHES), FIGHEIGHT),
-    squeeze=True,
+    figsize=(FIGWIDTH * len(MESHES), FIGHEIGHT * len(COEF_FUNCS)),
+    squeeze=False,
     sharex=True,
     sharey=True,
 )
 
 # main plot loop
 for i, mesh_params in enumerate(MESHES):
-    axes = axs[:, i] if axs.ndim == 2 else axs
+    axes = axs[:, i]
     for coef_func, ax in zip(COEF_FUNCS, axes):
         spectra = {}
         cond_numbers = []
@@ -130,16 +130,14 @@ for i, mesh_params in enumerate(MESHES):
 for col_idx, mesh_params in enumerate(MESHES):
     H = mesh_params.coarse_mesh_size
     Nc = int(1 / H)
-    ax = axs[0, col_idx] if axs.ndim == 2 else axs[0]
+    ax = axs[0, col_idx] if hasattr(axs, "ndim") and axs.ndim == 2 else axs[0]
     ax.set_title(rf"$\mathbf{{H = 1/{Nc}}}$", fontsize=11)
 
 # Add row labels (rotated, bold, fontsize 9) at the beginning of each row
 for row_idx, coef_func in enumerate(COEF_FUNCS):
     # Get the y-position as the center of the row of axes
-    if axs.ndim == 2:
-        ax = axs[row_idx, 0]
-    else:
-        ax = axs[row_idx]
+    ax = axs[row_idx, 0]
+
     # Use axes coordinates to place the text just outside the left of the axes
     fig.text(
         0,  # x-position (fraction of figure width, adjust as needed)
