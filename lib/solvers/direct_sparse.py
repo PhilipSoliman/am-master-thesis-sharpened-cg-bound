@@ -69,6 +69,7 @@ class DirectSparseSolver:
     def __call__(
         self,
         rhs: sp.csc_matrix,
+        nzindices: Optional[list] = None,
     ) -> sp.csc_matrix:
         """
         Multithreaded sparse solver for the interior operators.
@@ -76,12 +77,13 @@ class DirectSparseSolver:
         Args:
             A (sp.csc_matrix): A symmetric matrix.
             rhs (sp.csc_matrix): The right-hand side matrix.
+            nzindices (Optional[list]): List of non-zero indices for each column of the right-hand side matrix.
 
         Returns:
             sp.csc_matrix: The solved interior operator as a sparse matrix.
         """
         if self.matrix_type == MatrixType.SPD:
-            return self.cholesky(rhs)
+            return self.cholesky(rhs, nzindices=nzindices)
 
         elif (
             self.matrix_type == MatrixType.Symmetric
@@ -90,7 +92,7 @@ class DirectSparseSolver:
             if self.multithreaded:
                 return self.lu_threaded(rhs)
             else:
-                return self.lu(rhs)
+                return self.lu(rhs, nzindices=nzindices)
         else:
             raise ValueError(
                 f"No direct solver available for matrix type {self.matrix_type}."
@@ -165,7 +167,9 @@ class DirectSparseSolver:
         except Exception:  # eigsh requires symmetric input
             return False
 
-    def cholesky(self, rhs: sp.csc_matrix) -> sp.csc_matrix:
+    def cholesky(
+        self, rhs: sp.csc_matrix, nzindices: Optional[list] = None
+    ) -> sp.csc_matrix:
         """
         Solve the system using Cholesky decomposition on GPU/CPU.
 
@@ -209,8 +213,18 @@ class DirectSparseSolver:
                 # solve on GPU (if available) or CPU
                 self.solver.solve(rhs_device, x_device)  # type: ignore
 
-                # Move to CPU if necessary
-                x = gpu.retrieve_array(x_device).reshape(shape)
+                # retrieve the result
+                if nzindices is None:
+                    x = gpu.retrieve_array(x_device).reshape(shape)
+                elif isinstance(nzindices, list):
+                    x = np.zeros((n_rows, end - start), dtype=np.float64)
+                    for j in range(end - start):
+                        nz = nzindices[i * self.batch_size + j]
+                        x[nz, j] = gpu.retrieve_array(x_device[nz, j])
+                else:
+                    msg =  f"nzindices must be a list of non-zero indices for each column, got {type(nzindices)}"
+                    LOGGER.error(msg)
+                    raise TypeError(msg)
 
                 # Append to output columns
                 x_csc = sp.csc_matrix(x)
@@ -277,7 +291,7 @@ class DirectSparseSolver:
         progress.soft_stop()
         return out  # type: ignore
 
-    def lu(self, rhs: sp.csc_matrix) -> sp.csc_matrix:
+    def lu(self, rhs: sp.csc_matrix, nzindices: Optional[list] = None) -> sp.csc_matrix:
         """
         Solve the system using LU decomposition and single loop over rhs columns.
 
@@ -308,12 +322,15 @@ class DirectSparseSolver:
                     rhs_batch = rhs[:, start:end]
 
                 # solve each column in the batch
-                x_batch = [
-                    sp.csc_matrix(
-                        self.solver(rhs_batch[:, i].toarray().ravel()).reshape(-1, 1)
+                x_batch = []
+                for i in range(rhs_batch.shape[1]):
+                    nz = nzindices[b * self.batch_size + i] if nzindices is not None else np.arange(n_rows)
+                    data = self.solver(rhs_batch[:, i].toarray().ravel())[nz]
+                    col = sp.csc_matrix(
+                        (data, (nz, np.zeros_like(nz))),
+                        shape=(n_rows, 1),
                     )
-                    for i in range(rhs_batch.shape[1])
-                ]
+                    x_batch.append(col)
 
                 # save the result as a sparse matrix
                 out_cols.append(sp.hstack(x_batch))
