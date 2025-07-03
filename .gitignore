@@ -42,3 +42,6 @@ data/quad_tlm_*
 
 # ignore python profiling files
 **/*.prof
+
+# ignore log folder
+logs/
