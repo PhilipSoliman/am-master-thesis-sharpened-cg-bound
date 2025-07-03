@@ -183,16 +183,12 @@ class DirectSparseSolver:
         out_cols = []
         try:
             for i in range(num_batches):
-                # delete rhs to free memory if delete_rhs is True
+                # get current batch
                 if self.delete_rhs:
                     n_rhs = rhs.shape[1]  # type: ignore
                     start = 0
                     end = min(self.batch_size, n_rhs)
                     rhs_batch = rhs[:, start:end].tocoo()
-                    if end < n_rhs:
-                        rhs = rhs[:, end:] # overwrite rhs with remaining columns
-                    else:
-                        rhs = sp.csc_matrix((n_rows, 0))  # empty matrix
                 else:
                     start = i * self.batch_size
                     end = min((i + 1) * self.batch_size, n_rhs)
@@ -221,24 +217,60 @@ class DirectSparseSolver:
                 x_csc.eliminate_zeros()
                 out_cols.append(x_csc)
 
+                # free memory
+                if self.delete_rhs:
+                    if end < n_rhs:
+                        rhs = rhs[:, end:]  # overwrite rhs with remaining columns
+                    else:
+                        rhs = sp.csc_matrix((n_rows, 0))  # empty matrix
+
                 progress.advance(task)
         except Exception as e:
             if isinstance(e, MemoryError):
+                # remove objects
                 progress.remove_task(task)
+                try:
+                    del rhs_batch
+                except NameError:
+                    pass
+                try:
+                    del rhs_batch_array
+                except NameError:
+                    pass
+                try:
+                    del rhs_device
+                except NameError:
+                    pass
+                try:
+                    del x
+                except NameError:
+                    pass
+                try:
+                    del x_device
+                except NameError:
+                    pass
+                try:
+                    del x_csc
+                except NameError:
+                    pass
+
                 LOGGER.exception(
-                    f"MemoryError during solving {e}. Halving the batch size and retrying."
+                    f"MemoryError during solving {e}. Falling back to LU solver for remaining columns."
                 )
                 if not self.delete_rhs:
-                    remaining_rhs = rhs[:, end:]
+                    remaining_rhs = rhs[:, start:]
                 else:
                     remaining_rhs = rhs
+
                 self.batch_size //= 2
-                return sp.hstack([out_cols, self.lu(remaining_rhs)])
+                out_cols.extend(self.cholesky(remaining_rhs))
+
+                return sp.hstack(out_cols).tocsc()
             else:
                 progress.soft_stop()
                 LOGGER.exception(f"Error during solving: {e}")
                 raise e
-            
+
         # Stack all columns into a sparse matrix
         out = sp.hstack(out_cols).tocsc()
         LOGGER.debug("Cholesky solving completed")
@@ -264,37 +296,60 @@ class DirectSparseSolver:
         task = progress.add_task("LU solving batches", total=num_batches)
         try:
             for b in range(num_batches):
-                # delete rhs to free memory if delete_rhs is True
+                # get current batch
                 if self.delete_rhs:
                     n_rhs = rhs.shape[1]  # type: ignore
                     start = 0
                     end = min(self.batch_size, n_rhs)
                     rhs_batch = rhs[:, start:end]
-                    if end < n_rhs:
-                        rhs = rhs[:, end:] # overwrite rhs with remaining columns
-                    else:
-                        rhs = sp.csc_matrix((n_rows, 0))  # empty matrix
                 else:
                     start = b * self.batch_size
                     end = min((b + 1) * self.batch_size, n_rhs)
                     rhs_batch = rhs[:, start:end]
-                x_batch = np.column_stack(
-                    [self.solver(rhs_batch[:, i].toarray().ravel()) for i in range(rhs_batch.shape[1])]
-                )
-                out_cols.append(sp.csc_matrix(x_batch))
+
+                # solve each column in the batch
+                x_batch = [
+                    sp.csc_matrix(
+                        self.solver(rhs_batch[:, i].toarray().ravel()).reshape(-1, 1)
+                    )
+                    for i in range(rhs_batch.shape[1])
+                ]
+
+                # save the result as a sparse matrix
+                out_cols.append(sp.hstack(x_batch))
+
+                # delete the processed columns from rhs to free memory
+                if self.delete_rhs:
+                    if end < n_rhs:
+                        rhs = rhs[:, end:]  # overwrite rhs with remaining columns
+                    else:
+                        rhs = sp.csc_matrix((n_rows, 0))  # empty matrix
                 progress.advance(task)
         except Exception as e:
             if isinstance(e, MemoryError):
+                # remove objects
                 progress.remove_task(task)
+                try:
+                    del rhs_batch
+                except NameError:
+                    pass
+                try:
+                    del x_batch
+                except NameError:
+                    pass
+
                 LOGGER.exception(
                     f"MemoryError during solving {e}. Halving the batch size and retrying."
                 )
                 if not self.delete_rhs:
-                    remaining_rhs = rhs[:, end:]
+                    # NOTE: last batch failed, so the remaining rhs is from the start of that batch
+                    remaining_rhs = rhs[:, start:]
                 else:
                     remaining_rhs = rhs
                 self.batch_size //= 2
-                return sp.hstack([out_cols, self.lu(remaining_rhs)])
+                out_cols.extend(self.lu(remaining_rhs))
+
+                return sp.hstack(out_cols).tocsc()
             else:
                 progress.soft_stop()
                 LOGGER.exception(f"Error during solving: {e}")
