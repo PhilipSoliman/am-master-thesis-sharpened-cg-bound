@@ -3,7 +3,7 @@ import json
 from enum import Enum
 from itertools import cycle
 from pathlib import Path
-from typing import Literal, Optional
+from typing import Iterator, Literal, Optional
 
 import matplotlib.pyplot as plt
 import netgen.libngpy._NgOCC as occ
@@ -67,7 +67,7 @@ class MeshParams:
 
 
 class DefaultMeshParamsMeta(type):
-    def __iter__(cls):
+    def __iter__(cls) -> Iterator[MeshParams]:
         items = []
         for attr in dir(cls):
             if attr.startswith("Nc") and attr[2:].isdigit():
@@ -77,7 +77,7 @@ class DefaultMeshParamsMeta(type):
         for _, value in sorted(items):
             yield value
 
-    def __len__(cls):
+    def __len__(cls) -> int:
         return sum(
             1
             for attr in dir(cls)
