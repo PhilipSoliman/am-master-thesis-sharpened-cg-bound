@@ -165,11 +165,11 @@ for i, ((preconditioner_cls, coarse_space_cls), precond_axs) in enumerate(
 
     # add title to top row axes
     if i == 0:
-        for ax in precond_axs:
+        for j, ax in enumerate(precond_axs):
             ax.text(
                 0.5,
                 1.0,
-                coef_func.latex,
+                COEF_FUNCS[j].latex,
                 fontweight="bold",
                 ha="center",
                 va="bottom",
