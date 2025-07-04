@@ -23,11 +23,6 @@ from lib.utils import get_cli_args
 # get command line arguments
 ARGS = get_cli_args()
 
-# log settings
-LOGGER.setLevel(ARGS.loglvl if ARGS.loglvl else "INFO")
-# PROGRESS.turn_off()
-LOGGER.generate_log_file()
-
 # setup for a diffusion problem
 MESHES = DefaultQuadMeshParams
 PROBLEM_TYPE = ProblemType.DIFFUSION
@@ -36,6 +31,7 @@ if __name__ == "__main__":
 SOURCE_FUNC = SourceFunc.CONSTANT
 COEF_FUNCS = [
     CoefFunc.CONSTANT,
+    CoefFunc.THREE_LAYER_VERTEX_INCLUSIONS,
     CoefFunc.EDGE_SLABS_AROUND_VERTICES_INCLUSIONS,
 ]
 
@@ -112,7 +108,7 @@ def calculate_spectra() -> None:
                 tol=RTOL,
                 progress=progress,
             )
-            
+
             # NOTE: we cache the 1-lvl preconditioner to save time for the 2-lvl preconditioners.
             M1 = OneLevelSchwarzPreconditioner(
                 A, diffusion_problem.fes, progress=progress
@@ -169,4 +165,5 @@ def calculate_spectra() -> None:
 
 
 if __name__ == "__main__":
+    LOGGER.generate_log_file()
     calculate_spectra()
