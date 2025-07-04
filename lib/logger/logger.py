@@ -1,5 +1,6 @@
 import inspect
 import logging
+import os
 from datetime import datetime
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
@@ -202,6 +203,16 @@ handler.setFormatter(
 )
 LOGGER.addHandler(handler)
 
+# set default log level
+if os.environ.get("MY_LOG_LEVEL"):
+    LOGGER.setLevel(os.environ["MY_LOG_LEVEL"].upper())
+    print(
+        f"Log level set to {os.environ['MY_LOG_LEVEL'].upper()} via environment variable"
+    )
+else:
+    print("No MY_LOG_LEVEL environment variable set, using default INFO level")
+    LOGGER.setLevel(logging.INFO)
+
 
 ################
 # PROGRESS BAR #
@@ -358,3 +369,8 @@ class PROGRESS(Progress):
     def turn_off(cls) -> None:
         """Turn off the progress bar."""
         cls.set_minimum_task_index(cls.MAX_TASKS)
+
+# turn off progress bar if environment variable is set (used for debugging)
+if os.environ.get("DISABLE_PROGRESS") == "1":
+    PROGRESS.turn_off()
+    print("Progress bar disabled via environment variable")
