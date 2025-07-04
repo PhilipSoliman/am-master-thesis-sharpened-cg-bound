@@ -47,49 +47,49 @@ class SourceFunc(Enum):
 class CoefFunc(Enum):
     """Enumeration for coefficient functions used in the diffusion problem."""
 
-    SINUSOIDAL = ("sinusoidal_coefficient", r"$\mathcal{C}_{\text{sin}}$", "sin")
+    SINUSOIDAL = ("sinusoidal_coefficient", r"$\mathcal{C}_{\mathrm{sin}}$", "sin")
     VERTEX_INCLUSIONS = (
         "vertex_centered_inclusions_coefficient",
-        r"$\mathcal{C}_{\text{vert}}$",
+        r"$\mathcal{C}_{\mathrm{vert}}$",
         "vert",
     )
     TWO_LAYER_VERTEX_INCLUSIONS = (
         "two_layer_vertex_centered_inclusions_coefficient",
-        r"$\mathcal{C}_{\text{2layer, vert}}$",
+        r"$\mathcal{C}_{\mathrm{2layer, \ vert}}$",
         "2lvert",
     )
     THREE_LAYER_VERTEX_INCLUSIONS = (
         "three_layer_vertex_centered_inclusions_coefficient",
-        r"$\mathcal{C}_{\text{3layer, vert}}$",
+        r"$\mathcal{C}_{\mathrm{3layer, \ vert}}$",
         "3lvert",
     )
     EDGE_CENTERED_INCLUSIONS = (
         "edge_centered_inclusions_coefficient",
-        r"$\mathcal{C}_{\text{edge}}$",
+        r"$\mathcal{C}_{\mathrm{edge}}$",
         "edge",
     )
     SINGLE_SLAB_EDGE_INCLUSIONS = (
         "single_slab_edge_inclusions_coefficient",
-        r"$\mathcal{C}_{\text{single slab, edge}}$",
+        r"$\mathcal{C}_{\mathrm{single \ slab, \ edge}}$",
         "sslab_edge",
     )
     DOUBLE_SLAB_EDGE_INCLUSIONS = (
         "double_slab_edge_inclusions_coefficient",
-        r"$\mathcal{C}_{\text{double slab, edge}}$",
+        r"$\mathcal{C}_{\mathrm{double \ slab, \ edge}}$",
         "dslab_edge",
     )
     EDGE_SLABS_AROUND_VERTICES_INCLUSIONS = (
         "edge_slabs_around_vertices_inclusions_coefficient",
-        r"$\mathcal{C}_{\text{edge slabs, around vertices}}$",
+        r"$\mathcal{C}_{\mathrm{edge \ slabs, \ around \ vertices}}$",
         "slabs_around_vertices",
     )
-    CONSTANT = ("constant_coefficient", r"$\mathcal{C}_{\text{const}}$", "const")
+    CONSTANT = ("constant_coefficient", r"$\mathcal{C}_{\mathrm{const}}$", "const")
     HETMANIUK_LEHOUCQ = (
         "hetmaniuk_lehoucq_coefficient",
-        r"$\mathcal{C}_{\text{hetmaniuk}}$",
+        r"$\mathcal{C}_{\mathrm{hetmaniuk}}$",
         "hetmaniuk",
     )
-    HEINLEIN = ("heinlein_coefficient", r"$\mathcal{C}_{\text{heinlein}}$", "heinlein")
+    HEINLEIN = ("heinlein_coefficient", r"$\mathcal{C}_{\mathrm{heinlein}}$", "heinlein")
 
     def __init__(self, func_name: str, latex: str, short_name: str):
         self._func_name = func_name
