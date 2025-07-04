@@ -9,11 +9,9 @@ from approximate_spectra import (
     get_spectrum_save_path,
 )
 
+from lib.eigenvalues import split_spectrum_into_clusters
 from lib.logger import LOGGER
 from lib.utils import get_cli_args, save_latex_figure, set_mpl_cycler, set_mpl_style
-
-# set logging level
-LOGGER.setLevel("INFO")
 
 # set matplotlib style & cycler
 set_mpl_style()
@@ -53,15 +51,25 @@ for i, mesh_params in enumerate(MESHES):
                 shorthand = (
                     f"{preconditioner_cls.SHORT_NAME}-{coarse_space_cls.SHORT_NAME}"
                 )
+
+                # store the eigenvalues in the spectra dictionary
                 spectra[f"{shorthand:<12}"] = eigenvalues
+
+                # get cluster coordinates
                 min_eig = np.min(np.abs(eigenvalues))
                 max_eig = np.max(np.abs(eigenvalues))
+
+                # calculate condition number
                 cond_numbers.append(
                     np.abs(max_eig / min_eig)
                     if len(eigenvalues) > 0 and min_eig > 0
                     else np.nan
                 )
-                niters.append(len(eigenvalues) - 1)
+
+                # store the number of iterations
+                niters.append(len(eigenvalues))
+
+                # update global min and max (used for plotting number of iterations)
                 if global_min is None or min_eig < global_min:
                     global_min = min_eig
                 if global_max is None or max_eig > global_max:
@@ -93,6 +101,7 @@ for i, mesh_params in enumerate(MESHES):
 
         # condition numbers
         ax2 = ax.twinx()
+
         def format_cond(c):
             if np.isnan(c):
                 return "n/a"
