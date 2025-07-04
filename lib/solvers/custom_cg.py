@@ -8,8 +8,8 @@ from scipy.sparse import diags as spdiags
 from scipy.sparse.linalg import LinearOperator, aslinearoperator
 from tqdm import trange
 
-from lib.gpu_interface import GPUInterface
 from lib.eigenvalues import eigs
+from lib.gpu_interface import GPUInterface
 from lib.logger import LOGGER, PROGRESS
 from lib.operators import Operator
 from lib.utils import get_root
