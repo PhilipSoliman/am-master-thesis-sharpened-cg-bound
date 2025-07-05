@@ -1,6 +1,7 @@
 import inspect
 import logging
 import os
+from contextlib import contextmanager
 from datetime import datetime
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
@@ -83,6 +84,16 @@ class CustomLogger(logging.Logger):
         # also set the level for all handlers
         for handler in self.handlers:
             handler.setLevel(level)
+    
+    @contextmanager
+    def setLevelContext(self, level: int | str):
+        """Context manager to temporarily set the logging level."""
+        original_level = self.level
+        self.setLevel(level)
+        try:
+            yield
+        finally:
+            self.setLevel(original_level)
 
     def generate_log_file(
         self,
@@ -288,7 +299,6 @@ class PROGRESS(Progress):
             LOGGER.error(msg)
             exit()
 
-
     def soft_start(self) -> None:
         """Only start progress if it was not already active when get_active_progress_bar was called."""
         if not self.progress_started():
@@ -384,11 +394,12 @@ class PROGRESS(Progress):
     def hide(cls) -> None:
         """Turn off the progress bar."""
         cls.set_minimum_task_index(cls.MAX_TASKS)
-    
+
     @classmethod
     def show(cls) -> None:
         """Turn on the progress bar."""
         cls.set_minimum_task_index(0)
+
 
 # turn off progress bar if environment variable is set (used for debugging)
 if os.environ.get("DISABLE_PROGRESS") == "1":
