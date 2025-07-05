@@ -18,10 +18,6 @@ from lib.preconditioners import (
 from lib.problem_type import ProblemType
 from lib.problems import CoefFunc, DiffusionProblem, SourceFunc
 from lib.solvers import CustomCG
-from lib.utils import get_cli_args
-
-# get command line arguments
-ARGS = get_cli_args()
 
 # setup for a diffusion problem
 MESHES = DefaultQuadMeshParams
