@@ -10,11 +10,12 @@ from approximate_spectra import (
     get_spectrum_save_path,
 )
 
+from lib.cli import get_cli_args
 from lib.eigenvalues import split_spectrum_into_clusters
 from lib.logger import LOGGER
+from lib.plot_utils import save_latex_figure, set_mpl_cycler
 from lib.problems import CoefFunc
 from lib.solvers import CustomCG
-from lib.utils import get_cli_args, save_latex_figure, set_mpl_cycler
 
 # get command line arguments
 ARGS = get_cli_args()
