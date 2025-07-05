@@ -9,9 +9,9 @@ from approximate_spectra import (
     get_spectrum_save_path,
 )
 
-from lib.eigenvalues import split_spectrum_into_clusters
+from lib.cli import get_cli_args
+from lib.plot_utils import set_mpl_style, set_mpl_cycler, save_latex_figure
 from lib.logger import LOGGER
-from lib.utils import get_cli_args, save_latex_figure, set_mpl_cycler, set_mpl_style
 
 # set matplotlib style & cycler
 set_mpl_style()
