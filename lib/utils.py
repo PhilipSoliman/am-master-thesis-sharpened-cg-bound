@@ -128,10 +128,6 @@ class CustomColors(Enum):
     SKY = "#7EAFF1"
     BEIGE = "#B79A89"
 
-
-DEFAULT_OUTPUT_TOGGLE_FLAGS = ["generate-output", "show-output"]
-DEFAULT_VALUE_FLAGS = ["loglvl"]
-
 # define pre and post strings
 LATEX_STANDALONE_PGF_PRE = r"""\documentclass{standalone} 
 \def\mathdefault#1{#1}
@@ -170,8 +166,10 @@ FIG_FOLDER = get_root() / "figures"
 
 
 # get CLI
+TOGGLE_FLAGS = ["generate-output", "show-output", "show-progress"]
+VALUE_FLAGS = ["loglvl"]
 def get_cli_args(
-    toggle_flags: list[str] = DEFAULT_OUTPUT_TOGGLE_FLAGS, value_flags: list[str] = DEFAULT_VALUE_FLAGS
+    toggle_flags: list[str] = TOGGLE_FLAGS, value_flags: list[str] = VALUE_FLAGS
 ) -> argparse.Namespace:
     parser = argparse.ArgumentParser()
 
@@ -193,7 +191,7 @@ def get_cli_args(
             parser.add_argument(
                 f"--{flag}",
                 type=lambda s: s.upper(),
-                help=f"Set logging level (e.g. --{flag} INFO)",
+                help=f"Set logging level (e.g. --{flag} info) options: debug, info, warning, error, critical",
                 default="INFO",
             )
         else:
