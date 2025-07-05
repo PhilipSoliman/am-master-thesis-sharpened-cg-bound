@@ -1,24 +1,16 @@
-import argparse
-import os
 import subprocess
-import sys
-from collections.abc import Iterable
-from contextlib import contextmanager
 from enum import Enum
 from os import remove
-from os.path import abspath, dirname
-from pathlib import Path
+from typing import Iterable
 
 import matplotlib as mpl
 import matplotlib.colors as mpl_colors
-import numpy as np
-import scipy.sparse as sp
-import torch
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from matplotlib.pyplot import savefig
+from lib.root import get_root
 
-LARGE_FILE_THRESHOLD = 10 * 1024 * 1024  # 10 MB
+FIG_FOLDER = get_root() / "figures"
 
 MPL_LINE_STYLES = [
     "-",  # solid
@@ -128,6 +120,7 @@ class CustomColors(Enum):
     SKY = "#7EAFF1"
     BEIGE = "#B79A89"
 
+
 # define pre and post strings
 LATEX_STANDALONE_PGF_PRE = r"""\documentclass{standalone} 
 \def\mathdefault#1{#1}
@@ -155,86 +148,6 @@ class CartesianCoordinate(Enum):
     X = 0
     Y = 1
     Z = 2
-
-
-def get_root() -> Path:
-    file_abs_path = abspath(dirname(__file__))
-    return Path(file_abs_path).parent
-
-
-FIG_FOLDER = get_root() / "figures"
-
-
-# get CLI
-TOGGLE_FLAGS = ["generate-output", "show-output", "show-progress"]
-VALUE_FLAGS = ["loglvl"]
-def get_cli_args(
-    toggle_flags: list[str] = TOGGLE_FLAGS, value_flags: list[str] = VALUE_FLAGS
-) -> argparse.Namespace:
-    parser = argparse.ArgumentParser()
-
-    # # Positional argument
-    # parser.add_argument("name", help="Your name")
-
-    # # Optional argument
-    # parser.add_argument("--age", type=int, help="Your age", default=18)
-
-    # Flag argument
-    for flag in toggle_flags:
-        parser.add_argument(
-            f"--{flag}", action="store_true", help=f"Enable {flag} mode"
-        )
-
-    # Value flags (store value)
-    for flag in value_flags:
-        if flag == "loglvl":
-            parser.add_argument(
-                f"--{flag}",
-                type=lambda s: s.upper(),
-                help=f"Set logging level (e.g. --{flag} info) options: debug, info, warning, error, critical",
-                default="INFO",
-            )
-        else:
-            parser.add_argument(
-                f"--{flag}",
-                type=str,
-                help=f"Set {flag.replace('-', ' ')} (e.g. --{flag} ...)",
-                default=None,
-            )
-
-    args = parser.parse_args()
-    return args
-
-
-def get_metadata(file: Path) -> dict:
-    metadata = {}
-    metas = file.name.split("_")
-    for meta in metas:
-        if "=" in meta:
-            key, value = meta.split("=")
-            metadata[key] = value
-        elif "." in meta:
-            data_category, file_extension = meta.split(".")
-            metadata["type"] = data_category
-        else:
-            metadata["header"] = meta
-    return metadata
-
-
-def scientific_fmt(s: float, prec: int = 2) -> str:
-    specifier = f"{{:.{prec}e}}"
-    scientific_str = specifier.format(s)
-    mantissa, exponent = scientific_str.split("e")
-    sign = ""
-    if exponent[0] == "-":
-        sign = "-"
-    if exponent[1] == "0":
-        exponent = exponent[2:]
-    if exponent == "0":
-        out = mantissa
-    else:
-        out = mantissa + r"$\times 10^{" + sign + exponent + "}$"
-    return out
 
 
 def save_latex_figure(fn: str, fig: Figure | None = None) -> None:
@@ -374,10 +287,6 @@ def set_mpl_cycler(lines: bool = False, colors: bool = False, markers: bool = Fa
     mpl.rcParams["axes.prop_cycle"] = custom_cycler
 
 
-def moving_average(x, w):
-    return np.convolve(x, np.ones(w), "valid") / w
-
-
 def mpl_graph_plot_style(
     ax: Axes,
     domain: tuple,
@@ -497,33 +406,3 @@ def mpl_add_custom_tick(
     )
 
     return ax
-
-
-def visualize_profile(fp: Path):
-    # run snakeviz in subprocess
-    if fp.is_file():
-        subprocess.run(["snakeviz", fp.as_posix()], check=True)
-    else:
-        print(f"File {fp} does not exist. Skipping visualization.")
-
-
-def send_matrix_to_gpu(mat: sp.csc_matrix | sp.csr_matrix, device: str, dense: bool = False) -> torch.Tensor:
-    if not dense: 
-        coo = mat.tocoo()
-        return torch.sparse_coo_tensor(np.array([coo.row, coo.col]), coo.data, coo.shape, device=device)  # type: ignore
-    else:
-        return torch.tensor(mat.toarray(), dtype=torch.float64, device=device)  # type: ignore
-
-
-@contextmanager
-def suppress_output():
-    with open(os.devnull, "w") as devnull:
-        old_stdout = sys.stdout
-        old_stderr = sys.stderr
-        sys.stdout = devnull
-        sys.stderr = devnull
-        try:
-            yield
-        finally:
-            sys.stdout = old_stdout
-            sys.stderr = old_stderr
