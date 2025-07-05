@@ -5,17 +5,31 @@ import sys
 import venv
 
 VENV_NAME = ".venv"
-DYNAMIC_LIBRARY_FOLDER = "clibs"
 PYTHON_EXEC = (
     os.path.join(VENV_NAME, "Scripts", "python.exe")
     if os.name == "nt"
     else os.path.join(VENV_NAME, "bin", "python")
 )
-CUDA_VERSIONS = [
-            "cu118",
-            "cu126",
-            "cu128"
-        ]
+CUDA_VERSIONS = ["cu118", "cu126", "cu128"]
+
+
+def add_root_to_pythonpath(root_path):
+    if os.name == "nt":
+        # Windows: Modify .venv\Scripts\activate.bat
+        activate_bat = os.path.join(VENV_NAME, "Scripts", "activate.bat")
+        line = f"set PYTHONPATH={root_path};%PYTHONPATH%\n"
+        with open(activate_bat, "a", encoding="utf-8") as f:
+            f.write("\nREM Added by setup_env.py\n")
+            f.write(line)
+        print(f"Added {root_path} to PYTHONPATH in activate.bat")
+    else:
+        # Unix: Modify .venv/bin/activate
+        activate_sh = os.path.join(VENV_NAME, "bin", "activate")
+        line = f'export PYTHONPATH="{root_path}:$PYTHONPATH"\n'
+        with open(activate_sh, "a", encoding="utf-8") as f:
+            f.write("\n# Added by setup_env.py\n")
+            f.write(line)
+        print(f"Added {root_path} to PYTHONPATH in activate")
 
 
 def create_virtual_environment():
@@ -66,7 +80,9 @@ def install_requirements(root_path):
             torch_url,
         ]
     )
-    print(f"Installed PyTorch {'with CUDA support' if cuda_used else 'without CUDA support'}")
+    print(
+        f"Installed PyTorch {'with CUDA support' if cuda_used else 'without CUDA support'}"
+    )
 
     subprocess.check_call([PYTHON_EXEC, "-m", "pip", "install", "-e", "."])
     print("Installed local packages")
@@ -130,9 +146,9 @@ def activate_environment():
 def _get_cuda_version():
     try:
         output = subprocess.check_output(["nvcc", "--version"]).decode()
-        for line in output.split('\n'):
-            if 'release' in line:
-                match = re.search(r'release (\d+)\.(\d+)', line)
+        for line in output.split("\n"):
+            if "release" in line:
+                match = re.search(r"release (\d+)\.(\d+)", line)
                 if match:
                     major, minor = match.groups()
                     version = f"{major}{minor}"
@@ -140,11 +156,15 @@ def _get_cuda_version():
                 else:
                     raise ValueError("Could not parse CUDA version from nvcc output.")
     except FileNotFoundError:
-        input("CUDA not found. If you want to speed some calculations in this project, please install CUDA. Press Enter to continue without CUDA.")
+        input(
+            "CUDA not found. If you want to speed up some calculations in this project, please install CUDA. Press Enter to continue without CUDA."
+        )
         return ""
+
 
 def main():
     root_path = os.path.abspath(os.path.dirname(__file__))
+    add_root_to_pythonpath(root_path)
     create_virtual_environment()
     install_requirements(root_path)
     generate_meshes_for_experiments(root_path)
