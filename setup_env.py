@@ -15,25 +15,6 @@ PYTHON_EXEC = (
 CUDA_VERSIONS = ["cu118", "cu126", "cu128"]
 
 
-def add_root_to_pythonpath(root_path):
-    if os.name == "nt":
-        # Windows: Modify .venv\Scripts\activate.bat
-        activate_bat = os.path.join(VENV_NAME, "Scripts", "activate.bat")
-        line = f"set PYTHONPATH={root_path};%PYTHONPATH%\n"
-        with open(activate_bat, "a", encoding="utf-8") as f:
-            f.write("\nREM Added by setup_env.py\n")
-            f.write(line)
-        print(f"Added {root_path} to PYTHONPATH in activate.bat")
-    else:
-        # Unix: Modify .venv/bin/activate
-        activate_sh = os.path.join(VENV_NAME, "bin", "activate")
-        line = f'export PYTHONPATH="{root_path}:$PYTHONPATH"\n'
-        with open(activate_sh, "a", encoding="utf-8") as f:
-            f.write("\n# Added by setup_env.py\n")
-            f.write(line)
-        print(f"Added {root_path} to PYTHONPATH in activate")
-
-
 def create_virtual_environment():
     if not os.path.exists(VENV_NAME):
         venv.create(VENV_NAME, with_pip=True)
@@ -166,7 +147,6 @@ def _get_cuda_version():
 
 def main():
     root_path = os.path.abspath(os.path.dirname(__file__))
-    # add_root_to_pythonpath(root_path)
     create_virtual_environment()
     install_requirements(root_path)
     generate_meshes_for_experiments(root_path)
