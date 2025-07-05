@@ -1,8 +1,8 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-from lib.solvers import CustomCG
-from lib.utils import (
+from project.solvers import CustomCG
+from project.utils import (
     CustomColors,
     get_cli_args,
     mpl_graph_plot_style,

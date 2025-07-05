@@ -2,8 +2,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # from clibs.custom_cg import CustomCG
-from lib.solvers.custom_cg import CustomCG
-from lib.utils import (
+from project.solvers.custom_cg import CustomCG
+from project.utils import (
     get_cli_args,
     set_mpl_cycler,
     set_mpl_style,

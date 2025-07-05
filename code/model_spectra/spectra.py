@@ -4,13 +4,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 import scipy.sparse as sp
 
-from lib.boundary_conditions import HomogeneousDirichlet
-from lib.cli import get_cli_args
-from lib.plot_utils import set_mpl_style, set_mpl_cycler, save_latex_figure
-from lib.eigenvalues import eigs
-from lib.logger import PROGRESS
-from lib.meshes import DefaultMeshParams, TwoLevelMesh
-from lib.preconditioners import (
+from project.boundary_conditions import HomogeneousDirichlet
+from project.cli import get_cli_args
+from project.plot_utils import set_mpl_style, set_mpl_cycler, save_latex_figure
+from project.eigenvalues import eigs
+from project.logger import PROGRESS
+from project.meshes import DefaultMeshParams, TwoLevelMesh
+from project.preconditioners import (
     AMSCoarseSpace,
     GDSWCoarseSpace,
     OneLevelSchwarzPreconditioner,
@@ -18,8 +18,8 @@ from lib.preconditioners import (
     RGDSWCoarseSpace,
     TwoLevelSchwarzPreconditioner,
 )
-from lib.problem_type import ProblemType
-from lib.problems import CoefFunc, DiffusionProblem, SourceFunc
+from project.problem_type import ProblemType
+from project.problems import CoefFunc, DiffusionProblem, SourceFunc
 
 # set matplotlib style & cycler
 set_mpl_style()

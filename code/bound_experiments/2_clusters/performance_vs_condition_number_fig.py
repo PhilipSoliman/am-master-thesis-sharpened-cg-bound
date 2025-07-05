@@ -7,8 +7,8 @@ from matplotlib.axes import Axes
 from shapely.geometry import Polygon as ShapelyPolygon
 from tqdm import tqdm
 
-from lib.solvers import CustomCG
-from lib.utils import (
+from project.solvers import CustomCG
+from project.utils import (
     CUSTOM_COLORS_SIMPLE,
     get_cli_args,
     save_latex_figure,

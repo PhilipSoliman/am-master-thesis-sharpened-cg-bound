@@ -8,7 +8,7 @@ import matplotlib.colors as mpl_colors
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from matplotlib.pyplot import savefig
-from lib.root import get_root
+from project.root import get_root
 
 FIG_FOLDER = get_root() / "figures"
 

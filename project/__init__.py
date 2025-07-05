@@ -4,11 +4,11 @@ import os
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 os.environ["OMP_NUM_THREADS"] = "1"
 
-from lib.logger import LOGGER, PROGRESS
+from project.logger import LOGGER, PROGRESS
 
 try:
     # look for command line arguments to set the log level
-    from lib.cli import CLI_ARGS
+    from project.cli import CLI_ARGS
 
     if hasattr(CLI_ARGS, "loglvl"):
         LOGGER.setLevel(CLI_ARGS.loglvl)

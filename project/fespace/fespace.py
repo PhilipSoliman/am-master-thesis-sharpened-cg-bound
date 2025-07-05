@@ -5,10 +5,10 @@ import ngsolve as ngs
 import numpy as np
 import scipy.sparse as sp
 
-from lib.boundary_conditions import BoundaryConditions, HomogeneousDirichlet
-from lib.logger import LOGGER, PROGRESS
-from lib.meshes import DefaultQuadMeshParams, TwoLevelMesh
-from lib.problem_type import ProblemType
+from project.boundary_conditions import BoundaryConditions, HomogeneousDirichlet
+from project.logger import LOGGER, PROGRESS
+from project.meshes import DefaultQuadMeshParams, TwoLevelMesh
+from project.problem_type import ProblemType
 
 
 class FESpace:
@@ -495,7 +495,7 @@ def profile_fespace():
     import cProfile
     import pstats
 
-    from lib.utils import visualize_profile
+    from project.visualize_profile import visualize_profile
 
     two_mesh = load_mesh()
     ptype = ProblemType.DIFFUSION

@@ -10,15 +10,12 @@ from approximate_spectra import (
     get_spectrum_save_path,
 )
 
-from lib.cli import get_cli_args
-from lib.eigenvalues import split_spectrum_into_clusters
-from lib.logger import LOGGER
-from lib.plot_utils import save_latex_figure, set_mpl_cycler
-from lib.problems import CoefFunc
-from lib.solvers import CustomCG
-
-# get command line arguments
-ARGS = get_cli_args()
+from project.cli import CLI_ARGS
+from project.eigenvalues import split_spectrum_into_clusters
+from project.logger import LOGGER
+from project.plot_utils import save_latex_figure, set_mpl_cycler
+from project.problems import CoefFunc
+from project.solvers import CustomCG
 
 # define coefficient functions to use
 COEF_FUNCS = [
@@ -192,8 +189,8 @@ for i, ((preconditioner_cls, coarse_space_cls), precond_axs) in enumerate(
 # tight layout for the figure
 fig.tight_layout()
 
-if ARGS.generate_output:
+if CLI_ARGS.generate_output:
     fn = Path(__file__).name.replace("_fig.py", "")
     save_latex_figure(fn, fig)
-if ARGS.show_output:
+if CLI_ARGS.show_output:
     plt.show()

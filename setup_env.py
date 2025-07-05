@@ -5,6 +5,8 @@ import sys
 import venv
 
 VENV_NAME = ".venv"
+LOCAL_PACKAGE_FOLDER = "project"
+CLIB_RELPATH = os.path.join(LOCAL_PACKAGE_FOLDER, "solvers", "clib")
 PYTHON_EXEC = (
     os.path.join(VENV_NAME, "Scripts", "python.exe")
     if os.name == "nt"
@@ -114,7 +116,7 @@ def generate_meshes_for_experiments(root_path):
 
 
 def make_c_library(root_path):
-    lib_path = os.path.join(root_path, "lib", "solvers", "clib")
+    lib_path = os.path.join(root_path, CLIB_RELPATH)
     print(f"Building C library in {lib_path}...")
 
     result = subprocess.run(
@@ -164,7 +166,7 @@ def _get_cuda_version():
 
 def main():
     root_path = os.path.abspath(os.path.dirname(__file__))
-    add_root_to_pythonpath(root_path)
+    # add_root_to_pythonpath(root_path)
     create_virtual_environment()
     install_requirements(root_path)
     generate_meshes_for_experiments(root_path)

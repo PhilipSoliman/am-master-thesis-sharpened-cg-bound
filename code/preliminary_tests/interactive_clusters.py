@@ -9,7 +9,7 @@ from matplotlib.lines import Line2D
 from matplotlib.text import Text
 from matplotlib.widgets import Slider
 
-from lib.utils import mpl_graph_plot_style, set_mpl_cycler, set_mpl_style
+from project.utils import mpl_graph_plot_style, set_mpl_cycler, set_mpl_style
 
 # turn on interactive mode if necessary
 if not plt.isinteractive():

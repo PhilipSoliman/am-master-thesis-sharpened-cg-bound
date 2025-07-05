@@ -4,10 +4,10 @@ from typing import Optional, Type
 import numpy as np
 import scipy.sparse as sp
 
-from lib.boundary_conditions import HomogeneousDirichlet
-from lib.logger import LOGGER, PROGRESS
-from lib.meshes import DefaultQuadMeshParams, MeshParams, TwoLevelMesh
-from lib.preconditioners import (
+from project.boundary_conditions import HomogeneousDirichlet
+from project.logger import LOGGER, PROGRESS
+from project.meshes import DefaultQuadMeshParams, MeshParams, TwoLevelMesh
+from project.preconditioners import (
     AMSCoarseSpace,
     CoarseSpace,
     GDSWCoarseSpace,
@@ -15,9 +15,9 @@ from lib.preconditioners import (
     RGDSWCoarseSpace,
     TwoLevelSchwarzPreconditioner,
 )
-from lib.problem_type import ProblemType
-from lib.problems import CoefFunc, DiffusionProblem, SourceFunc
-from lib.solvers import CustomCG
+from project.problem_type import ProblemType
+from project.problems import CoefFunc, DiffusionProblem, SourceFunc
+from project.solvers import CustomCG
 
 # setup for a diffusion problem
 MESHES = DefaultQuadMeshParams
@@ -68,17 +68,18 @@ def calculate_spectra() -> None:
     progress = PROGRESS.get_active_progress_bar()
     main_task = progress.add_task("Calculating spectra", total=len(MESHES))
     desc = progress.get_description(main_task)
-    desc += " ([bold]H = 1/{0:.0f}, coef. = {1}[/bold])"
+    desc += " ([bold]H = 1/{0:.0f}, CF = {1}[/bold], M = {2})"
 
     # main loop over meshes, coefficients, and preconditioners
     for i, mesh_params in enumerate(MESHES):
         two_mesh = TwoLevelMesh.load(mesh_params, progress=progress)
         for coef_func in COEF_FUNCS:
-            # set description for the current mesh and coefficient function
             progress.update(
                 main_task,
                 description=desc.format(
-                    1 / two_mesh.coarse_mesh_size, coef_func.short_name
+                    1 / two_mesh.coarse_mesh_size,
+                    coef_func.short_name,
+                    "initializing problem...",
                 ),
             )
 
@@ -106,6 +107,14 @@ def calculate_spectra() -> None:
             )
 
             # NOTE: we cache the 1-lvl preconditioner to save time for the 2-lvl preconditioners.
+            progress.update(
+                main_task,
+                description=desc.format(
+                    1 / two_mesh.coarse_mesh_size,
+                    coef_func.short_name,
+                    "getting 1st level...",
+                ),
+            )
             M1 = OneLevelSchwarzPreconditioner(
                 A, diffusion_problem.fes, progress=progress
             ).as_linear_operator()
@@ -115,6 +124,14 @@ def calculate_spectra() -> None:
                 "Computing spectra", total=len(PRECONDITIONERS)
             )
             for preconditioner_cls, coarse_space_cls in PRECONDITIONERS:
+                progress.update(
+                    main_task,
+                    description=desc.format(
+                        1 / two_mesh.coarse_mesh_size,
+                        coef_func.short_name,
+                        "getting 2nd level...",
+                    ),
+                )
                 # initialize preconditioner
                 preconditioner = preconditioner_cls(
                     A,
@@ -125,13 +142,16 @@ def calculate_spectra() -> None:
                     coarse_only=True,
                 )
 
-                # get save directory for the preconditioner
-                save_dir = get_spectrum_save_path(
-                    mesh_params, coef_func, preconditioner_cls, coarse_space_cls
-                )
-
                 # get shorthand for preconditioner
                 shorthand = preconditioner.SHORT_NAME
+
+                # set description for the current mesh, coefficient function and preconditioner
+                progress.update(
+                    main_task,
+                    description=desc.format(
+                        1 / two_mesh.coarse_mesh_size, coef_func.short_name, shorthand
+                    ),
+                )
 
                 # get preconditioner as linear operator
                 M2 = preconditioner.as_linear_operator()
@@ -147,7 +167,12 @@ def calculate_spectra() -> None:
                 LOGGER.info("Computing approximate eigenvalues")
                 eigenvalues = custom_cg.get_approximate_eigenvalues_gpu()
 
-                # save eigenvalues to numpy array
+                # get save directory for the preconditioner's spectrum
+                save_dir = get_spectrum_save_path(
+                    mesh_params, coef_func, preconditioner_cls, coarse_space_cls
+                )
+
+                # save spectrum to numpy array
                 np.save(save_dir, eigenvalues)
 
                 progress.advance(spectra_task)

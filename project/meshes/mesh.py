@@ -14,8 +14,8 @@ from matplotlib.figure import Figure
 from matplotlib.patches import Polygon
 from ngsolve.meshes import MakeQuadMesh
 
-from lib.logger import LOGGER, PROGRESS
-from lib.plot_utils import CUSTOM_COLORS_SIMPLE, get_root
+from project.logger import LOGGER, PROGRESS
+from project.plot_utils import CUSTOM_COLORS_SIMPLE, get_root
 
 DATA_DIR = get_root() / "data"
 
@@ -1821,7 +1821,7 @@ class TwoLevelMesh:
             Figure: The matplotlib figure with the plotted two-level mesh.
         """
         LOGGER.info("Visualizing TwoLevelMesh")
-        from lib.utils import set_mpl_style
+        from project.plot_utils import set_mpl_style
 
         set_mpl_style()
         fig, ax = plt.subplots(3, 2, figsize=(8, 12), sharex=True, sharey=True)
@@ -1914,7 +1914,7 @@ class TwoLevelMeshExamples:
     def profile(cls, creation: bool = True, loading: bool = True, top: int = 10):
         import cProfile
         import pstats
-
+        from project.visualize_profile import visualize_profile
         if creation:
             fp = cls.SAVE_DIR / "mesh_creation.prof"
             cProfile.run(
@@ -1922,12 +1922,14 @@ class TwoLevelMeshExamples:
             )
             p_creation = pstats.Stats(str(fp))
             p_creation.sort_stats("cumulative").print_stats(top)
+            visualize_profile(fp)
 
         if loading:
             fp = cls.SAVE_DIR / "mesh_loading.prof"
             cProfile.run("TwoLevelMeshExamples.example_load()", str(fp))
             p_loading = pstats.Stats(str(fp))
             p_loading.sort_stats("cumulative").print_stats(top)
+            visualize_profile(fp)
 
 
 if __name__ == "__main__":

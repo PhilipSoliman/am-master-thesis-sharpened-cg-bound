@@ -9,9 +9,9 @@ from approximate_spectra import (
     get_spectrum_save_path,
 )
 
-from lib.cli import get_cli_args
-from lib.plot_utils import set_mpl_style, set_mpl_cycler, save_latex_figure
-from lib.logger import LOGGER
+from project.cli import get_cli_args
+from project.plot_utils import set_mpl_style, set_mpl_cycler, save_latex_figure
+from project.logger import LOGGER
 
 # set matplotlib style & cycler
 set_mpl_style()

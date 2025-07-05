@@ -4,9 +4,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 from tqdm import tqdm
 
-from lib.cli import CLI_ARGS
-from lib.plot_utils import save_latex_figure
-from lib.solvers import CustomCG
+from project.cli import CLI_ARGS
+from project.plot_utils import save_latex_figure
+from project.solvers import CustomCG
 
 ###################
 # CONSTANT INPUTS #

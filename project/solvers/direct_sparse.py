@@ -11,8 +11,8 @@ import torch
 from scipy.sparse.linalg import eigsh, factorized, splu, spsolve
 from tqdm import tqdm
 
-from lib.gpu_interface import GPUInterface
-from lib.logger import LOGGER, PROGRESS
+from project.gpu_interface import GPUInterface
+from project.logger import LOGGER, PROGRESS
 
 # initialize GPU interface
 gpu = GPUInterface()

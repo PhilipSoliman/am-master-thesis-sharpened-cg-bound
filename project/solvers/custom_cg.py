@@ -8,14 +8,14 @@ from scipy.sparse import diags as spdiags
 from scipy.sparse.linalg import LinearOperator, aslinearoperator
 from tqdm import trange
 
-from lib.eigenvalues import eigs
-from lib.gpu_interface import GPUInterface
-from lib.logger import LOGGER, PROGRESS
-from lib.operators import Operator
-from lib.root import get_root
+from project.eigenvalues import eigs
+from project.gpu_interface import GPUInterface
+from project.logger import LOGGER, PROGRESS
+from project.operators import Operator
+from project.root import get_root
 
 # constants
-DLL_FOLDER = "lib/solvers/clib"
+DLL_FOLDER = get_root() / "project" / "solvers" / "clib"
 DLL_NAME = "custom_cg.so"
 
 # path to root directory
