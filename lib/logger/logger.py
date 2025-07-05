@@ -225,8 +225,8 @@ class AvgTimePerIterColumn(ProgressColumn):
 
 
 class PROGRESS(Progress):
-    MAX_TASKS = 9
-    MIN_TASK_INDEX = 0
+    MAX_TASKS: int = 9
+    MIN_TASK_INDEX: Optional[int] = None
 
     TASK_COLORS = {
         9: "[green]",
@@ -259,19 +259,35 @@ class PROGRESS(Progress):
     def get_active_progress_bar(
         cls, progress: Optional["PROGRESS"] = None
     ) -> "PROGRESS":
-        if isinstance(progress, PROGRESS):
-            if (
-                not progress.progress_started()
-                and progress._task_index > cls.MIN_TASK_INDEX
-            ):
-                progress.start()
-            return progress
-        elif progress is None:
-            obj = cls.__new__(cls)
-            obj.__init__()
-            if obj._task_index > cls.MIN_TASK_INDEX:
-                obj.start()
-            return obj
+        if cls.MIN_TASK_INDEX is not None:
+            if isinstance(progress, PROGRESS):
+                if (
+                    not progress.progress_started()
+                    and progress._task_index > cls.MIN_TASK_INDEX
+                ):
+                    progress.start()
+                return progress
+            elif progress is None:
+                obj = cls.__new__(cls)
+                obj.__init__()
+                if obj._task_index > cls.MIN_TASK_INDEX:
+                    obj.start()
+                return obj
+        else:
+            sig_set = inspect.signature(cls.set_minimum_task_index)
+            sig_show = inspect.signature(cls.show)
+            sig_hide = inspect.signature(cls.hide)
+            msg = (
+                "The class variable PROGRESS.MIN_TASK_INDEX is not set."
+                f"\nPlease set it to a value between 0 and {cls.MAX_TASKS} using:"
+                f"\n\t[bold]PROGRESS.{PROGRESS.set_minimum_task_index.__name__}{sig_set}[/bold]"
+                "\nTo show/hide the progress bar, use:"
+                f"\n\t[bold]PROGRESS.{PROGRESS.show.__name__}{sig_show}[/bold]"
+                f"\n\t[bold]PROGRESS.{PROGRESS.hide.__name__}{sig_hide}[/bold]"
+            )
+            LOGGER.error(msg)
+            exit()
+
 
     def soft_start(self) -> None:
         """Only start progress if it was not already active when get_active_progress_bar was called."""
@@ -365,11 +381,16 @@ class PROGRESS(Progress):
         cls.MIN_TASK_INDEX = index
 
     @classmethod
-    def turn_off(cls) -> None:
+    def hide(cls) -> None:
         """Turn off the progress bar."""
         cls.set_minimum_task_index(cls.MAX_TASKS)
+    
+    @classmethod
+    def show(cls) -> None:
+        """Turn on the progress bar."""
+        cls.set_minimum_task_index(0)
 
 # turn off progress bar if environment variable is set (used for debugging)
 if os.environ.get("DISABLE_PROGRESS") == "1":
-    PROGRESS.turn_off()
-    LOGGER.debug("Progress bar disabled via environment variable")
+    PROGRESS.hide()
+    LOGGER.debug("Hiding progress bar (DISABLE_PROGRESS environment variable set)")
