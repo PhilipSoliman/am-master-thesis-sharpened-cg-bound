@@ -4,8 +4,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 from tqdm import tqdm
 
+from lib.cli import get_cli_args
+from lib.plot_utils import save_latex_figure
 from lib.solvers import CustomCG
-from lib.utils import get_cli_args, save_latex_figure
 
 ###################
 # CONSTANT INPUTS #
@@ -48,7 +49,11 @@ left_cluster_widths = np.array(
         for i in range(RESOLUTION + 1)
     ]
 )
-min_spectral_width = 0.5 + RIGHT_CLUSTER_CONDITION_NUMBER + (RIGHT_CLUSTER_CONDITION_NUMBER - 1) * MIN_EIG/LEFT_CLUSTER_MIN_WIDTH
+min_spectral_width = (
+    0.5
+    + RIGHT_CLUSTER_CONDITION_NUMBER
+    + (RIGHT_CLUSTER_CONDITION_NUMBER - 1) * MIN_EIG / LEFT_CLUSTER_MIN_WIDTH
+)
 spectral_width_multiplier = (MAX_SPECTRAL_WIDTH / min_spectral_width) ** (
     1 / RESOLUTION
 )

@@ -5,7 +5,7 @@ import ngsolve as ngs
 import numpy as np
 import scipy.sparse as sp
 import torch
-from scipy.sparse.linalg import LinearOperator, SuperLU, factorized, spsolve
+from scipy.sparse.linalg import LinearOperator, factorized, spsolve
 
 from lib import gpu_interface as gpu
 from lib.fespace import FESpace
@@ -14,7 +14,6 @@ from lib.meshes import TwoLevelMesh
 from lib.operators import Operator
 from lib.preconditioners import CoarseSpace
 from lib.solvers import DirectSparseSolver, MatrixType
-from lib.utils import send_matrix_to_gpu, suppress_output
 
 
 class OneLevelSchwarzPreconditioner(Operator):
@@ -233,7 +232,7 @@ class TwoLevelSchwarzPreconditioner(OneLevelSchwarzPreconditioner):
             LOGGER.debug("Obtained coarse solver (CPU)")
             return factorized(self.coarse_op.tocsc())
         else:
-            with suppress_output():
+            with LOGGER.setLevelContext(LOGGER.WARNING):
                 solver = DirectSparseSolver(
                     self.coarse_op, matrix_type=MatrixType.SPD
                 ).solver

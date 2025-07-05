@@ -12,7 +12,7 @@ from lib.eigenvalues import eigs
 from lib.gpu_interface import GPUInterface
 from lib.logger import LOGGER, PROGRESS
 from lib.operators import Operator
-from lib.utils import get_root
+from lib.root import get_root
 
 # constants
 DLL_FOLDER = "lib/solvers/clib"
@@ -221,7 +221,7 @@ class CustomCG:
         desc += " [bold]| rel. r: {2:.2e} | α: {3:.2e}"
         desc += " | β: {4:.2e}[/bold]"
         for iteration in range(self.maxiter):
-            if r_norm/r_i[0] < self.tol: # relative residual tolerance
+            if r_norm / r_i[0] < self.tol:  # relative residual tolerance
                 success = True
                 LOGGER.info(f"Converged after {iteration} iterations")
                 break
@@ -254,7 +254,7 @@ class CustomCG:
                 description=desc.format(
                     iteration + 1,
                     self.maxiter,
-                    r_norm/r_i[0],
+                    r_norm / r_i[0],
                     alpha,
                     betas[-1] if betas else 0,
                 ),
@@ -440,7 +440,9 @@ class CustomCG:
         """
         LOGGER.debug("Calculating approximate eigenvalues using Lanczos matrix")
         if num_eigs is None:
-            num_eigs = min(100, self.niters - 1)  # limit to 100 to save computation time
+            num_eigs = min(
+                100, self.niters - 1
+            )  # limit to 100 to save computation time
         eigenvalues = eigs(
             self.get_lanczos_matrix(), library="scipy", num_eigs=num_eigs, which="BE"
         )

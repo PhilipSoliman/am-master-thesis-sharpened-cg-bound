@@ -4,13 +4,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 from tqdm import tqdm
 
+from lib.cli import CLI_ARGS
+from lib.plot_utils import save_latex_figure
 from lib.solvers import CustomCG
-from lib.utils import get_cli_args, save_latex_figure
 
 ###################
 # CONSTANT INPUTS #
 ###################
-ARGS = get_cli_args()
+# ARGS = get_cli_args()
 
 # plot
 FIGWIDTH = 5
@@ -141,7 +142,7 @@ ax.set_ylabel(r"$w_1$")
 
 fig.tight_layout()
 
-if ARGS.generate_output:
+if CLI_ARGS.generate_output:
     save_latex_figure("performance_condition_number", fig)
-if ARGS.show_output:
+if CLI_ARGS.show_output:
     plt.show()

@@ -15,7 +15,7 @@ from matplotlib.patches import Polygon
 from ngsolve.meshes import MakeQuadMesh
 
 from lib.logger import LOGGER, PROGRESS
-from lib.utils import CUSTOM_COLORS_SIMPLE, get_root
+from lib.plot_utils import CUSTOM_COLORS_SIMPLE, get_root
 
 DATA_DIR = get_root() / "data"
 

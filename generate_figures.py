@@ -4,7 +4,7 @@ from pathlib import Path
 
 from tqdm import tqdm
 
-from lib.utils import get_root
+from lib.root import get_root
 
 PROJECT_ROOT = get_root()
 

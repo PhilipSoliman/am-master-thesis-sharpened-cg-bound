@@ -1,14 +1,14 @@
 from pathlib import Path
-from typing import Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.sparse as sp
 
-from lib import gpu_interface as gpu
 from lib.boundary_conditions import HomogeneousDirichlet
+from lib.cli import get_cli_args
+from lib.plot_utils import set_mpl_style, set_mpl_cycler, save_latex_figure
 from lib.eigenvalues import eigs
-from lib.logger import LOGGER, PROGRESS
+from lib.logger import PROGRESS
 from lib.meshes import DefaultMeshParams, TwoLevelMesh
 from lib.preconditioners import (
     AMSCoarseSpace,
@@ -20,10 +20,6 @@ from lib.preconditioners import (
 )
 from lib.problem_type import ProblemType
 from lib.problems import CoefFunc, DiffusionProblem, SourceFunc
-from lib.utils import get_cli_args, save_latex_figure, set_mpl_cycler, set_mpl_style
-
-# set logging level
-LOGGER.setLevel("WARN")
 
 # set matplotlib style & cycler
 set_mpl_style()
