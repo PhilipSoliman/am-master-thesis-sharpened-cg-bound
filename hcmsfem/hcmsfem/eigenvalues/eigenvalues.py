@@ -7,8 +7,8 @@ import torch.linalg as trl
 from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score
 
-from project.gpu_interface import GPUInterface
-from project.logger import LOGGER
+from hcmsfem.gpu_interface import GPUInterface
+from hcmsfem.logger import LOGGER
 
 # initialize gpu
 gpu = GPUInterface()

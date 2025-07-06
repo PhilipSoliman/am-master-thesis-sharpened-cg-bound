@@ -1,8 +1,8 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-from project.solvers import CustomCG
-from project.utils import (
+from hcmsfem.solvers import CustomCG
+from hcmsfem.utils import (
     CustomColors,
     get_cli_args,
     mpl_graph_plot_style,

@@ -21,7 +21,7 @@ from rich.progress import (
     TimeRemainingColumn,
 )
 
-from project.root import get_package_root
+from hcmsfem.root import get_package_root
 
 ROOT = get_package_root()
 

@@ -4,9 +4,8 @@ import subprocess
 import sys
 import venv
 
-VENV_DIR = os.path.join(".venv")
-LOCAL_PACKAGE_FOLDER = "am-thesis-lib"
-CLIB_RELPATH = os.path.join(LOCAL_PACKAGE_FOLDER, "project", "solvers", "clib")
+VENV_DIR = ".venv"
+LOCAL_PACKAGE_FOLDER = "hcmsfem"
 PYTHON_EXEC = (
     os.path.join(VENV_DIR, "Scripts", "python.exe")
     if os.name == "nt"
@@ -95,7 +94,7 @@ def generate_meshes_for_experiments(root_path):
 
 def activate_environment():
     subprocess.run(
-        [PYTHON_EXEC, "activate_env.py"],
+        [PYTHON_EXEC, os.path.join(LOCAL_PACKAGE_FOLDER, "activate_env.py")],
         shell=True,
         check=True,
     )

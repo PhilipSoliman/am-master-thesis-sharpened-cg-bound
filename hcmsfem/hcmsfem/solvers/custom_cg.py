@@ -4,11 +4,11 @@ from typing import Optional
 import numpy as np
 import project.solvers.clib.custom_cg as custom_cg_lib
 import torch
-from project.eigenvalues import eigs
-from project.gpu_interface import GPUInterface
-from project.logger import LOGGER, PROGRESS
-from project.operators import Operator
-from project.root import get_root
+from hcmsfem.eigenvalues import eigs
+from hcmsfem.gpu_interface import GPUInterface
+from hcmsfem.logger import LOGGER, PROGRESS
+from hcmsfem.operators import Operator
+from hcmsfem.root import get_root
 from scipy.sparse import csc_matrix, csr_matrix
 from scipy.sparse import diags as spdiags
 from scipy.sparse.linalg import LinearOperator, aslinearoperator

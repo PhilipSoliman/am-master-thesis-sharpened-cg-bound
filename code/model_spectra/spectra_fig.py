@@ -9,9 +9,9 @@ from approximate_spectra import (
     get_spectrum_save_path,
 )
 
-from project.cli import get_cli_args
-from project.plot_utils import set_mpl_style, set_mpl_cycler, save_latex_figure
-from project.logger import LOGGER
+from hcmsfem.cli import get_cli_args
+from hcmsfem.logger import LOGGER
+from hcmsfem.plot_utils import save_latex_figure, set_mpl_cycler, set_mpl_style
 
 # set matplotlib style & cycler
 set_mpl_style()

@@ -1,8 +1,8 @@
-from project.boundary_conditions import HomogeneousDirichlet
-from project.fespace import FESpace
-from project.logger import LOGGER, PROGRESS
-from project.meshes import DefaultQuadMeshParams, TwoLevelMesh
-from project.problem_type import ProblemType
+from hcmsfem.boundary_conditions import HomogeneousDirichlet
+from hcmsfem.fespace import FESpace
+from hcmsfem.logger import LOGGER, PROGRESS
+from hcmsfem.meshes import DefaultQuadMeshParams, TwoLevelMesh
+from hcmsfem.problem_type import ProblemType
 
 # set logger level
 LOGGER.setLevel(LOGGER.INFO)

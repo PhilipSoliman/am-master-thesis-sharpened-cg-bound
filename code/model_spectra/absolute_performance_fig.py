@@ -10,12 +10,12 @@ from approximate_spectra import (
     get_spectrum_save_path,
 )
 
-from project.cli import CLI_ARGS
-from project.eigenvalues import split_spectrum_into_clusters
-from project.logger import LOGGER
-from project.plot_utils import save_latex_figure, set_mpl_cycler
-from project.problems import CoefFunc
-from project.solvers import CustomCG
+from hcmsfem.cli import CLI_ARGS
+from hcmsfem.eigenvalues import split_spectrum_into_clusters
+from hcmsfem.logger import LOGGER
+from hcmsfem.plot_utils import save_latex_figure, set_mpl_cycler
+from hcmsfem.problems import CoefFunc
+from hcmsfem.solvers import CustomCG
 
 # define coefficient functions to use
 COEF_FUNCS = [

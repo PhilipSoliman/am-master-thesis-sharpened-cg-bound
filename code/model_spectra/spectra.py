@@ -4,13 +4,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 import scipy.sparse as sp
 
-from project.boundary_conditions import HomogeneousDirichlet
-from project.cli import get_cli_args
-from project.plot_utils import set_mpl_style, set_mpl_cycler, save_latex_figure
-from project.eigenvalues import eigs
-from project.logger import PROGRESS
-from project.meshes import DefaultMeshParams, TwoLevelMesh
-from project.preconditioners import (
+from hcmsfem.boundary_conditions import HomogeneousDirichlet
+from hcmsfem.cli import get_cli_args
+from hcmsfem.eigenvalues import eigs
+from hcmsfem.logger import PROGRESS
+from hcmsfem.meshes import DefaultMeshParams, TwoLevelMesh
+from hcmsfem.plot_utils import save_latex_figure, set_mpl_cycler, set_mpl_style
+from hcmsfem.preconditioners import (
     AMSCoarseSpace,
     GDSWCoarseSpace,
     OneLevelSchwarzPreconditioner,
@@ -18,8 +18,8 @@ from project.preconditioners import (
     RGDSWCoarseSpace,
     TwoLevelSchwarzPreconditioner,
 )
-from project.problem_type import ProblemType
-from project.problems import CoefFunc, DiffusionProblem, SourceFunc
+from hcmsfem.problem_type import ProblemType
+from hcmsfem.problems import CoefFunc, DiffusionProblem, SourceFunc
 
 # set matplotlib style & cycler
 set_mpl_style()

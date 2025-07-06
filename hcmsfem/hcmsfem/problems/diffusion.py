@@ -4,18 +4,18 @@ from typing import Callable, Optional
 import ngsolve as ngs
 import numpy as np
 
-from project.boundary_conditions import BoundaryConditions, HomogeneousDirichlet
-from project.logger import LOGGER, PROGRESS
-from project.meshes import DefaultQuadMeshParams, MeshParams, TwoLevelMesh
-from project.preconditioners import (
+from hcmsfem.boundary_conditions import BoundaryConditions, HomogeneousDirichlet
+from hcmsfem.logger import LOGGER, PROGRESS
+from hcmsfem.meshes import DefaultQuadMeshParams, MeshParams, TwoLevelMesh
+from hcmsfem.preconditioners import (
     AMSCoarseSpace,
     GDSWCoarseSpace,
     OneLevelSchwarzPreconditioner,
     RGDSWCoarseSpace,
     TwoLevelSchwarzPreconditioner,
 )
-from project.problem_type import ProblemType
-from project.problems.problem import Problem
+from hcmsfem.problem_type import ProblemType
+from hcmsfem.problems.problem import Problem
 
 
 class SourceFunc(Enum):
@@ -471,7 +471,7 @@ class DiffusionProblemExample:
             import matplotlib.pyplot as plt
             import numpy as np
 
-            from project.plot_utils import set_mpl_cycler, set_mpl_style
+            from hcmsfem.plot_utils import set_mpl_cycler, set_mpl_style
 
             set_mpl_style()
             set_mpl_cycler(colors=True, lines=True)
@@ -574,7 +574,7 @@ def profile_construction():
     import cProfile
     import pstats
 
-    from project.visualize_profile import visualize_profile
+    from hcmsfem.visualize_profile import visualize_profile
 
     fp = DiffusionProblemExample.get_save_dir() / "diffusion_problem_construction.prof"
     cProfile.run("DiffusionProblemExample.example_construction()", str(fp))
@@ -587,7 +587,7 @@ def profile_solve():
     import cProfile
     import pstats
 
-    from project.visualize_profile import visualize_profile
+    from hcmsfem.visualize_profile import visualize_profile
 
     DiffusionProblemExample.example_construction()
     fp = DiffusionProblemExample.get_save_dir() / "diffusion_problem_solve.prof"

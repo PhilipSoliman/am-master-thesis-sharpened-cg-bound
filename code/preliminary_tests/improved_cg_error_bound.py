@@ -4,7 +4,12 @@ from math import sqrt as math_sqrt
 import matplotlib.pyplot as plt
 import numpy as np
 
-from project.utils import MPL_COLORS, mpl_graph_plot_style, set_mpl_cycler, set_mpl_style
+from hcmsfem.plot_utils import (
+    MPL_COLORS,
+    mpl_graph_plot_style,
+    set_mpl_cycler,
+    set_mpl_style,
+)
 
 # constants
 FIGWIDTH = 6

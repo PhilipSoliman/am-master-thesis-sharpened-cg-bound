@@ -7,14 +7,14 @@ from matplotlib.axes import Axes
 from shapely.geometry import Polygon as ShapelyPolygon
 from tqdm import tqdm
 
-from project.solvers import CustomCG
-from project.utils import (
+from hcmsfem.cli import CLI_ARGS
+from hcmsfem.plot_utils import (
     CUSTOM_COLORS_SIMPLE,
-    get_cli_args,
     save_latex_figure,
     set_mpl_cycler,
     set_mpl_style,
 )
+from hcmsfem.solvers import CustomCG
 
 set_mpl_style()
 set_mpl_cycler(colors=True, lines=True)
@@ -22,8 +22,6 @@ set_mpl_cycler(colors=True, lines=True)
 ###################
 # CONSTANT INPUTS #
 ###################
-ARGS = get_cli_args()
-
 # CG convergence
 TOLERANCE = 1e-6
 
@@ -40,12 +38,13 @@ LEGEND_HEIGHT = 0.1
 RESOLUTION = int(1e2)
 YLIMIT = (1e-1, 1e4)  # y-axis limits for performance plot
 
+
 #############
 # FUNCTIONS #
 #############
 # generating spectra
 def get_spectra(right_cluster_condition_number: float, min_eig: float):
-    
+
     LEFT_CLUSTER_WIDTHS = np.array(
         [min_eig * mult for mult in LEFT_CLUSTER_WIDTHS_MULTIPLIERS]
     )
@@ -252,7 +251,7 @@ for row, min_eig in enumerate(MIN_EIGS):
             ticks = np.logspace(
                 np.log10(condition_numbers[0]),
                 np.log10(MAX_CONDITION_NUMBER),
-                steps+2,
+                steps + 2,
             )
             ticklabels = [f"$10^{{{int(np.log10(tick))}}}$" for tick in ticks]
             ax.set_xticks(ticks, labels=ticklabels)
@@ -269,7 +268,7 @@ for row, min_eig in enumerate(MIN_EIGS):
             )
         if col == 0:
             ax.text(
-                condition_numbers[0]*10,
+                condition_numbers[0] * 10,
                 YLIMIT[1],
                 f"$\\mathbf{{\\lambda_1 = 10^{{{int(np.log10(min_eig))}}}}}$",
                 verticalalignment="bottom",
@@ -278,8 +277,8 @@ for row, min_eig in enumerate(MIN_EIGS):
 
 fig.tight_layout()
 
-if ARGS.generate_output:
+if CLI_ARGS.generate_output:
     fn = Path(__file__).name.replace("_fig.py", "")
     save_latex_figure(fn, fig)
-if ARGS.show_output:
+if CLI_ARGS.show_output:
     plt.show()

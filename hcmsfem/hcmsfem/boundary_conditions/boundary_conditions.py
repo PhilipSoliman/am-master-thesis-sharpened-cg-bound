@@ -2,9 +2,9 @@ from enum import Enum
 
 import ngsolve as ngs
 
-from project.logger import LOGGER
-from project.meshes import BoundaryName
-from project.problem_type import ProblemType
+from hcmsfem.logger import LOGGER
+from hcmsfem.meshes import BoundaryName
+from hcmsfem.problem_type import ProblemType
 
 
 class BoundaryType(Enum):

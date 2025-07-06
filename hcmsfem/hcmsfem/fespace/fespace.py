@@ -5,10 +5,10 @@ import ngsolve as ngs
 import numpy as np
 import scipy.sparse as sp
 
-from project.boundary_conditions import BoundaryConditions, HomogeneousDirichlet
-from project.logger import LOGGER, PROGRESS
-from project.meshes import DefaultQuadMeshParams, TwoLevelMesh
-from project.problem_type import ProblemType
+from hcmsfem.boundary_conditions import BoundaryConditions, HomogeneousDirichlet
+from hcmsfem.logger import LOGGER, PROGRESS
+from hcmsfem.meshes import DefaultQuadMeshParams, TwoLevelMesh
+from hcmsfem.problem_type import ProblemType
 
 
 class FESpace:
@@ -495,7 +495,7 @@ def profile_fespace():
     import cProfile
     import pstats
 
-    from project.visualize_profile import visualize_profile
+    from hcmsfem.visualize_profile import visualize_profile
 
     two_mesh = load_mesh()
     ptype = ProblemType.DIFFUSION

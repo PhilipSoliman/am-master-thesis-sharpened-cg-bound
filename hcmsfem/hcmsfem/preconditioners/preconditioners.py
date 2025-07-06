@@ -7,13 +7,13 @@ import scipy.sparse as sp
 import torch
 from scipy.sparse.linalg import LinearOperator, factorized, spsolve
 
-from project import gpu_interface as gpu
-from project.fespace import FESpace
-from project.logger import LOGGER, PROGRESS
-from project.meshes import TwoLevelMesh
-from project.operators import Operator
-from project.preconditioners import CoarseSpace
-from project.solvers import DirectSparseSolver, MatrixType
+from hcmsfem import gpu_interface as gpu
+from hcmsfem.fespace import FESpace
+from hcmsfem.logger import LOGGER, PROGRESS
+from hcmsfem.meshes import TwoLevelMesh
+from hcmsfem.operators import Operator
+from hcmsfem.preconditioners import CoarseSpace
+from hcmsfem.solvers import DirectSparseSolver, MatrixType
 
 
 class OneLevelSchwarzPreconditioner(Operator):

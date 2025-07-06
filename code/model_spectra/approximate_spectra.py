@@ -4,10 +4,10 @@ from typing import Optional, Type
 import numpy as np
 import scipy.sparse as sp
 
-from project.boundary_conditions import HomogeneousDirichlet
-from project.logger import LOGGER, PROGRESS
-from project.meshes import DefaultQuadMeshParams, MeshParams, TwoLevelMesh
-from project.preconditioners import (
+from hcmsfem.boundary_conditions import HomogeneousDirichlet
+from hcmsfem.logger import LOGGER, PROGRESS
+from hcmsfem.meshes import DefaultQuadMeshParams, MeshParams, TwoLevelMesh
+from hcmsfem.preconditioners import (
     AMSCoarseSpace,
     CoarseSpace,
     GDSWCoarseSpace,
@@ -15,9 +15,9 @@ from project.preconditioners import (
     RGDSWCoarseSpace,
     TwoLevelSchwarzPreconditioner,
 )
-from project.problem_type import ProblemType
-from project.problems import CoefFunc, DiffusionProblem, SourceFunc
-from project.solvers import CustomCG
+from hcmsfem.problem_type import ProblemType
+from hcmsfem.problems import CoefFunc, DiffusionProblem, SourceFunc
+from hcmsfem.solvers import CustomCG
 
 # setup for a diffusion problem
 MESHES = DefaultQuadMeshParams

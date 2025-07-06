@@ -10,11 +10,11 @@ from scipy.sparse import SparseEfficiencyWarning
 from scipy.sparse.linalg import factorized, spsolve
 from tqdm import tqdm
 
-from project.fespace import FESpace
-from project.logger import LOGGER, PROGRESS
-from project.meshes import TwoLevelMesh
-from project.problem_type import ProblemType
-from project.solvers.direct_sparse import DirectSparseSolver, MatrixType
+from hcmsfem.fespace import FESpace
+from hcmsfem.logger import LOGGER, PROGRESS
+from hcmsfem.meshes import TwoLevelMesh
+from hcmsfem.problem_type import ProblemType
+from hcmsfem.solvers.direct_sparse import DirectSparseSolver, MatrixType
 
 warnings.simplefilter("ignore", SparseEfficiencyWarning)
 

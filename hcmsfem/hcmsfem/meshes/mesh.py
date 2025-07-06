@@ -14,9 +14,9 @@ from matplotlib.figure import Figure
 from matplotlib.patches import Polygon
 from ngsolve.meshes import MakeQuadMesh
 
-from project.logger import LOGGER, PROGRESS
-from project.plot_utils import CUSTOM_COLORS_SIMPLE
-from project.root import get_root
+from hcmsfem.logger import LOGGER, PROGRESS
+from hcmsfem.plot_utils import CUSTOM_COLORS_SIMPLE
+from hcmsfem.root import get_root
 
 DATA_DIR = get_root() / "data"
 
@@ -1822,7 +1822,7 @@ class TwoLevelMesh:
             Figure: The matplotlib figure with the plotted two-level mesh.
         """
         LOGGER.info("Visualizing TwoLevelMesh")
-        from project.plot_utils import set_mpl_style
+        from hcmsfem.plot_utils import set_mpl_style
 
         set_mpl_style()
         fig, ax = plt.subplots(3, 2, figsize=(8, 12), sharex=True, sharey=True)
@@ -1915,7 +1915,7 @@ class TwoLevelMeshExamples:
     def profile(cls, creation: bool = True, loading: bool = True, top: int = 10):
         import cProfile
         import pstats
-        from project.visualize_profile import visualize_profile
+        from hcmsfem.visualize_profile import visualize_profile
         if creation:
             fp = cls.SAVE_DIR / "mesh_creation.prof"
             cProfile.run(

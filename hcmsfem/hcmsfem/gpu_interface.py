@@ -4,7 +4,7 @@ import numpy as np
 import scipy.sparse as sp
 import torch as tr
 
-from project.logger import LOGGER
+from hcmsfem.logger import LOGGER
 
 
 class GPUInterface:

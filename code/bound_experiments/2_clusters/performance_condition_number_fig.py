@@ -4,9 +4,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 from tqdm import tqdm
 
-from project.cli import CLI_ARGS
-from project.plot_utils import save_latex_figure
-from project.solvers import CustomCG
+from hcmsfem.cli import CLI_ARGS
+from hcmsfem.plot_utils import save_latex_figure
+from hcmsfem.solvers import CustomCG
 
 ###################
 # CONSTANT INPUTS #

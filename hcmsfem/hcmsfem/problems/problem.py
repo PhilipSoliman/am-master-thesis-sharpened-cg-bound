@@ -6,23 +6,23 @@ import ngsolve as ngs
 import numpy as np
 import scipy.sparse as sp
 
-from project.boundary_conditions import (
+from hcmsfem.boundary_conditions import (
     BoundaryCondition,
     BoundaryConditions,
     BoundaryType,
     HomogeneousDirichlet,
 )
-from project.fespace import FESpace
-from project.logger import LOGGER, PROGRESS
-from project.meshes import BoundaryName, DefaultQuadMeshParams, MeshParams, TwoLevelMesh
-from project.operators import Operator
-from project.preconditioners import (
+from hcmsfem.fespace import FESpace
+from hcmsfem.logger import LOGGER, PROGRESS
+from hcmsfem.meshes import BoundaryName, DefaultQuadMeshParams, MeshParams, TwoLevelMesh
+from hcmsfem.operators import Operator
+from hcmsfem.preconditioners import (
     CoarseSpace,
     OneLevelSchwarzPreconditioner,
     TwoLevelSchwarzPreconditioner,
 )
-from project.problem_type import ProblemType
-from project.solvers import CustomCG
+from hcmsfem.problem_type import ProblemType
+from hcmsfem.solvers import CustomCG
 
 
 class Problem:

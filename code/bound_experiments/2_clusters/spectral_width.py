@@ -2,13 +2,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # from clibs.custom_cg import CustomCG
-from project.solvers import CustomCG
-from project.utils import (
-    get_cli_args,
-)
+from hcmsfem.solvers import CustomCG
 
 # CONSTANT INPUTS
-ARGS = get_cli_args()
 FIGWIDTH = 5
 LEGEND_HEIGHT = 0.1
 DOMAIN = (0, 20)
@@ -73,4 +69,6 @@ for i, (lcluster, rcluster) in enumerate(zip(left_clusters, right_clusters)):
         [lcluster, rcluster], tol=TOLERANCE, exact_convergence=True
     )
     performance = m_c / m_i
-    print(f"Iteration bound for cluster {i+1} (cond: {condition_number:.2e}): m_c {m_c}, m_i {m_i}, spg {spectral_gap:.2e} Performance: {performance:.2e}")
+    print(
+        f"Iteration bound for cluster {i+1} (cond: {condition_number:.2e}): m_c {m_c}, m_i {m_i}, spg {spectral_gap:.2e} Performance: {performance:.2e}"
+    )

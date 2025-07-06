@@ -1,15 +1,16 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-# from clibs.custom_cg import CustomCG
-from project.solvers import CustomCG
-from project.cli import CLI_ARGS
-from project.plot_utils import (
+from hcmsfem.cli import CLI_ARGS
+from hcmsfem.plot_utils import (
     mpl_graph_plot_style,
     save_latex_figure,
     set_mpl_cycler,
     set_mpl_style,
 )
+
+# from clibs.custom_cg import CustomCG
+from hcmsfem.solvers import CustomCG
 
 # constants
 FIGWIDTH = 5

@@ -9,7 +9,7 @@ from matplotlib.lines import Line2D
 from matplotlib.text import Text
 from matplotlib.widgets import Slider
 
-from project.utils import mpl_graph_plot_style, set_mpl_cycler, set_mpl_style
+from hcmsfem.plot_utils import mpl_graph_plot_style, set_mpl_cycler, set_mpl_style
 
 # turn on interactive mode if necessary
 if not plt.isinteractive():
@@ -34,7 +34,7 @@ def chebyshev_polynomial(
 ) -> np.ndarray | float:
     if n == 0:
         raise ValueError("n must be greater than 0")
-    out = (z + np.emath.sqrt(z**2 - 1)) ** n + (z - np.emath.sqrt(z**2 - 1)) ** n # type: ignore
+    out = (z + np.emath.sqrt(z**2 - 1)) ** n + (z - np.emath.sqrt(z**2 - 1)) ** n  # type: ignore
     return out / 2
 
 
