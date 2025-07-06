@@ -2,17 +2,18 @@ from ctypes import CDLL, POINTER, byref, c_bool, c_double, c_int
 from typing import Optional
 
 import numpy as np
-import project.solvers.clib.custom_cg as custom_cg_lib
 import torch
+from scipy.sparse import csc_matrix, csr_matrix
+from scipy.sparse import diags as spdiags
+from scipy.sparse.linalg import LinearOperator, aslinearoperator
+from tqdm import trange
+
+import hcmsfem.solvers.clib.custom_cg as custom_cg_lib
 from hcmsfem.eigenvalues import eigs
 from hcmsfem.gpu_interface import GPUInterface
 from hcmsfem.logger import LOGGER, PROGRESS
 from hcmsfem.operators import Operator
 from hcmsfem.root import get_root
-from scipy.sparse import csc_matrix, csr_matrix
-from scipy.sparse import diags as spdiags
-from scipy.sparse.linalg import LinearOperator, aslinearoperator
-from tqdm import trange
 
 # initialize GPU interface
 gpu = GPUInterface()

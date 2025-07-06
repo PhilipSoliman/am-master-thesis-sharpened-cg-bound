@@ -4,7 +4,7 @@ from pathlib import Path
 
 from tqdm import tqdm
 
-from project.root import get_root
+from hcmsfem.root import get_root
 
 PROJECT_ROOT = get_root()
 
