@@ -3,8 +3,8 @@ import numpy as np
 
 # from clibs.custom_cg import CustomCG
 from project.solvers import CustomCG
-from project.utils import (
-    get_cli_args,
+from project.cli import CLI_ARGS
+from project.plot_utils import (
     mpl_graph_plot_style,
     save_latex_figure,
     set_mpl_cycler,
@@ -12,7 +12,6 @@ from project.utils import (
 )
 
 # constants
-ARGS = get_cli_args()
 FIGWIDTH = 5
 LEGEND_HEIGHT = 0.1
 DOMAIN = (0, 20)
@@ -95,7 +94,7 @@ ax.legend(
     bbox_to_anchor=(0, -0.1, 1, 0.1),
 )
 plt.tight_layout()
-if ARGS.generate_output:
+if CLI_ARGS.generate_output:
     save_latex_figure("cg_convergence_behaviour")
-if ARGS.show_output:
+if CLI_ARGS.show_output:
     plt.show()

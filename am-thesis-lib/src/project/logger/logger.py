@@ -21,9 +21,9 @@ from rich.progress import (
     TimeRemainingColumn,
 )
 
-from project.root import get_root
+from project.root import get_package_root
 
-ROOT = get_root()
+ROOT = get_package_root()
 
 
 ##########

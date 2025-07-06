@@ -4,23 +4,23 @@ import subprocess
 import sys
 import venv
 
-VENV_NAME = ".venv"
-LOCAL_PACKAGE_FOLDER = "project"
-CLIB_RELPATH = os.path.join(LOCAL_PACKAGE_FOLDER, "solvers", "clib")
+VENV_DIR = os.path.join(".venv")
+LOCAL_PACKAGE_FOLDER = "am-thesis-lib"
+CLIB_RELPATH = os.path.join(LOCAL_PACKAGE_FOLDER, "project", "solvers", "clib")
 PYTHON_EXEC = (
-    os.path.join(VENV_NAME, "Scripts", "python.exe")
+    os.path.join(VENV_DIR, "Scripts", "python.exe")
     if os.name == "nt"
-    else os.path.join(VENV_NAME, "bin", "python")
+    else os.path.join(VENV_DIR, "bin", "python")
 )
 CUDA_VERSIONS = ["cu118", "cu126", "cu128"]
 
 
 def create_virtual_environment():
-    if not os.path.exists(VENV_NAME):
-        venv.create(VENV_NAME, with_pip=True)
-        print(f"Created virtual environment '{VENV_NAME}'")
+    if not os.path.exists(VENV_DIR):
+        venv.create(VENV_DIR, with_pip=True)
+        print(f"Created virtual environment '{VENV_DIR}'")
     else:
-        print(f"Virtual environment '{VENV_NAME}' already exists")
+        print(f"Virtual environment '{VENV_DIR}' already exists")
 
 
 def install_requirements(root_path):
@@ -29,20 +29,20 @@ def install_requirements(root_path):
     subprocess.check_call([PYTHON_EXEC, "-m", "pip", "install", "--upgrade", "pip"])
     print("Upgraded pip to latest version")
 
-    # Install requirements from requirements.txt
+    # install local python package
     subprocess.check_call(
         [
             PYTHON_EXEC,
             "-m",
             "pip",
             "install",
-            "-r",
-            os.path.join(root_path, "requirements.txt"),
+            "-e",
+            os.path.join(".", LOCAL_PACKAGE_FOLDER),
         ]
     )
-    print("Installed required packages")
+    print(f"Installed local package {LOCAL_PACKAGE_FOLDER}")
 
-    # install PyTorch
+    # install PyTorch with or without CUDA support
     cuda_version = _get_cuda_version()
     cuda_used = False
     print(f"Detected CUDA version: {cuda_version}")
@@ -66,9 +66,6 @@ def install_requirements(root_path):
     print(
         f"Installed PyTorch {'with CUDA support' if cuda_used else 'without CUDA support'}"
     )
-
-    subprocess.check_call([PYTHON_EXEC, "-m", "pip", "install", "-e", "."])
-    print("Installed local packages")
 
 
 def generate_meshes_for_experiments(root_path):
@@ -94,28 +91,6 @@ def generate_meshes_for_experiments(root_path):
         sys.exit(1)
 
     print("Meshes generated successfully.")
-
-
-def make_c_library(root_path):
-    lib_path = os.path.join(root_path, CLIB_RELPATH)
-    print(f"Building C library in {lib_path}...")
-
-    result = subprocess.run(
-        ["make"],
-        cwd=lib_path,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
-        shell=True,  # Needed for Windows compatibility with make
-    )
-
-    print(result.stdout)
-
-    if result.returncode != 0:
-        print("Failed to build the C library. Exiting.")
-        sys.exit(1)
-
-    print("C library built successfully.")
 
 
 def activate_environment():
@@ -150,7 +125,6 @@ def main():
     create_virtual_environment()
     install_requirements(root_path)
     generate_meshes_for_experiments(root_path)
-    make_c_library(root_path)
     activate_environment()
     sys.exit(0)
 

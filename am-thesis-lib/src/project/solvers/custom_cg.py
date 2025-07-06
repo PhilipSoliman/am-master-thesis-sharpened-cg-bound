@@ -2,30 +2,17 @@ from ctypes import CDLL, POINTER, byref, c_bool, c_double, c_int
 from typing import Optional
 
 import numpy as np
+import project.solvers.clib.custom_cg as custom_cg_lib
 import torch
-from scipy.sparse import csc_matrix, csr_matrix
-from scipy.sparse import diags as spdiags
-from scipy.sparse.linalg import LinearOperator, aslinearoperator
-from tqdm import trange
-
 from project.eigenvalues import eigs
 from project.gpu_interface import GPUInterface
 from project.logger import LOGGER, PROGRESS
 from project.operators import Operator
 from project.root import get_root
-
-# constants
-DLL_FOLDER = get_root() / "project" / "solvers" / "clib"
-DLL_NAME = "custom_cg.so"
-
-# path to root directory
-root = get_root()
-
-# shared library path
-lib_path = root / DLL_FOLDER / DLL_NAME
-
-# load shared library
-custom_cg_lib = CDLL(lib_path.as_posix())
+from scipy.sparse import csc_matrix, csr_matrix
+from scipy.sparse import diags as spdiags
+from scipy.sparse.linalg import LinearOperator, aslinearoperator
+from tqdm import trange
 
 # initialize GPU interface
 gpu = GPUInterface()
@@ -88,90 +75,49 @@ class CustomCG:
     def solve(
         self,
         save_residuals: bool = False,
-        x_exact: np.ndarray = np.array([]),
+        x_exact: Optional[np.ndarray] = None,
     ) -> tuple[np.ndarray, bool]:
-        # instantiate arrays for coefficients and iterates
         alpha = np.zeros(self.maxiter, dtype=np.float64)
         beta = np.zeros(self.maxiter, dtype=np.float64)
         r_i = np.zeros(self.maxiter + 1, dtype=np.float64)
         x_m = np.zeros_like(self.x_0)
         e_i = np.zeros(self.maxiter + 1, dtype=np.float64)
-
-        # convert to c types
-        n = c_int(self.A.shape[0])  # type: ignore
-        tol = c_double(self.tol)
-        maxiter = c_int(self.maxiter)
-        A = self.A.flatten().astype(c_double)  # type: ignore
-        b = self.b.astype(c_double)
-        x_0 = self.x_0.astype(c_double)
-        x_m = x_m.astype(c_double)
-        alpha = alpha.astype(c_double)
-        beta = beta.astype(c_double)
-        niters = c_int(0)
-        residuals = r_i.flatten().astype(c_double)
-        self.x_exact = x_exact
-        x_exact = x_exact.astype(c_double)
         if x_exact.size > 0:
             self.exact_convergence = True
-        exact_convergence = c_bool(self.exact_convergence)
-        e_i = e_i.astype(c_double)
 
-        # set function signature
-        custom_cg_lib.custom_cg.argtypes = [
-            POINTER(c_double),  # A
-            POINTER(c_double),  # b
-            POINTER(c_double),  # x_0
-            POINTER(c_double),  # x_m
-            POINTER(c_double),  # alpha
-            POINTER(c_double),  # beta
-            c_int,  # size
-            POINTER(c_int),  # niters
-            c_int,  # maxiter
-            c_double,  # tol
-            c_bool,  # save_residuals
-            POINTER(c_double),  # residuals
-            c_bool,  # exact_convergence
-            POINTER(c_double),  # x_exact
-            POINTER(c_double),  # e_i
-        ]
-        custom_cg_lib.custom_cg.restype = c_bool
-
-        # call the function
+        niters = np.zeros(1, dtype=np.int32)
         success = custom_cg_lib.custom_cg(
-            A.ctypes.data_as(POINTER(c_double)),
-            b.ctypes.data_as(POINTER(c_double)),
-            x_0.ctypes.data_as(POINTER(c_double)),
-            x_m.ctypes.data_as(POINTER(c_double)),
-            alpha.ctypes.data_as(POINTER(c_double)),
-            beta.ctypes.data_as(POINTER(c_double)),
-            n,
-            byref(niters),
-            maxiter,
-            tol,
-            c_bool(save_residuals),
-            residuals.ctypes.data_as(POINTER(c_double)),
-            exact_convergence,
-            x_exact.ctypes.data_as(POINTER(c_double)),
-            e_i.ctypes.data_as(POINTER(c_double)),
+            np.asarray(self.A),
+            self.b,
+            self.x_0,
+            x_m,
+            alpha,
+            beta,
+            self.n,
+            niters,
+            self.maxiter,
+            self.tol,
+            save_residuals,
+            r_i,
+            self.exact_convergence,
+            x_exact,
+            e_i,
         )
 
-        # solution
-        x_m = np.ctypeslib.as_array(x_m)
-
-        # save number of iterations
-        self.niters = int(niters.value)
+        # get number of iterations
+        self.niters = niters[0]
 
         # save coefficients
-        self.alpha = np.ctypeslib.as_array(alpha)[: self.niters]
-        self.beta = np.ctypeslib.as_array(beta)[: (self.niters - 1)]
+        self.alpha = alpha[: self.niters]
+        self.beta = beta[: (self.niters - 1)]
 
         # save residuals
         if save_residuals:
-            self.r_i = np.ctypeslib.as_array(residuals)[: (self.niters + 1)]
+            self.r_i = r_i[: (self.niters + 1)]
 
         # save errors
         if self.exact_convergence:
-            self.e_i = np.ctypeslib.as_array(e_i)[: (self.niters + 1)]
+            self.e_i = e_i[: (self.niters + 1)]
 
         return x_m, success
 
@@ -585,19 +531,3 @@ class CustomCG:
 if __name__ == "__main__":
     # test library access
     custom_cg_lib.TEST()
-
-    # test basic arithmetic + function interface with ctypes
-    cadd = custom_cg_lib.add
-    cadd.argtypes = [POINTER(c_double), POINTER(c_double), POINTER(c_double), c_int]
-    # cadd.restype = POINTER(c_double)
-    a = np.array([1.1, 2.2, 3.3])
-    b = np.array([4.4, 5.5, 6.6])
-    c = np.array([0.0, 0.0, 0.0])
-    cadd(
-        a.ctypes.data_as(POINTER(c_double)),
-        b.ctypes.data_as(POINTER(c_double)),
-        c.ctypes.data_as(POINTER(c_double)),
-        len(a),
-    )
-    c_array = np.ctypeslib.as_array(c, (len(a),))
-    print(c_array)

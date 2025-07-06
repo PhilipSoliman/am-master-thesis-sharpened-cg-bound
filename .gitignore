@@ -26,6 +26,7 @@ docs/
 # c
 clibs/build/
 **/*.so
+**/*.pyd
 
 # vscode
 .vscode/

@@ -8,6 +8,7 @@ from project.problem_type import ProblemType
 LOGGER.setLevel(LOGGER.INFO)
 
 # progress bar setup
+PROGRESS.show()
 progress = PROGRESS.get_active_progress_bar()
 task = progress.add_task("Generating mesh", total=len(DefaultQuadMeshParams))
 desc = progress.get_description(task) + " H = 1/{0:.0f}"
