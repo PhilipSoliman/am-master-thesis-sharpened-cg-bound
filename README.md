@@ -52,6 +52,8 @@ After the setup script is run and in case you do not already have some installed
 
 For the Action Buttons to appear, you will need to press the white "Reload" button in the bottom left corner of your VSCode Workspace, after installing the extension.
 
+---
+
 ### Running Code
 Any python script created in this repository can be run using the python interpreter from the virtual environment created by the setup script. To run a script, simply use the following command in the terminal (after the environment is activated):
 ```bash
@@ -67,6 +69,8 @@ Or, to run the [experiment that calculates approximate eigenspectra](code/model_
 ```bash
 python code/model_spectra/approximate_spectra.py --loglvl debug --show-progress
 ```
+
+---
 
 ### Showing and Generating Figures
 Any file in the [code](code) folder that ends with `_fig.py` is a script that generates a figure. These scripts can be run using the python interpreter from the virtual environment created by the setup script. To run a figure generating script and show its output, simply use the following command in the terminal (after the environment is activated):
@@ -84,11 +88,13 @@ python code/model_spectra/absolute_performance_fig.py --show-output
 
 The above actions can also be done by clicking on the action buttons that are configured automatically by the [setup script](#vscode-extensions).
 
-Additionally, there is also a convenience script [generate_figures.py](generate_figures.py) that can be used to generate all the python files ending in "_fig.py" in [code](code).
+Additionally, there is a convenience script [generate_figures.py](generate_figures.py) that can be used to generate figures resulting from all the python files ending in "_fig.py" in the [code](code) directory.
 
 The generated figures are always saved as PDFs in a folder called `figures` in the root of this repository.
 
 **IMPORTANT**: The figures are not included in the repository and need to be generated before compiling the latex documents.
+
+---
 
 ### Compiling LaTeX Files
 
