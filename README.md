@@ -1,172 +1,104 @@
 # Master Thesis Project
-This document provides [setup instructions](#setup) as well as [general guidelines](#guidelines) for this thesis repository. It includes information on how to set up the python environment, compile latex and C files, and run the code. In general, this repository is set up to be used with Visual Studio Code (VSCode). It is recommended to use VSCode for the project, as it provides a lot of useful features and extensions that can help with the development process.
+This document provides [setup instructions](#setup) as well as [general guidelines](#guidelines) for this thesis repository. It includes information on how to set up the python environment, generate figures, run experiments and compile latex files. In general, this repository is set up to be used with Visual Studio Code (VSCode). It is recommended to use VSCode for the project, as it provides a lot of useful features and extensions that can help with the development process.
 
 ## Setup
-This section outlines the setup process for the project, including the installation of [required software](#requirements) and configuration of the development environment. After ensuring you have the necessary software installed, you can proceed with either the [easy](#easy-setup) or [manual](#manual-setup-vscode) setup process.
+This section outlines the setup process for the project, including the installation of [required software](#requirements) and configuration of the development environment.
 
 ### Requirements
 Check that you have the following 
 - `python` (3.10 or higher)
-- `make` (consider using [MSYS2](https://www.msys2.org/) on Windows)
-- `gcc` (again, consider using [MSYS2](https://www.msys2.org/) on Windows)
 - Full [TeXLive](https://www.tug.org/texlive/windows.html) installation. On Linux this can be done using the following command:
 ```bash
 apt-get install texlive-full
 ```
-possibly using `sudo`. If you are on Windows, the above should be made available in your PATH. Lastly for the LaTeX compilation it is necessary that the path to this repository's root does not contain any spaces. This is a [known issue](https://github.com/James-Yu/LaTeX-Workshop/issues/2910) with the `latexmk` tool, which is used for compiling the LaTeX files.
+possibly using `sudo`. If you are on Windows, the above should be made available in your PATH. You can check this by running the following command in a terminal:
+```bash
+tex --version
+```
+Lastly for the LaTeX compilation it is necessary that the path to this repository does not contain any spaces. This is a [known issue](https://github.com/James-Yu/LaTeX-Workshop/issues/2910) with the `latexmk` tool, which is used for compiling the LaTeX files.
 
 ---
 
-### Easy Setup
-The easiest way to set up the project is to use the provided [setup_env.py](setup_env.py) script. On Linux, you might need to give it rights by running the following command (in a bash shell):
+### Setup Script
+Firstly, the [HCMSFEM](https://github.com/PhilipSoliman/hcmsfem) repository is set up as a [git submodule](https://git-scm.com/book/en/v2/Git-Tools-Submodules) of this repository. If you have not done so already, run the following command after cloning:
 ```bash
-chmod +x setup_env.py
+git submodule update --init
 ```
-The script automatically sets up a virtual environment, installs all the required python packages specified in the `requirements.txt` file as well as the local `lib` module. Simply use your python installation to run the script:
-```bash
-<python-executable> setup_env.py
-```
-Note, Linux `<python-executable> = python3`, while on Windows one can use either `python` or `py`.
+This clones HCMSFEM repository at the specific commit on the [philip-soliman-am-master-thesis](https://github.com/PhilipSoliman/hcmsfem/tree/philip-soliman-am-master-thesis) branch from which this main repository benefits. For more information on how to use git submodules, refer to the [Git Submodules documentation](https://git-scm.com/book/en/v2/Git-Tools-Submodules).
 
-On Windows the script will also activate the environment for you, while on Linux you will need to explicitly do so by running the following command (in a bash shell):
+Second, use the provided [setup_env.py](hcmsfem/setup_env.py) script. On Linux, you might need to give it rights by running the following command (in a bash shell):
+```bash
+chmod +x hcmsfem/setup_env.py
+```
+The script automatically sets up a virtual environment, installs hcmsfem and all requirements it relies on; listed in its [pyproject.toml](hcmsfem/pyproject.toml) file. Simply use your python installation to run the script:
+```bash
+<python-executable> hcmsfem/setup_env.py --parent
+```
+The `--parent` flag ensures that the virtual environment, logs, data and figures folders are created in this repository's root. For more setup options, run the script with the `--help` flag to see all available options:
+```bash
+<python-executable> hcmsfem/setup_env.py --help
+```
+On Windows, the `setup_env.py` script will also activate the environment for you, while on Linux you will need to explicitly do so by running the following command (in a bash shell):
 ```bash
 source .venv/bin/activate
 ```
+
+#### VSCode Extensions
+After the setup script is run and in case some you do not already have them installed, you should be prompted to install the following VSCode extensions:
+- [Python](https://marketplace.visualstudio.com/items?itemName=ms-python.python)
+- [Pylance](https://marketplace.visualstudio.com/items?itemName=ms-python.vscode-pylance)
+- [LaTeX Workshop](https://marketplace.visualstudio.com/items?itemName=James-Yu.latex-workshop)
+- [Action Buttons](https://marketplace.visualstudio.com/items?itemName=seunlanlege.action-buttons)
+
+For the Action Buttons to appear, you will need to press the white "Reload" button in the bottom left corner of your VSCode Workspace, after installing the extension.
+
+### Running Code
+Any python script created in this repository can be run using the python interpreter from the virtual environment created by the setup script. To run a script, simply use the following command in the terminal (after the environment is activated):
+```bash
+python <script_name>.py
+```
+Or, select the virtual environment as the current workspace's python interpreter in VSCode and run the script using the "Run Python File in Terminal" command or play button. This will ensure that the script is run with the correct python interpreter and all dependencies are available.
+
+Any script that imports the `hcmsfem` package can be run with the `--help` flag to see all available options. For example, to run the experiment that generates all quadrilateral meshes for experiments with info logging and progress bar, use the following command:
+```bash
+python hcmsfem/generate_meshes.py --loglvl info --show-progress
+```
+Or, to run the [experiment](code/model_spectra/approximate_spectra.py) that calculates spectra for the GDSW, RGDSW and AMS preconditioners for a diffusion problem with HDBCs on a unit square for various high-contrast coefficient functions with debug logging and progress bar, use the following command:
+```bash
+python code/model_spectra/approximate_spectra.py --loglvl debug --show-progress
+```
+
+### Showing and Generating Figures
+Any file in the [code](code) folder that ends with `_fig.py` is a script that generates a figure. These scripts can be run using the python interpreter from the virtual environment created by the setup script. To run a figure generating script and show its output, simply use the following command in the terminal (after the environment is activated):
+```bash
+python path_to_script/*_fig.py --show-output
+```
+Or, to generate an output PDF file without showing it, use the following command:
+```bash
+python path_to_script/*_fig.py --generate-output
+```
+The above actions can also be done by clicking on the action buttons that are configured automatically by the [setup script](#vscode-extensions).
+
+Additionally, there is also a convenience script [generate_figures.py](generate_figures.py) that can be used to generate all the figures in the project. It simply calls the function for each python file ending in "_fig.py" in [code](code).
+
+The generated figures are always saved as PDFs in a folder called `figures` in the root of the project. 
+
+**IMPORTANT**: The figures need to be generated before compiling the latex documents, as they are included in the documents.
+
+### Compiling LaTeX Files
+
+#### VSCode
+It is recommended to use the VSCode extension [LaTeX Workshop](https://marketplace.visualstudio.com/items?itemName=James-Yu.latex-workshop) to compile LaTeX files. This extension allows for easy compilation and previewing of the Latex documents. The automated VSCode setup configures this extension with the proper `lualatexmk` and `biber` tools.
+
+All main LaTeX files in this repository can be compiled using the dedicated button from the LaTeX Workshop extension. A `build` folder will be created in the respective *.tex files' folders, in which all the output files will be stored.
+
+#### Terminal
 Latex file compilation can be done using the provided [compile_latex.py](compile_latex.py) script. This script will check if a `figure` directory is present in the root of the project (generating it if not) and, subsequently allow you to choose which LaTeX files you want to compile. It will also create a `build` folder in the respective folders, where all the output files will be stored. The script can be run using the following command in the terminal (after the environment is activated):
 ```bash
 python compile_latex.py
 ```
 
----
-### Manual Setup (VSCode)
-#### 1. Running Python Files 
-In order to run the Python files, one needs to have set up a (virtual) environment with the required packages. The requirements are listed in [requirements.txt](requirements.txt). To install the packages, run the following command in the terminal (after the environment is activated):
-```bash
-pip install -r requirements.txt
-```
- 
-Next to this, the project root (or workspace folder in VSCode) should be added to the Python path. In VSCode this can be done by adding the following line to the settings.json file:
-```json
-{
-    "terminal.integrated.env.linux": {
-        "PYTHONPATH": "${env:PYTHONPATH}:${workspaceFolder}"
-    }
-}
-```
-or for Windows:
-```json
-{
-    "terminal.integrated.env.windows": {
-        "PYTHONPATH": "${env:PYTHONPATH};${workspaceFolder}"
-    }
-}
-```
-
-Some Python files can accept command line arguments. To make it easier to work with these files in VSCode it is recommended to use the [VSCode Action Buttons](https://marketplace.visualstudio.com/items?itemName=seunlanlege.action-buttons) extension together with the following settings:
-```json
-{
-  "actionButtons": {
-    "commands":
-      [            
-        {
-        "name": "$(triangle-right) Run Python (show output)",
-        "color": "green",
-        "singleInstance": true,
-        "command": "python ${file} --show-output",
-        },
-        {
-        "name": "$(triangle-right) Run Python (generate output)",
-        "color": "green",
-        "singleInstance": true,
-        "command": "python ${file} --generate-output",
-        },
-    ],
-
-    "defaultColor": "white",
-    "reloadButton": "↻",
-    "loadNpmCommands": false
-  },
-}
-```
-Once setup, simply press the white reload button in the bottom left corner of the VSCode window to load the buttons. The buttons will then appear next to the reload button. The first button will run the Python file with the `--show-output` argument, while the second button will run the file with the `--generate-output` argument. This allows for easy testing and debugging of the Python files.
-
-#### 2. Generating Figures
-In this repository, figures are custom-generated using a function in [python utils](utils/utils.py) called ```save_latex_figure```. There is also a convenience script [generate_figures.py](generate_figures.py) that can be used to generate all the figures in the project. It simply calls the function for each python file ending in "_fig.py" in [code](code). 
-
-The generated figures are always saved as PDFs in a folder called `figures` in the root of the project. 
-
-**IMPORTANT**: the figures need to be generated before compiling the latex documents, as they are included in the documents using the `\includegraphics` command.
-
-#### 3. Compiling LaTeX Files
-It is recommended to use the VSCode extension [LaTeX Workshop](https://marketplace.visualstudio.com/items?itemName=James-Yu.latex-workshop) to compile LaTeX files. This extension allows for easy compilation and previewing of the Latex documents. The following settings are necessary to compile the documents with the `lualatexmk` and `biber` tools:
-```json
-{
-    "latex-workshop.intellisense.citation.backend": "biblatex",
-    "latex-workshop.kpsewhich.enabled": false,
-    "latex-workshop.latex.recipes": [
-        {
-            "name": "lualatexmk -> biber -> lualatexmk * 2",
-            "tools": [
-                "lualatexmk",
-                "biber",
-                "lualatexmk",
-                "lualatexmk"
-            ]
-        },
-    ],
-    "latex-workshop.latex.tools": [
-                {
-            "name": "lualatexmk",
-            "command": "latexmk",
-            "args": [
-                "-synctex=1",
-                "-cd",
-                "-interaction=nonstopmode",
-                "-file-line-error",
-                "-lualatex",
-                "-outdir=%OUTDIR%",
-                "%DOC%"
-            ],
-            "env": {}
-        },
-                {
-            "name": "biber",
-            "command": "biber",
-            "args": [
-                "--input-directory=%OUTDIR%",
-                "--output-directory=%OUTDIR%",
-                "%DOCFILE%"
-            ],
-            "env": {}
-        },
-    ],
-    "latex-workshop.latex.outDir": "%DIR%/build",
-},
-```
-These settings should compile allow for compilation of all the main LaTeX files in [final_thesis](final_thesis), [interim_thesis](interim_thesis) and [manuscript](manuscript) folders (with the same name) by using the dedicated button from the Latex Workshop extension. The `build` folder will be created in the respective folders, where all the output files will be stored. Where and if subfiles are configured for the separate chapters, compilation will be possible for these files in the same way. See for instance the [theory](manuscript/chapters/theory/theory.tex) chapter of the manuscript.
-
-Alternatively, one can use the recipe and subsidiary commands outlined above to compile the documents manually in a terminal (with a working Latex installation).
-
-#### 4. C File Compilation
-For this, one can either use gcc or clang directly in combination with the provided [Makefile](clibs/Makefile). To compile the C files, run the following command in the terminal:
-```bash
-make
-```
-This will compile all the C files in the project. To clean up the compiled files, use:
-```bash
-make clean
-```
-When working in VSCode, it is recommended to use the [Makefile tools](https://marketplace.visualstudio.com/items?itemName=ms-vscode.makefile-tools) extension. This extension allows for easy compilation and management of Makefiles. The following settings are necessary to compile the C files with the `Makefile` tool:
-```json
-{
-  "makefile.makefilePath": "clibs",
-  "makefile.buildLog": "",
-  "makefile.makePath": "C:\\path\\to\\make.exe", // Change this to the path where make is installed
-  "makefile.configurations": [],
-  "makefile.makeDirectory": "clibs",
-}
-```
-Note; the makePath is just an example, and should be changed to the path where the make command is installed.
+**IMPORTANT**: The compile script will not check if ALL the figures necessary for the compilation are present. To ensure that all figures are generated, run the [generate_figures.py](generate_figures.py) script, as describe in [this section](#generating-figures) before compiling the LaTeX files.
 
 ---
 
