@@ -15,18 +15,18 @@ possibly using `sudo`. If you are on Windows, the above should be made available
 ```bash
 tex --version
 ```
-Lastly for the LaTeX compilation it is necessary that the path to this repository does not contain any spaces. This is a [known issue](https://github.com/James-Yu/LaTeX-Workshop/issues/2910) with the `latexmk` tool, which is used for compiling the LaTeX files.
+Lastly for the LaTeX compilation it is necessary that the path to this repository does not contain any spaces and/or hyphens. This is a [known issue](https://github.com/James-Yu/LaTeX-Workshop/issues/2910) with the `latexmk` tool, which is used for compiling the LaTeX files. **UPDATE**: This issue has been fixed as of 08/07/2025. However, it is still recommended to avoid 'bad' file paths, as they might cause the same issue anyway.
 
 ---
 
 ### Setup Script
-Firstly, the [HCMSFEM](https://github.com/PhilipSoliman/hcmsfem) repository is set up as a [git submodule](https://git-scm.com/book/en/v2/Git-Tools-Submodules) of this repository. If you have not done so already, run the following command after cloning:
+Firstly, the [hcmsfem](https://github.com/PhilipSoliman/hcmsfem) repository is set up as a [git submodule](https://git-scm.com/book/en/v2/Git-Tools-Submodules) of this repository. If you have not done so already, run the following command after cloning:
 ```bash
 git submodule update --init
 ```
-This clones HCMSFEM repository at the specific commit on the [philip-soliman-am-master-thesis](https://github.com/PhilipSoliman/hcmsfem/tree/philip-soliman-am-master-thesis) branch from which this main repository benefits. For more information on how to use git submodules, refer to the [Git Submodules documentation](https://git-scm.com/book/en/v2/Git-Tools-Submodules).
+This clones hcmsfem repository at the specific commit on the [philip-soliman-am-master-thesis](https://github.com/PhilipSoliman/hcmsfem/tree/philip-soliman-am-master-thesis) branch from which this main repository benefits. For more information on how to use git submodules, refer to the [Git Submodules documentation](https://git-scm.com/book/en/v2/Git-Tools-Submodules).
 
-Second, use the provided [setup_env.py](hcmsfem/setup_env.py) script. On Linux, you might need to give it rights by running the following command (in a bash shell):
+Second, run the provided [setup_env.py](hcmsfem/setup_env.py) script. On Linux, you might need to give it appropriate rights by running the following command (in a bash shell):
 ```bash
 chmod +x hcmsfem/setup_env.py
 ```
@@ -44,7 +44,7 @@ source .venv/bin/activate
 ```
 
 #### VSCode Extensions
-After the setup script is run and in case some you do not already have them installed, you should be prompted to install the following VSCode extensions:
+After the setup script is run and in case you do not already have some installed, you should be prompted to install the following VSCode extensions:
 - [Python](https://marketplace.visualstudio.com/items?itemName=ms-python.python)
 - [Pylance](https://marketplace.visualstudio.com/items?itemName=ms-python.vscode-pylance)
 - [LaTeX Workshop](https://marketplace.visualstudio.com/items?itemName=James-Yu.latex-workshop)
@@ -59,11 +59,11 @@ python <script_name>.py
 ```
 Or, select the virtual environment as the current workspace's python interpreter in VSCode and run the script using the "Run Python File in Terminal" command or play button. This will ensure that the script is run with the correct python interpreter and all dependencies are available.
 
-Any script that imports the `hcmsfem` package can be run with the `--help` flag to see all available options. For example, to run the experiment that generates all quadrilateral meshes for experiments with info logging and progress bar, use the following command:
+Any script that imports the `hcmsfem` package can be run with the `--help` flag to see all available options. For example, to run the script that [generates all quadrilateral meshes for experiments](hcmsfem/generate_meshes.py) with logging level `info` and visible progress bar(s), use the following command:
 ```bash
 python hcmsfem/generate_meshes.py --loglvl info --show-progress
 ```
-Or, to run the [experiment](code/model_spectra/approximate_spectra.py) that calculates spectra for the GDSW, RGDSW and AMS preconditioners for a diffusion problem with HDBCs on a unit square for various high-contrast coefficient functions with debug logging and progress bar, use the following command:
+Or, to run the [experiment that calculates approximate eigenspectra](code/model_spectra/approximate_spectra.py) of the GDSW, RGDSW and AMS preconditioners for a diffusion problem with homogeneous DBCs on a unit square for various high-contrast coefficient functions with logging level `debug` and visible progress bar(s), use the following command:
 ```bash
 python code/model_spectra/approximate_spectra.py --loglvl debug --show-progress
 ```
@@ -77,13 +77,18 @@ Or, to generate an output PDF file without showing it, use the following command
 ```bash
 python path_to_script/*_fig.py --generate-output
 ```
+For example, to see the performance plot of the improved CG bound for the preconditioners and diffusion problem [described above](#running-code), run the following command:
+```bash
+python code/model_spectra/absolute_performance_fig.py --show-output
+```
+
 The above actions can also be done by clicking on the action buttons that are configured automatically by the [setup script](#vscode-extensions).
 
-Additionally, there is also a convenience script [generate_figures.py](generate_figures.py) that can be used to generate all the figures in the project. It simply calls the function for each python file ending in "_fig.py" in [code](code).
+Additionally, there is also a convenience script [generate_figures.py](generate_figures.py) that can be used to generate all the python files ending in "_fig.py" in [code](code).
 
-The generated figures are always saved as PDFs in a folder called `figures` in the root of the project. 
+The generated figures are always saved as PDFs in a folder called `figures` in the root of this repository.
 
-**IMPORTANT**: The figures need to be generated before compiling the latex documents, as they are included in the documents.
+**IMPORTANT**: The figures are not included in the repository and need to be generated before compiling the latex documents.
 
 ### Compiling LaTeX Files
 
@@ -93,12 +98,14 @@ It is recommended to use the VSCode extension [LaTeX Workshop](https://marketpla
 All main LaTeX files in this repository can be compiled using the dedicated button from the LaTeX Workshop extension. A `build` folder will be created in the respective *.tex files' folders, in which all the output files will be stored.
 
 #### Terminal
-Latex file compilation can be done using the provided [compile_latex.py](compile_latex.py) script. This script will check if a `figure` directory is present in the root of the project (generating it if not) and, subsequently allow you to choose which LaTeX files you want to compile. It will also create a `build` folder in the respective folders, where all the output files will be stored. The script can be run using the following command in the terminal (after the environment is activated):
+Latex file compilation can be done using the provided [compile_latex.py](compile_latex.py) script. This script will check if a `figure` directory is present in the root of the project (generating it if not) and, subsequently allow you to choose which LaTeX files you want to compile. It will also create a `build` folder in the respective folders, where all the output files will be stored. This way you can choose to use the Latex Workshop extension, the compile script or both; there is no difference in the output.
+
+The compile script can be run using the following command in the terminal (after the environment is activated):
 ```bash
 python compile_latex.py
 ```
 
-**IMPORTANT**: The compile script will not check if ALL the figures necessary for the compilation are present. To ensure that all figures are generated, run the [generate_figures.py](generate_figures.py) script, as describe in [this section](#generating-figures) before compiling the LaTeX files.
+**IMPORTANT**: The compile script will not check if ALL the figures necessary for the compilation are present. To ensure that all figures are generated, run the [generate_figures.py](generate_figures.py) script, as described in [this section](#generating-figures) before compiling the LaTeX files.
 
 ---
 
