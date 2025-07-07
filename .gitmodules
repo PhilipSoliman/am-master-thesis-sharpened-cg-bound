@@ -1,3 +1,4 @@
 [submodule "hcmsfem"]
 	path = hcmsfem
 	url = https://github.com/PhilipSoliman/hcmsfem.git
+	branch = philip-soliman-am-master-thesis
