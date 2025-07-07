@@ -2,16 +2,15 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from hcmsfem.solvers import CustomCG
-from hcmsfem.utils import (
-    get_cli_args,
+from hcmsfem.plot_utils import (
     mpl_graph_plot_style,
     save_latex_figure,
     set_mpl_cycler,
     set_mpl_style,
 )
+from hcmsfem.cli import CLI_ARGS
 
 # constants
-ARGS = get_cli_args()
 EIGV_SAMPLE_RANGE = (
     0.1,
     0.9,
@@ -249,11 +248,11 @@ fig.tight_layout()
 for _fig in figs_seperate:
     _fig.tight_layout()
 
-if ARGS.generate_output:
+if CLI_ARGS.generate_output:
     save_latex_figure("cg_convergence_extreme_spectra", fig=fig)
     for i, _fig in enumerate(figs_seperate):
         save_latex_figure(f"cg_convergence_extreme_spectra_cluster{i}", fig=_fig)
-if ARGS.show_output:
+if CLI_ARGS.show_output:
     fig.show()
     input("Press Enter to continue...")
     plt.close(fig)

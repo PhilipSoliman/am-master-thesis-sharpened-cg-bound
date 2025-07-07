@@ -2,17 +2,16 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from hcmsfem.solvers import CustomCG
-from hcmsfem.utils import (
+from hcmsfem.plot_utils import (
     CustomColors,
-    get_cli_args,
     mpl_graph_plot_style,
     save_latex_figure,
     set_mpl_cycler,
     set_mpl_style,
 )
+from hcmsfem.cli import CLI_ARGS
 
 # constants
-ARGS = get_cli_args()
 EIGV_SAMPLE_RANGE = (
     0.1,
     0.9,
@@ -178,9 +177,9 @@ axs[0, 0].legend(
 ).set_zorder(11)
 
 fig.tight_layout()
-if ARGS.generate_output:
+if CLI_ARGS.generate_output:
     save_latex_figure("effect_of_eigenvalue_distribution")
-if ARGS.show_output:
+if CLI_ARGS.show_output:
     fig.show()
     input("Press Enter to continue...")
 
@@ -199,8 +198,7 @@ for i, _ in enumerate(As):
     )
     axs_texts[i].set_text(convergence_info)
 
-if ARGS.generate_output:
+if CLI_ARGS.generate_output:
     save_latex_figure("effect_of_eigenvalue_distribution_sharpened_bounds")
-if ARGS.show_output:
+if CLI_ARGS.show_output:
     fig.show()
-    input()

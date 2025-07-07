@@ -17,16 +17,8 @@
 **/*.DS_Store
 docs/
 
-# python
+# python virtual environment
 **.venv
-**/__pycache__
-**/indent.log
-**/*.egg-info
-
-# c
-clibs/build/
-**/*.so
-**/*.pyd
 
 # vscode
 .vscode/
@@ -37,9 +29,9 @@ figures/
 # Latex-Workshop
 ./build/
 
-# ignore FEM mesh folders
-data/tri_tlm_*
-data/quad_tlm_*
+# ignore FEM mesh files & VTK output files (... but not array data *.npy files)
+data/*/*.json
+data/*/*.vtk
 
 # ignore python profiling files
 **/*.prof
