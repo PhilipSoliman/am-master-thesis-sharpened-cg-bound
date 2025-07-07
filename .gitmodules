@@ -1,0 +1,3 @@
+[submodule "hcmsfem"]
+	path = hcmsfem
+	url = https://github.com/PhilipSoliman/hcmsfem.git
