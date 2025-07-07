@@ -4,10 +4,10 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).parent.resolve()
-VENV_PATH = REPO_ROOT / ".venv"
+VENV_DIR = REPO_ROOT / ".venv"
+VENV_BIN = VENV_DIR / "bin" if os.name != "nt" else VENV_DIR / "Scripts"
 FIGURES_FOLDER = REPO_ROOT / "figures"
 GENERATE_FIGURES_SCRIPT = REPO_ROOT / "generate_figures.py"
-SETUP_ENV_SCRIPT = REPO_ROOT / "setup_env.py"
 
 
 def run_command(
@@ -51,27 +51,26 @@ def ensure_figures_folder():
     if FIGURES_FOLDER.exists():
         return
 
-    if not VENV_PATH.exists():
+    if not VENV_DIR.exists():
         print(
-            f"Virtual environment {VENV_PATH} not found.\n\nPlease run {SETUP_ENV_SCRIPT} using python first.\n\nFor example 'py {SETUP_ENV_SCRIPT}'. Then, rerun this script."
+            f"Virtual environment {VENV_DIR} not found.\n\nPlease refer to the README for instructions on how to set up the environment."
         )
         sys.exit(1)
 
     # Always re-define after setup
-    if os.name == "nt":
-        venv_python = VENV_PATH / "Scripts" / "python.exe"
-        venv_bin = VENV_PATH / "Scripts"
-    else:
-        venv_python = VENV_PATH / "bin" / "python"
-        venv_bin = VENV_PATH / "bin"
+    python_exec = (
+        os.path.join(VENV_BIN, "python.exe")
+        if os.name == "nt"
+        else os.path.join(VENV_BIN, "python")
+    )
 
     # Set environment PATH correctly
     env = os.environ.copy()
-    env["PATH"] = str(venv_bin) + os.pathsep + env["PATH"]
+    env["PATH"] = str(VENV_BIN) + os.pathsep + env["PATH"]
 
     print("Generating figures...")
     run_command(
-        f'"{venv_python}" "{GENERATE_FIGURES_SCRIPT}"',
+        f'"{python_exec}" "{GENERATE_FIGURES_SCRIPT}"',
         cwd=REPO_ROOT,
         env=env,
         stream=True,
@@ -99,14 +98,19 @@ def compile_tex_file(tex_file, progress_bar):
     if log_file.exists():
         log_file.unlink()
 
+    # Use relative paths by working from the tex directory
+    rel_tex_file = tex_file.name
+    rel_build_dir = "build"
+
     cmds = [
-        f"latexmk -synctex=1 -cd -interaction=nonstopmode -file-line-error -lualatex -outdir={build_dir} {tex_file}",
-        f"biber --input-directory={build_dir} --output-directory={build_dir} {tex_name}",
-        f"latexmk -synctex=1 -cd -interaction=nonstopmode -file-line-error -lualatex -outdir={build_dir} {tex_file}",
-        f"latexmk -synctex=1 -cd -interaction=nonstopmode -file-line-error -lualatex -outdir={build_dir} {tex_file}",
+        f"latexmk -synctex=1 -cd -interaction=nonstopmode -file-line-error -lualatex -outdir={rel_build_dir} {rel_tex_file}",
+        f"biber --input-directory={rel_build_dir} --output-directory={rel_build_dir} {tex_name}",
+        f"latexmk -synctex=1 -cd -interaction=nonstopmode -file-line-error -lualatex -outdir={rel_build_dir} {rel_tex_file}",
+        f"latexmk -synctex=1 -cd -interaction=nonstopmode -file-line-error -lualatex -outdir={rel_build_dir} {rel_tex_file}",
     ]
 
-    wds = [REPO_ROOT, REPO_ROOT / tex_dir, REPO_ROOT, REPO_ROOT]
+    # All commands run from the tex directory
+    wds = [tex_dir, tex_dir, tex_dir, tex_dir]
 
     num_cmds = len(cmds)
     line = ""
@@ -116,8 +120,8 @@ def compile_tex_file(tex_file, progress_bar):
         run_command(cmd, cwd=wd, log_file=log_file)
 
     # Cleanup
-    clean_cmd = f"latexmk -outdir={build_dir} -c {tex_file}"
-    run_command(clean_cmd, cwd=REPO_ROOT, log_file=log_file)
+    clean_cmd = f"latexmk -outdir={rel_build_dir} -c {rel_tex_file}"
+    run_command(clean_cmd, cwd=tex_dir, log_file=log_file)
 
     # Flush the progress bar
     line_length = len(line)
