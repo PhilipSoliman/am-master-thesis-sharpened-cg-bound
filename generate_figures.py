@@ -4,9 +4,9 @@ from pathlib import Path
 
 from tqdm import tqdm
 
-from hcmsfem.root import get_root
+from hcmsfem.root import get_venv_root
 
-PROJECT_ROOT = get_root()
+PROJECT_ROOT = get_venv_root()
 
 PYTHON_EXEC = os.path.join(PROJECT_ROOT, ".venv", "bin", "python")
 if os.name == "nt":
