@@ -20,6 +20,9 @@ docs/
 # python virtual environment
 **.venv
 
+# python modules
+**/__pycache__/
+
 # vscode
 .vscode/
 
