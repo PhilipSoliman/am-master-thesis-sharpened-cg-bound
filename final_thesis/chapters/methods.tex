@@ -58,7 +58,7 @@ and
 \end{equation}
 Note that if $i=1$ we can determine $p$ by requiring that the maximum of the residual polynomial function $\hat{r}^{(i)}_p$ in $[a,b]$ is equal to $\epsilon$. This gives the following equation
 \begin{equation}
-    p = \left\lceil\frac{1}{2}\sqrt{\frac{b}{a}}\ln{\epsilon} + 1\right\rceil
+    p = \left\lceil\frac{1}{2}\sqrt{\frac{b}{a}}\ln{\frac{2}{\epsilon}}\right\rceil
     \label{eq:chebyshev_degree_p}
 \end{equation}
 Also note that for $i=2$ $\hat{r}^{(2)}_p(\lambda) = 0 < \epsilon$ for all eigenvalues $\lambda \in [a,b]$.
@@ -130,7 +130,7 @@ which leads to the following bound for the number of iterations \cite[Equation 4
 \end{equation}
 where 
 \[
-    1 \leq p \leq \min\left(\left\lceil\frac{1}{2}\sqrt{\frac{b}{a}}\ln{\epsilon} + 1\right\rceil, N_{\text{tail}}\right).
+    1 \leq p \leq \min\left(\left\lceil\frac{1}{2}\sqrt{\frac{b}{a}}\ln{\frac{2}{\epsilon}} \right\rceil, N_{\text{tail}}\right).
 \]
 
 \section{Theoretical performance limit}\label{sec:cg_sharpened_convrate_th_performance}
@@ -142,17 +142,22 @@ In this section we obtain a theoretical lower limit to the improvement of the bo
 In particular, we seek to find the minimum value of $P$. We know that the product of two lower order Chebyshev polynomials is not optimal for a uniform eigenspectrum, cf. the proof of Chebyshev optimality outlined in \cref{th:minmax_polynomial}. Therefore, a good place to start looking for a global minimum of $P$ is to study the case of a uniform eigenspectrum. This also reduces the parameter space in which we need to look for said minimum. Indeed, introducing the left and right cluster condition numbers $\kappa_l = \frac{b}{a}$ and $\kappa_r = \frac{d}{b}$, we can rewrite the bound in \cref{eq:cg_iteration_bound_2_clusters} as follows
 \[
         \bar{m}(\kappa, \kappa_l, \kappa_r)=\left\lceil\frac{\sqrt{\kappa_r}}{2} \ln (2 / \epsilon)+\left(1+\frac{\sqrt{\kappa_r}}{2} \ln \left(\frac{4\kappa}{\kappa_l}\right)\right) p\right\rceil.
-    \label{eq:cg_iteration_bound_2_clusters_condition_numbers}
 \]
 Then, substituting $p$ gives
 \begin{equation}
-    \bar{m}=\left\lceil 1 + \frac{\sqrt{\kappa_r}}{2}\ln\left(\frac{4\kappa}{\kappa_l}\right) + \frac{\sqrt{\kappa_r}}{2}\ln\left(\frac{2}{\epsilon}\right) + \frac{\sqrt{\kappa_l}}{2}\ln\left(\frac{2}{\epsilon}\right) + \frac{\kappa}{2}\ln\left(\frac{4\kappa}{\kappa_l}\right)\ln\left(\frac{2}{\epsilon}\right) \right\rceil.
-\end{equation}
+    % 1 + \frac{\sqrt{\kappa_r}}{2}\ln\left(\frac{4\kappa}{\kappa_l}\right)
+    \bar{m}=\left\lceil \frac{\sqrt{\kappa_r}}{2}\ln\left(\frac{2}{\epsilon}\right) + \frac{\sqrt{\kappa_l}}{2}\ln\left(\frac{2}{\epsilon}\right) + \frac{\sqrt{\kappa}}{2}\ln\left(\frac{4\kappa}{\kappa_l}\right)\ln\left(\frac{2}{\epsilon}\right) \right\rceil.
+\end{equation}  
 Restricting ourselves to the case of a uniform eigenspectrum, i.e. $a<b=c<d$, we can set $\kappa=\kappa_l\kappa_r$, which yields
-\[
-    1 + \frac{\sqrt{\kappa_r}}{2}\ln\left(4\kappa_r\right) + \left(\right)\ln\left(\frac{2}{\epsilon}\right)
-\]
-where $c$ is the sum of all the constant values in (1).
+\begin{equation}
+    % 1 + \frac{\sqrt{\kappa_r}}{2}\ln\left(4\kappa_r\right) +
+    \left(\frac{1}{\sqrt{\kappa_l}} + \frac{1}{\sqrt{\kappa_r}} + \ln(4\kappa_r)\right)\frac{\sqrt{\kappa}}{2}\ln\left(\frac{2}{\epsilon}\right).
+    \label{eq:cg_iteration_bound_2_clusters_uniform}
+\end{equation}
+We recognize the classical CG bound in the last factor of \cref{eq:cg_iteration_bound_2_clusters_uniform}. Now, the performance ratio $P$ in \cref{eq:performance_ratio} can be rewritten as follows
+\begin{equation}
+    P(\kappa_l, \kappa_r) = \left(\frac{1}{\sqrt{\kappa_l}} + \frac{1}{\sqrt{\kappa_r}} + \ln(4\kappa_r)\right)^{-1}
+\end{equation}
 - Note, $m_c \sim \sqrt{\kappa}\ln(2/\epsilon)$. Hence, the minimal performance satisfies
 \[
 p_{\text{min}}(\kappa_l, \kappa_r) = \min_{\kappa, \ \kappa_r=c, \kappa_l = \frac{\kappa}{\kappa_r}} m_c/m_s = \left(\frac{1}{2\sqrt{\kappa_r}} + \frac{1}{4}\ln(4\kappa_r) + \sqrt{\kappa_l}\ln\left(\frac{\kappa_r}{4}\right)\right)^{-1},
