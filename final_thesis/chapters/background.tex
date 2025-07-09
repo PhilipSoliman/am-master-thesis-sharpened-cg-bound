@@ -324,10 +324,25 @@ From \cref{th:cg_convergence_rate_bound} and \cref{def:cg_convergence_criterion}
 \end{equation*}
 such that number of iterations $m$ is given by
 \begin{equation}
-  m \geq \left\lceil{\log_f\left(\frac{\epsilon}{2}\right)}\right\rceil,
+  m \geq \left\lceil\log_f\left(\frac{\epsilon}{2}\right)\right\rceil = \textrm{int}\left[\log_f\left(\frac{\epsilon}{2}\right) + 1\right],
   \label{eq:cg_convergence_rate_bound_iterations}
 \end{equation}
-where $f = \frac{\sqrt{\kappa} - 1}{\sqrt{\kappa} + 1}$ is the CG \textit{convergence rate}. Equation \ref{eq:cg_convergence_rate_bound_iterations} could in principle be used as a stopping criterion, but it is not practical, since we generally do not know the condition number $\kappa$ of $A$ a priori.
+where $f = \frac{\sqrt{\kappa} - 1}{\sqrt{\kappa} + 1} < 1$ \footnote{Note that the $\log(f)$ is negative, flipping in the inequality.} is the CG \textit{convergence rate}. Equation \ref{eq:cg_convergence_rate_bound_iterations} could in principle be used as a stopping criterion, but it is not practical, since we generally do not know the condition number $\kappa$ of $A$ a priori.
+
+The iteration bound given in \cref{eq:cg_convergence_rate_bound_iterations} can be bounded further by using the expansion
+\[
+  \ln\left(\frac{z - 1}{z + 1}\right) = -2z + \mathcal{O}(z^3),
+\]
+to write
+\[
+  \left(\frac{\sqrt{\kappa} - 1}{\sqrt{\kappa} + 1}\right)^{\tilde{m}} \leq \exp \left(-\frac{2\tilde{m}}{\sqrt{\kappa}}\right) \leq \frac{\epsilon}{2},
+\]
+which can be rearranged to give
+\begin{equation}
+    m \geq \left\lceil\frac{\sqrt{\kappa}}{2}\ln\left(\frac{2}{\epsilon}\right)\right\rceil = \textrm{int}\left[\frac{\sqrt{\kappa}}{2}\ln\left(\frac{2}{\epsilon}\right) + 1\right].
+  \label{eq:cg_convergence_rate_bound_iterations_approx}
+\end{equation}
+Equation \ref{eq:cg_convergence_rate_bound_iterations_approx} is the one used in the introduction to discuss CG's complexity.
 
 At this point, it is necessary to note that even though the Chebyshev polynomial is optimal for the conditions of \cref{th:cg_convergence_rate_bound}, it is not guaranteed that the eigenvalues of $A$ are uniformly distributed. In fact, the eigenvalues of $A$ are often clustered around some value. This means that the Chebyshev polynomial is not optimal in this case, and we can actually expect a better convergence rate than \cref{eq:cg_convergence_rate_bound}, as we will see in \cref{sec:cg_eigenvalue_distribution}. Even though the bounds from \cref{eq:cg_convergence_rate_bound,eq:cg_convergence_rate_bound_iterations} are not sharp for non-uniform distributions, they are still correct as upper bounds.
 

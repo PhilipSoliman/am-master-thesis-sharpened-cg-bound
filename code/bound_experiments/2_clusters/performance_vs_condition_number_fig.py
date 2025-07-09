@@ -35,7 +35,7 @@ MAX_CONDITION_NUMBER = 1e10  # maximum global condition number
 FIGWIDTH = 8
 FIGHEIGHT = (FIGWIDTH / len(RIGHT_CLUSTER_CONDITION_NUMBERS)) * len(MIN_EIGS)
 LEGEND_HEIGHT = 0.1
-RESOLUTION = int(1e2)
+RESOLUTION = int(1e4)
 YLIMIT = (1e-1, 1e4)  # y-axis limits for performance plot
 
 
@@ -70,6 +70,43 @@ def get_spectra(right_cluster_condition_number: float, min_eig: float):
     return left_clusters, right_clusters, condition_numbers
 
 
+# performance calculation
+def calculate_performance(
+    left_clusters: list[tuple[float, float]],
+    right_clusters: list[tuple[float, float]],
+    condition_numbers: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray]:
+    m_c = classical_bound(condition_numbers)  # classical CG bound
+    performance = np.zeros((len(LEFT_CLUSTER_WIDTHS_MULTIPLIERS), RESOLUTION + 1))
+    theoretical_improvement = np.zeros_like(performance)
+    with ThreadPoolExecutor() as executor:
+        desc = "Calculating performance surface"
+        futures_1 = [
+            executor.submit(
+                compute_bound_for_width, i, left_clusters[i], right_clusters
+            )
+            for i in range(len(LEFT_CLUSTER_WIDTHS_MULTIPLIERS))
+        ]
+        futures_2 = [
+            executor.submit(
+                compute_theoretical_improvement_for_width,
+                i,
+                left_clusters[i],
+                right_clusters,
+            )
+            for i in range(len(LEFT_CLUSTER_WIDTHS_MULTIPLIERS))
+        ]
+        with tqdm(total=len(futures_1), desc=desc) as pbar:
+            for future_1, future_2 in zip(futures_1, futures_2):
+                i, m_s_i = future_1.result()
+                performance[i, :] = m_c / m_s_i
+                i, improvement_i = future_2.result()
+                theoretical_improvement[i, :] = improvement_i
+            pbar.update(1)
+
+    return performance, theoretical_improvement
+
+
 # classical CG bound
 def classical_bound(condition_numbers: np.ndarray) -> np.ndarray:
     convergence_factors = (np.sqrt(condition_numbers) - 1) / (
@@ -80,11 +117,10 @@ def classical_bound(condition_numbers: np.ndarray) -> np.ndarray:
 
 # improved CG bound
 def compute_bound_for_width(i, left_cluster_i, right_clusters):
-    lcluster = left_cluster_i
     m_s_i = np.zeros(RESOLUTION + 1)  # performance for this left cluster
     for j, rcluster in enumerate(right_clusters):
-        clusters = [lcluster, rcluster]
-        if rcluster[0] < lcluster[1]:
+        clusters = [left_cluster_i, rcluster]
+        if rcluster[0] < left_cluster_i[1]:
             # if the right cluster overlaps with the left cluster, skip
             m_s_i[j] = np.nan
             continue
@@ -95,10 +131,30 @@ def compute_bound_for_width(i, left_cluster_i, right_clusters):
     return i, m_s_i
 
 
+def compute_theoretical_improvement_for_width(i, left_cluster_i, right_clusters):
+    improvement_i = np.zeros(RESOLUTION + 1)  # theoretical improvement row i
+    k_l = left_cluster_i[1] / left_cluster_i[0]  # condition number of left cluster
+    for j, right_cluster_j in enumerate(right_clusters):
+        k = right_cluster_j[1] / left_cluster_i[0]  # global condition number
+        k_r = right_cluster_j[1] / right_cluster_j[0]
+        s = right_cluster_j[1] / left_cluster_i[1]  # spectral gap
+        improvement_i[j] = (
+            np.sqrt(k / (k_l * k_r))
+            - np.log(4 * s)
+            + (1 + np.log(4 + s)) / (np.sqrt(k_l) * np.log(2 / TOLERANCE))
+            + 1 / np.sqrt(k_l)
+            + 1 / np.sqrt(k_r)
+        )
+    return i, improvement_i
+
+
 # improved CG bound (uniform performance)
 def compute_uniform_performance(
-    right_clusters: list[tuple[float, float]], min_eig: float, m_c: np.ndarray
+    right_clusters: list[tuple[float, float]],
+    min_eig: float,
+    condition_numbers: np.ndarray,
 ) -> np.ndarray:
+    m_c = classical_bound(condition_numbers)  # classical CG bound
     uniform_performance = np.zeros((RESOLUTION + 1,))
     for i, rcluster in enumerate(right_clusters):
         lcluster = (
@@ -114,28 +170,23 @@ def compute_uniform_performance(
     return uniform_performance
 
 
-# performance calculation
-def calculate_performance(
-    left_clusters: list[tuple[float, float]],
-    right_clusters: list[tuple[float, float]],
-    m_c: np.ndarray,
-) -> np.ndarray:
-    performance = np.zeros((len(LEFT_CLUSTER_WIDTHS_MULTIPLIERS), RESOLUTION + 1))
-    with ThreadPoolExecutor() as executor:
-        desc = "Calculating performance surface"
-        futures = [
-            executor.submit(
-                compute_bound_for_width, i, left_clusters[i], right_clusters
-            )
-            for i in range(len(LEFT_CLUSTER_WIDTHS_MULTIPLIERS))
-        ]
-        with tqdm(total=len(futures), desc=desc) as pbar:
-            for future in futures:
-                i, m_s_i = future.result()
-                performance[i, :] = m_c / m_s_i
-            pbar.update(1)
+def compute_theoretical_improvement_boundary(
+    k_r: float,
+    min_eig: float,
+    condition_numbers: np.ndarray,
+):
+    k_l_min = (min_eig + min_eig * LEFT_CLUSTER_WIDTHS_MULTIPLIERS[0]) / min_eig
+    k_l_max = (min_eig + min_eig * LEFT_CLUSTER_WIDTHS_MULTIPLIERS[-1]) / min_eig
+    k_ls = np.linspace(k_l_min, k_l_max, RESOLUTION + 1)
+    s = condition_numbers / (k_ls + 1)
+    out = (
+        2
+        + np.sqrt(k_r) * np.log(4 * s)
+        + np.log(2 / TOLERANCE)
+        * (np.sqrt(k_ls) + np.sqrt(k_r) + np.sqrt(k_ls * k_r) * np.log(4 * s))
+    ) / (2 + np.sqrt(k_ls * k_r) * np.log(4 * s + 2 / TOLERANCE))
 
-    return performance
+    return 1 / out
 
 
 # plot performance curves per width
@@ -143,12 +194,15 @@ def plot_performance_curves(
     ax: Axes,
     condition_numbers: np.ndarray,
     performance: np.ndarray,
+    theoretical_improvement: np.ndarray,
+    theoretical_improvement_boundary: np.ndarray,
     uniform_performance: np.ndarray,
 ):
     for i, mult in enumerate(LEFT_CLUSTER_WIDTHS_MULTIPLIERS):
+        expected_improvement = theoretical_improvement[i, :] > 0
         ax.plot(
-            condition_numbers,
-            performance[i, :],
+            condition_numbers[expected_improvement],
+            performance[i, :][expected_improvement],
             lw=2,
         )
         # Annotate at the right end of each curve
@@ -164,6 +218,16 @@ def plot_performance_curves(
             color=ax.lines[-1].get_color(),  # match curve color
             clip_on=False,
         )
+
+    # plot theoretical improvement boundary
+    ax.plot(
+        condition_numbers,
+        theoretical_improvement_boundary,
+        label="Theoretical improvement boundary",
+        lw=2,
+        linestyle="--",
+        color="black",
+    )
 
     # plot uniform performance
     ax.plot(
@@ -238,10 +302,23 @@ for row, min_eig in enumerate(MIN_EIGS):
         left_clusters, right_clusters, condition_numbers = get_spectra(
             right_cluster_condition_number, min_eig
         )
-        m_c = classical_bound(condition_numbers)
-        performance = calculate_performance(left_clusters, right_clusters, m_c)
-        uniform_performance = compute_uniform_performance(right_clusters, min_eig, m_c)
-        plot_performance_curves(ax, condition_numbers, performance, uniform_performance)
+        performance, theoretical_improvement = calculate_performance(
+            left_clusters, right_clusters, condition_numbers
+        )
+        uniform_performance = compute_uniform_performance(
+            right_clusters, min_eig, condition_numbers
+        )
+        theoretical_improvement_boundary = compute_theoretical_improvement_boundary(
+            right_cluster_condition_number, min_eig, condition_numbers
+        )
+        plot_performance_curves(
+            ax,
+            condition_numbers,
+            performance,
+            theoretical_improvement,
+            theoretical_improvement_boundary,
+            uniform_performance,
+        )
         if row == 0 and col == 0:
             ax.legend(fontsize=9)
             ax.set_xlim((condition_numbers[0] / 2, MAX_CONDITION_NUMBER * 100))
