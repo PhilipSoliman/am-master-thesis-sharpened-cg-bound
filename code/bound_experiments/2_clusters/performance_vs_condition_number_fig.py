@@ -4,6 +4,8 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.axes import Axes
+from scipy.optimize import fsolve
+from scipy.special import lambertw
 from shapely.geometry import Polygon as ShapelyPolygon
 from tqdm import tqdm
 
@@ -23,10 +25,10 @@ set_mpl_cycler(colors=True, lines=True)
 # CONSTANT INPUTS #
 ###################
 # CG convergence
-TOLERANCE = 1e-6
+TOLERANCE = 1e-8
 
 # spectrum
-MIN_EIGS = [1e-8, 1e2]  # reciprocal of the contrast of problem coefficient
+MIN_EIGS = [1e-10]  # reciprocal of the contrast of problem coefficient
 LEFT_CLUSTER_WIDTHS_MULTIPLIERS = [1e-2, 1, 1e2, 1e4, 1e6]
 RIGHT_CLUSTER_CONDITION_NUMBERS = [1e1, 1e2]  # condition number bound for contrast=1
 MAX_CONDITION_NUMBER = 1e10  # maximum global condition number
@@ -35,7 +37,7 @@ MAX_CONDITION_NUMBER = 1e10  # maximum global condition number
 FIGWIDTH = 8
 FIGHEIGHT = (FIGWIDTH / len(RIGHT_CLUSTER_CONDITION_NUMBERS)) * len(MIN_EIGS)
 LEGEND_HEIGHT = 0.1
-RESOLUTION = int(1e4)
+RESOLUTION = int(1e3)
 YLIMIT = (1e-1, 1e4)  # y-axis limits for performance plot
 
 
@@ -109,10 +111,22 @@ def calculate_performance(
 
 # classical CG bound
 def classical_bound(condition_numbers: np.ndarray) -> np.ndarray:
-    convergence_factors = (np.sqrt(condition_numbers) - 1) / (
-        np.sqrt(condition_numbers) + 1
+    return np.sqrt(condition_numbers) * np.log(2 / TOLERANCE) / 2
+
+
+def new_bound(clusters: list[tuple[float, float]]) -> int:
+    k_l = clusters[0][1] / clusters[0][0]  # condition number of left cluster
+    k_r = clusters[1][1] / clusters[1][0]  # condition number of right cluster
+    s = clusters[1][1] / clusters[0][1]  # spectral gap
+    log_4s = np.log(4 * s)
+    sqrt_k_r = np.sqrt(k_r)
+    sqrt_k_l = np.sqrt(k_l)
+    return np.ceil(
+        sqrt_k_r * log_4s / 2
+        + np.log(2 / TOLERANCE)
+        * (sqrt_k_l + sqrt_k_r + sqrt_k_l * sqrt_k_r * log_4s)
+        / 2
     )
-    return np.ceil(np.log(TOLERANCE / 2) / np.log(convergence_factors))
 
 
 # improved CG bound
@@ -124,9 +138,7 @@ def compute_bound_for_width(i, left_cluster_i, right_clusters):
             # if the right cluster overlaps with the left cluster, skip
             m_s_i[j] = np.nan
             continue
-        m_s = CustomCG.calculate_improved_cg_iteration_upperbound_static(
-            clusters, tol=TOLERANCE, exact_convergence=True
-        )
+        m_s = new_bound(clusters)
         m_s_i[j] = m_s
     return i, m_s_i
 
@@ -138,13 +150,7 @@ def compute_theoretical_improvement_for_width(i, left_cluster_i, right_clusters)
         k = right_cluster_j[1] / left_cluster_i[0]  # global condition number
         k_r = right_cluster_j[1] / right_cluster_j[0]
         s = right_cluster_j[1] / left_cluster_i[1]  # spectral gap
-        improvement_i[j] = (
-            np.sqrt(k / (k_l * k_r))
-            - np.log(4 * s)
-            + (1 + np.log(4 + s)) / (np.sqrt(k_l) * np.log(2 / TOLERANCE))
-            + 1 / np.sqrt(k_l)
-            + 1 / np.sqrt(k_r)
-        )
+        improvement_i[j] = np.sqrt(k / (k_l * k_r)) - np.log(4 * s)
     return i, improvement_i
 
 
@@ -162,9 +168,7 @@ def compute_uniform_performance(
             rcluster[0],
         )  # left cluster is almost touching the right cluster
         clusters = [lcluster, rcluster]
-        m_s = CustomCG.calculate_improved_cg_iteration_upperbound_static(
-            clusters, tol=TOLERANCE, exact_convergence=True
-        )
+        m_s = new_bound(clusters)  # improved CG bound for uniform performance
         uniform_performance[i] = m_c[i] / m_s
 
     return uniform_performance
@@ -175,18 +179,50 @@ def compute_theoretical_improvement_boundary(
     min_eig: float,
     condition_numbers: np.ndarray,
 ):
-    k_l_min = (min_eig + min_eig * LEFT_CLUSTER_WIDTHS_MULTIPLIERS[0]) / min_eig
-    k_l_max = (min_eig + min_eig * LEFT_CLUSTER_WIDTHS_MULTIPLIERS[-1]) / min_eig
-    k_ls = np.linspace(k_l_min, k_l_max, RESOLUTION + 1)
-    s = condition_numbers / (k_ls + 1)
-    out = (
-        2
-        + np.sqrt(k_r) * np.log(4 * s)
-        + np.log(2 / TOLERANCE)
-        * (np.sqrt(k_ls) + np.sqrt(k_r) + np.sqrt(k_ls * k_r) * np.log(4 * s))
-    ) / (2 + np.sqrt(k_ls * k_r) * np.log(4 * s + 2 / TOLERANCE))
+    theoretical_improvement_boundary = np.zeros_like(condition_numbers)
 
-    return 1 / out
+    def func(s, k):
+        log_4s = np.log(4 * s)
+        sqrt_s = np.sqrt(s)
+        return (
+            log_4s
+            + np.sqrt(1 / k_r) * (1 - sqrt_s)
+            + 0 * (1 + log_4s) / (np.sqrt(k / s) * np.log(2 / TOLERANCE))
+            + 1 * 1 / np.sqrt(k_r)
+            + 0 * np.sqrt(s / k)
+        )
+
+    m_c = classical_bound(condition_numbers)  # classical CG bound
+    for i, k in enumerate(condition_numbers):
+        s = fsolve(func, 1000, args=(k,))[0]
+        k_l = k / s
+        left_cluster = (min_eig, min_eig * k_l)  # left cluster
+        right_cluster = (min_eig * k / k_r, min_eig * k)  # right cluster
+        clusters = [left_cluster, right_cluster]
+        m_s = new_bound(clusters)  # improved CG bound
+        theoretical_improvement_boundary[i] = m_c[i] / m_s
+    return theoretical_improvement_boundary
+
+
+def improvement_boundary_condition_numbers_lambert(
+    k_r: float, left_clusters: list[tuple[float, float]]
+) -> float:
+    a = 1 / np.sqrt(k_r)  # + 1 / np.sqrt(condition_numbers)
+    b = 1 / np.sqrt(k_r)
+    k_ls = np.array([l[1] / l[0] for l in left_clusters])
+    s: np.float64 = np.real((2 / a) ** 2 * lambertw(-a * np.exp(-b / 2) / 4, k=-1) ** 2)
+    return s * k_ls
+
+
+def improvement_boundary_condition_numbers_lambert_expansion(
+    k_r: float, left_clusters: list[tuple[float, float]]
+) -> float:
+    x = -1 / (4 * np.sqrt(k_r) * np.exp(1 / (2 * np.sqrt(k_r))))
+    L = np.log(-x)
+    l = np.log(-L)
+    k_ls = np.array([l[1] / l[0] for l in left_clusters])
+    s = 4 * k_r * (L - l + l / L) ** 2
+    return s * k_ls
 
 
 # plot performance curves per width
@@ -196,15 +232,52 @@ def plot_performance_curves(
     performance: np.ndarray,
     theoretical_improvement: np.ndarray,
     theoretical_improvement_boundary: np.ndarray,
+    estimated_theoretical_improvement_boundary: np.ndarray,
+    estimated_theoretical_improvement_boundary_approximation: np.ndarray,
     uniform_performance: np.ndarray,
 ):
     for i, mult in enumerate(LEFT_CLUSTER_WIDTHS_MULTIPLIERS):
-        expected_improvement = theoretical_improvement[i, :] > 0
+        expected_improvement = theoretical_improvement[i, :] >= 0
+        # below threshold
+        ax.plot(
+            condition_numbers[~expected_improvement],
+            performance[i, :][~expected_improvement],
+            lw=2,
+            linestyle="--",
+            alpha=0.5,
+        )
+
+        # above threshold
         ax.plot(
             condition_numbers[expected_improvement],
             performance[i, :][expected_improvement],
             lw=2,
+            linestyle="-",
+            color=ax.lines[-1].get_color(),  # match color of dashed line
         )
+
+        # condition numbers for theoretical improvement boundary (lambert W)
+        ax.plot(
+            estimated_theoretical_improvement_boundary[i],
+            1,  # performance is 1 here by constraint
+            marker="x",
+            color=ax.lines[-1].get_color(),  # match color of dashed line
+            markersize=10,
+            linestyle="None",
+            zorder=10
+        )
+
+        # condition numbers for theoretical improvement boundary (lambert W expansion around 0)
+        ax.plot(
+            estimated_theoretical_improvement_boundary_approximation[i],
+            1,  # performance is 1 here by constraint
+            marker="o",
+            color=ax.lines[-1].get_color(),  # match color of dashed line
+            markersize=5,
+            linestyle="None",
+            zorder=11
+        )
+
         # Annotate at the right end of each curve
         x_annot = condition_numbers[-1] * 10
         y_annot = performance[i, -1]
@@ -219,21 +292,20 @@ def plot_performance_curves(
             clip_on=False,
         )
 
-    # plot theoretical improvement boundary
+    # plot uniform performance
     ax.plot(
         condition_numbers,
-        theoretical_improvement_boundary,
-        label="Theoretical improvement boundary",
+        uniform_performance,
         lw=2,
         linestyle="--",
         color="black",
     )
 
-    # plot uniform performance
+    # plot theoretical improvement boundary
     ax.plot(
         condition_numbers,
-        uniform_performance,
-        label="Uniform spectrum",
+        theoretical_improvement_boundary,
+        label="Theoretical improvement boundary",
         lw=2,
         linestyle="--",
         color="black",
@@ -311,12 +383,24 @@ for row, min_eig in enumerate(MIN_EIGS):
         theoretical_improvement_boundary = compute_theoretical_improvement_boundary(
             right_cluster_condition_number, min_eig, condition_numbers
         )
+        estimated_theoretical_improvement_boundary = (
+            improvement_boundary_condition_numbers_lambert(
+                right_cluster_condition_number, left_clusters
+            )
+        )
+        estimated_theoretical_improvement_boundary_approximation = (
+            improvement_boundary_condition_numbers_lambert_expansion(
+                right_cluster_condition_number, left_clusters
+            )
+        )
         plot_performance_curves(
             ax,
             condition_numbers,
             performance,
             theoretical_improvement,
             theoretical_improvement_boundary,
+            estimated_theoretical_improvement_boundary,
+            estimated_theoretical_improvement_boundary_approximation,
             uniform_performance,
         )
         if row == 0 and col == 0:
