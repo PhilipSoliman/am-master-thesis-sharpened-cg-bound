@@ -6,7 +6,6 @@ import numpy as np
 from matplotlib.axes import Axes
 from scipy.optimize import fsolve
 from scipy.special import lambertw
-from shapely.geometry import Polygon as ShapelyPolygon
 from tqdm import tqdm
 
 from hcmsfem.cli import CLI_ARGS
@@ -16,7 +15,6 @@ from hcmsfem.plot_utils import (
     set_mpl_cycler,
     set_mpl_style,
 )
-from hcmsfem.solvers import CustomCG
 
 set_mpl_style()
 set_mpl_cycler(colors=True, lines=True)
@@ -24,12 +22,13 @@ set_mpl_cycler(colors=True, lines=True)
 ###################
 # CONSTANT INPUTS #
 ###################
-# CG convergence
+# CG convergencetas
 TOLERANCE = 1e-8
 
-# spectrum
-MIN_EIGS = [1e-10]  # reciprocal of the contrast of problem coefficient
-LEFT_CLUSTER_WIDTHS_MULTIPLIERS = [1e-2, 1, 1e2, 1e4, 1e6]
+# spectra
+MIN_EIGS = [1e-8]  # reciprocal of the contrast of problem coefficient
+# LEFT_CLUSTER_WIDTHS_MULTIPLIERS = [1e-2, 1, 1e2, 1e4, 1e6]
+LEFT_CLUSTER_CONDITION_NUMBERS = [1, 1e1, 1e2, 1e3, 1e4]
 RIGHT_CLUSTER_CONDITION_NUMBERS = [1e1, 1e2]  # condition number bound for contrast=1
 MAX_CONDITION_NUMBER = 1e10  # maximum global condition number
 
@@ -46,13 +45,10 @@ YLIMIT = (1e-1, 1e4)  # y-axis limits for performance plot
 #############
 # generating spectra
 def get_spectra(right_cluster_condition_number: float, min_eig: float):
-
-    LEFT_CLUSTER_WIDTHS = np.array(
-        [min_eig * mult for mult in LEFT_CLUSTER_WIDTHS_MULTIPLIERS]
+    # minimum global condition number
+    min_condition_number = (
+        LEFT_CLUSTER_CONDITION_NUMBERS[0] * right_cluster_condition_number
     )
-    min_condition_number = right_cluster_condition_number * (
-        1 + LEFT_CLUSTER_WIDTHS[0] / min_eig
-    )  # minimum global condition number
 
     # cluster variables
     condition_number_multiplier = (MAX_CONDITION_NUMBER / min_condition_number) ** (
@@ -64,7 +60,7 @@ def get_spectra(right_cluster_condition_number: float, min_eig: float):
             for i in range(RESOLUTION + 1)
         ]
     )
-    b_1s = min_eig + LEFT_CLUSTER_WIDTHS
+    b_1s = min_eig * np.array(LEFT_CLUSTER_CONDITION_NUMBERS)
     b_n = min_eig * condition_numbers
     a_n = b_n / right_cluster_condition_number
     left_clusters = [(min_eig, b_1) for b_1 in b_1s]
@@ -79,7 +75,7 @@ def calculate_performance(
     condition_numbers: np.ndarray,
 ) -> tuple[np.ndarray, np.ndarray]:
     m_c = classical_bound(condition_numbers)  # classical CG bound
-    performance = np.zeros((len(LEFT_CLUSTER_WIDTHS_MULTIPLIERS), RESOLUTION + 1))
+    performance = np.zeros((len(LEFT_CLUSTER_CONDITION_NUMBERS), RESOLUTION + 1))
     theoretical_improvement = np.zeros_like(performance)
     with ThreadPoolExecutor() as executor:
         desc = "Calculating performance surface"
@@ -87,7 +83,7 @@ def calculate_performance(
             executor.submit(
                 compute_bound_for_width, i, left_clusters[i], right_clusters
             )
-            for i in range(len(LEFT_CLUSTER_WIDTHS_MULTIPLIERS))
+            for i in range(len(LEFT_CLUSTER_CONDITION_NUMBERS))
         ]
         futures_2 = [
             executor.submit(
@@ -96,7 +92,7 @@ def calculate_performance(
                 left_clusters[i],
                 right_clusters,
             )
-            for i in range(len(LEFT_CLUSTER_WIDTHS_MULTIPLIERS))
+            for i in range(len(LEFT_CLUSTER_CONDITION_NUMBERS))
         ]
         with tqdm(total=len(futures_1), desc=desc) as pbar:
             for future_1, future_2 in zip(futures_1, futures_2):
@@ -228,6 +224,8 @@ def improvement_boundary_condition_numbers_lambert_expansion(
 # plot performance curves per width
 def plot_performance_curves(
     ax: Axes,
+    min_eig: float,
+    right_cluster_condition_number: float,
     condition_numbers: np.ndarray,
     performance: np.ndarray,
     theoretical_improvement: np.ndarray,
@@ -236,7 +234,7 @@ def plot_performance_curves(
     estimated_theoretical_improvement_boundary_approximation: np.ndarray,
     uniform_performance: np.ndarray,
 ):
-    for i, mult in enumerate(LEFT_CLUSTER_WIDTHS_MULTIPLIERS):
+    for i, k_l in enumerate(LEFT_CLUSTER_CONDITION_NUMBERS):
         expected_improvement = theoretical_improvement[i, :] >= 0
         # below threshold
         ax.plot(
@@ -244,7 +242,7 @@ def plot_performance_curves(
             performance[i, :][~expected_improvement],
             lw=2,
             linestyle="--",
-            alpha=0.5,
+            alpha=0.8,
         )
 
         # above threshold
@@ -257,25 +255,35 @@ def plot_performance_curves(
         )
 
         # condition numbers for theoretical improvement boundary (lambert W)
+        k = estimated_theoretical_improvement_boundary[i]
+        p = compute_theoretical_improvement_boundary(
+            right_cluster_condition_number, min_eig, [k]
+        )
         ax.plot(
-            estimated_theoretical_improvement_boundary[i],
-            1,  # performance is 1 here by constraint
+            k,
+            p,  # ~=1
             marker="x",
             color=ax.lines[-1].get_color(),  # match color of dashed line
             markersize=10,
             linestyle="None",
-            zorder=10
+            label="$\\kappa$-threshold (exact)" if i == 0 else None,
+            zorder=10,
         )
 
         # condition numbers for theoretical improvement boundary (lambert W expansion around 0)
+        k = estimated_theoretical_improvement_boundary_approximation[i]
+        p = compute_theoretical_improvement_boundary(
+            right_cluster_condition_number, min_eig, [k]
+        )
         ax.plot(
-            estimated_theoretical_improvement_boundary_approximation[i],
-            1,  # performance is 1 here by constraint
+            k,
+            p,  # ~=1
             marker="o",
             color=ax.lines[-1].get_color(),  # match color of dashed line
             markersize=5,
             linestyle="None",
-            zorder=11
+            label="$\\kappa$-threshold (approx.)" if i == 0 else None,
+            zorder=11,
         )
 
         # Annotate at the right end of each curve
@@ -284,71 +292,41 @@ def plot_performance_curves(
         ax.text(
             x_annot,
             y_annot,
-            f"$w_1=10^{{{int(np.log10(min_eig * mult))}}}$",
+            f"$\\mathbf{{k_l}}=10^{{{int(np.log10(k_l))}}}$",
             fontsize=8,
             va="center",
             ha="center",
             color=ax.lines[-1].get_color(),  # match curve color
             clip_on=False,
+            fontweight="bold",
         )
 
-    # plot uniform performance
-    ax.plot(
+    alpha = 0.6
+    ax.fill_between(
         condition_numbers,
         uniform_performance,
-        lw=2,
+        theoretical_improvement_boundary,
+        color=CUSTOM_COLORS_SIMPLE[0],
+        edgecolor="black",
         linestyle="--",
-        color="black",
+        linewidth=1,
+        alpha=alpha,
+        label="$P$-bounds",
+        hatch="///",
+        hatch_linewidth=1,
+        zorder=9,
     )
-
-    # plot theoretical improvement boundary
-    ax.plot(
+    ax.fill_between(
         condition_numbers,
         theoretical_improvement_boundary,
-        label="Theoretical improvement boundary",
-        lw=2,
-        linestyle="--",
-        color="black",
+        np.ones_like(condition_numbers),
+        color=CUSTOM_COLORS_SIMPLE[0],
+        edgecolor="None",
+        alpha=alpha,
+        label="No-improvement",
+        linestyle="None",
+        zorder=8,
     )
-
-    performance_below_1 = ShapelyPolygon(
-        [
-            [condition_numbers[0], 0],
-            [MAX_CONDITION_NUMBER, 0],
-            [MAX_CONDITION_NUMBER, 1],
-            [condition_numbers[0], 1],
-        ],
-    )
-    uniform_spectrum = ShapelyPolygon(
-        [
-            [condition_numbers[0], 1],
-            *[
-                [cond, perf]
-                for cond, perf in zip(condition_numbers, uniform_performance)
-            ],
-            [MAX_CONDITION_NUMBER, 1],
-        ],
-    )
-    no_improvement_region = performance_below_1.intersection(uniform_spectrum)
-
-    if not no_improvement_region.is_empty:
-        if no_improvement_region.geom_type == "Polygon":
-            x, y = no_improvement_region.exterior.xy  # type: ignore
-            ax.fill(
-                x, y, color=CUSTOM_COLORS_SIMPLE[0], alpha=0.2, label="No improvement"
-            )
-        elif no_improvement_region.geom_type == "MultiPolygon":
-            for poly in no_improvement_region.geoms:  # type: ignore
-                x, y = poly.exterior.xy
-                ax.fill(
-                    x,
-                    y,
-                    color=CUSTOM_COLORS_SIMPLE[0],
-                    alpha=0.2,
-                    label="No improvement",
-                )
-    else:
-        print("No improvement region is empty, nothing to fill.")
 
     ax.set_yscale("log")
     ax.set_ylim(YLIMIT)
@@ -395,6 +373,8 @@ for row, min_eig in enumerate(MIN_EIGS):
         )
         plot_performance_curves(
             ax,
+            min_eig,
+            right_cluster_condition_number,
             condition_numbers,
             performance,
             theoretical_improvement,
@@ -404,7 +384,7 @@ for row, min_eig in enumerate(MIN_EIGS):
             uniform_performance,
         )
         if row == 0 and col == 0:
-            ax.legend(fontsize=9)
+            ax.legend(fontsize=8, loc="upper left")
             ax.set_xlim((condition_numbers[0] / 2, MAX_CONDITION_NUMBER * 100))
             steps = int(np.log10(MAX_CONDITION_NUMBER / condition_numbers[0]))
             ax.set_xscale("log")
@@ -417,13 +397,13 @@ for row, min_eig in enumerate(MIN_EIGS):
             ticklabels = [f"$10^{{{int(np.log10(tick))}}}$" for tick in ticks]
             ax.set_xticks(ticks, labels=ticklabels)
             ax.set_xlabel("Condition number $\\kappa$")
-            ax.set_ylabel("Performance $m_c / m_s$")
+            ax.set_ylabel("Performance $P = m / \\bar{m}$")
 
         if row == 0:
             ax.text(
                 condition_numbers[-1] * 10,
                 YLIMIT[1],
-                f"$\\mathbf{{\\kappa_n = 10^{{{int(np.log10(right_cluster_condition_number))}}}}}$",
+                f"$\\mathbf{{\\kappa_r = 10^{{{int(np.log10(right_cluster_condition_number))}}}}}$",
                 verticalalignment="bottom",
                 horizontalalignment="center",
             )
