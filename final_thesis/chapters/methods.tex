@@ -133,13 +133,15 @@ where
     1 \leq p \leq \min\left(\left\lfloor\frac{1}{2}\sqrt{\frac{b}{a}}\ln{\frac{2}{\epsilon}} + 1 \right\rfloor, N_{\text{tail}}\right).
 \]
 
-\section{Theoretical performance limit}\label{sec:cg_sharpened_convrate_th_performance}
-In this section we obtain a theoretical lower limit to the improvement of the bound in \cref{eq:cg_iteration_bound_2_clusters} over the classical bound in \cref{eqeq:cg_convergence_rate_bound_iterations,eq:cg_convergence_rate_bound_iterations_approx}. Improvement is measured here as the ratio of the number of iterations predicted by the classical bound to that predicted by the sharpened bound
+\section{Performance criteria}\label{sec:cg_sharpened_convrate_th_performance}
+In this section we compare the new bound in \cref{eq:cg_iteration_bound_2_clusters} to the (approximated) classical bound in \cref{eq:cg_convergence_rate_bound_iterations_approx}. We will see that the new bound is not absolutely sharper than the classical one. However, we will derive an approximate, though accurate, criterion that allows us to discern under what conditions the new bound \textit{is} sharper.
+
+To that end, we introduce a measure of performance as the ratio of the number of iterations predicted by the classical bound to that predicted by the sharpened bound
 \begin{equation}
     P = \frac{m}{\bar{m}}.
     \label{eq:performance_ratio}
 \end{equation}
-In particular, we seek to find the minimum value of $P$. We know that the product of two lower order Chebyshev polynomials is not optimal for a uniform eigenspectrum, cf. the proof of Chebyshev optimality outlined in \cref{th:minmax_polynomial}. Therefore, a good place to start looking for a global minimum of $P$ is to study the case of a uniform eigenspectrum. This also reduces the parameter space in which we need to look for said minimum. Indeed, introducing the left and right cluster condition numbers $\kappa_l = \frac{b}{a}$ and $\kappa_r = \frac{d}{b}$, we can rewrite the bound in \cref{eq:cg_iteration_bound_2_clusters} as follows
+In order to see that the new bound is not absolutely sharper than the classical one, we determine the minimum value of $P$. We know that the product of two lower order Chebyshev polynomials is not optimal for a uniform eigenspectrum, cf. the proof of Chebyshev optimality outlined in \cref{th:minmax_polynomial}. Therefore, a good place to start looking for a global minimum of $P$ is to study the case of a uniform eigenspectrum. Introducing the left and right cluster condition numbers $\kappa_l = \frac{b}{a}$ and $\kappa_r = \frac{d}{b}$, we can rewrite the bound in \cref{eq:cg_iteration_bound_2_clusters} as follows
 \[
         \bar{m}(\kappa, \kappa_l, \kappa_r)=\left\lceil\frac{\sqrt{\kappa_r}}{2} \ln (2 / \epsilon)+\left(1+\frac{\sqrt{\kappa_r}}{2} \ln \left(\frac{4\kappa}{\kappa_l}\right)\right) p\right\rceil.
 \]
@@ -168,9 +170,9 @@ Restricting ourselves to the case of a uniform eigenspectrum, i.e. $a<b=c<d$, we
     \right\rfloor.
     \label{eq:cg_iteration_bound_2_clusters_uniform}
 \end{equation}
-We recognize the classical CG bound in the last factor of \cref{eq:cg_iteration_bound_2_clusters_uniform}. Now, the performance ratio $P$ in \cref{eq:performance_ratio} can be approximated as follows
+We recognize the classical CG bound as the factor in front of the last term of \cref{eq:cg_iteration_bound_2_clusters_uniform}. Now, the performance ratio $P$ in \cref{eq:performance_ratio} can be approximated as follows
 \begin{equation}
-    P(\kappa_l, \kappa_r) = \left(\frac{1}{\sqrt{\kappa_l}} + \frac{1}{\sqrt{\kappa_r}} + \ln(4\kappa_r)\right)^{-1} = 
+    P(\kappa_l, \kappa_r) = \left(\frac{1}{\sqrt{\kappa_l}} + \frac{1}{\sqrt{\kappa_r}} + \ln(4\kappa_r)\right)^{-1}
 \end{equation}
 - Note, $m_c \sim \sqrt{\kappa}\ln(2/\epsilon)$. Hence, the minimal performance satisfies
 \[
