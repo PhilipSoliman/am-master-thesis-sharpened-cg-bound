@@ -32,7 +32,7 @@ RIGHT_CLUSTER_CONDITION_NUMBERS = [2, 1e3]  # condition number bound for contras
 MAX_CONDITION_NUMBER = 1e10  # maximum global condition number
 
 # plot
-FIGWIDTH = 4 * len(RIGHT_CLUSTER_CONDITION_NUMBERS)
+FIGWIDTH = 3.5 * len(RIGHT_CLUSTER_CONDITION_NUMBERS)
 FIGHEIGHT = (FIGWIDTH / len(RIGHT_CLUSTER_CONDITION_NUMBERS)) * len(MIN_EIGS)
 LEGEND_HEIGHT = 0.1
 RESOLUTION = int(1e3)
@@ -324,6 +324,57 @@ def plot_performance_curves(
     estimated_theoretical_improvement_boundary_approximation: np.ndarray,
     uniform_performance: np.ndarray,
 ):
+    # No-improvement region
+    alpha = 0.6
+    ax.fill_between(
+        condition_numbers,
+        uniform_performance,
+        np.ones_like(condition_numbers),
+        color=CUSTOM_COLORS_SIMPLE[0],
+        edgecolor="None",
+        alpha=alpha,
+        label="No-improvement",
+        linestyle="None",
+        zorder=8,
+    )
+
+    # P-bounds
+    ax.fill_between(
+        condition_numbers,
+        uniform_performance,
+        theoretical_improvement_boundary,
+        color="None",
+        edgecolor="black",
+        linestyle="--",
+        linewidth=1,
+        alpha=alpha,
+        label="$P$-bounds",
+        hatch="///",
+        hatch_linewidth=1,
+        zorder=9,
+    )
+
+    # approximate minimum performance
+    r_log_4k_r = 1 / np.log(4 * right_cluster_condition_number)
+    min_p = r_log_4k_r - r_log_4k_r**2 * (
+        np.sqrt(right_cluster_condition_number / condition_numbers)
+        + 1 / np.sqrt(right_cluster_condition_number)
+        + np.sqrt(right_cluster_condition_number / condition_numbers)
+        / np.log(2 / TOLERANCE)
+        + 2 / (np.sqrt(condition_numbers) * np.log(2 / TOLERANCE))
+    )
+    ax.plot(
+        condition_numbers,
+        min_p * np.ones_like(condition_numbers),
+        color="red",
+        linestyle=":",
+        linewidth=2,
+        alpha=0.8,
+        dashes=(3, 4),  # (dash_length, gap_length) in points
+        label="$P$-min (approx.)",
+        zorder=10,
+    )
+
     for i, k_l in enumerate(LEFT_CLUSTER_CONDITION_NUMBERS):
         expected_improvement = theoretical_improvement[i, :] >= 0
         # below threshold
@@ -391,58 +442,6 @@ def plot_performance_curves(
             fontweight="bold",
         )
 
-    # P-bounds
-    alpha = 0.6
-    ax.fill_between(
-        condition_numbers,
-        uniform_performance,
-        theoretical_improvement_boundary,
-        color="None",
-        edgecolor="black",
-        linestyle="--",
-        linewidth=1,
-        alpha=alpha,
-        label="$P$-bounds",
-        hatch="///",
-        hatch_linewidth=1,
-        zorder=9,
-    )
-
-    # No-improvement region
-    ax.fill_between(
-        condition_numbers,
-        uniform_performance,
-        np.ones_like(condition_numbers),
-        color=CUSTOM_COLORS_SIMPLE[0],
-        edgecolor="None",
-        alpha=alpha,
-        label="No-improvement",
-        linestyle="None",
-        zorder=8,
-    )
-
-    # approximate minimum performance
-    r_log_4k_r = 1 / np.log(4 * right_cluster_condition_number)
-    min_p = r_log_4k_r - r_log_4k_r**2 * (
-        +1 * np.sqrt(right_cluster_condition_number / condition_numbers)
-        + 1 / np.sqrt(right_cluster_condition_number)
-        + np.sqrt(right_cluster_condition_number / condition_numbers)
-        * 1
-        / np.log(2 / TOLERANCE)
-        + 2 / (np.sqrt(condition_numbers) * np.log(2 / TOLERANCE))
-    )
-    ax.plot(
-        condition_numbers,
-        min_p * np.ones_like(condition_numbers),
-        color="red",
-        linestyle=":",
-        linewidth=2,
-        alpha=0.8,
-        dashes=(3, 4),  # (dash_length, gap_length) in points
-        label="$P$-min (approx.)",
-        zorder=10,
-    )
-
     ax.set_yscale("log")
     ax.set_ylim(YLIMIT)
 
@@ -498,8 +497,9 @@ for row, min_eig in enumerate(MIN_EIGS):
             estimated_theoretical_improvement_boundary_approximation,
             uniform_performance,
         )
-        if row == 0 and col == 0:
+        if row == 0 and col == 1:
             ax.legend(fontsize=8, loc="upper left", framealpha=0.7, shadow=False)
+        if row == 0 and col == 0:
             ax.set_xlim((condition_numbers[0] / 2, MAX_CONDITION_NUMBER * 100))
             steps = int(np.log10(MAX_CONDITION_NUMBER / condition_numbers[0]))
             ax.set_xscale("log")
@@ -511,7 +511,7 @@ for row, min_eig in enumerate(MIN_EIGS):
             ticklabels = [f"$10^{{{int(np.log10(tick))}}}$" for tick in ticks]
             ax.set_xticks(ticks, labels=ticklabels)
             ax.set_xlabel("Condition number $\\kappa$")
-            ax.set_ylabel("Performance $P = m / \\bar{m}$")
+            ax.set_ylabel("Performance $P = m / m_2$")
 
         if row == 0:
             exponent = int(np.log10(right_cluster_condition_number))
@@ -536,6 +536,9 @@ for row, min_eig in enumerate(MIN_EIGS):
                 verticalalignment="bottom",
                 horizontalalignment="center",
             )
+
+        # turn on grid
+        ax.grid(which="both", linestyle="--", linewidth=0.5, alpha=0.7)
 
 fig.tight_layout()
 
