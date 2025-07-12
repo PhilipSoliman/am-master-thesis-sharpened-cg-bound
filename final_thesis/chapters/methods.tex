@@ -197,13 +197,13 @@ which gives the performance for a uniform eigenspectrum as
 
 Equation \ref{eq:performance_ratio_uniform_expansion} shows that the uniform (minimum) performance $P_{\text{uniform}}(\kappa_l, \kappa_r)$ depends in its leading order term entirely on the right clusters' condition number $\kappa_r$. That is
 \[
-    P_{\text{uniform}}(\kappa_l, \kappa_r) \gtrsim \frac{1}{\ln(4\kappa_r)} = \tilde{P}_{\text{uniform}}(\kappa_r).
+    P_{\text{uniform}}(\kappa_l, \kappa_r) \lesssim \frac{1}{\ln(4\kappa_r)} = \tilde{P}_{\text{uniform}}(\kappa_r).
 \]
 Only for small $\kappa_l = \frac{\kappa}{\kappa_r}$ does the second order term become significant. Additionally, \cref{eq:performance_ratio_uniform_expansion} shows that for increasing $\kappa_r$ we expect a decreasing minimum performance. Finally, we indeed find that the new bound $m_2(\kappa,\kappa_l,\kappa_r)$ is not absolutely sharper than the classical bound $m(\kappa)$.
 
 Moreover, we can say that
 \begin{equation}
-    \tilde{P}_{\text{uniform}}(\kappa_r) \lesssim P_{\text{uniform}}(\kappa_l, \kappa_r) \leq P(\kappa, \kappa_l, \kappa_r) \leq 1,
+    P_{\text{uniform}}(\kappa_l, \kappa_r) \lesssim \tilde{P}_{\text{uniform}}(\kappa_r)  \leq P(\kappa, \kappa_l, \kappa_r) \lesssim 1,
     \label{eq:performance_ratio_no_improvement_bounds}
 \end{equation}
 as long as
@@ -214,7 +214,7 @@ as long as
 where $T_h(\kappa_l, \kappa_r)$ is derived in \cref{sec:performance_threshold} as \cref{eq:threshold_inequality_explicit}.
 
 \subsection{Performance threshold}\label{sec:performance_threshold}
-Now that we have established that the new bound is not absolutely sharper than the classical one, we can determine the conditions under which the new bound is sharper. We require $P\geq1$ to derive such conditions. This gives the following inequality
+Now that we have established that the new bound is not absolutely sharper than the classical one, we can determine the conditions under which the new bound is sharper. We require $P\geq 1$ to derive such conditions. This gives the following inequality
 \[
     \frac{m}{m_2} \geq 1 \Rightarrow m(\kappa) \geq m_2(\kappa, \kappa_l, \kappa_r),
 \]
