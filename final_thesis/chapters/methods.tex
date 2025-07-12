@@ -14,9 +14,9 @@ On the eigenspectrum of $A$, consider two intervals $[a, b]$ and $[c, d]$ with $
 \end{equation}
 where $N_{\text{tail}}$ is the number of eigenvalues in the tail. The first case is a two-cluster eigenspectrum, while the second case has one cluster and a tail of eigenvalues.
  
-The CG error \cref{eq:cg_error_bound} suggests we look for a polynomial $r_{\bar{m}}$ of degree $\bar{m}$ that satisfies the constraints of the minimization problem in order to find a iteration bound $m < \bar{m}$. In other words, we do not solve the minimization problem directly, but we make a clever selection of the polynomial $r_{\bar{m}}$ that satisfies the constraints. As a consequence, the actual minimizing polynomial might require a lower degree $m$ to satisfy the same relative error tolerance $\epsilon$.
+The CG error \cref{eq:cg_error_bound} suggests we look for a polynomial $r_{m_2}$ of degree $m_2$ that satisfies the constraints of the minimization problem in order to find a iteration bound $m < m_2$. In other words, we do not solve the minimization problem directly, but we make a clever selection of the polynomial $r_{m_2}$ that satisfies the constraints. As a consequence, the actual minimizing polynomial might require a lower degree $m$ to satisfy the same relative error tolerance $\epsilon$.
 
-\citeauthor{cg_sharpened_convrate_Axelsson1976} suggests we use not one monolithic residual polynomial function, but a multiplication of two residual polynomial functions $\hat{r}^{(i)}_p(x)$ and $\hat{r}_{\bar{m}-p}(x)$ for the two clusters. The superscript $^{(i)}$ corresponds to the two eigenspectra described above. The residual polynomial functions are defined using \cref{def:scaled_chebyshev_polynomial} and $\gamma = 0$ as follows
+\citeauthor{cg_sharpened_convrate_Axelsson1976} suggests we use not one monolithic residual polynomial function, but a multiplication of two residual polynomial functions $\hat{r}^{(i)}_p(x)$ and $\hat{r}_{m_2-p}(x)$ for the two clusters. The superscript $^{(i)}$ corresponds to the two eigenspectra described above. The residual polynomial functions are defined using \cref{def:scaled_chebyshev_polynomial} and $\gamma = 0$ as follows
 \begin{equation}
     \hat{r}^{(i)}_p (x)
     \begin{cases}
@@ -27,14 +27,14 @@ The CG error \cref{eq:cg_error_bound} suggests we look for a polynomial $r_{\bar
 \end{equation}
 and
 \begin{equation}
-    \hat{r}_{{\bar{m}}-p} (x) = \frac{C_{\bar{m}-p} \left(\frac{d + c - 2x}{d - c}\right)}{C_{\bar{m}-p}\left(\frac{d + c}{d - c}\right)},
+    \hat{r}_{{m_2}-p} (x) = \frac{C_{m_2-p} \left(\frac{d + c - 2x}{d - c}\right)}{C_{m_2-p}\left(\frac{d + c}{d - c}\right)},
     \label{eq:residual_polynomial_rpm}
 \end{equation}
-Indeed, the product $r_{\bar{m}} = \hat{r}_p \hat{r}_{\bar{m}-p} \in \mathcal{P}_{\bar{m}}$. Hence, we can use the residual polynomial functions to bound the error at the $m^{\text{th}}$ iterate. Now, we obtain the following intermediate bounds
+Indeed, the product $r_{m_2} = \hat{r}_p \hat{r}_{m_2-p} \in \mathcal{P}_{m_2}$. Hence, we can use the residual polynomial functions to bound the error at the $m^{\text{th}}$ iterate. Now, we obtain the following intermediate bounds
 \begin{subequations}
     \begin{align}
-        \max_{\lambda \in [a,b]} |r_{\bar{m}}(\lambda)| \leq \max_{\lambda \in [a,b]} |\hat{r}^{(i)}_p(\lambda)| \max_{\lambda \in [a,b]} |\hat{r}_{\bar{m}-p}(\lambda)| &\leq \max_{\lambda \in [a,b]} |\hat{r}^{(i)}_p(\lambda)|, \ \text{and} \label{eq:residual_polynomial_bound_ab}\\
-        \max_{\lambda \in [c,d]} |r_{\bar{m}}(\lambda)| \leq \max_{\lambda \in [c,d]} |\hat{r}^{(i)}_p(\lambda)| \max_{\lambda \in [c,d]} |\hat{r}_{\bar{m}-p}(\lambda)| &\leq \max_{\lambda \in [c,d]} |\hat{r}_{p}(\lambda)|/C_{\bar{m}-p}\left(\frac{d+c}{d-c}\right) \label{eq:residual_polynomial_bound_cd}
+        \max_{\lambda \in [a,b]} |r_{m_2}(\lambda)| \leq \max_{\lambda \in [a,b]} |\hat{r}^{(i)}_p(\lambda)| \max_{\lambda \in [a,b]} |\hat{r}_{m_2-p}(\lambda)| &\leq \max_{\lambda \in [a,b]} |\hat{r}^{(i)}_p(\lambda)|, \ \text{and} \label{eq:residual_polynomial_bound_ab}\\
+        \max_{\lambda \in [c,d]} |r_{m_2}(\lambda)| \leq \max_{\lambda \in [c,d]} |\hat{r}^{(i)}_p(\lambda)| \max_{\lambda \in [c,d]} |\hat{r}_{m_2-p}(\lambda)| &\leq \max_{\lambda \in [c,d]} |\hat{r}_{p}(\lambda)|/C_{m_2-p}\left(\frac{d+c}{d-c}\right) \label{eq:residual_polynomial_bound_cd}
     \end{align}
 \end{subequations}
 where the first result follows from the fact that $|\hat{r}_{m-p}(x)| < 1 \ \forall x \in [a,b]$ and the second result from 
@@ -69,13 +69,13 @@ Next, $\hat{r}^{(i)}_p$ in $[c,d]$ is bounded by its maximum value within $[a,b]
 \end{equation*}
 with $\eta_i$ as defined in \cref{eq:residual_polynomial_bound_ab_i}.
 
-At this point we have ensured that $\max_{\lambda \in [a,b]}|r_{\bar{m}}|$ is bounded by $\epsilon$ using \cref{eq:residual_polynomial_bound_ab}. So it remains to bound $\max_{\lambda \in [c,d]}|r_{\bar{m}}|$ in \cref{eq:residual_polynomial_bound_cd}. Using above results we can write 
+At this point we have ensured that $\max_{\lambda \in [a,b]}|r_{m_2}|$ is bounded by $\epsilon$ using \cref{eq:residual_polynomial_bound_ab}. So it remains to bound $\max_{\lambda \in [c,d]}|r_{m_2}|$ in \cref{eq:residual_polynomial_bound_cd}. Using above results we can write 
 \begin{equation*}
-    \max_{\lambda \in [c,d]} |r_{\bar{m}}(\lambda)| < \epsilon,
+    \max_{\lambda \in [c,d]} |r_{m_2}(\lambda)| < \epsilon,
 \end{equation*}
 if we require that
 \begin{equation}
-    \eta_i C_{p}\left(\frac{2d - b - a}{b - a}\right) /C_{\bar{m}-p}\left(\frac{d+c}{d-c}\right) < \epsilon.
+    \eta_i C_{p}\left(\frac{2d - b - a}{b - a}\right) /C_{m_2-p}\left(\frac{d+c}{d-c}\right) < \epsilon.
     \label{eq:relative_error_bound_mp}
 \end{equation}
 Using that for $x_1, x_2, x_3 \in \mathbb{R}^+$ with $x_1 > x_3$ and $z = \frac{x_1 - x_2}{x_3}$
@@ -87,7 +87,7 @@ Using that for $x_1, x_2, x_3 \in \mathbb{R}^+$ with $x_1 > x_3$ and $z = \frac{
 \end{align*}
 and substituting $x_1 = 2d$, $x_2 = b + a$ and $x_3 = b - a$ we obtain the following inequality
 \begin{equation}
-    \eta_i \left(\frac{4d}{b-a} \right)^p /C_{\bar{m}-p}\left(\frac{d+c}{d-c}\right) < \epsilon. 
+    \eta_i \left(\frac{4d}{b-a} \right)^p /C_{m_2-p}\left(\frac{d+c}{d-c}\right) < \epsilon. 
     \label{eq:chebyshev_degree_p_bound}
 \end{equation}
 Moreover,
@@ -110,7 +110,7 @@ Moreover,
 \end{align*}
 We can therefore require that the bound in \cref{eq:chebyshev_degree_p_bound} is satisfied if we have
 \[
-    1/C_{\bar{m}-p}\left(\frac{d+c}{d-c}\right) \leq \frac{\epsilon}{2\left( \frac{4d}{e_i}\right)^p},
+    1/C_{m_2-p}\left(\frac{d+c}{d-c}\right) \leq \frac{\epsilon}{2\left( \frac{4d}{e_i}\right)^p},
 \]
 where 
 \[
@@ -119,13 +119,13 @@ where
         a &, \text{if } i = 2.\\
     \end{cases}
 \]
-Again using \cref{eq:chebyshev_polynomial_bound} and solving for the degree $\bar{m} - p$ we obtain
+Again using \cref{eq:chebyshev_polynomial_bound} and solving for the degree $m_2 - p$ we obtain
 \[
-    \bar{m} - p \geq \frac{1}{2}\sqrt{\frac{d}{c}}\left(\ln{\epsilon} + p \ln{\frac{4d}{e_i}}\right),
+    m_2 - p \geq \frac{1}{2}\sqrt{\frac{d}{c}}\left(\ln{\epsilon} + p \ln{\frac{4d}{e_i}}\right),
 \]
 which leads to the following bound for the number of iterations \cite[Equation 4.4]{cg_sharpened_convrate_Axelsson1976}
 \begin{equation}
-    \bar{m}=\left\lfloor\frac{1}{2} \sqrt{\frac{d}{c}} \ln (2 / \epsilon)+\left(1+\frac{1}{2} \sqrt{\frac{d}{c}} \ln (4 d / e_i)\right) p\right\rfloor,
+    m_2=\left\lfloor\frac{1}{2} \sqrt{\frac{d}{c}} \ln (2 / \epsilon)+\left(1+\frac{1}{2} \sqrt{\frac{d}{c}} \ln (4 d / e_i)\right) p\right\rfloor,
     \label{eq:cg_iteration_bound_2_clusters}
 \end{equation}
 where 
@@ -134,20 +134,20 @@ where
 \]
 
 \section{Performance criteria}\label{sec:cg_sharpened_convrate_th_performance}
-In this section we compare the new bound in \cref{eq:cg_iteration_bound_2_clusters} to the (approximated) classical bound in \cref{eq:cg_convergence_rate_bound_iterations_approx}. We will see that the new bound is not absolutely sharper than the classical one. However, we will derive an approximate, though accurate, criterion that allows us to discern under what conditions the new bound \textit{is} sharper.
+In this section we compare the new bound in \cref{eq:cg_iteration_bound_2_clusters} (case $i=1$) to the (approximated) classical bound in \cref{eq:cg_convergence_rate_bound_iterations_approx}. We will see that the new bound is not absolutely sharper than the classical one. However, we will derive an approximate, though accurate, criterion (see \cref{eq:threshold_inequality_explicit_expansion}) that allows us to discern under what conditions the new bound \textit{is} sharper.
 
 To that end, we introduce a measure of performance as the ratio of the number of iterations predicted by the classical bound to that predicted by the sharpened bound
 \begin{equation}
-    P = \frac{m}{\bar{m}}.
+    P = \frac{m}{m_2}.
     \label{eq:performance_ratio}
 \end{equation}
-In order to see that the new bound is not absolutely sharper than the classical one, we determine the minimum value of $P$. We know that the product of two lower order Chebyshev polynomials is not optimal for a uniform eigenspectrum, cf. the proof of Chebyshev optimality outlined in \cref{th:minmax_polynomial}. Therefore, a good place to start looking for a global minimum of $P$ is to study the case of a uniform eigenspectrum. Introducing the left and right cluster condition numbers $\kappa_l = \frac{b}{a}$ and $\kappa_r = \frac{d}{b}$, we can rewrite the bound in \cref{eq:cg_iteration_bound_2_clusters} as follows
+Next to this, we introduce the left and right cluster condition numbers $\kappa_l = \frac{b}{a} > 1$ and $\kappa_r = \frac{d}{b} > 1$. Rewriting the bound in \cref{eq:cg_iteration_bound_2_clusters} then gives
 \[
-        \bar{m}(\kappa, \kappa_l, \kappa_r)=\left\lceil\frac{\sqrt{\kappa_r}}{2} \ln (2 / \epsilon)+\left(1+\frac{\sqrt{\kappa_r}}{2} \ln \left(\frac{4\kappa}{\kappa_l}\right)\right) p\right\rceil.
+    m_2(\kappa, \kappa_l, \kappa_r)=\left\lfloor\frac{\sqrt{\kappa_r}}{2} \ln (2 / \epsilon)+\left(1+\frac{\sqrt{\kappa_r}}{2} \ln \left(\frac{4\kappa}{\kappa_l}\right)\right) p\right\rfloor.
 \]
 Then, substituting $p$ gives
 \begin{equation}
-    \bar{m}=\left\lfloor
+    m_2(\kappa, \kappa_l, \kappa_r)=\left\lfloor
         1 
         + \frac{\sqrt{\kappa_r}}{2}\ln\left(\frac{4\kappa}{\kappa_l}\right)
         + \frac{1}{2}\ln\left(\frac{2}{\epsilon}\right)\left(
@@ -156,50 +156,110 @@ Then, substituting $p$ gives
             + \sqrt{\kappa_l\kappa_r}\ln\left(\frac{4\kappa}{\kappa_l}\right)
         \right)
     \right\rfloor.
-\end{equation}  
-Restricting ourselves to the case of a uniform eigenspectrum, i.e. $a<b=c<d$, we can set $\kappa=\kappa_l\kappa_r$, which yields
+\end{equation} 
+
+\subsection{Uniform performance ratio}
+In order to see that the new bound is not absolutely sharper than the classical one, we determine the minimum value of $P$. We know that the product of two lower order Chebyshev polynomials is not optimal for a uniform eigenspectrum, cf. the proof of Chebyshev optimality outlined in \cref{th:minmax_polynomial}. Therefore, we assume that the minimum value of $P$ is attained for the case of a uniform eigenspectrum, i.e. $a<b=c<d$, and we can set $\kappa=\kappa_l\kappa_r$, which yields
 \begin{equation}
-    \bar{m}=\left\lfloor
+    m_2(\kappa=\kappa_l\kappa_r, \kappa_l, \kappa_r)=\left\lfloor
         1 
         + \frac{\sqrt{\kappa_r}}{2}\ln\left(4\kappa_r\right)
-        + \underbrace{\frac{\sqrt{\kappa}}{2}\ln\left(\frac{2}{\epsilon}\right)}_{=m}\left(
-            \frac{1}{\sqrt{\kappa_l}}
-            + \frac{1}{\sqrt{\kappa_r}}
-            + \ln\left(4\kappa_r\right)
+        + \underbrace{\frac{\sqrt{\kappa}}{2}\ln\left(\frac{2}{\epsilon}\right)}_{=m(\kappa)}\left(
+            \underbrace{
+                \frac{1}{\sqrt{\kappa_l}}
+                + \frac{1}{\sqrt{\kappa_r}}
+                + \ln\left(4\kappa_r\right)
+            }_{:= q(\kappa_l, \kappa_r)}
         \right)
     \right\rfloor.
     \label{eq:cg_iteration_bound_2_clusters_uniform}
 \end{equation}
-We recognize the classical CG bound as the factor in front of the last term of \cref{eq:cg_iteration_bound_2_clusters_uniform}. Now, the performance ratio $P$ in \cref{eq:performance_ratio} can be approximated as follows
+We recognize the classical CG bound as the factor in front of the last term in \cref{eq:cg_iteration_bound_2_clusters_uniform}. Now, the performance ratio $P$ in \cref{eq:performance_ratio} satisfies
 \begin{equation}
-    P(\kappa_l, \kappa_r) = \left(\frac{1}{\sqrt{\kappa_l}} + \frac{1}{\sqrt{\kappa_r}} + \ln(4\kappa_r)\right)^{-1}
+    P(\kappa=\kappa_l\kappa_r, \kappa_l, \kappa_r) = P_{\text{uniform}}(\kappa_l, \kappa_r) = \left(\frac{1 + \frac{1}{2}\sqrt{\kappa_r}\ln(4\kappa_r)}{m(\kappa_l\kappa_r)} + q(\kappa_l, \kappa_r)\right)^{-1},
+    \label{eq:performance_ratio_uniform}
 \end{equation}
-- Note, $m_c \sim \sqrt{\kappa}\ln(2/\epsilon)$. Hence, the minimal performance satisfies
+which can be expanded as
 \[
-p_{\text{min}}(\kappa_l, \kappa_r) = \min_{\kappa, \ \kappa_r=c, \kappa_l = \frac{\kappa}{\kappa_r}} m_c/m_s = \left(\frac{1}{2\sqrt{\kappa_r}} + \frac{1}{4}\ln(4\kappa_r) + \sqrt{\kappa_l}\ln\left(\frac{\kappa_r}{4}\right)\right)^{-1},
+    P_{\text{uniform}}(\kappa_l, \kappa_r) = q(\kappa_l, \kappa_r)^{-1} - \frac{1 + \frac{1}{2}\sqrt{\kappa_r}\ln(4\kappa_r)}{m(\kappa)q(\kappa_l, \kappa_r)^2} + \mathcal{O}\left(\frac{1}{m(\kappa)^2q(\kappa_l, \kappa_r)^3}\right).
 \]
-Now, setting $q(\kappa_l,\kappa_r) = \frac{1}{4}\ln(4\kappa_r) + \sqrt{\kappa_l}\ln\left(\frac{\kappa_r}{4}\right)$ and using the Taylor expansion for $\frac{1}{1 + x} \approx 1 - x + \mathcal{O}(x^2)$ for small $x = \frac{1}{2q(\kappa_l,\kappa_r)\sqrt{\kappa_r}}$ we get
+Next, we can expand $q(\kappa_l, \kappa_r)^{-1}$ as follows
 \[
-p_{\text{min}}(\kappa_l, \kappa_r) = q(\kappa_l,\kappa_r)^{-1} - \frac{1}{2q(\kappa_l,\kappa_r)^2\sqrt{\kappa_r}} + \mathcal{O}\left(\frac{1}{4q(\kappa_l,\kappa_r)^3\kappa_r}\right)
+    q(\kappa_l, \kappa_r)^{-1} = \frac{1}{\ln(4\kappa_r)} - \frac{1}{\ln(4\kappa_r)^2}\left(\frac{1}{\sqrt{\kappa_l}} + \frac{1}{\sqrt{\kappa_r}}\right) + \mathcal{O}\left(\frac{1}{(\ln(4\kappa_r))^3}\left(\frac{1}{\sqrt{\kappa_l}} + \frac{1}{\sqrt{\kappa_r}}\right)^2\right),
 \]
-- Now expanding $q^{-1}(\kappa_l,\kappa_r)$ with the same Taylor expansion and $x=\frac{\ln(4\kappa_r)}{4\sqrt{\kappa_l}\ln\frac{\kappa_r}{4}}$
+which gives the performance for a uniform eigenspectrum as
+\begin{align}
+    P_{\text{uniform}}(\kappa_l, \kappa_r) &= \frac{1}{\ln(4\kappa_r)} \notag \\
+    &\quad - \frac{1}{\ln(4\kappa_r)^2}\left(\frac{1}{\sqrt{\kappa_l}}\left[1 + \frac{1}{\ln\left(\frac{2}{\epsilon}\right) + 1}\right] + \frac{1}{\sqrt{\kappa_r}} + \frac{2}{\sqrt{\kappa_l\kappa_r}\ln\left(\frac{2}{\epsilon}\right) + 1}\right) \notag \\
+    &\quad + \mathcal{O}\left(\frac{1}{\ln(4\kappa_r)^3}\right).
+    \label{eq:performance_ratio_uniform_expansion}
+\end{align}
+
+Equation \ref{eq:performance_ratio_uniform_expansion} shows that the uniform (minimum) performance $P_{\text{uniform}}(\kappa_l, \kappa_r)$ depends in its leading order term entirely on the right clusters' condition number $\kappa_r$. That is
 \[
-q(\kappa_l,\kappa_r)^{-1} = (\sqrt{\kappa_l}\ln(4\kappa_r))^{-1} - \frac{\ln(4\kappa_r)}{4\kappa_l\ln(\frac{\kappa_r}{4})^2} + \mathcal{O}\left(\frac{\ln(4\kappa_r)}{16\kappa^{3/2}_1\ln(\frac{\kappa_r}{4})^3}\right)
+    P_{\text{uniform}}(\kappa_l, \kappa_r) \gtrsim \frac{1}{\ln(4\kappa_r)} = \tilde{P}_{\text{uniform}}(\kappa_r).
 \]
-- Combining the two expansions we get
+Only for small $\kappa_l = \frac{\kappa}{\kappa_r}$ does the second order term become significant. Additionally, \cref{eq:performance_ratio_uniform_expansion} shows that for increasing $\kappa_r$ we expect a decreasing minimum performance. Finally, we indeed find that the new bound $m_2(\kappa,\kappa_l,\kappa_r)$ is not absolutely sharper than the classical bound $m(\kappa)$.
+
+Moreover, we can say that
+\begin{equation}
+    \tilde{P}_{\text{uniform}}(\kappa_r) \lesssim P_{\text{uniform}}(\kappa_l, \kappa_r) \leq P(\kappa, \kappa_l, \kappa_r) \leq 1,
+    \label{eq:performance_ratio_no_improvement_bounds}
+\end{equation}
+as long as
+\begin{equation}
+    \kappa_l\kappa_r \leq \kappa \lesssim T_h(\kappa_l, \kappa_r),
+    \label{eq:performance_ratio_uniform_bound}
+\end{equation}
+where $T_h(\kappa_l, \kappa_r)$ is derived in \cref{sec:performance_threshold} as \cref{eq:threshold_inequality_explicit}.
+
+\subsection{Performance threshold}\label{sec:performance_threshold}
+Now that we have established that the new bound is not absolutely sharper than the classical one, we can determine the conditions under which the new bound is sharper. We require $P\geq1$ to derive such conditions. This gives the following inequality
 \[
-p_{\text{min}}(\kappa_l, \kappa_r) = (\sqrt{\kappa_l}\ln(4\kappa_r))^{-1} + \mathcal{O}\left(\frac{1}{2\kappa_l\sqrt{\kappa_r}\ln(4\kappa_r)^2}\right)
+    \frac{m}{m_2} \geq 1 \Rightarrow m(\kappa) \geq m_2(\kappa, \kappa_l, \kappa_r),
 \]
-- Since $\kappa_l,\kappa_r \geq 1$ we neglect the higher order terms  we get
+which can be rewritten as
+\begin{equation}
+    \sqrt{\frac{\kappa}{\kappa_l\kappa_r}} \geq \ln\left(4\frac{\kappa}{\kappa_l}\right) + \frac{1}{\sqrt{\kappa_r}} + \frac{1}{\sqrt{\kappa_l}}\left(\frac{1 + \ln\left(\frac{4\kappa}{\kappa_l}\right)}{\ln\left(\frac{2}{\epsilon}\right)}\right).
+    \label{eq:threshold_inequality}
+\end{equation}
+At this point we assume that $\kappa_l \gg 1$. This allows us to neglect the last term in \cref{eq:threshold_inequality}. Next to simplifying the equation itself, this reduces the number of variables. Indeed, introducing a new parameter for the \textit{spectral width} $s = \frac{\kappa}{\kappa_l}$, dropping the last term in \cref{eq:threshold_inequality} and setting $c_r = \frac{1}{\sqrt{\kappa_r}}$ gives
+\begin{equation}
+    c_r\sqrt{s} \geq \ln\left(4s\right) + c_r.
+    \label{eq:threshold_inequality_s}
+\end{equation}
+We use the Lambert $\mathrm{W}$ function to solve the equality in \cref{eq:threshold_inequality_s} for $s$. In order to do so, we transform the above equation into the form $x = y \mathrm{e}^y$ with $y = -\frac{2\sqrt{s}}{c_r}$ and $x = -\frac{4}{c_r\exp\left(\frac{c_r}{2}\right)}$. Then, we can write
+\begin{align*}
+    -\frac{c_r\sqrt{s}}{2} = y = W_{-1}(x) = W_{-1}\left(-\frac{c_r}{4\exp\left(\frac{c_r}{2}\right)}\right), \quad x \in \left(\frac{1}{\mathrm{e}}, 0 \right],
+\end{align*}
+where $W_{-1}$ is the first negative branch of the Lambert $\mathrm{W}$ function. The condition on $x$ ensures that $W_{-1}$ evaluates to a real number. Finally, after substituting $c_r = \frac{1}{\sqrt{\kappa_r}}$ we obtain an explicit expression for the spectral width $s$ in terms of the right cluster condition number $\kappa_r$
 \[
-p_{\text{min}}(\kappa_l, \kappa_r) \approx (\sqrt{\kappa_l}\ln(4\kappa_r))^{-1} \tag{2}
+    s(\kappa, \kappa_l) \geq 4\kappa_r W_{-1}\left(-\frac{1}{4\sqrt{\kappa_r}\exp\left(\frac{1}{2\sqrt{\kappa_r}}\right)}\right)^2,
 \]
-- Eq. (2) explains the performance curve for the uniform spectra in the performance plot, as the minimum performance is largely independent of condition number. Only for small $\kappa_l \sim \kappa$ do we notice a slight increase (notice the little increase of the same performance curve for small $\kappa$). Additionally, Eq. (2) shows that for increasing $\kappa_r$ we expect a decreasing minimum performance $p_{\text{min}}$.
+or, in terms of the original condition numbers
+\begin{equation}
+    \kappa \gtrsim 4\kappa_l\kappa_r W_{-1}\left(-\frac{1}{4\sqrt{\kappa_r}\exp\left(-\frac{1}{2\sqrt{\kappa_r}}\right)}\right)^2 = T_h(\kappa_l, \kappa_r).
+    \label{eq:threshold_inequality_explicit}    
+\end{equation}
+The evaluation of the Lambert $\mathrm{W}$ function is not a trivial task and often requires numerical methods for accurate computation \cite{evaluation_of_the_lambert_w_function_Corless1996}. Luckily, there exists an expansion of $\mathrm{W}_{-1}(x)$ for $x\rightarrow0^-$ \cite[Equation 4.19]{evaluation_of_the_lambert_w_function_Corless1996}. Let $x$ be as above and set $l = \ln(-x)$ and $L = \ln(-L)$, then
+\begin{equation}
+    \kappa \gtrsim 4\kappa_l\kappa_r \left(L - l + \frac{l}{L}\right)^2 + \mathcal{O}\left(\frac{\kappa_l\kappa_rl^4}{L^4}\right).
+    \label{eq:threshold_inequality_explicit_expansion}    
+\end{equation}
+
+\subsection{Performance plot}
+Figure \ref{fig:two_cluster_bound_performance} visualizes all the findings regarding the performance of the two-cluster bound $m_2$. 
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{performance_vs_condition_number.pdf}
+    \caption{Performance ratio of the classical bound $m$ from \cref{eq:cg_convergence_rate_bound_iterations_approx} and the new two-cluster bound $m_2$ from \cref{eq:cg_iteration_bound_2_clusters} as a function of the global condition number $\kappa$ for right cluster condition number $\kappa_r = 2$ (\textbf{left}) and $\kappa_r = 10^3$ (\textbf{right}). All plots contain graphs for spectra with $\kappa_l = 1, 10, 10^2, 10^3, 10^4$. The plots also contain a red, shaded no-improvement region for which $P < 1$, a diagonally hashed region resembling the performance bounds from \cref{eq:performance_ratio_no_improvement_bounds}, a red, dotted line resembling the second order expansion of the uniform performance ratio from \cref{eq:performance_ratio_uniform_expansion} and both the exact and approximate $\kappa$-threshold values for each $\kappa_l$ graph from \cref{eq:threshold_inequality_explicit,eq:threshold_inequality_explicit_expansion}, respectively.}
+    \label{fig:two_cluster_bound_performance}
+\end{figure}
 
 \section{Generalization to multiple clusters}\label{sec:multiple_clusters}
 At this point we assume that we are dealing with an eigenspectrum of the form $\sigma_1(A)$, i.e. we are only treating case 1. In \cref{sec:cg_sharpened_convrate_implications}, it is reasoned that this is indeed a very applicable case for \cref{prob:elliptic_problem_discretized}.
 
-In this case, the technique outlined in \cref{sec:cg_sharpened_convrate} starts at the left most cluster $[a,b]$, finds the Chebyshev degree $p_1=p$ satisfying \cref{eq:chebyshev_degree_p}, moves to the neighboring cluster $[c,d]$ and finds the Chebyshev degree $p_2 = \bar{m} - p$ satisfying \cref{eq:relative_error_bound_mp}. Rewriting \cref{eq:relative_error_bound_mp} gives the following equation for $p_2$:
+In this case, the technique outlined in \cref{sec:cg_sharpened_convrate} starts at the left most cluster $[a,b]$, finds the Chebyshev degree $p_1=p$ satisfying \cref{eq:chebyshev_degree_p}, moves to the neighboring cluster $[c,d]$ and finds the Chebyshev degree $p_2 = m_2 - p$ satisfying \cref{eq:relative_error_bound_mp}. Rewriting \cref{eq:relative_error_bound_mp} gives the following equation for $p_2$:
 \begin{equation}
     \frac{1}{C_{p_2}\left(\frac{d+c}{d-c}\right)} \leq \frac{\epsilon}{{C}^{(1)}_{p_1}(d)} = \epsilon_2,
     \label{eq:chebyshev_degree_p_prime}
@@ -263,6 +323,6 @@ Evidently, adding more clusters to the left of the interval $[a_i,b_i]$ increase
 
 Equation \ref{eq:chebyshev_degree_p_i_explicit} gives us a way to calculate the Chebyshev degree $p_i$ of the $i^{\text{th}}$ cluster $[a_i,b_i]$ in terms of the Chebyshev degrees of the previous clusters. To obtain a bound on the number of iterations for the CG method we sum the Chebyshev degrees of all the clusters
 \begin{equation}
-    \bar{m} = \sum_{i=1}^{N_{\text{clusters}}} p_i
+    m_2 = \sum_{i=1}^{N_{\text{clusters}}} p_i
     \label{eq:cg_iteration_bound_multiple_clusters}
 \end{equation}
