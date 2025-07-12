@@ -4,7 +4,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.axes import Axes
-from scipy.optimize import fsolve
+from scipy.optimize import brentq, fsolve, root_scalar
 from scipy.special import lambertw
 from tqdm import tqdm
 
@@ -27,17 +27,16 @@ TOLERANCE = 1e-8
 
 # spectra
 MIN_EIGS = [1e-8]  # reciprocal of the contrast of problem coefficient
-# LEFT_CLUSTER_WIDTHS_MULTIPLIERS = [1e-2, 1, 1e2, 1e4, 1e6]
 LEFT_CLUSTER_CONDITION_NUMBERS = [1, 1e1, 1e2, 1e3, 1e4]
-RIGHT_CLUSTER_CONDITION_NUMBERS = [1e1, 1e2]  # condition number bound for contrast=1
+RIGHT_CLUSTER_CONDITION_NUMBERS = [2, 1e3]  # condition number bound for contrast=1
 MAX_CONDITION_NUMBER = 1e10  # maximum global condition number
 
 # plot
-FIGWIDTH = 8
+FIGWIDTH = 4 * len(RIGHT_CLUSTER_CONDITION_NUMBERS)
 FIGHEIGHT = (FIGWIDTH / len(RIGHT_CLUSTER_CONDITION_NUMBERS)) * len(MIN_EIGS)
 LEGEND_HEIGHT = 0.1
 RESOLUTION = int(1e3)
-YLIMIT = (1e-1, 1e4)  # y-axis limits for performance plot
+YLIMIT = (5e-2, 1e4)  # y-axis limits for performance plot
 
 
 #############
@@ -178,6 +177,8 @@ def compute_theoretical_improvement_boundary(
     theoretical_improvement_boundary = np.zeros_like(condition_numbers)
 
     def func(s, k):
+        if s <= 0:
+            return np.nan
         log_4s = np.log(4 * s)
         sqrt_s = np.sqrt(s)
         return (
@@ -188,9 +189,98 @@ def compute_theoretical_improvement_boundary(
             + 0 * np.sqrt(s / k)
         )
 
+    def solve_robust(func, k, method="brentq"):
+        """
+        Robust solver that tries multiple methods and initial guesses
+        """
+        if method == "brentq":
+            # Brent's method - guaranteed convergence if root exists in bracket
+            # Need to find a bracketing interval first
+            try:
+                # Try to find reasonable bounds - ensure s > 0
+                s_min = 1
+                s_max = 1e3
+
+                # Extend bounds if needed to ensure opposite signs
+                max_iterations = 50  # Increase iterations for larger ranges
+                iterations = 0
+                while (
+                    func(s_min, k) * func(s_max, k) > 0 and iterations < max_iterations
+                ):
+                    s_max = min(s_max * 10, 1e16)  # Don't go above 1e16
+                    iterations += 1
+
+                if func(s_min, k) * func(s_max, k) <= 0:
+                    # print(f"Bracketing interval found: [{s_min}, {s_max}] for k={k}")
+                    # exit()
+                    return brentq(func, s_min, s_max, args=(k,))
+                else:
+                    raise ValueError("Could not find bracketing interval")
+            except Exception as e:
+                # Fall back to other methods if bracketing fails
+                raise ValueError(f"Bracketing failed for k={k}: {e}")
+
+        if method == "root_scalar" or method == "hybrid":
+            # Try root_scalar with different methods
+            methods_to_try = ["brentq", "brenth", "ridder", "bisect"]
+
+            for solver_method in methods_to_try:
+                try:
+                    # Find bracketing interval - ensure s > 0
+                    s_min = 1e-6
+                    s_max = 1e6
+
+                    # Extend bounds if needed
+                    max_iterations = 20
+                    iterations = 0
+                    while (
+                        func(s_min, k) * func(s_max, k) > 0
+                        and iterations < max_iterations
+                    ):
+                        s_min = max(s_min / 10, 1e-12)  # Don't go below 1e-12
+                        s_max = min(s_max * 10, 1e12)  # Don't go above 1e12
+                        iterations += 1
+
+                    if func(s_min, k) * func(s_max, k) <= 0:
+                        result = root_scalar(
+                            func,
+                            args=(k,),
+                            bracket=[s_min, s_max],
+                            method=solver_method,
+                        )
+                        if result.converged:
+                            return result.root
+                except:
+                    continue
+
+        # Fall back to fsolve with multiple initial guesses - all positive
+        print("Falling back to fsolve with multiple initial guesses")
+        initial_guesses = [1, 10, 100, 250, 1000, 0.1, 0.01, 2500]
+        for guess in initial_guesses:
+            try:
+                result = fsolve(func, guess, args=(k,), full_output=True)
+                if (
+                    result[2] == 1 and result[0][0] > 0
+                ):  # Check if converged and positive
+                    return result[0][0]
+            except:
+                continue
+
+        # If all else fails, use the original approach
+        try:
+            result = fsolve(func, 250, args=(k,))[0]
+            if result > 0:
+                return result
+            else:
+                # If negative, try a different guess
+                return fsolve(func, 1000, args=(k,))[0]
+        except:
+            # Last resort - return a reasonable default
+            return 1.0
+
     m_c = classical_bound(condition_numbers)  # classical CG bound
     for i, k in enumerate(condition_numbers):
-        s = fsolve(func, 1000, args=(k,))[0]
+        s = solve_robust(func, k, method="brentq")
         k_l = k / s
         left_cluster = (min_eig, min_eig * k_l)  # left cluster
         right_cluster = (min_eig * k / k_r, min_eig * k)  # right cluster
@@ -301,12 +391,13 @@ def plot_performance_curves(
             fontweight="bold",
         )
 
+    # P-bounds
     alpha = 0.6
     ax.fill_between(
         condition_numbers,
         uniform_performance,
         theoretical_improvement_boundary,
-        color=CUSTOM_COLORS_SIMPLE[0],
+        color="None",
         edgecolor="black",
         linestyle="--",
         linewidth=1,
@@ -316,9 +407,11 @@ def plot_performance_curves(
         hatch_linewidth=1,
         zorder=9,
     )
+
+    # No-improvement region
     ax.fill_between(
         condition_numbers,
-        theoretical_improvement_boundary,
+        uniform_performance,
         np.ones_like(condition_numbers),
         color=CUSTOM_COLORS_SIMPLE[0],
         edgecolor="None",
@@ -326,6 +419,28 @@ def plot_performance_curves(
         label="No-improvement",
         linestyle="None",
         zorder=8,
+    )
+
+    # approximate minimum performance
+    r_log_4k_r = 1 / np.log(4 * right_cluster_condition_number)
+    min_p = r_log_4k_r - r_log_4k_r**2 * (
+        +1 * np.sqrt(right_cluster_condition_number / condition_numbers)
+        + 1 / np.sqrt(right_cluster_condition_number)
+        + np.sqrt(right_cluster_condition_number / condition_numbers)
+        * 1
+        / np.log(2 / TOLERANCE)
+        + 2 / (np.sqrt(condition_numbers) * np.log(2 / TOLERANCE))
+    )
+    ax.plot(
+        condition_numbers,
+        min_p * np.ones_like(condition_numbers),
+        color="red",
+        linestyle=":",
+        linewidth=2,
+        alpha=0.8,
+        dashes=(3, 4),  # (dash_length, gap_length) in points
+        label="$P$-min (approx.)",
+        zorder=10,
     )
 
     ax.set_yscale("log")
@@ -384,15 +499,14 @@ for row, min_eig in enumerate(MIN_EIGS):
             uniform_performance,
         )
         if row == 0 and col == 0:
-            ax.legend(fontsize=8, loc="upper left")
+            ax.legend(fontsize=8, loc="upper left", framealpha=0.7, shadow=False)
             ax.set_xlim((condition_numbers[0] / 2, MAX_CONDITION_NUMBER * 100))
             steps = int(np.log10(MAX_CONDITION_NUMBER / condition_numbers[0]))
             ax.set_xscale("log")
-
             ticks = np.logspace(
                 np.log10(condition_numbers[0]),
                 np.log10(MAX_CONDITION_NUMBER),
-                steps + 2,
+                steps + 1,
             )
             ticklabels = [f"$10^{{{int(np.log10(tick))}}}$" for tick in ticks]
             ax.set_xticks(ticks, labels=ticklabels)
@@ -400,10 +514,17 @@ for row, min_eig in enumerate(MIN_EIGS):
             ax.set_ylabel("Performance $P = m / \\bar{m}$")
 
         if row == 0:
+            exponent = int(np.log10(right_cluster_condition_number))
+            if exponent == 0:
+                kappa_r_text = (
+                    f"$\\mathbf{{\\kappa_r = {int(right_cluster_condition_number)}}}$"
+                )
+            else:
+                kappa_r_text = f"$\\mathbf{{\\kappa_r = 10^{{{exponent}}}}}$"
             ax.text(
                 condition_numbers[-1] * 10,
                 YLIMIT[1],
-                f"$\\mathbf{{\\kappa_r = 10^{{{int(np.log10(right_cluster_condition_number))}}}}}$",
+                kappa_r_text,
                 verticalalignment="bottom",
                 horizontalalignment="center",
             )
