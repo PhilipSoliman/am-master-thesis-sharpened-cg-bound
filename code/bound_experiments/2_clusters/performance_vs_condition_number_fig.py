@@ -333,7 +333,7 @@ def plot_performance_curves(
         color=CUSTOM_COLORS_SIMPLE[0],
         edgecolor="None",
         alpha=alpha,
-        label="No-improvement",
+        label="$P_{\\text{uniform}} \\leq P \\leq 1$",
         linestyle="None",
         zorder=8,
     )
@@ -348,7 +348,7 @@ def plot_performance_curves(
         linestyle="--",
         linewidth=1,
         alpha=alpha,
-        label="$P$-bounds",
+        label="$P_{\\text{uniform}} \\leq P \\leq P_{\\text{threshold}}$",
         hatch="///",
         hatch_linewidth=1,
         zorder=9,
@@ -371,7 +371,7 @@ def plot_performance_curves(
         linewidth=2,
         alpha=0.8,
         dashes=(3, 4),  # (dash_length, gap_length) in points
-        label="$P$-min (approx.)",
+        label="$P^{(1)}_{\\text{uniform}}$",
         zorder=10,
     )
 
@@ -407,7 +407,7 @@ def plot_performance_curves(
             color=ax.lines[-1].get_color(),  # match color of dashed line
             markersize=10,
             linestyle="None",
-            label="$\\kappa$-threshold (exact)" if i == 0 else None,
+            label="$T_{\\kappa}$" if i == 0 else None,
             zorder=10,
         )
 
@@ -423,7 +423,7 @@ def plot_performance_curves(
             color=ax.lines[-1].get_color(),  # match color of dashed line
             markersize=5,
             linestyle="None",
-            label="$\\kappa$-threshold (approx.)" if i == 0 else None,
+            label="$T^{(0)}_{\\kappa}$" if i == 0 else None,
             zorder=11,
         )
 
@@ -498,7 +498,7 @@ for row, min_eig in enumerate(MIN_EIGS):
             uniform_performance,
         )
         if row == 0 and col == 1:
-            ax.legend(fontsize=8, loc="upper left", framealpha=0.7, shadow=False)
+            ax.legend(fontsize=9, loc="upper left", framealpha=0.7, shadow=False)
         if row == 0 and col == 0:
             ax.set_xlim((condition_numbers[0] / 2, MAX_CONDITION_NUMBER * 100))
             steps = int(np.log10(MAX_CONDITION_NUMBER / condition_numbers[0]))
@@ -506,7 +506,7 @@ for row, min_eig in enumerate(MIN_EIGS):
             ticks = np.logspace(
                 np.log10(condition_numbers[0]),
                 np.log10(MAX_CONDITION_NUMBER),
-                steps + 1,
+                steps + 2,
             )
             ticklabels = [f"$10^{{{int(np.log10(tick))}}}$" for tick in ticks]
             ax.set_xticks(ticks, labels=ticklabels)
