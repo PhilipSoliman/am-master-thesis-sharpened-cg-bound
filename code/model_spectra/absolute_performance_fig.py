@@ -11,11 +11,10 @@ from approximate_spectra import (
 )
 
 from hcmsfem.cli import CLI_ARGS
-from hcmsfem.eigenvalues import split_spectrum_into_clusters
 from hcmsfem.logger import LOGGER
 from hcmsfem.plot_utils import save_latex_figure, set_mpl_cycler
 from hcmsfem.problems import CoefFunc
-from hcmsfem.solvers import CustomCG
+from hcmsfem.solvers import classic_cg_iteration_bound, sharpened_cg_iteration_bound
 
 # define coefficient functions to use
 COEF_FUNCS = [
@@ -59,7 +58,7 @@ for i, ((preconditioner_cls, coarse_space_cls), precond_axs) in enumerate(
         LOGGER.debug(f"Processing coefficient function: {coef_func.short_name}")
         niters = []
         niters_classical = []
-        niters_improved = []
+        niters_sharpened = []
         for mesh_params in MESHES:
             LOGGER.debug(f"Processing mesh H = {1/mesh_params.coarse_mesh_size:.0f}")
 
@@ -77,35 +76,33 @@ for i, ((preconditioner_cls, coarse_space_cls), precond_axs) in enumerate(
                 # number of iterations
                 niters.append(len(eigenvalues))
 
-                # get cluster coordinates
-                clusters = split_spectrum_into_clusters(eigenvalues)
-                LOGGER.debug(
-                    (
-                        f"Preconditioner {shorthand} has {len(clusters)} clusters:"
-                        f"\n\t{[f'({c[0]:.2e}, {c[1]:.2e})' for c in clusters]}"
-                        f"\n\tmin: {np.min(eigenvalues):.2e}, max: {np.max(eigenvalues):.2e}"
-                    )
-                )
+                # # get cluster coordinates
+                # clusters = split_spectrum_into_clusters(eigenvalues)
+                # LOGGER.debug(
+                #     (
+                #         f"Preconditioner {shorthand} has {len(clusters)} clusters:"
+                #         f"\n\t{[f'({c[0]:.2e}, {c[1]:.2e})' for c in clusters]}"
+                #         f"\n\tmin: {np.min(eigenvalues):.2e}, max: {np.max(eigenvalues):.2e}"
+                #     )
+                # )
 
                 # get predicted number of iterations
                 cond = np.abs(np.max(eigenvalues) / np.min(eigenvalues))
                 niters_classical.append(
-                    CustomCG.calculate_iteration_upperbound_static(
+                    classic_cg_iteration_bound(
                         cond, log_rtol=np.log(RTOL), exact_convergence=False
                     )
                 )
 
-                # get improved number of iterations if applicable
-                if len(clusters) >= 2:  # improved bound
-                    niters_improved.append(
-                        CustomCG.calculate_improved_cg_iteration_upperbound_static(
-                            clusters, tol=RTOL, exact_convergence=False
-                        )
+                # get sharpened bound
+                niters_sharpened.append(
+                    sharpened_cg_iteration_bound(
+                        eigenvalues, log_rtol=np.log(RTOL), exact_convergence=False
                     )
-                else:  # no improved bound
-                    niters_improved.append(None)
+                )
+
                 LOGGER.debug(
-                    f"niters: {niters[-1]}, classical: {niters_classical[-1]}, improved: {niters_improved[-1] if niters_improved[-1] is not None else 'N/A'}"
+                    f"niters: {niters[-1]}, classical: {niters_classical[-1]}, improved: {niters_sharpened[-1] if niters_sharpened[-1] is not None else 'N/A'}"
                 )
 
             else:
@@ -143,18 +140,18 @@ for i, ((preconditioner_cls, coarse_space_cls), precond_axs) in enumerate(
             niters_classical_line[0].set_color(iter_colors[1])
 
         # plot improved bound
-        niters_improved_line = ax.plot(
+        niters_sharpened_line = ax.plot(
             XTICK_LOCS,
-            niters_improved,
+            niters_sharpened,
             linestyle=iter_linestyles[2],
             marker=iter_markers[2],
             alpha=0.75,
-            label="Improved Bound",
+            label="Sharpened Bound",
         )
         if iter_colors[2] is None:
-            iter_colors[2] = niters_improved_line[0].get_color()
+            iter_colors[2] = niters_sharpened_line[0].get_color()
         else:
-            niters_improved_line[0].set_color(iter_colors[2])
+            niters_sharpened_line[0].set_color(iter_colors[2])
 
         # format the axes (all)
         ax.grid()
