@@ -340,7 +340,7 @@ Equation \ref{eq:chebyshev_degree_p_i_explicit} gives us a way to calculate the 
 
 We summarize the techniques outlined in this section in \cref{alg:multi_cluster_bound}. The algorithm takes a set of clusters and a relative error tolerance $\epsilon$ as input and returns the multi-cluster CG bound $m_{N_{\text{clusters}}}$. The algorithm iterates over all clusters, calculating the Chebyshev degree $p_i$ for each cluster based on the previous clusters' degrees and the relative error tolerance. Finally, it sums up all the degrees to obtain the multi-cluster CG bound.
 \begin{algorithm}[H]
-    \caption{$\operatorname{MultiClusterBound}(\text{clusters}, \epsilon)$}
+    \caption{$\operatorname{MultiClusterCGIterationBound}(\text{clusters}, \epsilon)$}
     \begin{algorithmic}[1]
         \State \textbf{Input:} Sorted set $\text{clusters} = \langle[a_1, b_1], [a_2, b_2], \ldots, [a_{N_{\text{clusters}}}, b_{N_{\text{clusters}}}]\rangle$ and relative error tolerance $\epsilon$
         \State \textbf{Output:} Multi-cluster CG bound $m_{N_{\text{clusters}}}$
@@ -397,11 +397,10 @@ Recursive application of \cref{alg:split_eigenspectrum} with stopping criterion 
         \State $\kappa_l \gets \frac{\lambda_{k^*}}{\lambda_1}$
         \State $\kappa_r \gets \frac{\lambda_n}{\lambda_{k^*+1}}$
         \If{$\kappa > T^{(0)}(\kappa_l,\kappa_r)$}
-            \State $K^* \gets \operatorname{PartitionEigenspectrum}(\sigma_{\leq k^*}) \cup \operatorname{PartitionEigenspectrum}(\sigma_{>k^*})$
+            \State \Return $\operatorname{PartitionEigenspectrum}(\sigma_{\leq k^*}) \cup \operatorname{PartitionEigenspectrum}(\sigma_{>k^*})$
         \Else
-            \State $K^* \gets \langle n \rangle$ \Comment{No further partitioning needed, return last index}
+            \State \Return $\langle n \rangle$ \Comment{No further partitioning needed, return last index}
         \EndIf
-        \State \Return $K^*$
     \end{algorithmic}
     \label{alg:partition_eigenspectrum}
 \end{algorithm}
@@ -409,15 +408,15 @@ Note that \cref{alg:partition_eigenspectrum} returns at a minimum a set containi
 
 Finally, we can combine the partitioning from \cref{alg:partition_eigenspectrum} with the Chebyshev degree calculation from \cref{alg:multi_cluster_bound} to obtain the sharpened CG bound \cref{alg:sharpened_cg_bound}.
 \begin{algorithm}[H]
-    \caption{$\operatorname{SharpenedCGBound}(\sigma, \epsilon)$}
+    \caption{$\operatorname{SharpenedCGIterationBound}(\sigma, \epsilon)$}
     \begin{algorithmic}[1]
         \State \textbf{Input:} Sorted eigenvalues $\sigma = \{\lambda_1, \lambda_2, \ldots, \lambda_n\}$, target relative error $\epsilon$
         \State \textbf{Output:} Sharpened CG iteration bound $m_{N_{\text{clusters}}}$
-        \State Initialize $\text{clusters} \gets \emptyset$, $k_a \gets 0$
+        \State Initialize $\text{clusters} \gets \emptyset$, $k_a \gets 1$
         \State $K^* \gets \operatorname{PartitionEigenspectrum}(\sigma)$
         \For{$k_b \in K^*$}
-            \State $\text{clusters} \gets \text{clusters} \cup \langle[\sigma[k_a + 1], \sigma[k_b]]\rangle$
-            \State $k_a \gets k_b$
+            \State $\text{clusters} \gets \text{clusters} \cup \langle[\sigma[k_a], \sigma[k_b]]\rangle$
+            \State $k_a \gets k_b + 1$
         \EndFor
         \State \Return $\operatorname{MultiClusterBound}(\text{clusters}, \epsilon)$
     \end{algorithmic}
