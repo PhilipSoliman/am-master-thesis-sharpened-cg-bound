@@ -104,11 +104,11 @@ def calculate_performance(
     return performance, theoretical_improvement
 
 
-# classical CG bound
+# classical CG iteration bound (approximate variant)
 def classical_bound(condition_numbers: np.ndarray) -> np.ndarray:
     return np.sqrt(condition_numbers) * np.log(2 / TOLERANCE) / 2
 
-
+# two-cluster CG iteration bound 
 def new_bound(clusters: list[tuple[float, float]]) -> int:
     k_l = clusters[0][1] / clusters[0][0]  # condition number of left cluster
     k_r = clusters[1][1] / clusters[1][0]  # condition number of right cluster
@@ -124,7 +124,6 @@ def new_bound(clusters: list[tuple[float, float]]) -> int:
     )
 
 
-# improved CG bound
 def compute_bound_for_width(i, left_cluster_i, right_clusters):
     m_s_i = np.zeros(RESOLUTION + 1)  # performance for this left cluster
     for j, rcluster in enumerate(right_clusters):
@@ -184,9 +183,9 @@ def compute_theoretical_improvement_boundary(
         return (
             log_4s
             + np.sqrt(1 / k_r) * (1 - sqrt_s)
-            + 0 * (1 + log_4s) / (np.sqrt(k / s) * np.log(2 / TOLERANCE))
+            + 0 * (1 + log_4s) / (np.sqrt(k / s) * np.log(2 / TOLERANCE)) # neglected term
             + 1 * 1 / np.sqrt(k_r)
-            + 0 * np.sqrt(s / k)
+            + 0 * np.sqrt(s / k) # neglected term
         )
 
     def solve_robust(func, k, method="brentq"):
@@ -211,8 +210,6 @@ def compute_theoretical_improvement_boundary(
                     iterations += 1
 
                 if func(s_min, k) * func(s_max, k) <= 0:
-                    # print(f"Bracketing interval found: [{s_min}, {s_max}] for k={k}")
-                    # exit()
                     return brentq(func, s_min, s_max, args=(k,))
                 else:
                     raise ValueError("Could not find bracketing interval")
@@ -293,7 +290,7 @@ def compute_theoretical_improvement_boundary(
 def improvement_boundary_condition_numbers_lambert(
     k_r: float, left_clusters: list[tuple[float, float]]
 ) -> float:
-    a = 1 / np.sqrt(k_r)  # + 1 / np.sqrt(condition_numbers)
+    a = 1 / np.sqrt(k_r)
     b = 1 / np.sqrt(k_r)
     k_ls = np.array([l[1] / l[0] for l in left_clusters])
     s: np.float64 = np.real((2 / a) ** 2 * lambertw(-a * np.exp(-b / 2) / 4, k=-1) ** 2)

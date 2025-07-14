@@ -1,6 +1,6 @@
 import numpy as np
 
-from hcmsfem.solvers import CustomCG
+from hcmsfem.solvers import classic_cg_iteration_bound, multi_cluster_cg_iteration_bound
 
 # CONSTANT INPUTS
 FIGWIDTH = 5
@@ -66,11 +66,11 @@ log_rtol = np.log(TOLERANCE)
 for i, (lcluster, rcluster) in enumerate(zip(left_clusters, right_clusters)):
     spectral_gap = calculate_normalized_spectral_width(lcluster, rcluster)
     condition_number = rcluster[1] / lcluster[0]
-    m_c = CustomCG.calculate_iteration_upperbound_static(
+    m_c = classic_cg_iteration_bound(
         condition_number, log_rtol, exact_convergence=True
     )
-    m_i = CustomCG.calculate_improved_cg_iteration_upperbound_static(
-        [lcluster, rcluster], tol=TOLERANCE, exact_convergence=True
+    m_i = multi_cluster_cg_iteration_bound(
+        [lcluster, rcluster], log_rtol=log_rtol, exact_convergence=True
     )
     performance = m_c / m_i
     print(

@@ -1,9 +1,7 @@
 import numpy as np
 
 from hcmsfem.plot_utils import set_mpl_cycler, set_mpl_style
-
-# from clibs.custom_cg import CustomCG
-from hcmsfem.solvers.custom_cg import CustomCG
+from hcmsfem.solvers import classic_cg_iteration_bound, multi_cluster_cg_iteration_bound
 
 # CONSTANT INPUTS
 FIGWIDTH = 5
@@ -38,16 +36,16 @@ set_mpl_style()
 set_mpl_cycler(lines=False, markers=True, colors=True)
 
 # classical iteration bound
-m_c = CustomCG.calculate_iteration_upperbound_static(
-    CONDITION_NUMBER, np.log(TOLERANCE), exact_convergence=True
+m_c = classic_cg_iteration_bound(
+    CONDITION_NUMBER, log_rtol=np.log(TOLERANCE), exact_convergence=True
 )
 print(f"Classical iteration bound: {m_c}")
 
 # Improved iteration bound
 for i, b_1 in enumerate(b_1s):
     clusters = [(a_1, b_1), (a_n, b_n)]
-    m_i = CustomCG.calculate_improved_cg_iteration_upperbound_static(
-        clusters, tol=TOLERANCE, exact_convergence=True
+    m_i = multi_cluster_cg_iteration_bound(
+        clusters, log_rtol=np.log(TOLERANCE), exact_convergence=True
     )
     performance = m_c / m_i
     print(

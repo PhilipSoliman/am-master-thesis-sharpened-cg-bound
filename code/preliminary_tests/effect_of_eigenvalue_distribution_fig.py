@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-from hcmsfem.solvers import CustomCG
+from hcmsfem.solvers import CustomCG, multi_cluster_cg_iteration_bound
 from hcmsfem.plot_utils import (
     CustomColors,
     mpl_graph_plot_style,
@@ -102,7 +102,7 @@ for i, A in enumerate(As):
 
     # sharpened for the number of iterations
     sharpened_iteration_upperbounds.append(
-        custom_cg.calculate_improved_cg_iteration_upperbound(clusters[i])
+        multi_cluster_cg_iteration_bound(clusters[i], log_rtol=np.log(custom_cg.tol), exact_convergence=True)
     )
     print(
         f"#clusters: {CLUSTER_COUNTS[row]}, spread: {CLUSTER_SPREADS[col]}, m_p: {sharpened_iteration_upperbounds[-1]}"
@@ -189,16 +189,17 @@ for i, _ in enumerate(As):
     col = i % len(CLUSTER_SPREADS)
     ax = axs[row, col]
     convergence_info = (
-        f"$m = {iterations[i]} < {sharpened_iteration_upperbounds[i]}" + r" = \bar{m}$"
+        f"$m = {iterations[i]} < {sharpened_iteration_upperbounds[i]}" + r" = m_2$"
     )
     color = (
-        CustomColors.RED
+        CustomColors.RED.value
         if classical_iteration_upperbound < sharpened_iteration_upperbounds[i]
-        else CustomColors.NAVY
+        else CustomColors.NAVY.value
     )
-    axs_texts[i].set_text(convergence_info)
+    axs_texts[i].set(text=convergence_info, color=color)
 
 if CLI_ARGS.generate_output:
     save_latex_figure("effect_of_eigenvalue_distribution_sharpened_bounds")
 if CLI_ARGS.show_output:
     fig.show()
+    input("Press Enter to exit...")

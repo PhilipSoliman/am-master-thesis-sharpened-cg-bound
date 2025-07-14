@@ -75,17 +75,7 @@ for i, ((preconditioner_cls, coarse_space_cls), precond_axs) in enumerate(
 
                 # number of iterations
                 niters.append(len(eigenvalues))
-
-                # # get cluster coordinates
-                # clusters = split_spectrum_into_clusters(eigenvalues)
-                # LOGGER.debug(
-                #     (
-                #         f"Preconditioner {shorthand} has {len(clusters)} clusters:"
-                #         f"\n\t{[f'({c[0]:.2e}, {c[1]:.2e})' for c in clusters]}"
-                #         f"\n\tmin: {np.min(eigenvalues):.2e}, max: {np.max(eigenvalues):.2e}"
-                #     )
-                # )
-
+                
                 # get predicted number of iterations
                 cond = np.abs(np.max(eigenvalues) / np.min(eigenvalues))
                 niters_classical.append(

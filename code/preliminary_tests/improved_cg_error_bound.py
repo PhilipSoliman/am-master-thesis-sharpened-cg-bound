@@ -21,8 +21,6 @@ RESOLUTION = 5000
 
 # problem variables
 spread = 0.3
-# cluster1 = (0.1, 0.1 + 2 * spread)
-# cluster2 = (0.9 - 2 * spread, 0.9)
 cluster1 = (1e-7, 2e-7)
 cluster2 = (2 * 1e-3, 6)
 rtol = 1e-6

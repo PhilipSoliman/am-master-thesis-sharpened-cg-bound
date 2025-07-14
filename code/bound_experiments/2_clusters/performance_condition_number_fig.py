@@ -6,7 +6,7 @@ from tqdm import tqdm
 
 from hcmsfem.cli import CLI_ARGS
 from hcmsfem.plot_utils import save_latex_figure
-from hcmsfem.solvers import CustomCG
+from hcmsfem.solvers import multi_cluster_cg_iteration_bound
 
 ###################
 # CONSTANT INPUTS #
@@ -86,8 +86,8 @@ def compute_bound_for_width(i):
             # if the right cluster overlaps with the left cluster, skip
             m_s_i[j] = np.nan
             continue
-        m_s = CustomCG.calculate_improved_cg_iteration_upperbound_static(
-            clusters, tol=TOLERANCE, exact_convergence=True
+        m_s = multi_cluster_cg_iteration_bound(
+            clusters, log_rtol=np.log(TOLERANCE), exact_convergence=True
         )
         m_s_i[j] = m_s
     return i, m_s_i

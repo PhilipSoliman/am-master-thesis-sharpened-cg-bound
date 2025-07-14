@@ -6,7 +6,7 @@ from tqdm import tqdm
 
 from hcmsfem.cli import get_cli_args
 from hcmsfem.plot_utils import save_latex_figure
-from hcmsfem.solvers import CustomCG
+from hcmsfem.solvers import classic_cg_iteration_bound, multi_cluster_cg_iteration_bound
 
 ###################
 # CONSTANT INPUTS #
@@ -76,13 +76,13 @@ def compute_bound_for_width(i):
         clusters = [(MIN_EIG, b_1), (a_n, b_n)]
 
         # classical CG bound
-        m_c = CustomCG.calculate_iteration_upperbound_static(
+        m_c = classic_cg_iteration_bound(
             b_n / MIN_EIG, np.log(TOLERANCE), exact_convergence=True
         )
 
         # improved CG bound
-        m_s = CustomCG.calculate_improved_cg_iteration_upperbound_static(
-            clusters, tol=TOLERANCE, exact_convergence=True
+        m_s = multi_cluster_cg_iteration_bound(
+            clusters, log_rtol=np.log(TOLERANCE), exact_convergence=True
         )
 
         # performance ratio
