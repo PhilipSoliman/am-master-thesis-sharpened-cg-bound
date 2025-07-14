@@ -160,7 +160,7 @@ Then, substituting $p$ gives
     \label{eq:cg_iteration_bound_2_clusters_condition_numbers}
 \end{equation} 
 
-\subsection{Uniform performance ratio}\label{sec:cg_sharpened_convrate_uniform_performance}
+\subsection{Uniform spectrum performance}\label{sec:cg_sharpened_convrate_uniform_performance}
 In order to see that the new bound is not absolutely sharper than the classical one, we determine the minimum value of $P$. We know that the product of two lower order Chebyshev polynomials is not optimal for a uniform eigenspectrum, cf. the proof of Chebyshev optimality outlined in \cref{th:minmax_polynomial}. Therefore, we assume that the minimum value of $P$ is attained for the case of a uniform eigenspectrum, i.e. $a<b=c<d$, and we can set $\kappa=\kappa_l\kappa_r$, which yields
 \begin{equation}
     m_2(\kappa=\kappa_l\kappa_r, \kappa_l, \kappa_r)=\left\lfloor
@@ -222,12 +222,12 @@ At this point we neglect the last term in \cref{eq:threshold_inequality}. Doing 
     P \geq 1 - \mathcal{O}\left(\frac{1}{\sqrt{\kappa_l}\ln\left(\frac{4\kappa}{\kappa_l}\right)}\right) = P_{\text{threshold}},
     \label{eq:approximate_performance_ratio_threshold}
 \end{equation}
-which is a good approximation even for small $\kappa_l> 1$. Next to simplifying equation \cref{eq:threshold_inequality}, this reduces the number of variables. Indeed, by introducing a new parameter for the \textit{spectral width} $s = \frac{\kappa}{\kappa_l}$, dropping the last term in \cref{eq:threshold_inequality} and setting $c_r = \frac{1}{\sqrt{\kappa_r}}$ we can rewrite the inequality as
+which is a good approximation even for small $\kappa_l> 1$. Next to simplifying \cref{eq:threshold_inequality}, this reduces the number of variables. Indeed, by introducing a new parameter for the \textit{spectral width} $s = \frac{\kappa}{\kappa_l}$, dropping the last term in \cref{eq:threshold_inequality} and setting $c_r = \frac{1}{\sqrt{\kappa_r}}$ we can write
 \begin{equation}
     c_r\sqrt{s} \geq \ln\left(4s\right) + c_r.
     \label{eq:threshold_inequality_s}
 \end{equation}
-We use the Lambert $\mathrm{W}$ function to solve the equality in \cref{eq:threshold_inequality_s} for $s$. In order to do so, we transform the above equation into the form $x = y \mathrm{e}^y$ with $y = -\frac{2\sqrt{s}}{c_r}$ and $x = -\frac{c_r}{4\exp\left(\frac{c_r}{2}\right)}$. Then, we can write
+We use the Lambert $\mathrm{W}$ function to solve the equality in \cref{eq:threshold_inequality_s} for $s$. In order to do so, we transform the equality into the form $x = y \mathrm{e}^y$ with $y = -\frac{c_r\sqrt{s}}{2}$ and $x = -\frac{c_r}{4\exp\left(\frac{c_r}{2}\right)}$. Then, we can write
 \begin{align*}
     -\frac{c_r\sqrt{s}}{2} = y = W_{-1}(x) = W_{-1}\left(-\frac{c_r}{4\exp\left(\frac{c_r}{2}\right)}\right), \quad x \in \left(-\frac{1}{\mathrm{e}}, 0 \right],
 \end{align*}
@@ -246,7 +246,7 @@ The evaluation of the Lambert $\mathrm{W}$ function is not a trivial task and of
     \label{eq:threshold_inequality_explicit_expansion}    
 \end{equation}
 
-Combining the above results with those of \cref{sec:cg_sharpened_convrate_uniform_performance} we can now say that as long as $\kappa_l\kappa_r \leq \kappa \leq T_{\kappa}(\kappa_l, \kappa_r)$, the performance ratio satisfies
+Combining the results of this section with those of \cref{sec:cg_sharpened_convrate_uniform_performance} we can now say that as long as $\kappa_l\kappa_r \leq \kappa \leq T_{\kappa}(\kappa_l, \kappa_r)$, the performance ratio satisfies
 \begin{equation}
     P_{\text{uniform}}(\kappa_l, \kappa_r) \leq P(\kappa, \kappa_l, \kappa_r) \leq P_{\text{threshold}} \lesssim 1,
     \label{eq:performance_bounds}
@@ -268,7 +268,7 @@ We can notice that the performance graphs for various left cluster widths $\kapp
 \[
     \frac{d\ln(P)}{d\ln(\kappa)} =\kappa\frac{d\ln(P)}{d\kappa} \sim \kappa\frac{d}{d\ln(\kappa)} \left[\ln(\sqrt{\kappa}) - \ln(\ln(4\kappa))\right] = \frac{1}{2} - \frac{1}{\ln(4\kappa)} \underset{\kappa\to\infty}{\longrightarrow} \frac{1}{2}.
 \]
-Next to this we can see that the second order expansion of the uniform performance ratio $\tilde{P}_{\text{uniform}}$ agrees well with the minimum performance bound. Finally, we see that both the exact and approximate threshold values $T_{\kappa}(\kappa_l, \kappa_r)$ from \cref{eq:threshold_inequality_explicit,eq:threshold_inequality_explicit_expansion} are accurate approximations of the actual threshold value of $P=1$, and even more so for larger values of $\kappa,\kappa_r$.
+Next to this we can see that the second order expansion of the uniform performance ratio $\tilde{P}_{\text{uniform}}$ agrees well with the minimum performance bound as long as the $\kappa = \kappa_l\kappa_r \gg 1$, which is in agreement with the error terms in \cref{eq:performance_ratio_uniform_expansion} and the minimum performance bounds from \cref{eq:performance_bounds}. Finally, we see that both the exact and approximate threshold values $T_{\kappa}(\kappa_l, \kappa_r)$ from \cref{eq:threshold_inequality_explicit,eq:threshold_inequality_explicit_expansion} are accurate approximations of the actual threshold value of $P=1$, and even more so for larger values of $\kappa,\kappa_r$.
 
 \section{Generalization to multiple clusters}\label{sec:multiple_clusters}
 The technique outlined in \cref{sec:cg_sharpened_convrate} starts at the left most cluster $[a,b]$, finds the Chebyshev degree $p_1=p$ satisfying \cref{eq:chebyshev_degree_p}, moves to the neighboring cluster $[c,d]$ and finds the Chebyshev degree $p_2 = m_2 - p$ satisfying \cref{eq:relative_error_bound_mp}. Rewriting \cref{eq:relative_error_bound_mp} gives the following equation for $p_2$:
@@ -292,7 +292,7 @@ This leads to the general equation for the Chebyshev degree $p_i$ of the $i^{\te
     \label{eq:chebyshev_degree_p_i}
 \end{equation}
 
-Due to the large range of the Chebyshev polynomials $\tilde{C}_p$, a computer is likely to result in floating point number overflow during calculation of the denominator of \cref{eq:chebyshev_degree_p_i}. Instead, we first apply \cref{eq:chebyshev_polynomial_bound} and introduce the cluster condition numbers $\kappa_i = \frac{b_i}{a_i}$, where $i$ is the index of the cluster. We can then rewrite \cref{eq:chebyshev_degree_p_i} as follows
+Due to the large range of the Chebyshev polynomials $\tilde{C}_p$, a computer is likely to result in floating point number overflow during calculation of the denominator of \cref{eq:chebyshev_degree_p_i}. Instead, we first apply \cref{eq:chebyshev_polynomial_bound} and introduce the cluster condition numbers $\kappa_i = \frac{b_i}{a_i}$, where $i$ is the index of the cluster. We can then rewrite \cref{eq:chebyshev_degree_p_i} using \cref{eq:chebyshev_polynomial_approximation} as follows
 \begin{equation*}
     p_i  =  \left\lceil\ln{\frac{\epsilon_i}{2}} / \ln{\frac{\sqrt{\kappa_i} - 1}{\sqrt{\kappa_i} + 1}}\right\rceil, \\
 \end{equation*}
@@ -339,33 +339,40 @@ Equation \ref{eq:chebyshev_degree_p_i_explicit} gives us a way to calculate the 
     \label{eq:cg_iteration_bound_multiple_clusters}
 \end{equation}
 
+We summarize the techniques outlined in this section in \cref{alg:multi_cluster_bound}. The algorithm takes a set of clusters and a relative error tolerance $\epsilon$ as input and returns the multi-cluster CG bound $m_{N_{\text{clusters}}}$. The algorithm iterates over all clusters, calculating the Chebyshev degree $p_i$ for each cluster based on the previous clusters' degrees and the relative error tolerance. Finally, it sums up all the degrees to obtain the multi-cluster CG bound.
 \begin{algorithm}[H]
     \caption{$\operatorname{MultiClusterBound}(\text{clusters}, \epsilon)$}
     \begin{algorithmic}[1]
-        \State \textbf{Input:} Set of clusters $\text{clusters} = \{[a_1, b_1], [a_2, b_2], \ldots, [a_{N_{\text{clusters}}}, b_{N_{\text{clusters}}}]\}$ and relative error tolerance $\epsilon$
+        \State \textbf{Input:} Sorted set $\text{clusters} = \langle[a_1, b_1], [a_2, b_2], \ldots, [a_{N_{\text{clusters}}}, b_{N_{\text{clusters}}}]\rangle$ and relative error tolerance $\epsilon$
         \State \textbf{Output:} Multi-cluster CG bound $m_{N_{\text{clusters}}}$
-        \State $\kappa_i \gets \frac{b_{N_{\text{clusters}}}}{a_{N_{\text{clusters}}}}$
-        \State Initialize $f \gets \frac{\sqrt{\kappa_i} - 1}{\sqrt{\kappa_i} + 1}$
-        \If{$|\text{clusters}| > 1$}
-            \State Initialize $Z$
-            \State Initialize $p_{N_{\text{clusters}}} = \left\lceil\right\rceil$
-            \State
-        \Else
-            \State \Return $\log_{f_i}\left(\frac{\epsilon}{2}\right)$
-        \EndIf
+        \State Initialize $P \gets \emptyset$
+        \For{$[a_i, b_i] \in \text{clusters}$} 
+            \State $\epsilon_i \gets \ln(\epsilon)$
+            \For{$[a_j, b_j] \in \text{clusters}_{<i}$} \Comment{$\text{clusters}_{<i}$ = all clusters to the left of $[a_i, b_i]$}
+                \State $z_1 \gets \frac{b_j + a_j - 2b_i}{b_j - a_j}$
+                \State $z_2 \gets \frac{b_j + a_j}{b_j - a_j}$
+                \State $p_j \gets P[j]$
+                \State $\epsilon_i \gets \epsilon_i - p_j \left(\ln(z_1^2 -1) - \ln\left(z_2 + \sqrt{z_2^2 -1}\right)\right)$
+            \EndFor
+            \State $f_i \gets \frac{\sqrt{\kappa_i} - 1}{\sqrt{\kappa_i} + 1}$, where $\kappa_i = \frac{b_i}{a_i}$
+            \State $p_i \gets \left\lceil\log_{f_i}\left(\frac{\epsilon_i}{2}\right)\right\rceil$
+            \State $P \gets P \cup \langle p_i \rangle$
+        \EndFor
+        \State $m_{N_{\text{clusters}}} \gets \sum_{i=1}^{N_{\text{clusters}}} P[i]$
+        \State \Return $m_{N_{\text{clusters}}}$
     \end{algorithmic}
     \label{alg:multi_cluster_bound}
 \end{algorithm}
 
 \section{Algorithm for sharpened CG bound}\label{sec:cg_sharpened_convrate_multiple_clusters_algorithm}
-In this section we combine the findings of \cref{sec:cg_two_cluster_performance_criteria,sec:multiple_clusters} to derive a flexible algorithm for determining a sharpened CG bound. The idea is to use a simple algorithm to split the eigenspectrum into two clusters. Then, we calculate the left and right cluster condition numbers $\kappa_l$ and $\kappa_r$ and check if the approximate threshold condition in \cref{eq:threshold_inequality_explicit_expansion} is satisfied. In fact, the algorithm will recursively apply the previous two steps, stopping only when the threshold condition is not satisfied. The result is a list of indices at which to split the eigenspectrum, yielding a set of clusters $\{[a_i, b_i]\}_{i=1}^{N_{\text{clusters}}}$, where $N_{\text{clusters}}$ is the number of clusters. Finally, we can compute the Chebyshev degrees $p_i$ for each cluster using \cref{eq:chebyshev_degree_p_i_explicit} and sum them up to obtain the sharpened CG bound $m_{N_{\text{clusters}}}$.
+In this section we combine the findings of \cref{sec:cg_two_cluster_performance_criteria,sec:multiple_clusters} to derive a flexible algorithm for determining a sharpened CG bound. The idea is to use a simple algorithm to split the eigenspectrum into two clusters. Then, we calculate the left and right cluster condition numbers $\kappa_l$ and $\kappa_r$ and check if the approximate threshold condition in \cref{eq:threshold_inequality_explicit_expansion} is satisfied. In fact, the algorithm will recursively apply the previous two steps, stopping only when the threshold condition is not satisfied. The result is a list of indices at which to split the eigenspectrum, yielding a set of clusters $\{[a_i, b_i]\}_{i=1}^{N_{\text{clusters}}}$, where $N_{\text{clusters}}$ is the number of clusters. Finally, the algorithm computes the Chebyshev degrees $p_i$ for each cluster using \cref{eq:chebyshev_degree_p_i_explicit} and sums them up to obtain the sharpened CG bound $m_{N_{\text{clusters}}}$.
 
-Given an eigenspectrum $\{\lambda_1, \lambda_2, \ldots, \lambda_n\}$ with $0 < \lambda_1 \leq \lambda_2 \leq \cdots \leq \lambda_n$, we need to split it into clusters. The optimal split occurs at the location with the largest logarithmic gap between consecutive eigenvalues.
+Given an eigenspectrum $\sigma = \{\lambda_1, \lambda_2, \ldots, \lambda_n\}$ with $0 < \lambda_1 \leq \lambda_2 \leq \cdots \leq \lambda_n$, we need to determine a split point. We choose to split the eigenspectrum at the \textit{largest logarithmic gap} between consecutive eigenvalues.
 \begin{algorithm}[H]
     \caption{$\operatorname{SplitEigenspectrum}(\sigma)$}
     \begin{algorithmic}[1]
-        \State \textbf{Input:} Sorted eigenvalues $\sigma = \{\lambda_1, \lambda_2, \ldots, \lambda_n\}$ with $\lambda_i > 0$
-        \State \textbf{Output:} Split index $k^*$ such that clusters are $\{\lambda_1, \ldots, \lambda_{k^*}\}$ and $\{\lambda_{k^*+1}, \ldots, \lambda_n\}$
+        \State \textbf{Input:} Sorted eigenvalues $\sigma = \langle\lambda_1, \lambda_2, \ldots, \lambda_n\rangle$ with $\lambda_i > 0$
+        \State \textbf{Output:} Split index $k^*$ such that clusters are $\langle\lambda_1, \ldots, \lambda_{k^*}\rangle$ and $\langle\lambda_{k^*+1}, \ldots, \lambda_n\rangle$
         \State Initialize $\text{max\_gap} \gets 0$, $k^* \gets 1$
         \For{$i = 1$ to $n-1$}
             \State Compute logarithmic gap: $g_i \gets \ln(\lambda_{i+1}) - \ln(\lambda_i) = \ln\left(\frac{\lambda_{i+1}}{\lambda_i}\right)$
@@ -384,34 +391,38 @@ Recursive application of \cref{alg:split_eigenspectrum} with stopping criterion 
 \begin{algorithm}[H]
     \caption{$\operatorname{PartitionEigenspectrum}(\sigma)$}
     \begin{algorithmic}[1]
-        \State \textbf{Input:} Sorted eigenvalues $\sigma = \{\lambda_1, \lambda_2, \ldots, \lambda_n\}$
-        \State \textbf{Output:} Sorted partition indices $K^* = \{k^*_1, k^*_2, \ldots, k^*_{N_{\text{clusters}}-1}\}$
+        \State \textbf{Input:} Sorted eigenvalues $\sigma = \langle\lambda_1, \lambda_2, \ldots, \lambda_n\rangle$
+        \State \textbf{Output:} Sorted partition indices $K^* = \langle k^*_1, k^*_2, \ldots, k^*_{N_{\text{clusters}}-1}\rangle$
         \State $\kappa \gets \frac{\lambda_n}{\lambda_1}$
         \State $k^* \gets \operatorname{SplitEigenspectrum}(\sigma)$
         \State $\kappa_l \gets \frac{\lambda_{k^*}}{\lambda_1}$
         \State $\kappa_r \gets \frac{\lambda_n}{\lambda_{k^*+1}}$
         \If{$\kappa > T^{(0)}(\kappa_l,\kappa_r)$}
-            \State $K^* \gets \operatorname{PartitionEigenspectrum}(\sigma_{\leq k^*}) \cup \{k^*\} \cup \operatorname{PartitionEigenspectrum}(\sigma_{>k^*})$ \Comment{Recursion, maintaining sorted order}
+            \State Initialize $K^* \gets \operatorname{PartitionEigenspectrum}(\sigma_{\leq k^*}) \cup \operatorname{PartitionEigenspectrum}(\sigma_{>k^*})$ \Comment{Maintains order}
         \Else
-            \State $K^* \gets \emptyset$ \Comment{Base case, no further partitioning needed}
+            \State Initialize $K^* \gets \langle n \rangle$ \Comment{No further partitioning needed, return last index}
         \EndIf
         \State \Return $K^*$
     \end{algorithmic}
     \label{alg:partition_eigenspectrum}
 \end{algorithm}
+Note that \cref{alg:partition_eigenspectrum} returns at a minimum a set containing only the last index $K^*= \langle n \rangle$, if the threshold condition is not satisfied for any split.
 
-
-
-Finally, we can combine the partitioning algorithm with the Chebyshev degree calculation to obtain the sharpened CG bound as follows
+Finally, we can combine the partitioning from \cref{alg:partition_eigenspectrum} with the Chebyshev degree calculation from \cref{alg:multi_cluster_bound} to obtain the sharpened CG bound \cref{alg:sharpened_cg_bound}.
 \begin{algorithm}[H]
     \caption{$\operatorname{SharpenedCGBound}(\sigma, \epsilon)$}
     \begin{algorithmic}[1]
         \State \textbf{Input:} Sorted eigenvalues $\sigma = \{\lambda_1, \lambda_2, \ldots, \lambda_n\}$, target relative error $\epsilon$
         \State \textbf{Output:} Sharpened CG iteration bound $m_{N_{\text{clusters}}}$
+        \State Initialize $\text{clusters} \gets \emptyset$
+        \State Initialize $k_a \gets 0$
         \State Initialize $K^* \gets \operatorname{PartitionEigenspectrum}(\sigma)$
-        \State Initialize $k_a \gets 1$
         \For{$k_b \in K^*$}
-            \State $b \gets ...$
+            \State $\text{clusters} \gets \text{clusters} \cup \langle[\sigma[k_a + 1], \sigma[k_b]]\rangle$
+            \State $k_a \gets k_b$
         \EndFor
+        \State \Return $\operatorname{MultiClusterBound}(\text{clusters}, \epsilon)$
     \end{algorithmic}
+    \label{alg:sharpened_cg_bound}
 \end{algorithm}
+The algorithm \cref{alg:sharpened_cg_bound} first partitions the eigenspectrum into clusters using \cref{alg:partition_eigenspectrum}. Then, it constructs a list of clusters and finally computes the sharpened CG bound using \cref{alg:multi_cluster_bound}. In the case that the eigenspectrum is never partitioned, i.e. the threshold condition is never satisfied, the algorithm returns the classical CG bound $m(\kappa)$ from \cref{eq:cg_convergence_rate_bound_iterations}.
