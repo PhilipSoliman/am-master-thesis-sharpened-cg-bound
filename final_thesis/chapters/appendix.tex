@@ -321,9 +321,12 @@ For $|z|>1$ we can also write
   C_m(z) = \frac{1}{2}\left(\left(z + \sqrt{z^2 - 1}\right)^m + \left(z - \sqrt{z^2 - 1}\right)^m\right),
   \label{eq:chebyshev_polynomial_explicit}
 \end{equation}
-which for large $k$ may be approximated as
+which may be approximated as
 \begin{equation}
-  C_m(z) \gtrapprox \frac{1}{2}\left(z + \sqrt{z^2 - 1}\right)^m.
+  C_m(z) \approx \begin{cases}
+    \frac{1}{2}\left(z + \sqrt{z^2 - 1}\right)^m, & \Re\{z\} > 1, \\
+    \frac{1}{2}\left(z - \sqrt{z^2 - 1}\right)^m, & \Re\{z\} < -1.
+  \end{cases} 
   \label{eq:chebyshev_polynomial_approximation}
 \end{equation}
 The extreme points of $C_m$ are given by

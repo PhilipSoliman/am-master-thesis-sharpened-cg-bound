@@ -291,7 +291,7 @@ This leads to the general equation for the Chebyshev degree $p_i$ of the $i^{\te
     \label{eq:chebyshev_degree_p_i}
 \end{equation}
 
-The Chebyshev polynomials $\tilde{C}_p$ grow rapidly outside the interval $[-1,1]$ \cite[Section 4]{cg_sharpened_convrate_Axelsson1976}. Therefore, it can be cumbersome for a computer to evaluate the product of the $C^{(j)}_{p_j}(b_i)$ terms in the denominator of \cref{eq:chebyshev_degree_p_i}, as it might result in floating-point number overflow during. Instead, we first apply \cref{eq:chebyshev_polynomial_bound} and introduce the cluster condition numbers $\kappa_i = \frac{b_i}{a_i}$, where $i$ is the index of the cluster. We can then rewrite \cref{eq:chebyshev_degree_p_i} using \cref{eq:chebyshev_polynomial_approximation} as follows
+The Chebyshev polynomials $\tilde{C}_p$ grow rapidly outside the interval $[-1,1]$ \cite[Section 4]{cg_sharpened_convrate_Axelsson1976}. Therefore, it can be cumbersome for a computer to evaluate the product of the $C^{(j)}_{p_j}(b_i)$ terms in the denominator of \cref{eq:chebyshev_degree_p_i}, as it might result in floating-point number overflow. Instead, we first apply \cref{eq:chebyshev_polynomial_bound} and introduce the cluster condition numbers $\kappa_i = \frac{b_i}{a_i}$, where $i$ is the index of the cluster. We can then rewrite \cref{eq:chebyshev_degree_p_i} using \cref{eq:chebyshev_polynomial_approximation} as follows
 \begin{equation*}
     p_i  =  \left\lceil\ln{\frac{\epsilon_i}{2}} / \ln{\frac{\sqrt{\kappa_i} - 1}{\sqrt{\kappa_i} + 1}}\right\rceil, \\
 \end{equation*}
@@ -303,14 +303,14 @@ Let $z^{(i,j)}_1 = \frac{b_j + a_j - 2b_i}{b_j - a_j}$ and $z^{(j)}_2 = \frac{b_
 \begin{equation*}
     \ln{C^{(j)}_{p_j}(b_i)} = \ln{C_{p_j}(z^{(i,j)}_1)} - \ln{C_{p_j}(z^{(j)}_2)}.
 \end{equation*}
-We have, using the definition of the Chebyshev polynomial
+We have, using the approximations in \cref{eq:chebyshev_polynomial_approximation}
 \begin{equation}
-    \ln{C_{p_j}(z^{(i,j)}_1)} \lessapprox p_j \ln{\left[z^{(i,j)}_1 - \sqrt{\left(z^{(i,j)}_1\right)^2 - 1}\right]} - \ln{2},
+    \ln{C_{p_j}(z^{(i,j)}_1)} \approx p_j \ln{\left|z^{(i,j)}_1 - \sqrt{\left(z^{(i,j)}_1\right)^2 - 1}\right|} - \ln{2},
     \label{eq:chebyshev_polynomial_bound_z1}
 \end{equation}
 and
 \begin{equation}
-    \ln{C_{p_j}(z^{(j)}_2)} \gtrapprox p_j \ln{\left[z^{(j)}_2 + \sqrt{\left(z^{(j)}_2\right)^2 - 1}\right]} - \ln{2},
+    \ln{C_{p_j}(z^{(j)}_2)} \approx p_j \ln{\left[z^{(j)}_2 + \sqrt{\left(z^{(j)}_2\right)^2 - 1}\right]} - \ln{2},
     \label{eq:chebyshev_polynomial_bound_z2}
 \end{equation}
 both of which become more accurate approximations as $z,m\rightarrow\infty$. Introducing 
@@ -325,7 +325,7 @@ with $\kappa_i$ the $i^{\text{th}}$ cluster condition number, and substituting t
     &= \left\lceil\log_{f_i}{\frac{\epsilon}{2}} - \sum_{j=1}^{i-1} p_j\left(\log_{f_i}{\zeta^{(i,j)}_1} - \log_{f_i}{\zeta^{(j)}_2} \right)\right\rceil\\
     &= \left\lceil\log_{f_i}{\frac{\epsilon}{2}} - \sum_{j=1}^{i-1} p_j\log_{f_i}{\frac{\zeta^{(i,j)}_1}{\zeta^{(j)}_2}} \right\rceil
 \end{align*}
-Note that in general $f_i < 1$ and $\zeta^{(i,j)}_1 < \zeta^{(j)}_2$. Therefore, term $\log_{f_i}{\left(\frac{\zeta^{(i,j)}_1}{\zeta^{(j)}_2}\right)} < 0$. So we multiply this term by $-1$ and obtain
+Note that in general $f_i < 1$ and $\zeta^{(i,j)}_1 > \zeta^{(j)}_2$. Therefore, term $\log_{f_i}{\left(\frac{\zeta^{(i,j)}_1}{\zeta^{(j)}_2}\right)} < 0$. So we multiply this term by $-1$ and obtain
 \begin{equation}
     p_i \leq \left\lceil\log_{f_i}{\frac{\epsilon}{2}} + \sum_{j=1}^{i-1} p_j\log_{f_i}{\frac{\zeta^{(j)}_2}{\zeta^{(i,j)}_1}} \right\rceil
     \label{eq:chebyshev_degree_p_i_explicit}
@@ -397,14 +397,14 @@ Recursive application of \cref{alg:split_eigenspectrum} with stopping criterion 
         \State $\kappa_l \gets \frac{\lambda_{k^*}}{\lambda_1}$
         \State $\kappa_r \gets \frac{\lambda_n}{\lambda_{k^*+1}}$
         \If{$\kappa > T^{(0)}(\kappa_l,\kappa_r)$}
-            \State \Return $\operatorname{PartitionEigenspectrum}(\sigma_{\leq k^*}) \cup \operatorname{PartitionEigenspectrum}(\sigma_{>k^*})$
+            \State \Return $\operatorname{PartitionEigenspectrum}(\sigma_{\leq k^*}) \cup k^* + 1 + \operatorname{PartitionEigenspectrum}(\sigma_{>k^*})$
         \Else
             \State \Return $\langle n \rangle$ \Comment{No further partitioning needed, return last index}
         \EndIf
     \end{algorithmic}
     \label{alg:partition_eigenspectrum}
 \end{algorithm}
-Note that \cref{alg:partition_eigenspectrum} returns at a minimum a set containing only the last index $K^*= \langle n \rangle$, if the threshold condition is not satisfied for any split.
+Note that \cref{alg:partition_eigenspectrum} returns at a minimum a set containing only the last index $K^*= \langle n \rangle$, if the threshold condition is not satisfied for any split. Additionally, the value $k^* + 1$ is added (element-wise) to the result of the right-hand recursion in line 8 of \cref{alg:partition_eigenspectrum}. This is to ensure that the resulting set of indices $K^*$ contains the correct, global indices of the eigenspectrum, as the right-hand recursion only returns indices relative to the right-hand side of the split.
 
 Finally, we can combine the partitioning from \cref{alg:partition_eigenspectrum} with the Chebyshev degree calculation from \cref{alg:multi_cluster_bound} to obtain the sharpened CG bound \cref{alg:sharpened_cg_bound}.
 \begin{algorithm}[H]
@@ -418,8 +418,8 @@ Finally, we can combine the partitioning from \cref{alg:partition_eigenspectrum}
             \State $\text{clusters} \gets \text{clusters} \cup \langle[\sigma[k_a], \sigma[k_b]]\rangle$
             \State $k_a \gets k_b + 1$
         \EndFor
-        \State \Return $\operatorname{MultiClusterBound}(\text{clusters}, \epsilon)$
+        \State \Return $\operatorname{MultiClusterCGIterationBound}(\text{clusters}, \epsilon)$
     \end{algorithmic}
     \label{alg:sharpened_cg_bound}
 \end{algorithm}
-The algorithm \cref{alg:sharpened_cg_bound} first partitions the eigenspectrum into clusters using \cref{alg:partition_eigenspectrum}. Then, it constructs a list of clusters and finally computes the sharpened CG bound using \cref{alg:multi_cluster_bound}. In the case that the eigenspectrum is never partitioned, i.e. the threshold condition is never satisfied, the algorithm returns the classical CG bound $m(\kappa)$ from \cref{eq:cg_convergence_rate_bound_iterations}.
+Algorithm \ref{alg:sharpened_cg_bound} first partitions the eigenspectrum into clusters using \cref{alg:partition_eigenspectrum}. Then, it constructs a list of clusters and finally computes the sharpened CG bound using \cref{alg:multi_cluster_bound}. In the case that the eigenspectrum is never partitioned, i.e. the threshold condition is never satisfied, the algorithm returns the classical CG bound $m(\kappa)$ from \cref{eq:cg_convergence_rate_bound_iterations}.
