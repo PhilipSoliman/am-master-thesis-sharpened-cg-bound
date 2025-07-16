@@ -71,11 +71,11 @@ for i, ((preconditioner_cls, coarse_space_cls), precond_axs) in enumerate(
             if fp.exists():
 
                 # load eigenvalues
-                eigenvalues = np.load(fp)
+                eigenvalues = np.load(fp)["eigenvalues"]
 
                 # number of iterations
                 niters.append(len(eigenvalues))
-                
+
                 # get predicted number of iterations
                 cond = np.abs(np.max(eigenvalues) / np.min(eigenvalues))
                 niters_classical.append(
