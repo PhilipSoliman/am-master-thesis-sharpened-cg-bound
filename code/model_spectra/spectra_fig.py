@@ -12,6 +12,7 @@ from approximate_spectra import (
 from hcmsfem.cli import get_cli_args
 from hcmsfem.logger import LOGGER
 from hcmsfem.plot_utils import save_latex_figure, set_mpl_cycler, set_mpl_style
+from hcmsfem.solvers import partition_eigenspectrum
 
 # set matplotlib style & cycler
 set_mpl_style()
@@ -37,6 +38,7 @@ for i, mesh_params in enumerate(MESHES):
     axes = axs[:, i]
     for coef_func, ax in zip(COEF_FUNCS, axes):
         spectra = {}
+        split_indices = []
         cond_numbers = []
         niters = []
         global_min = None
@@ -47,13 +49,16 @@ for i, mesh_params in enumerate(MESHES):
                 mesh_params, coef_func, preconditioner_cls, coarse_space_cls
             )
             if fp.exists():
-                eigenvalues = np.load(fp)
+                eigenvalues = np.load(fp)["eigenvalues"]
                 shorthand = (
                     f"{preconditioner_cls.SHORT_NAME}-{coarse_space_cls.SHORT_NAME}"
                 )
 
                 # store the eigenvalues in the spectra dictionary
                 spectra[f"{shorthand:<12}"] = eigenvalues
+
+                # store the split indices for the sharpened bound (except for the last one)
+                split_indices.append(partition_eigenspectrum(eigenvalues))
 
                 # get cluster coordinates
                 min_eig = np.min(np.abs(eigenvalues))
@@ -84,13 +89,50 @@ for i, mesh_params in enumerate(MESHES):
                 exit()
 
         # spectra
-        for idx, (shorthand, eigenvalues) in enumerate(spectra.items()):
+        for idx, eigenvalues in enumerate(spectra.values()):
+            # eigenvalues
             ax.plot(
                 np.real(eigenvalues),
                 np.full_like(eigenvalues, idx),
                 marker="x",
                 linestyle="None",
+                zorder=5,
             )
+
+            # split indices (plot identified clusters)
+            fontsize = 15
+            ax.text(
+                np.real(eigenvalues[0]),
+                idx,
+                "[",
+                color="black",
+                fontsize=fontsize,
+                va="center",
+                ha="right",
+                zorder=10,
+            )
+            for s_idx in split_indices[idx]:
+                ax.text(
+                    np.real(eigenvalues[s_idx]),
+                    idx,
+                    "]",
+                    color="black",
+                    fontsize=fontsize,
+                    va="center",
+                    ha="left",
+                    zorder=10,
+                )
+                if len(eigenvalues) > s_idx + 1:
+                    ax.text(
+                        np.real(eigenvalues[s_idx + 1]),
+                        idx,
+                        "[",
+                        color="black",
+                        fontsize=fontsize,
+                        va="center",
+                        ha="right",
+                        zorder=10,
+                    )
         ax.set_xscale("log")
 
         # preconditioner names
