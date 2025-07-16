@@ -59,7 +59,7 @@ def get_spectrum_save_path(
         / f"coef={coef_func.short_name}"
     )
     save_dir.mkdir(parents=True, exist_ok=True)
-    fn = f"{preconditioner_cls.SHORT_NAME}-{coarse_space_cls.SHORT_NAME if coarse_space_cls else ''}.npy"
+    fn = f"{preconditioner_cls.SHORT_NAME}-{coarse_space_cls.SHORT_NAME if coarse_space_cls else ''}.npz"
     return save_dir / fn
 
 
@@ -167,13 +167,22 @@ def calculate_spectra() -> None:
                 LOGGER.info("Computing approximate eigenvalues")
                 eigenvalues = custom_cg.get_approximate_eigenvalues_gpu()
 
+                # get alpha and beta arrays
+                alpha = custom_cg.alpha
+                beta = custom_cg.beta
+
                 # get save directory for the preconditioner's spectrum
                 save_dir = get_spectrum_save_path(
                     mesh_params, coef_func, preconditioner_cls, coarse_space_cls
                 )
 
-                # save spectrum to numpy array
-                np.save(save_dir, eigenvalues)
+                # save spectrum and related arrays to a single .npz file
+                np.savez(
+                    save_dir,
+                    eigenvalues=eigenvalues,
+                    alpha=alpha,
+                    beta=beta,
+                )
 
                 progress.advance(spectra_task)
             progress.remove_task(spectra_task)
