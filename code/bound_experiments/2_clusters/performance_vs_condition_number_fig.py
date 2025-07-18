@@ -28,7 +28,7 @@ TOLERANCE = 1e-8
 # spectra
 MIN_EIGS = [1e-8]  # reciprocal of the contrast of problem coefficient
 LEFT_CLUSTER_CONDITION_NUMBERS = [1, 1e1, 1e2, 1e3, 1e4]
-RIGHT_CLUSTER_CONDITION_NUMBERS = [2, 1e3]  # condition number bound for contrast=1
+RIGHT_CLUSTER_CONDITION_NUMBERS = [5, 1e3]  # condition number bound for contrast=1
 MAX_CONDITION_NUMBER = 1e10  # maximum global condition number
 
 # plot
@@ -106,9 +106,10 @@ def calculate_performance(
 
 # classical CG iteration bound (approximate variant)
 def classical_bound(condition_numbers: np.ndarray) -> np.ndarray:
-    return np.sqrt(condition_numbers) * np.log(2 / TOLERANCE) / 2
+    return np.floor(np.sqrt(condition_numbers) * np.log(2 / TOLERANCE) / 2 + 1)
 
-# two-cluster CG iteration bound 
+
+# two-cluster CG iteration bound
 def new_bound(clusters: list[tuple[float, float]]) -> int:
     k_l = clusters[0][1] / clusters[0][0]  # condition number of left cluster
     k_r = clusters[1][1] / clusters[1][0]  # condition number of right cluster
@@ -116,10 +117,11 @@ def new_bound(clusters: list[tuple[float, float]]) -> int:
     log_4s = np.log(4 * s)
     sqrt_k_r = np.sqrt(k_r)
     sqrt_k_l = np.sqrt(k_l)
-    return np.ceil(
-        sqrt_k_r * log_4s / 2
+    return np.floor(
+        1
+        + sqrt_k_r * log_4s / 2
         + np.log(2 / TOLERANCE)
-        * (sqrt_k_l + sqrt_k_r + sqrt_k_l * sqrt_k_r * log_4s)
+        * (sqrt_k_l + sqrt_k_r + sqrt_k_l * sqrt_k_r * log_4s / 2)
         / 2
     )
 
@@ -144,7 +146,7 @@ def compute_theoretical_improvement_for_width(i, left_cluster_i, right_clusters)
         k = right_cluster_j[1] / left_cluster_i[0]  # global condition number
         k_r = right_cluster_j[1] / right_cluster_j[0]
         s = right_cluster_j[1] / left_cluster_i[1]  # spectral gap
-        improvement_i[j] = np.sqrt(k / (k_l * k_r)) - np.log(4 * s)
+        improvement_i[j] = np.sqrt(k / (k_l * k_r)) - np.log(4 * s)/2
     return i, improvement_i
 
 
@@ -181,11 +183,12 @@ def compute_theoretical_improvement_boundary(
         log_4s = np.log(4 * s)
         sqrt_s = np.sqrt(s)
         return (
-            log_4s
-            + np.sqrt(1 / k_r) * (1 - sqrt_s)
-            + 0 * (1 + log_4s) / (np.sqrt(k / s) * np.log(2 / TOLERANCE)) # neglected term
-            + 1 * 1 / np.sqrt(k_r)
-            + 0 * np.sqrt(s / k) # neglected term
+            log_4s / 2
+            - np.sqrt(1 / k_r) * sqrt_s
+            + 1 / np.sqrt(k_r)
+            + 0
+            * np.sqrt(s / k)
+            * (1 + log_4s / np.log(2 / TOLERANCE))  # neglected term
         )
 
     def solve_robust(func, k, method="brentq"):
@@ -290,8 +293,8 @@ def compute_theoretical_improvement_boundary(
 def improvement_boundary_condition_numbers_lambert(
     k_r: float, left_clusters: list[tuple[float, float]]
 ) -> float:
-    a = 1 / np.sqrt(k_r)
-    b = 1 / np.sqrt(k_r)
+    a = 2 / np.sqrt(k_r)
+    b = 2 / np.sqrt(k_r)
     k_ls = np.array([l[1] / l[0] for l in left_clusters])
     s: np.float64 = np.real((2 / a) ** 2 * lambertw(-a * np.exp(-b / 2) / 4, k=-1) ** 2)
     return s * k_ls
@@ -300,11 +303,11 @@ def improvement_boundary_condition_numbers_lambert(
 def improvement_boundary_condition_numbers_lambert_expansion(
     k_r: float, left_clusters: list[tuple[float, float]]
 ) -> float:
-    x = -1 / (4 * np.sqrt(k_r) * np.exp(1 / (2 * np.sqrt(k_r))))
+    x = -1 / (2 * np.sqrt(k_r) * np.exp(2 / (2 * np.sqrt(k_r))))
     L = np.log(-x)
     l = np.log(-L)
     k_ls = np.array([l[1] / l[0] for l in left_clusters])
-    s = 4 * k_r * (L - l + l / L) ** 2
+    s =  k_r * (L - l + l / L) ** 2
     return s * k_ls
 
 
@@ -353,13 +356,14 @@ def plot_performance_curves(
 
     # approximate minimum performance
     r_log_4k_r = 1 / np.log(4 * right_cluster_condition_number)
-    min_p = r_log_4k_r - r_log_4k_r**2 * (
+    min_p = 2 * r_log_4k_r * (
+        1 - np.sqrt(right_cluster_condition_number/condition_numbers) / np.log(2 / TOLERANCE)
+    ) - 4 * r_log_4k_r**2 * (
         np.sqrt(right_cluster_condition_number / condition_numbers)
-        + 1 / np.sqrt(right_cluster_condition_number)
-        + np.sqrt(right_cluster_condition_number / condition_numbers)
-        / np.log(2 / TOLERANCE)
-        + 2 / (np.sqrt(condition_numbers) * np.log(2 / TOLERANCE))
+        + 1/ np.sqrt(right_cluster_condition_number)
+        + 1 / (np.sqrt(condition_numbers) * np.log(2 / TOLERANCE) + 1)
     )
+
     ax.plot(
         condition_numbers,
         min_p * np.ones_like(condition_numbers),
