@@ -7,14 +7,19 @@ On the eigenspectrum of $A$, consider two intervals $[a, b]$ and $[c, d]$ with $
     \sigma_1(A) = [a,b] \bigcup [c,d]
     \label{eq:two_clusters}
 \end{equation}
-
 \begin{equation}
     \sigma_2(A) = [c,d] \bigcup_{\substack{i=1 \\ \lambda_i \in [a,b]}}^{N_{\text{tail}}} \lambda_i
     \label{eq:one_cluster_with_tail}
 \end{equation}
-where $N_{\text{tail}}$ is the number of eigenvalues in the tail. The first case is a two-cluster eigenspectrum, while the second case has one cluster and a tail of eigenvalues.
+where $N_{\text{tail}}$ is the number of eigenvalues in the tail. The first case is a two-cluster eigenspectrum, while the second case has one cluster and a tail of eigenvalues. These characteristic eigenspectra are illustrated in \cref{fig:eigenvalue_clusters}.
+\begin{figure}[H]
+    \centering
+    \input{../tikz/eigenvalue_clusters.tex}
+    \caption{Eigenspectrum of $A$ with two clusters and a tail of eigenvalues.}
+    \label{fig:eigenvalue_clusters}
+\end{figure}
 
-The CG error \cref{eq:cg_error_bound} suggests we look for a polynomial $r_{m_2}$ of degree $m_2$ that satisfies the constraints of the minimization problem in order to find an iteration bound $m < m_2$. In other words, we do not solve the minimization problem directly, but we make a clever selection of the polynomial $r_{m_2}$ that satisfies the constraints. As a consequence, the actual minimizing polynomial might require a lower degree $m$ to satisfy the same relative error tolerance $\epsilon$. Effectively, this means we will determine a number of iterations $m$ that is larger than the actual number of iterations required to achieve the desired relative error tolerance $\epsilon$.
+The CG error \cref{eq:cg_error_bound} suggests we look for a polynomial $r_{m_2}$ of degree $m_2$ that satisfies the constraints of the minimization problem in order to find an iteration bound $m < m_2$. In other words, we do not solve the minimization problem directly, but we make a clever selection of the polynomial $r_{m_2}$ that satisfies the constraints. As a consequence, the actual minimizing polynomial might require a lower degree $m$ to satisfy the same relative error tolerance $\epsilon$. Therefore, the degree $m_2$ we find is at least as large as the actual number of iterations required to achieve the desired relative error tolerance $\epsilon$.
 
 \citeauthor{cg_sharpened_convrate_Axelsson1976} suggests we use not one monolithic residual polynomial function, but a multiplication of two residual polynomial functions $\hat{r}^{(i)}_p(x)$ and $\hat{r}_{m_2-p}(x)$ for the two clusters. The superscript $^{(i)}$ corresponds to the two eigenspectra described above. The residual polynomial functions are defined using \cref{def:scaled_chebyshev_polynomial} and $\gamma = 0$ as follows
 \begin{equation}
@@ -240,12 +245,12 @@ where $W_{-1}$ is the first negative branch of the Lambert $\mathrm{W}$ function
 \]
 or, in terms of the original condition numbers
 \begin{equation}
-    \kappa \gtrsim 4\kappa_l\kappa_r W_{-1}\left(-\frac{1}{2\sqrt{\kappa_r}\exp\left(\frac{1}{\sqrt{\kappa_r}}\right)}\right)^2 = T_{\kappa}(\kappa_l, \kappa_r).
+    \kappa \geq 4\kappa_l\kappa_r W_{-1}\left(-\frac{1}{2\sqrt{\kappa_r}\exp\left(\frac{1}{\sqrt{\kappa_r}}\right)}\right)^2 = T_{\kappa}(\kappa_l, \kappa_r).
     \label{eq:threshold_inequality_explicit}    
 \end{equation}
 The evaluation of the Lambert $\mathrm{W}$ function is not a trivial task and often requires numerical methods for accurate computation \cite{evaluation_of_the_lambert_w_function_Corless1996}. Luckily, there exists an expansion of $\mathrm{W}_{-1}(x)$ for $x\rightarrow0^-$ \cite[Equation 4.19]{evaluation_of_the_lambert_w_function_Corless1996}. Let $x$ be as above and set $L = \ln(-x)$ and $l = \ln(-L)$, then
 \begin{equation}
-    \kappa \gtrsim 4\kappa_l\kappa_r \left(L - l + \frac{l}{L}\right)^2 + \mathcal{O}\left(\frac{\kappa_l\kappa_rl^4}{L^4}\right) := T^{(0)}_{\kappa}(\kappa_l, \kappa_r) + \mathcal{O}\left(\frac{\kappa_l\kappa_rl^4}{L^4}\right).
+    \kappa \geq 4\kappa_l\kappa_r \left(L - l + \frac{l}{L}\right)^2 + \mathcal{O}\left(\frac{\kappa_l\kappa_rl^4}{L^4}\right) := T^{(0)}_{\kappa}(\kappa_l, \kappa_r) + \mathcal{O}\left(\frac{\kappa_l\kappa_rl^4}{L^4}\right).
     \label{eq:threshold_inequality_explicit_expansion}    
 \end{equation}
 
@@ -272,6 +277,32 @@ We can notice that the performance graphs for various left cluster widths $\kapp
     \frac{d\ln(P)}{d\ln(\kappa)} =\kappa\frac{d\ln(P)}{d\kappa} \sim \kappa\frac{d}{d\ln(\kappa)} \left[\ln(\sqrt{\kappa}) - \ln(\ln(4\kappa))\right] = \frac{1}{2} - \frac{1}{\ln(4\kappa)} \underset{\kappa\to\infty}{\longrightarrow} \frac{1}{2}.
 \]
 Next to this we can see that the first order expansion of the uniform performance ratio $P^{(1)}_{\text{uniform}}$ agrees well with the minimum performance bound as long as $\kappa = \kappa_l\kappa_r \gg 1$, which is in agreement with the error terms in \cref{eq:performance_ratio_uniform_expansion} and the minimum performance bound from \cref{eq:performance_bounds}. Finally, we see that both $T_{\kappa}(\kappa_l, \kappa_r)$ and its zeroth order expansion $T^{(0)}_{\kappa}(\kappa_l, \kappa_r)$ from \cref{eq:threshold_inequality_explicit,eq:threshold_inequality_explicit_expansion} are accurate approximations of the actual $\kappa$-threshold value at which $P=1$, and even more so for larger values of $\kappa,\kappa_r$. We do see a deviation of both $T_{\kappa}(\kappa_l, \kappa_r)$ and $T^{(0)}_{\kappa}(\kappa_l, \kappa_r)$ for $\kappa_l\leq\kappa_r$. Again, this is in agreement with the error terms in \cref{eq:approximate_performance_ratio_threshold}.
+
+\section{Performance of the tail-cluster bound}\label{sec:tail_cluster_bound_performance}
+The two-cluster bound from \cref{eq:cg_iteration_bound_2_clusters} is also derived for the case of a right cluster with a tail of eigenvalues $\sigma_2$, i.e. the case where the left cluster is a tail cluster. In this case, we can also derive a minimum performance ratio $P^{\text{tail}}_{\text{uniform}}$. We again consider a uniform spectrum, i.e. $a<b=c<d$, and we can set $\kappa=\kappa_l\kappa_r$. The tail-cluster bound is given by \cref{eq:cg_iteration_bound_2_clusters} with $p = N_{\text{tail}} \leq \left\lfloor\frac{\sqrt{\kappa_l}}{2}\ln{\frac{2}{\epsilon}} + 1 \right\rfloor $. This gives
+\[
+    m_2(\kappa=\kappa_l\kappa_r, p, \kappa_r) = \left\lfloor
+        \frac{\sqrt{\kappa_r}}{2}\ln\left(\frac{2}{\epsilon}\right) 
+        + p \left(
+            1 + \frac{\sqrt{\kappa_r}}{2}\ln\left(\frac{4\kappa}{\kappa_l}\right)
+        \right)
+    \right\rfloor.
+\]
+The performance ratio $P^{\text{tail}}_{\text{uniform}}$ is given by
+\begin{equation}
+    P^{\text{tail}}_{\text{uniform}}(\kappa_l, \kappa_r) = \frac{\sqrt{\kappa_l}\ln\left(\frac{2}{\epsilon}\right)}{p\ln(4\kappa_r)} - \mathcal{O}\left(\frac{\sqrt{\kappa_l}\ln\left(\frac{2}{\epsilon}\right)}{p^2\ln(4\kappa_r)^2}\right), \quad \text{for } \kappa_l \geq \kappa_r < \frac{1}{2\epsilon}.
+    \label{eq:performance_ratio_tail_uniform}
+\end{equation}
+Equation \ref{eq:performance_ratio_tail_uniform} shows that
+\[
+    P^{\text{tail}}_{\text{uniform}}(\kappa_l, \kappa_r) \longrightarrow \frac{1}{\ln(4\kappa_r)} = P^{(0)}_{\text{uniform}}(\kappa_r) \quad \text{as } p \to \left\lfloor\frac{\sqrt{\kappa_l}}{2}\ln{\frac{2}{\epsilon}} + 1 \right\rfloor,
+\]
+that is, the minimum performance of the tail-cluster bound reduces to the two-cluster bound as $p$ approaches its maximum value. Another crucial aspect about $P^{\text{tail}}_{\text{uniform}}(\kappa_l, \kappa_r)$ is found when we require the leading order term to be larger than $1$, giving us the following inequality
+\begin{equation}
+    p < \sqrt{\kappa_l}\log_{4\kappa_r}\left(\frac{2}{\epsilon}\right).
+    \label{eq:tail_cluster_bound_sparsity_condition}
+\end{equation}
+Equation \ref{eq:tail_cluster_bound_sparsity_condition} can be interpreted as a \textit{sparsity condition} on the tail cluster, i.e. the tail cluster must be sparse enough to ensure that the performance ratio is larger than $1$.
 
 \section{Generalization to multiple clusters}\label{sec:multiple_clusters}
 The technique outlined in \cref{sec:cg_sharpened_convrate} starts at the left most cluster $[a,b]$, finds the Chebyshev degree $p_1=p$ satisfying \cref{eq:chebyshev_degree_p}, moves to the neighboring cluster $[c,d]$ and finds the Chebyshev degree $p_2 = m_2 - p$ satisfying \cref{eq:relative_error_bound_mp}. Rewriting \cref{eq:relative_error_bound_mp} gives the following equation for $p_2$:
