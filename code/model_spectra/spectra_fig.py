@@ -12,7 +12,7 @@ from approximate_spectra import (
 from hcmsfem.cli import get_cli_args
 from hcmsfem.logger import LOGGER
 from hcmsfem.plot_utils import save_latex_figure, set_mpl_cycler, set_mpl_style
-from hcmsfem.solvers import partition_eigenspectrum
+from hcmsfem.solvers import partition_mixed_eigenspectrum
 
 # set matplotlib style & cycler
 set_mpl_style()
@@ -39,6 +39,8 @@ for i, mesh_params in enumerate(MESHES):
     for coef_func, ax in zip(COEF_FUNCS, axes):
         spectra = {}
         split_indices = []
+        tail_eigenvalues = []
+        tail_indices = []
         cond_numbers = []
         niters = []
         global_min = None
@@ -58,7 +60,18 @@ for i, mesh_params in enumerate(MESHES):
                 spectra[f"{shorthand:<12}"] = eigenvalues
 
                 # store the split indices for the sharpened bound (except for the last one)
-                split_indices.append(partition_eigenspectrum(eigenvalues))
+                tail_eigs = []
+                tail_indxs = []
+                split_indices.append(
+                    partition_mixed_eigenspectrum(
+                        eigenvalues,
+                        log_rtol=np.log(1e-8),
+                        tail_eigenvalues=tail_eigs,
+                        tail_indices=tail_indxs,
+                    )
+                )
+                tail_eigenvalues.append(tail_eigs)
+                tail_indices.append(tail_indxs)
 
                 # get cluster coordinates
                 min_eig = np.min(np.abs(eigenvalues))
@@ -91,12 +104,33 @@ for i, mesh_params in enumerate(MESHES):
         # spectra
         for idx, eigenvalues in enumerate(spectra.values()):
             # eigenvalues
-            ax.plot(
+            line = ax.plot(
                 np.real(eigenvalues),
                 np.full_like(eigenvalues, idx),
                 marker="x",
                 linestyle="None",
                 zorder=5,
+            )
+
+            # tail eigenvalues
+            ax.plot(
+                np.real(tail_eigenvalues[idx]),
+                np.full_like(tail_eigenvalues[idx], idx),
+                marker="o",
+                linestyle="None",
+                zorder=5,
+                color=line[0].get_color(),
+            )
+
+            # tail cluster indices
+            ax.plot(
+                np.real(eigenvalues[tail_indices[idx]]),
+                np.full_like(tail_indices[idx], idx),
+                marker="|",
+                linestyle="None",
+                color="black",
+                zorder=5,
+                markersize=10,
             )
 
             # split indices (plot identified clusters)
