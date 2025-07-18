@@ -295,9 +295,9 @@ The performance ratio $P^{\text{tail}}_{\text{uniform}}$ is given by
 \end{equation}
 Equation \ref{eq:performance_ratio_tail_uniform} shows that
 \[
-    P^{\text{tail}}_{\text{uniform}}(\kappa_l, \kappa_r) \longrightarrow \frac{1}{\ln(4\kappa_r)} = P^{(0)}_{\text{uniform}}(\kappa_r) \quad \text{as } p \to \left\lfloor\frac{\sqrt{\kappa_l}}{2}\ln{\frac{2}{\epsilon}} + 1 \right\rfloor,
+    P^{\text{tail}}_{\text{uniform}}(\kappa_l, \kappa_r) \longrightarrow \frac{1}{\ln(4\kappa_r)} \approx P^{(0)}_{\text{uniform}}(\kappa_r) \quad \text{as } p \to \left\lfloor\frac{\sqrt{\kappa_l}}{2}\ln{\frac{2}{\epsilon}} + 1 \right\rfloor,
 \]
-that is, the minimum performance of the tail-cluster bound reduces to the two-cluster bound as $p$ approaches its maximum value. Another crucial aspect about $P^{\text{tail}}_{\text{uniform}}(\kappa_l, \kappa_r)$ is found when we require the leading order term to be larger than $1$, giving us the following inequality
+that is, the minimum performance of the tail-cluster bound reduces to the leading order term of the two-cluster bound's minimum performance from \cref{eq:performance_ratio_uniform_expansion} as $p$ approaches its maximum value. Another crucial aspect about $P^{\text{tail}}_{\text{uniform}}(\kappa_l, \kappa_r)$ is recovered when we require its leading order term to be larger than $1$, giving us the following inequality
 \begin{equation}
     p < \sqrt{\kappa_l}\log_{4\kappa_r}\left(\frac{2}{\epsilon}\right).
     \label{eq:tail_cluster_bound_sparsity_condition}
