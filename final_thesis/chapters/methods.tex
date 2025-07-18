@@ -192,7 +192,7 @@ which gives the performance for a uniform eigenspectrum as
 \begin{align}
     P_{\text{uniform}}(\kappa_l, \kappa_r) &\approx \frac{1}{\ln(4\kappa_r)} \left(1 - \frac{1}{\sqrt{\kappa_l}\ln\left(\frac{2}{\epsilon}\right)}\right) \notag \\
     &\quad - \frac{1}{\ln(4\kappa_r)^2}\left(\frac{1}{\sqrt{\kappa_l}} + \frac{1}{\sqrt{\kappa_r}} + \frac{1}{\sqrt{\kappa_l\kappa_r}\ln\left(\frac{2}{\epsilon}\right)}\right) \notag \\
-    &\quad + \mathcal{O}\left(\frac{1}{\ln(4\kappa_r)}\left[\frac{1}{\ln(4\kappa_r)} + \frac{1}{\kappa_l\kappa_r\ln\left(\frac{2}{\epsilon}\right)^2}\right]\right).
+    &\quad + \mathcal{O}\left(\frac{1}{\ln(4\kappa_r)}\left[\frac{1}{\ln(4\kappa_r)^2} + \frac{1}{\kappa_l\kappa_r\ln\left(\frac{2}{\epsilon}\right)^2}\right]\right).
     \label{eq:performance_ratio_uniform_expansion}
 \end{align}
 The approximate equality in \cref{eq:performance_ratio_uniform_expansion} stems from the fact that
@@ -217,15 +217,15 @@ Now that we have established that the new bound is not absolutely sharper than t
 \]
 which can be rewritten as
 \begin{equation}
-    \sqrt{\frac{\kappa}{\kappa_l\kappa_r}} \geq \ln\left(4\frac{\kappa}{\kappa_l}\right) + \frac{1}{\sqrt{\kappa_r}} + \frac{1}{\sqrt{\kappa_l}}\left(\frac{1 + \ln\left(\frac{4\kappa}{\kappa_l}\right)}{\ln\left(\frac{2}{\epsilon}\right)}\right).
+    \sqrt{\frac{\kappa}{\kappa_l\kappa_r}} \geq \frac{1}{2}\ln\left(\frac{4\kappa}{\kappa_l}\right) + \frac{1}{\sqrt{\kappa_r}} + \frac{1}{\sqrt{\kappa_l}}\left(1 + \log_{\frac{2}{\epsilon}}\left(\frac{4\kappa}{\kappa_l}\right)\right).
     \label{eq:threshold_inequality}
 \end{equation}
 At this point we neglect the last term in \cref{eq:threshold_inequality}. Doing so relaxes the constraint on the performance ratio as
 \begin{equation}
-    P \geq 1 - \mathcal{O}\left(\frac{1}{\sqrt{\kappa_l}\ln\left(\frac{4\kappa}{\kappa_l}\right)}\right) = P_{\text{threshold}},
+    P \geq 1 - \mathcal{O}\left(\sqrt{\frac{\kappa_r}{\kappa_l}}\log_{\frac{2}{\epsilon}}\left(\frac{4\kappa}{\kappa_l}\right)\right) = P_{\text{threshold}},
     \label{eq:approximate_performance_ratio_threshold}
 \end{equation}
-which is a good approximation as long as $\kappa_l \gg 1$. Next to simplifying \cref{eq:threshold_inequality}, this reduces the number of variables. Indeed, by introducing a new parameter for the \textit{spectral width} $s = \frac{\kappa}{\kappa_l}$, dropping the last term in \cref{eq:threshold_inequality} and setting $c_r = \frac{1}{\sqrt{\kappa_r}}$ we can write
+which is a good approximation as long as $\kappa_l \geq \kappa \gg 1$. Next to simplifying \cref{eq:threshold_inequality}, this reduces the number of variables. Indeed, by introducing a new parameter for the \textit{spectral width} $s = \frac{\kappa}{\kappa_l}$, dropping the last term in \cref{eq:threshold_inequality} and setting $c_r = \frac{2}{\sqrt{\kappa_r}}$ we can write
 \begin{equation}
     c_r\sqrt{s} \geq \ln\left(4s\right) + c_r.
     \label{eq:threshold_inequality_s}
@@ -234,13 +234,13 @@ We use the Lambert $\mathrm{W}$ function to solve the equality in \cref{eq:thres
 \begin{align*}
     -\frac{c_r\sqrt{s}}{2} = y = W_{-1}(x) = W_{-1}\left(-\frac{c_r}{4\exp\left(\frac{c_r}{2}\right)}\right), \quad x \in \left(-\frac{1}{\mathrm{e}}, 0 \right],
 \end{align*}
-where $W_{-1}$ is the first negative branch of the Lambert $\mathrm{W}$ function. The condition on $x$ ensures that $W_{-1}$ evaluates to a real number. Note that $\kappa_r\geq1 \implies c_r \leq 1$. So the condition on $x$ is indeed satisfied. Finally, after substituting $c_r = \frac{1}{\sqrt{\kappa_r}}$ we obtain an explicit expression for the spectral width $s$ in terms of the right cluster condition number $\kappa_r$
+where $W_{-1}$ is the first negative branch of the Lambert $\mathrm{W}$ function. The condition on $x$ ensures that $W_{-1}$ evaluates to a real number. Note that $\kappa_r\geq1 \implies c_r \leq 1$. So the condition on $x$ is indeed satisfied. Finally, after substituting $c_r = \frac{2}{\sqrt{\kappa_r}}$ we obtain an explicit expression for the spectral width $s$ in terms of the right cluster condition number $\kappa_r$
 \[
-    s(\kappa, \kappa_l) \geq 4\kappa_r W_{-1}\left(-\frac{1}{4\sqrt{\kappa_r}\exp\left(\frac{1}{2\sqrt{\kappa_r}}\right)}\right)^2,
+    s(\kappa, \kappa_l) \geq \kappa_r W_{-1}\left(-\frac{1}{2\sqrt{\kappa_r}\exp\left(\frac{1}{\sqrt{\kappa_r}}\right)}\right)^2,
 \]
 or, in terms of the original condition numbers
 \begin{equation}
-    \kappa \gtrsim 4\kappa_l\kappa_r W_{-1}\left(-\frac{1}{4\sqrt{\kappa_r}\exp\left(\frac{1}{2\sqrt{\kappa_r}}\right)}\right)^2 = T_{\kappa}(\kappa_l, \kappa_r).
+    \kappa \gtrsim 4\kappa_l\kappa_r W_{-1}\left(-\frac{1}{2\sqrt{\kappa_r}\exp\left(\frac{1}{\sqrt{\kappa_r}}\right)}\right)^2 = T_{\kappa}(\kappa_l, \kappa_r).
     \label{eq:threshold_inequality_explicit}    
 \end{equation}
 The evaluation of the Lambert $\mathrm{W}$ function is not a trivial task and often requires numerical methods for accurate computation \cite{evaluation_of_the_lambert_w_function_Corless1996}. Luckily, there exists an expansion of $\mathrm{W}_{-1}(x)$ for $x\rightarrow0^-$ \cite[Equation 4.19]{evaluation_of_the_lambert_w_function_Corless1996}. Let $x$ be as above and set $L = \ln(-x)$ and $l = \ln(-L)$, then
@@ -264,14 +264,14 @@ Figure \ref{fig:two_cluster_bound_performance} visualizes all the findings regar
 \begin{figure}[H]
     \centering
     \includegraphics[width=\textwidth]{performance_vs_condition_number.pdf}
-    \caption{Performance ratio of the classical bound $m$ from \cref{eq:cg_convergence_rate_bound_iterations_approx} and the new two-cluster bound $m_2$ from \cref{eq:cg_iteration_bound_2_clusters} as a function of the global condition number $\kappa$ for right cluster condition number $\kappa_r = 2$ (\textbf{left}) and $\kappa_r = 10^3$ (\textbf{right}). All plots contain graphs for spectra with $\kappa_l = 1, 10, 10^2, 10^3, 10^4$. The plots also contain a red, shaded region for which $P_{\text{uniform}} < P < 1$, a diagonally hashed region resembling the performance bounds from \cref{eq:performance_bounds}, a red, dashed line resembling the first order expansion of the uniform performance ratio, $P^{(1)}_{\text{uniform}}$ from \cref{eq:performance_ratio_uniform_expansion}, and both the exact and approximate $\kappa$-threshold values for each $\kappa_l$ graph from \cref{eq:threshold_inequality_explicit,eq:threshold_inequality_explicit_expansion}, respectively.}
+    \caption{Performance ratio of the classical bound $m$ from \cref{eq:cg_convergence_rate_bound_iterations_approx} and the new two-cluster bound $m_2$ from \cref{eq:cg_iteration_bound_2_clusters} as a function of the global condition number $\kappa$ for right cluster condition number $\kappa_r = 5$ (\textbf{left}) and $\kappa_r = 10^3$ (\textbf{right}). All plots contain graphs for spectra with $\kappa_l = 1, 10, 10^2, 10^3, 10^4$. The plots also contain a red, shaded region for which $P_{\text{uniform}} < P < 1$, a diagonally hashed region resembling the performance bounds from \cref{eq:performance_bounds}, a red, dashed line resembling the first order expansion of the uniform performance ratio, $P^{(1)}_{\text{uniform}}$ from \cref{eq:performance_ratio_uniform_expansion}, and both the exact and approximate $\kappa$-threshold values for each $\kappa_l$ graph from \cref{eq:threshold_inequality_explicit,eq:threshold_inequality_explicit_expansion}, respectively.}
     \label{fig:two_cluster_bound_performance}
 \end{figure}
 We can notice that the performance graphs for various left cluster widths $\kappa_l$ grow with the square root of the global condition number, i.e. $P \approx \mathcal{O}(\sqrt{\kappa})$, as the slope of these lines is approximately $1/2$. This is to be expected from \cref{eq:cg_iteration_bound_2_clusters_condition_numbers}, since for constant $\kappa_l,\kappa_r$, and $\kappa > T_h(\kappa_l, \kappa_r) \gg 1$ we have that $P = \mathcal{O}\left(\frac{\sqrt{\kappa}}{\ln(4\kappa)}\right)$. The slope of the term $\frac{\sqrt{\kappa}}{\ln(4\kappa)}$ in a log-log plot satisfies
 \[
     \frac{d\ln(P)}{d\ln(\kappa)} =\kappa\frac{d\ln(P)}{d\kappa} \sim \kappa\frac{d}{d\ln(\kappa)} \left[\ln(\sqrt{\kappa}) - \ln(\ln(4\kappa))\right] = \frac{1}{2} - \frac{1}{\ln(4\kappa)} \underset{\kappa\to\infty}{\longrightarrow} \frac{1}{2}.
 \]
-Next to this we can see that the first order expansion of the uniform performance ratio $P^{(1)}_{\text{uniform}}$ agrees well with the minimum performance bound as long as $\kappa = \kappa_l\kappa_r \gg 1$, which is in agreement with the error terms in \cref{eq:performance_ratio_uniform_expansion} and the minimum performance bound from \cref{eq:performance_bounds}. Finally, we see that both $T_{\kappa}(\kappa_l, \kappa_r)$ and its zeroth order expansion $T^{(0)}_{\kappa}(\kappa_l, \kappa_r)$ from \cref{eq:threshold_inequality_explicit,eq:threshold_inequality_explicit_expansion} are accurate approximations of the actual $\kappa$-threshold value at which $P=1$, and even more so for larger values of $\kappa,\kappa_r$.
+Next to this we can see that the first order expansion of the uniform performance ratio $P^{(1)}_{\text{uniform}}$ agrees well with the minimum performance bound as long as $\kappa = \kappa_l\kappa_r \gg 1$, which is in agreement with the error terms in \cref{eq:performance_ratio_uniform_expansion} and the minimum performance bound from \cref{eq:performance_bounds}. Finally, we see that both $T_{\kappa}(\kappa_l, \kappa_r)$ and its zeroth order expansion $T^{(0)}_{\kappa}(\kappa_l, \kappa_r)$ from \cref{eq:threshold_inequality_explicit,eq:threshold_inequality_explicit_expansion} are accurate approximations of the actual $\kappa$-threshold value at which $P=1$, and even more so for larger values of $\kappa,\kappa_r$. We do see a deviation of both $T_{\kappa}(\kappa_l, \kappa_r)$ and $T^{(0)}_{\kappa}(\kappa_l, \kappa_r)$ for $\kappa_l\leq\kappa_r$. Again, this is in agreement with the error terms in \cref{eq:approximate_performance_ratio_threshold}.
 
 \section{Generalization to multiple clusters}\label{sec:multiple_clusters}
 The technique outlined in \cref{sec:cg_sharpened_convrate} starts at the left most cluster $[a,b]$, finds the Chebyshev degree $p_1=p$ satisfying \cref{eq:chebyshev_degree_p}, moves to the neighboring cluster $[c,d]$ and finds the Chebyshev degree $p_2 = m_2 - p$ satisfying \cref{eq:relative_error_bound_mp}. Rewriting \cref{eq:relative_error_bound_mp} gives the following equation for $p_2$:
