@@ -14,7 +14,11 @@ from hcmsfem.cli import CLI_ARGS
 from hcmsfem.logger import LOGGER
 from hcmsfem.plot_utils import save_latex_figure, set_mpl_cycler
 from hcmsfem.problems import CoefFunc
-from hcmsfem.solvers import classic_cg_iteration_bound, sharpened_cg_iteration_bound
+from hcmsfem.solvers import (
+    classic_cg_iteration_bound,
+    mixed_sharpened_cg_iteration_bound,
+    sharpened_cg_iteration_bound,
+)
 
 # define coefficient functions to use
 COEF_FUNCS = [
@@ -43,10 +47,10 @@ fig, axs = plt.subplots(
     sharey=True,
 )
 
-# to differentiate between actual iterations, classical and improved bounds
-iter_colors = [None] * 3
-iter_markers = [".", "x", "^"]
-iter_linestyles = ["-", "--", "-."]
+# to differentiate between actual iterations, classical and sharpened bounds
+iter_colors = [None] * 4
+iter_markers = [".", "x", "^", "o"]
+iter_linestyles = ["-", "--", "-.", ":"]
 
 # main loop
 for i, ((preconditioner_cls, coarse_space_cls), precond_axs) in enumerate(
@@ -60,6 +64,7 @@ for i, ((preconditioner_cls, coarse_space_cls), precond_axs) in enumerate(
         niters = []
         niters_classical = []
         niters_sharpened = []
+        niters_sharpened_mixed = []
         for mesh_params in MESHES:
             LOGGER.debug(f"Processing mesh H = {1/mesh_params.coarse_mesh_size:.0f}")
 
@@ -88,6 +93,13 @@ for i, ((preconditioner_cls, coarse_space_cls), precond_axs) in enumerate(
                 # get sharpened bound
                 niters_sharpened.append(
                     sharpened_cg_iteration_bound(
+                        eigenvalues, log_rtol=LOG_RTOL, exact_convergence=False
+                    )
+                )
+
+                # get mixed sharpened bound
+                niters_sharpened_mixed.append(
+                    mixed_sharpened_cg_iteration_bound(
                         eigenvalues, log_rtol=LOG_RTOL, exact_convergence=False
                     )
                 )
@@ -143,6 +155,20 @@ for i, ((preconditioner_cls, coarse_space_cls), precond_axs) in enumerate(
             iter_colors[2] = niters_sharpened_line[0].get_color()
         else:
             niters_sharpened_line[0].set_color(iter_colors[2])
+
+        # plot mixed sharpened bound
+        niters_sharpened_mixed_line = ax.plot(
+            XTICK_LOCS,
+            niters_sharpened_mixed,
+            linestyle=iter_linestyles[2],
+            marker=iter_markers[2],
+            alpha=0.75,
+            label="Sharpened Bound (Mixed)",
+        )
+        if iter_colors[3] is None:
+            iter_colors[3] = niters_sharpened_mixed_line[0].get_color()
+        else:
+            niters_sharpened_mixed_line[0].set_color(iter_colors[3])
 
         # format the axes (all)
         ax.grid()
