@@ -28,6 +28,7 @@ FIGHEIGHT = 3
 RECIPROCAL_COARSE_MESH_SIZES = [round(1 / mesh.coarse_mesh_size) for mesh in MESHES]
 XTICKS = [rf"$\mathbf{{H = 1/{Nc}}}$" for Nc in RECIPROCAL_COARSE_MESH_SIZES]
 XTICK_LOCS = np.arange(len(RECIPROCAL_COARSE_MESH_SIZES), dtype=int)
+LOG_RTOL = np.log(RTOL)
 
 # set matplotlib cycler
 set_mpl_cycler(lines=True, colors=True, markers=True)
@@ -80,14 +81,14 @@ for i, ((preconditioner_cls, coarse_space_cls), precond_axs) in enumerate(
                 cond = np.abs(np.max(eigenvalues) / np.min(eigenvalues))
                 niters_classical.append(
                     classic_cg_iteration_bound(
-                        cond, log_rtol=np.log(RTOL), exact_convergence=False
+                        cond, log_rtol=LOG_RTOL, exact_convergence=False
                     )
                 )
 
                 # get sharpened bound
                 niters_sharpened.append(
                     sharpened_cg_iteration_bound(
-                        eigenvalues, log_rtol=np.log(RTOL), exact_convergence=False
+                        eigenvalues, log_rtol=LOG_RTOL, exact_convergence=False
                     )
                 )
 
