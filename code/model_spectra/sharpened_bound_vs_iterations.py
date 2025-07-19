@@ -30,15 +30,15 @@ FIGWIDTH = 5
 FIGHEIGHT = 2
 
 # define preconditioners and coefficient functions
-preconditioners = [PRECONDITIONERS[1]] 
-coef_funcs = [COEF_FUNCS[2]]  # only vertex centered and edge slabs
+preconditioners = [PRECONDITIONERS[1]]
+coef_funcs = COEF_FUNCS[1:]
 
 # tolerance
 LOG_RTOL = np.log(RTOL)
 
 # number of iterations to calculate
-N_ITERATIONS = 1000
-MOVING_AVG_WINDOW = 10
+N_ITERATIONS = 500
+MOVING_AVG_WINDOW = 30
 
 # initialize figure and axes
 fig, axs = plt.subplots(
@@ -115,11 +115,6 @@ for i, mesh_params in enumerate(MESHES):
                         lanczos_matrix = CustomCG.get_lanczos_matrix_from_coefficients(
                             alpha[: j + 1], beta[:j]
                         )
-                    else:
-                        # last iteration, use full alpha and beta
-                        lanczos_matrix = CustomCG.get_lanczos_matrix_from_coefficients(
-                            alpha, beta
-                        )
 
                     progress.update(
                         eigenvalue_task,
@@ -133,9 +128,7 @@ for i, mesh_params in enumerate(MESHES):
                             "applying sharpened bound(s)"
                         ),
                     )
-                    niter_sharp_mixed = mixed_sharpened_cg_iteration_bound(
-                        eigenvalues, log_rtol=LOG_RTOL, exact_convergence=False
-                    )
+
                     if j < num_iterations:
                         # calculate sharpened bound
                         try:
@@ -149,10 +142,18 @@ for i, mesh_params in enumerate(MESHES):
                             )
 
                         # calculate sharpened mixed bound
+                        niter_sharp_mixed = mixed_sharpened_cg_iteration_bound(
+                            eigenvalues, log_rtol=LOG_RTOL, exact_convergence=False
+                        )
                         niters_sharp_mixed[shorthand][j] = niter_sharp_mixed
+
                     else:
-                        # last iteration, use full alpha and beta and sharpened mixed bound
-                        final_bounds.append(niter_sharp_mixed)
+                        # calculate bound at convergence
+                        final_bounds.append(
+                            mixed_sharpened_cg_iteration_bound(
+                                eigenvalues, log_rtol=LOG_RTOL, exact_convergence=False
+                            )
+                        )
 
                     # update progress bar
                     progress.advance(eigenvalue_task)
@@ -209,9 +210,14 @@ for i, mesh_params in enumerate(MESHES):
                 linestyle="--",
                 color="blue",
             )
-            
+
             # plot moving min
-            moving_min = np.min(np.lib.stride_tricks.sliding_window_view(sharp_iters, MOVING_AVG_WINDOW), axis=1)
+            moving_min = np.min(
+                np.lib.stride_tricks.sliding_window_view(
+                    sharp_iters, MOVING_AVG_WINDOW
+                ),
+                axis=1,
+            )
             ax.plot(
                 MOVING_AVG_WINDOW + np.arange(len(moving_min)),
                 moving_min,
