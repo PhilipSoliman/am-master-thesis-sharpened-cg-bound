@@ -112,9 +112,11 @@ def plot_bounds(
     niters_sharp,
     niters_sharp_mixed,
     show_bounds: bool,
+    n_iters=N_ITERATIONS,
+    moving_avg_window=MOVING_AVG_WINDOW,
 ):
     # get number of iterations to plot
-    n_iters_plot = min(len(convergence_eigenvalues) - 1, N_ITERATIONS)
+    n_iters_plot = min(len(convergence_eigenvalues) - 1, n_iters)
 
     # plot the two versions of the sharpened bound
     sharp_iters = niters_sharp
@@ -138,11 +140,11 @@ def plot_bounds(
     # # plot moving average of sharpened bounds
     # sharp_bound_avg = np.convolve(
     #     sharp_iters[:n_iters_plot],
-    #     np.ones(MOVING_AVG_WINDOW) / MOVING_AVG_WINDOW,
+    #     np.ones(moving_avg_window) / moving_avg_window,
     #     mode="same",
     # )
     # ax.plot(
-    #     MOVING_AVG_WINDOW + np.arange(len(sharp_bound_avg)),
+    #     moving_avg_window + np.arange(len(sharp_bound_avg)),
     #     sharp_bound_avg,
     #     label=f"{shorthand} (MA)",
     #     linestyle="--",
@@ -152,12 +154,12 @@ def plot_bounds(
     # plot moving min of sharp bound
     moving_min_sharp = np.min(
         np.lib.stride_tricks.sliding_window_view(
-            sharp_iters[:n_iters_plot], MOVING_AVG_WINDOW
+            sharp_iters[:n_iters_plot], moving_avg_window
         ),
         axis=1,
     )
     ax.plot(
-        MOVING_AVG_WINDOW + np.arange(len(moving_min_sharp)),
+        moving_avg_window + np.arange(len(moving_min_sharp)),
         moving_min_sharp,
         label=f"Sharpened bound (MM)",
         linestyle="--",
@@ -167,12 +169,12 @@ def plot_bounds(
     # plot moving min of sharp mixed bound
     moving_min_sharp_mixed = np.min(
         np.lib.stride_tricks.sliding_window_view(
-            sharp_mixed_iters[:n_iters_plot], MOVING_AVG_WINDOW
+            sharp_mixed_iters[:n_iters_plot], moving_avg_window
         ),
         axis=1,
     )
     ax.plot(
-        MOVING_AVG_WINDOW + np.arange(len(moving_min_sharp_mixed)),
+        moving_avg_window + np.arange(len(moving_min_sharp_mixed)),
         moving_min_sharp_mixed,
         label=f"Sharpened Mixed Bound (MM)",
         linestyle="--",
@@ -182,7 +184,7 @@ def plot_bounds(
     # plot average of two moving mins
     moving_mins_avg = (moving_min_sharp + moving_min_sharp_mixed) / 2
     ax.plot(
-        MOVING_AVG_WINDOW + np.arange(len(moving_mins_avg)),
+        moving_avg_window + np.arange(len(moving_mins_avg)),
         moving_mins_avg,
         label=f"Sharpened Bound (MM Avg)",
         linestyle="--",
@@ -255,7 +257,6 @@ def style_figure(fig, axs, shorthand, meshes, coef_funcs):
     # figure title
     fig.suptitle(
         f"Sharpened CG Iteration Bound vs Iterations ({shorthand})",
-        fontsize=16,
         fontweight="bold",
     )
 
