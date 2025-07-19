@@ -9,16 +9,16 @@ from approximate_spectra import (
     RTOL,
     get_spectrum_save_path,
 )
+from sharpened_bound_vs_iterations import N_ITERATIONS
 
 from hcmsfem.cli import get_cli_args
-from hcmsfem.eigenvalues import eigs
 from hcmsfem.logger import LOGGER, PROGRESS
+from hcmsfem.meshes import DefaultQuadMeshParams
 from hcmsfem.plot_utils import save_latex_figure, set_mpl_cycler, set_mpl_style
-from hcmsfem.solvers import (
-    CustomCG,
-    mixed_sharpened_cg_iteration_bound,
-    sharpened_cg_iteration_bound,
-)
+from hcmsfem.solvers import mixed_sharpened_cg_iteration_bound
+
+PLOT_MESHES = [DefaultQuadMeshParams.Nc8, DefaultQuadMeshParams.Nc64]
+PLOT_BOUNDS = False
 
 # set matplotlib style & cycler
 set_mpl_style()
@@ -29,169 +29,81 @@ ARGS = get_cli_args()
 FIGWIDTH = 5
 FIGHEIGHT = 2
 
-# define preconditioners and coefficient functions
-preconditioners = [PRECONDITIONERS[1]]
-coef_funcs = COEF_FUNCS[1:]
-
 # tolerance
 LOG_RTOL = np.log(RTOL)
 
 # number of iterations to calculate
 N_ITERATIONS = 500
-MOVING_AVG_WINDOW = 30
+MOVING_AVG_WINDOW = 10
 
-# initialize figure and axes
-fig, axs = plt.subplots(
-    len(coef_funcs),
-    len(MESHES),
-    figsize=(FIGWIDTH * len(MESHES), FIGHEIGHT * len(coef_funcs)),
-    squeeze=False,
-    sharex=True,
-    sharey=True,
-)
 
-# initialize progress bar
-progress = PROGRESS.get_active_progress_bar()
-main_task = progress.add_task(
-    "Calculating upper bound vs iterations", total=len(MESHES)
-)
-main_desc = progress.get_description(main_task)
-main_desc += " ([bold]H = 1/{0:.0f}, CF = {1}[/bold], M = {2})"
+def plot_sharpened_bound_vs_iterations(
+    preconditioner, meshes=MESHES, coef_funcs=COEF_FUNCS, plot_bounds=True
+) -> tuple[plt.Figure, str]:
+    # get preconditioner class and coarse space class
+    preconditioner_cls, coarse_space_cls = preconditioner
 
-# main plot loop
-for i, mesh_params in enumerate(MESHES):
-    axes = axs[:, i]
-    for coef_func, ax in zip(coef_funcs, axes):
-        niters_sharp = {}
-        niters_sharp_mixed = {}
-        final_bounds = []
-        for preconditioner_cls, coarse_space_cls in preconditioners:
+    # get shorthand
+    shorthand = f"{preconditioner_cls.SHORT_NAME}-{coarse_space_cls.SHORT_NAME}"
+
+    # initialize figure and axes
+    fig, axs = plt.subplots(
+        len(coef_funcs),
+        len(meshes),
+        figsize=(FIGWIDTH * len(meshes), FIGHEIGHT * len(coef_funcs)),
+        squeeze=False,
+        sharex=True,
+        sharey=True,
+    )
+
+    # initialize progress bar
+    progress = PROGRESS.get_active_progress_bar()
+    main_task = progress.add_task(
+        "Calculating upper bound vs iterations", total=len(meshes)
+    )
+    main_desc = progress.get_description(main_task)
+    main_desc += " ([bold]H = 1/{0:.0f}, CF = {1}[/bold], M = {2})"
+
+    # main plot loop
+    for i, mesh_params in enumerate(meshes):
+        axes = axs[:, i]
+        for coef_func, ax in zip(coef_funcs, axes):
             fp = get_spectrum_save_path(
                 mesh_params, coef_func, preconditioner_cls, coarse_space_cls
             )
             if fp.exists():
                 # Load the alpha and beta arrays from the saved numpy file
                 array_zip = np.load(fp)
-                alpha = array_zip["alpha"]
-                beta = array_zip["beta"]
-
-                # get shorthand
-                shorthand = (
-                    f"{preconditioner_cls.SHORT_NAME}-{coarse_space_cls.SHORT_NAME}"
-                )
-
-                # update main task description
-                progress.update(
-                    main_task,
-                    description=main_desc.format(
-                        1 / mesh_params.coarse_mesh_size,
-                        coef_func.short_name,
-                        shorthand,
-                    ),
-                )
-
-                # loop over iterations
-                num_iterations = min(N_ITERATIONS, len(alpha) - 1)
-                eigenvalue_task = progress.add_task(
-                    f"Calculating upperbound",
-                    total=num_iterations + 1,
-                )
-                eigenvalue_desc = progress.get_description(eigenvalue_task) + " ({})"
-                niters_sharp[shorthand] = np.zeros(num_iterations, dtype=int)
-                niters_sharp_mixed[shorthand] = np.full(
-                    num_iterations, np.nan, dtype=float
-                )
-                for j in range(num_iterations + 1):
-                    progress.update(
-                        eigenvalue_task,
-                        description=eigenvalue_desc.format(
-                            "constructing lanczos matrix"
-                        ),
-                    )
-                    if j < num_iterations:
-                        lanczos_matrix = CustomCG.get_lanczos_matrix_from_coefficients(
-                            alpha[: j + 1], beta[:j]
-                        )
-
-                    progress.update(
-                        eigenvalue_task,
-                        description=eigenvalue_desc.format("calculating eigenvalues"),
-                    )
-                    eigenvalues = eigs(lanczos_matrix)
-
-                    progress.update(
-                        eigenvalue_task,
-                        description=eigenvalue_desc.format(
-                            "applying sharpened bound(s)"
-                        ),
-                    )
-
-                    if j < num_iterations:
-                        # calculate sharpened bound
-                        try:
-                            niter_sharp = sharpened_cg_iteration_bound(
-                                eigenvalues, log_rtol=LOG_RTOL, exact_convergence=False
-                            )
-                            niters_sharp[shorthand][j] = niter_sharp
-                        except ValueError as e:
-                            LOGGER.info(
-                                f"Skipping sharpened bound calculation for {shorthand} at iteration {j}: {e}"
-                            )
-
-                        # calculate sharpened mixed bound
-                        niter_sharp_mixed = mixed_sharpened_cg_iteration_bound(
-                            eigenvalues, log_rtol=LOG_RTOL, exact_convergence=False
-                        )
-                        niters_sharp_mixed[shorthand][j] = niter_sharp_mixed
-
-                    else:
-                        # calculate bound at convergence
-                        final_bounds.append(
-                            mixed_sharpened_cg_iteration_bound(
-                                eigenvalues, log_rtol=LOG_RTOL, exact_convergence=False
-                            )
-                        )
-
-                    # update progress bar
-                    progress.advance(eigenvalue_task)
-                progress.remove_task(eigenvalue_task)
-
+                niters_sharp = array_zip["niters_sharp"]
+                niters_sharp_mixed = array_zip["niters_sharp_mixed"]
+                convergence_eigenvalues = array_zip[
+                    "eigenvalues"
+                ]  # eigenvalues at convergence
             else:
-                # Provide a clickable link to the script in the repo using Rich markup with absolute path
-                approx_path = Path(__file__).parent / "approximate_spectra.py"
+                approx_path = Path(__file__).parent / "sharpened_bound_vs_iterations.py"
                 LOGGER.error(
-                    f"File %s does not exist. Run '[link=file:{approx_path}]approximate_spectra.py[/link]' first.",
+                    f"File %s does not exist. Run '[link=file:{approx_path}]sharpened_bound_vs_iterations.py[/link]' first.",
                     fp,
                 )
                 exit()
 
-        # TODO 3 (continued): ...and plot the number of iterations it calculates
-        for idx, shorthand in enumerate(niters_sharp_mixed.keys()):
             # plot the two versions of the sharpened bound
-            sharp_iters = niters_sharp[shorthand]
-            ax.plot(
+            sharp_iters = niters_sharp
+            sharp_line = ax.plot(
                 range(len(sharp_iters)),
                 sharp_iters,
-                label=shorthand,
-                marker="v",
+                marker="v" if plot_bounds else None,
+                linestyle="None",
                 markersize=3,
             )
 
-            sharp_mixed_iters = niters_sharp_mixed[shorthand]
-            ax.plot(
+            sharp_mixed_iters = niters_sharp_mixed
+            sharp_mixed_line = ax.plot(
                 range(len(sharp_mixed_iters)),
                 sharp_mixed_iters,
-                label=shorthand,
-                marker="^",
+                marker="^" if plot_bounds else None,
+                linestyle="None",
                 markersize=3,
-            )
-
-            # TODO 4: plot a horizontal line for the number of iterations that the sharpened bound predicts for the eigenspectrum at convergence
-            ax.axhline(
-                final_bounds[idx],
-                linestyle="--",
-                color=ax.lines[-1].get_color(),
-                linewidth=0.8,
             )
 
             # plot moving average of sharpened bounds
@@ -208,7 +120,7 @@ for i, mesh_params in enumerate(MESHES):
                 color="blue",
             )
 
-            # plot moving min
+            # plot moving min of sharp bound
             moving_min = np.min(
                 np.lib.stride_tricks.sliding_window_view(
                     sharp_iters, MOVING_AVG_WINDOW
@@ -218,64 +130,119 @@ for i, mesh_params in enumerate(MESHES):
             ax.plot(
                 MOVING_AVG_WINDOW + np.arange(len(moving_min)),
                 moving_min,
-                label=f"{shorthand} (MM)",
+                label=f"Sharpened bound (MM)",
                 linestyle="--",
-                color="green",
+                color=sharp_line[0].get_color(),
             )
 
-        # plot y=x
-        ax.plot(
-            np.arange(N_ITERATIONS),
-            np.arange(N_ITERATIONS),
-            linestyle="--",
-            color="black",
-            linewidth=0.8,
-            label="y=x",
+            # plot moving min of sharp mixed bound
+            moving_min = np.min(
+                np.lib.stride_tricks.sliding_window_view(
+                    sharp_mixed_iters, MOVING_AVG_WINDOW
+                ),
+                axis=1,
+            )
+            ax.plot(
+                MOVING_AVG_WINDOW + np.arange(len(moving_min)),
+                moving_min,
+                label=f"Sharpened Mixed Bound (MM)",
+                linestyle="--",
+                color=sharp_mixed_line[0].get_color(),
+            )
+
+            # plot upper bound at convergence
+            ax.axhline(
+                mixed_sharpened_cg_iteration_bound(
+                    convergence_eigenvalues, log_rtol=LOG_RTOL, exact_convergence=False
+                ),
+                linestyle="--",
+                color=ax.lines[-1].get_color(),
+                linewidth=0.8,
+            )
+
+            # plot actual number of iterations
+            n_iters = min(len(convergence_eigenvalues), N_ITERATIONS)
+            ax.axhline(
+                n_iters,
+                linestyle="-",
+                color=ax.lines[-1].get_color(),
+                linewidth=0.8,
+                label=f"{shorthand} (actual)",
+            )
+
+            # plot y=x
+            ax.plot(
+                np.arange(n_iters),
+                np.arange(n_iters),
+                linestyle="--",
+                color="black",
+                linewidth=0.8,
+                label="y=x",
+            )
+
+            # log scale y-axis
+            ax.set_yscale("log")
+
+            # grid settings
+            ax.grid(axis="x", which="both", linestyle="--", linewidth=0.7)
+            ax.grid(axis="y", which="both", linestyle=":", linewidth=0.5)
+
+        # advance main task
+        progress.advance(main_task)
+
+    # Add column titles (LaTeX, Nc as integer, no bold for compatibility)
+    for col_idx, mesh_params in enumerate(meshes):
+        H = mesh_params.coarse_mesh_size
+        Nc = int(1 / H)
+        ax = axs[0, col_idx] if hasattr(axs, "ndim") and axs.ndim == 2 else axs[0]
+        ax.set_title(rf"$\mathbf{{H = 1/{Nc}}}$", fontsize=11)
+
+    # Add row labels (rotated, bold, fontsize 9) at the beginning of each row
+    for row_idx, coef_func in enumerate(coef_funcs):
+        # Get the y-position as the center of the row of axes
+        ax = axs[row_idx, 0]
+
+        # Use axes coordinates to place the text just outside the left of the axes
+        fig.text(
+            0,  # x-position (fraction of figure width, adjust as needed)
+            ax.get_position().y0
+            + ax.get_position().height / 2,  # y-position (center of the row)
+            coef_func.latex,  # use LaTeX representation
+            va="center",
+            ha="left",
+            rotation=90,
+            fontweight="bold",
+            fontsize=14,
         )
 
-        # log scale y-axis
-        ax.set_yscale("log")
-
-        # grid settings
-        ax.grid(axis="x", which="both", linestyle="--", linewidth=0.7)
-        ax.grid(axis="y", which="both", linestyle=":", linewidth=0.5)
-
-    # advance main task
-    progress.advance(main_task)
-
-# Add column titles (LaTeX, Nc as integer, no bold for compatibility)
-for col_idx, mesh_params in enumerate(MESHES):
-    H = mesh_params.coarse_mesh_size
-    Nc = int(1 / H)
-    ax = axs[0, col_idx] if hasattr(axs, "ndim") and axs.ndim == 2 else axs[0]
-    ax.set_title(rf"$\mathbf{{H = 1/{Nc}}}$", fontsize=11)
-
-# Add row labels (rotated, bold, fontsize 9) at the beginning of each row
-for row_idx, coef_func in enumerate(coef_funcs):
-    # Get the y-position as the center of the row of axes
-    ax = axs[row_idx, 0]
-
-    # Use axes coordinates to place the text just outside the left of the axes
-    fig.text(
-        0,  # x-position (fraction of figure width, adjust as needed)
-        ax.get_position().y0
-        + ax.get_position().height / 2,  # y-position (center of the row)
-        coef_func.latex,  # use LaTeX representation
-        va="center",
-        ha="left",
-        rotation=90,
+    # figure title
+    fig.suptitle(
+        f"Sharpened CG Iteration Bound vs Iterations ({shorthand})",
+        fontsize=16,
         fontweight="bold",
-        fontsize=14,
     )
 
-# tight layout for the figure
-fig.tight_layout(pad=1.3)
+    # tight layout for the figure
+    fig.tight_layout(pad=1.3)
 
-# stop progress bar
-progress.soft_stop()
+    # stop progress bar
+    progress.soft_stop()
+
+    return fig, shorthand
+
 
 if ARGS.generate_output:
-    fn = Path(__file__).name.replace("_fig.py", "")
-    save_latex_figure(fn, fig)
+    for preconditioner in PRECONDITIONERS:
+        fig, shorthand = plot_sharpened_bound_vs_iterations(
+            preconditioner, meshes=PLOT_MESHES, plot_bounds=PLOT_BOUNDS
+        )
+        fn = Path(__file__).name.replace("_fig.py", f"_{shorthand}")
+        save_latex_figure(fn, fig)
 if ARGS.show_output:
+    figs = []
+    for preconditioner in PRECONDITIONERS:
+        fig, _ = plot_sharpened_bound_vs_iterations(
+            preconditioner, meshes=PLOT_MESHES, plot_bounds=PLOT_BOUNDS
+        )
+        figs.append(fig)
     plt.show()
