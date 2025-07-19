@@ -32,8 +32,7 @@ def calculate_sharpened_bound_vs_iterations():
     main_desc = progress.get_description(main_task)
     main_desc += " ([bold]H = 1/{0:.0f}, CF = {1}[/bold], M = {2})"
 
-    # main plot loop
-    for i, mesh_params in enumerate(MESHES):
+    for mesh_params in MESHES:
         for coef_func in COEF_FUNCS:
             for preconditioner_cls, coarse_space_cls in PRECONDITIONERS:
                 fp = get_spectrum_save_path(

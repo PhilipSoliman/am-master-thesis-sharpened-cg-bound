@@ -52,7 +52,6 @@ def plot_sharpened_bound_vs_iterations(
         len(meshes),
         figsize=(FIGWIDTH * len(meshes), FIGHEIGHT * len(coef_funcs)),
         squeeze=False,
-        # sharex=True,
         sharey=True,
     )
 
@@ -66,8 +65,7 @@ def plot_sharpened_bound_vs_iterations(
 
     # main plot loop
     for i, mesh_params in enumerate(meshes):
-        axes = axs[:, i]
-        for coef_func, ax in zip(coef_funcs, axes):
+        for coef_func, ax in zip(coef_funcs, axs[:, i]):
             fp = get_spectrum_save_path(
                 mesh_params, coef_func, preconditioner_cls, coarse_space_cls
             )
