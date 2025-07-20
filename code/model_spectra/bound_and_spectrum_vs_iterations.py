@@ -25,6 +25,7 @@ from hcmsfem.solvers import (
     CustomCG,
     mixed_sharpened_cg_iteration_bound,
     partition_eigenspectrum,
+    partition_mixed_eigenspectrum,
     sharpened_cg_iteration_bound,
 )
 
@@ -32,13 +33,13 @@ from hcmsfem.solvers import (
 LOG_RTOL = np.log(RTOL)
 
 # number of iterations to calculate
-N_ITERATIONS = 300
+N_ITERATIONS = 1200  # for RGDSW lef cluster stabilizes arounbd 1200 iterations
 
 # spectrum plot frequency
 SPECTRUM_PLOT_FREQ = 5
 
 # preconditioner and coarse space class to plot
-PRECONDITIONER = (TwoLevelSchwarzPreconditioner, RGDSWCoarseSpace)
+PRECONDITIONER = (TwoLevelSchwarzPreconditioner, AMSCoarseSpace)
 
 # meshes to plot
 MESHES = [DefaultQuadMeshParams.Nc64]
@@ -56,11 +57,11 @@ main_desc += " ([bold]H = 1/{0:.0f}, CF = {1}[/bold], M = {2})"
 
 # initialize figure and axes
 fig, axs = plt.subplots(
-    len(COEF_FUNCS),
-    2 * len(MESHES),
-    figsize=(FIGWIDTH * 2 * len(MESHES), 2 * FIGHEIGHT * len(COEF_FUNCS)),
+    2 * len(COEF_FUNCS),
+    len(MESHES),
+    figsize=(FIGWIDTH * len(MESHES), 2 * FIGHEIGHT * len(COEF_FUNCS)),
     squeeze=False,
-    # sharey=True,
+    sharex=True,
 )
 
 # main plot loop
@@ -146,8 +147,9 @@ for i, mesh_params in enumerate(MESHES):
             exit()
 
         # plot bounds
+        bound_ax = axs[2 * j, i]
         plot_bounds(
-            axs[j, 2 * i],
+            bound_ax,
             shorthand,
             array_zip["eigenvalues"],
             niters_sharp,
@@ -155,32 +157,24 @@ for i, mesh_params in enumerate(MESHES):
             show_bounds=True,
             n_iters=N_ITERATIONS,
         )
-        axs[j, 2 * i].xaxis.set_major_locator(MultipleLocator(SPECTRUM_PLOT_FREQ))
+        bound_ax.xaxis.set_major_locator(MultipleLocator(SPECTRUM_PLOT_FREQ))
 
         # plot spectra
+        previous_eigs = np.array([], dtype=float)
         for iteration, spectrum in enumerate(spectra):
             if iteration % SPECTRUM_PLOT_FREQ != 0:
                 continue
-            ax = axs[j, 2 * i + 1]
-            ax.plot(
+            spectra_ax = axs[2 * j + 1, i]
+            spectra_ax.plot(
                 np.full_like(spectrum, iteration),
                 spectrum,
                 linestyle="None",
                 marker="x",
             )
 
-            # ax.plot(
-            #     iteration,
-            #     spectrum[0],
-            #     linestyle="None",
-            #     marker="_",
-            #     color="red",
-            #     markersize=10,
-            # )
-
             # plot partition indices
             partition_indices = partition_eigenspectrum(spectrum)
-            ax.plot(
+            spectra_ax.plot(
                 np.full_like(partition_indices, iteration),
                 spectrum[partition_indices],
                 linestyle="None",
@@ -188,9 +182,38 @@ for i, mesh_params in enumerate(MESHES):
                 color="red",
                 markersize=10,
             )
-        ax.set_yscale("log")
-        ax.grid(True, axis="x", linestyle="--", linewidth=0.5)
-        ax.xaxis.set_major_locator(MultipleLocator(SPECTRUM_PLOT_FREQ))
+
+            # plot mixed partition indices
+            partition_indices_mixed = partition_mixed_eigenspectrum(
+                spectrum, log_rtol=LOG_RTOL
+            )
+            spectra_ax.plot(
+                np.full_like(partition_indices_mixed, iteration),
+                spectrum[partition_indices_mixed],
+                linestyle="None",
+                marker="|",
+                color="green",
+                markersize=10,
+            )
+
+            # check for convergence
+            current_eigs = np.concatenate(([spectrum[0]], spectrum[partition_indices]))
+            if len(previous_eigs) == len(current_eigs):
+                all_close =  np.allclose(previous_eigs/current_eigs, 1, atol=1e-1)
+                if all_close:
+                    bound_ax.axvline(
+                        iteration, color="red", linestyle="--", linewidth=0.5
+                    )
+                    LOGGER.info(
+                        f"Convergence detected at iteration {iteration}",
+                    )
+                else:
+                    LOGGER.debug(f"Did not converge at iteration {iteration}: ")
+            previous_eigs = current_eigs
+
+        spectra_ax.set_yscale("log")
+        spectra_ax.grid(True, axis="x", linestyle="--", linewidth=0.5)
+        spectra_ax.xaxis.set_major_locator(MultipleLocator(SPECTRUM_PLOT_FREQ))
 
     # advance main task
     progress.advance(main_task)
