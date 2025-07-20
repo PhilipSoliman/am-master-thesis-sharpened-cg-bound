@@ -137,19 +137,14 @@ def plot_bounds(
         markersize=3,
     )
 
-    # # plot moving average of sharpened bounds
-    # sharp_bound_avg = np.convolve(
-    #     sharp_iters[:n_iters_plot],
-    #     np.ones(moving_avg_window) / moving_avg_window,
-    #     mode="same",
-    # )
-    # ax.plot(
-    #     moving_avg_window + np.arange(len(sharp_bound_avg)),
-    #     sharp_bound_avg,
-    #     label=f"{shorthand} (MA)",
-    #     linestyle="--",
-    #     color="blue",
-    # )
+    # plot average of sharpened bounds
+    ax.plot(
+        range(n_iters_plot),
+        (sharp_iters[:n_iters_plot] + sharp_mixed_iters[:n_iters_plot]) / 2,
+        label=f"{shorthand} (2-AVG)",
+        linestyle="--",
+        color="blue",
+    )
 
     # plot moving min of sharp bound
     moving_min_sharp = np.min(
@@ -226,6 +221,9 @@ def plot_bounds(
     # grid settings
     ax.grid(axis="x", which="both", linestyle="--", linewidth=0.7)
     ax.grid(axis="y", which="both", linestyle=":", linewidth=0.5)
+
+    # set x-axis limits
+    ax.set_xlim(0, n_iters_plot - 1)
 
 
 def style_figure(fig, axs, shorthand, meshes, coef_funcs):
