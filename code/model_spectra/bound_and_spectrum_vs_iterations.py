@@ -33,7 +33,7 @@ from hcmsfem.solvers import (
 LOG_RTOL = np.log(RTOL)
 
 # number of iterations to calculate
-N_ITERATIONS = 1200  # for RGDSW lef cluster stabilizes arounbd 1200 iterations
+N_ITERATIONS = 1200  # for RGDSW left cluster stabilizes around 1200 iterations
 
 # spectrum plot frequency
 SPECTRUM_PLOT_FREQ = 5
@@ -42,10 +42,10 @@ SPECTRUM_PLOT_FREQ = 5
 PRECONDITIONER = (TwoLevelSchwarzPreconditioner, AMSCoarseSpace)
 
 # meshes to plot
-MESHES = [DefaultQuadMeshParams.Nc64]
+MESHES = [DefaultQuadMeshParams.Nc4, DefaultQuadMeshParams.Nc16, DefaultQuadMeshParams.Nc64]
 
 # coef_funcs to plot
-COEF_FUNCS = [CoefFunc.EDGE_SLABS_AROUND_VERTICES_INCLUSIONS]
+COEF_FUNCS = [CoefFunc.THREE_LAYER_VERTEX_INCLUSIONS]
 
 progress = PROGRESS.get_active_progress_bar()
 main_task = progress.add_task(
@@ -161,6 +161,7 @@ for i, mesh_params in enumerate(MESHES):
 
         # plot spectra
         previous_eigs = np.array([], dtype=float)
+        convergence_eigs = np.array([], dtype=float)
         for iteration, spectrum in enumerate(spectra):
             if iteration % SPECTRUM_PLOT_FREQ != 0:
                 continue
@@ -197,18 +198,26 @@ for i, mesh_params in enumerate(MESHES):
             )
 
             # check for convergence
-            current_eigs = np.concatenate(([spectrum[0]], spectrum[partition_indices]))
+            current_eigs = []
+            start = 0
+            for end in partition_indices:
+                current_eigs += [spectrum[start], spectrum[end]]
+                start = end + 1
+            current_eigs = np.array(current_eigs, dtype=float)
+            all_close = False
             if len(previous_eigs) == len(current_eigs):
-                all_close =  np.allclose(previous_eigs/current_eigs, 1, atol=1e-1)
-                if all_close:
-                    bound_ax.axvline(
-                        iteration, color="red", linestyle="--", linewidth=0.5
-                    )
-                    LOGGER.info(
-                        f"Convergence detected at iteration {iteration}",
-                    )
-                else:
-                    LOGGER.debug(f"Did not converge at iteration {iteration}: ")
+                all_close = np.allclose(previous_eigs / current_eigs, 1, atol=1e-1)
+            found_earlier_convergence = False
+            if len(convergence_eigs) == len(current_eigs):
+                found_earlier_convergence = np.allclose(
+                    convergence_eigs / current_eigs, 1, atol=1e-1
+                )
+            if all_close and not found_earlier_convergence:
+                convergence_eigs = current_eigs
+                bound_ax.axvline(iteration, color="red", linestyle="--", linewidth=0.5)
+                LOGGER.info(
+                    f"Novel convergence detected at iteration {iteration}",
+                )
             previous_eigs = current_eigs
 
         spectra_ax.set_yscale("log")
