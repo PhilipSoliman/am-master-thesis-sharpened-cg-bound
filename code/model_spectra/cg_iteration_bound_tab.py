@@ -1,0 +1,188 @@
+from pathlib import Path
+from typing import Optional
+
+import numpy as np
+import pandas as pd
+from sharpened_bound_vs_iterations import (
+    COEF_FUNCS,
+    MESHES,
+    N_ITERATIONS,
+    PRECONDITIONERS,
+    get_spectrum_save_path,
+)
+
+from hcmsfem import LOGGER
+from hcmsfem.meshes import DefaultQuadMeshParams, MeshParams
+from hcmsfem.root import get_venv_root
+
+# save directory for the table
+SAVE_DIR = get_venv_root() / "tables"
+
+
+def generate_iteration_bound_table(
+    mesh_params: MeshParams, max_iters: Optional[int] = None
+):
+    # design table structure
+    bounds = [
+        "$m_1$",
+        "$m_{N_{\\text{cluster}}}$",
+        "$m_{N_{\\text{tail-cluster}}}$",
+        "$m_{\\text{estimate}}$",
+    ]
+    bound_and_iter = ["bound", "iter."]
+    cidx = pd.MultiIndex.from_product([bounds, bound_and_iter])
+    cidx = pd.MultiIndex.from_arrays(
+        [
+            ["m"] + cidx.get_level_values(0).tolist(),
+            [""] + cidx.get_level_values(1).tolist(),
+        ]
+    )
+    iidx = pd.MultiIndex.from_product(
+        [
+            [coef_func.latex for coef_func in COEF_FUNCS],
+            [coarse_space_cls.SHORT_NAME for _, coarse_space_cls in PRECONDITIONERS],
+        ]
+    )
+
+    # get data from saved arrays
+    data = []
+    for coef_func in COEF_FUNCS:
+        for preconditioner_cls, coarse_space_cls in PRECONDITIONERS:
+            fp = get_spectrum_save_path(
+                mesh_params, coef_func, preconditioner_cls, coarse_space_cls
+            )
+
+            if fp.exists():
+                # load data from the saved numpy file
+                array_zip = np.load(fp)
+                m = len(array_zip["eigenvalues"])
+                m_classic = array_zip["classic_bound"]
+                m_multi_cluster = array_zip["multi_cluster_bound"]
+                m_tail_cluster = array_zip["tail_cluster_bound"]
+                m_estimate = array_zip["estimate"]
+
+                # determine the maximum number of iterations
+                if max_iters is None:
+                    max_iters = max(N_ITERATIONS, 3 * m // 4)
+
+                # get most recent bounds but limited to max_iters
+                mask = (
+                    m_classic[:, 0] <= max_iters
+                    if m_classic.size
+                    else np.array([], dtype=bool)
+                )
+                m_classic_i, m_classic_b = (
+                    m_classic[mask][-1] if np.any(mask) else (None, None)
+                )
+
+                mask = (
+                    m_multi_cluster[:, 0] <= max_iters
+                    if m_multi_cluster.size
+                    else np.array([], dtype=bool)
+                )
+                m_multi_cluster_i, m_multi_cluster_b = (
+                    m_multi_cluster[mask][-1] if np.any(mask) else (None, None)
+                )
+
+                mask = (
+                    m_tail_cluster[:, 0] <= max_iters
+                    if m_tail_cluster.size
+                    else np.array([], dtype=bool)
+                )
+                m_tail_cluster_i, m_tail_cluster_b = (
+                    m_tail_cluster[mask][-1] if np.any(mask) else (None, None)
+                )
+
+                mask = (
+                    m_estimate[:, 0] <= max_iters
+                    if m_estimate.size
+                    else np.array([], dtype=bool)
+                )
+                m_estimate_i, m_estimate_b = (
+                    m_estimate[mask][-1] if np.any(mask) else (None, None)
+                )
+
+                # construct row
+                data.append(
+                    [
+                        m,
+                        m_classic_b,
+                        m_classic_i,
+                        m_multi_cluster_b,
+                        m_multi_cluster_i,
+                        m_tail_cluster_b,
+                        m_tail_cluster_i,
+                        m_estimate_b,
+                        m_estimate_i,
+                    ]
+                )
+
+            else:
+                # Provide a clickable link to the script in the repo using Rich markup with absolute path
+                approx_path = Path(__file__).parent / "sharpened_bound_vs_iterations.py"
+                LOGGER.error(
+                    f"File %s does not exist. Run '[link=file:{approx_path}]sharpened_bound_vs_iterations.py[/link]' first.",
+                    fp,
+                )
+                exit()
+
+    # create DataFrame
+    df = pd.DataFrame(
+        data,
+        columns=cidx,
+        index=iidx,
+    )
+
+    # get styler
+    styler = df.style
+
+    # set precision for all columns
+    styler.format(precision=0, na_rep="-", thousands=",")
+
+    # TODO: def bound_color function in terms of rel. difference with actual number of iterations
+
+    # rotate bound and iter column headers
+    styler.map_index(
+        lambda v: "rotatebox:{45}--rwrap;font-weight: bold;", level=1, axis=1
+    )
+
+    # table file path
+    Nc = int(1 / mesh_params.coarse_mesh_size)
+    tab_fp = SAVE_DIR / f"cg_iteration_bound_Nc{Nc}.tex"
+
+    # table caption
+    caption = (
+        f"PCG iteration bounds for mesh H=1/{Nc} based on approximate spectra (Ritz values) from the first {max_iters} iterations of solving the model diffusion problem with coefficient functions "
+        f"{', '.join([coef_func.latex for coef_func in COEF_FUNCS])} "
+        f"using 2-OAS preconditioners with {', '.join([coarse_space_cls.SHORT_NAME for _, coarse_space_cls in PRECONDITIONERS])} coarse spaces."
+        " The bounds ($\\textbf{bound}$) "
+        f"{', '.join(bounds)}"
+        " and the iteration ($\\textbf{iter.}$) at which they are obtained are shown."
+    )
+
+    styler.to_latex(
+        tab_fp,
+        caption=caption,
+        position="H",
+        label=f"tab:cg_iteration_bound_Nc{Nc}_N={max_iters}",
+        clines="skip-last;data",
+        convert_css=True,
+        position_float="centering",
+        multicol_align="|c|",
+        hrules=True,
+    )
+
+    styler.to_html(
+        tab_fp.with_suffix(".html"),
+        caption=caption,
+        label=f"tab:cg_iteration_bound_Nc{Nc}_N={max_iters}",
+        clines="skip-last;data",
+        convert_css=True,
+        position_float="centering",
+        multicol_align="|c|",
+        hrules=True,
+    )
+
+
+if __name__ == "__main__":
+    generate_iteration_bound_table(DefaultQuadMeshParams.Nc64)
