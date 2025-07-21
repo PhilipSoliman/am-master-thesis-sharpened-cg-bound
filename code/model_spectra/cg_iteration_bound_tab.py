@@ -1,3 +1,5 @@
+import tempfile
+import webbrowser
 from pathlib import Path
 from typing import Optional
 
@@ -13,6 +15,7 @@ from sharpened_bound_vs_iterations import (
 
 from hcmsfem import LOGGER
 from hcmsfem.meshes import DefaultQuadMeshParams, MeshParams
+from hcmsfem.problems import CoefFunc
 from hcmsfem.root import get_venv_root
 
 # save directory for the table
@@ -20,8 +23,22 @@ SAVE_DIR = get_venv_root() / "tables"
 
 
 def generate_iteration_bound_table(
-    mesh_params: MeshParams, max_iters: Optional[int] = None
+    coef_func: CoefFunc,
+    max_iters: Optional[int] = None,
+    max_iter_percentage: float = 0.75,
+    show: bool = False,
 ):
+    """
+    Generate a table of CG iteration bounds for a given coefficient function.
+
+    Args:
+        coef_func (CoefFunc): The coefficient function to use.
+        max_iters (Optional[int]): Maximum number of iterations to consider for the table.
+            If None, it will be determined based on the length of the eigenvalues.
+        max_iter_percentage (float): Percentage of the maximum number of iterations to consider.
+            Defaults to 0.75.
+    """
+
     # design table structure
     bounds = [
         "$m_1$",
@@ -37,16 +54,23 @@ def generate_iteration_bound_table(
             [""] + cidx.get_level_values(1).tolist(),
         ]
     )
+    meshes_names = [
+        f"$H=1/{int(1 / mesh_params.coarse_mesh_size)}$" for mesh_params in MESHES
+    ]
+    coarse_space_names = [
+        coarse_space_cls.SHORT_NAME for _, coarse_space_cls in PRECONDITIONERS
+    ]
     iidx = pd.MultiIndex.from_product(
         [
-            [coef_func.latex for coef_func in COEF_FUNCS],
-            [coarse_space_cls.SHORT_NAME for _, coarse_space_cls in PRECONDITIONERS],
+            # [coef_func.latex for coef_func in COEF_FUNCS],
+            meshes_names,
+            coarse_space_names,
         ]
     )
 
     # get data from saved arrays
     data = []
-    for coef_func in COEF_FUNCS:
+    for mesh_params in MESHES:
         for preconditioner_cls, coarse_space_cls in PRECONDITIONERS:
             fp = get_spectrum_save_path(
                 mesh_params, coef_func, preconditioner_cls, coarse_space_cls
@@ -62,12 +86,15 @@ def generate_iteration_bound_table(
                 m_estimate = array_zip["estimate"]
 
                 # determine the maximum number of iterations
-                if max_iters is None:
-                    max_iters = max(N_ITERATIONS, 3 * m // 4)
+                _max_iters = (
+                    min(N_ITERATIONS, round(m * max_iter_percentage))
+                    if max_iters is None
+                    else max_iters
+                )
 
                 # get most recent bounds but limited to max_iters
                 mask = (
-                    m_classic[:, 0] <= max_iters
+                    m_classic[:, 0] <= _max_iters
                     if m_classic.size
                     else np.array([], dtype=bool)
                 )
@@ -76,7 +103,7 @@ def generate_iteration_bound_table(
                 )
 
                 mask = (
-                    m_multi_cluster[:, 0] <= max_iters
+                    m_multi_cluster[:, 0] <= _max_iters
                     if m_multi_cluster.size
                     else np.array([], dtype=bool)
                 )
@@ -85,7 +112,7 @@ def generate_iteration_bound_table(
                 )
 
                 mask = (
-                    m_tail_cluster[:, 0] <= max_iters
+                    m_tail_cluster[:, 0] <= _max_iters
                     if m_tail_cluster.size
                     else np.array([], dtype=bool)
                 )
@@ -94,7 +121,7 @@ def generate_iteration_bound_table(
                 )
 
                 mask = (
-                    m_estimate[:, 0] <= max_iters
+                    m_estimate[:, 0] <= _max_iters
                     if m_estimate.size
                     else np.array([], dtype=bool)
                 )
@@ -148,16 +175,16 @@ def generate_iteration_bound_table(
 
     # table file path
     Nc = int(1 / mesh_params.coarse_mesh_size)
-    tab_fp = SAVE_DIR / f"cg_iteration_bound_Nc{Nc}.tex"
+    tab_fp = SAVE_DIR / f"cg_iteration_bound_coef={coef_func.short_name}.tex"
 
     # table caption
     caption = (
-        f"PCG iteration bounds for mesh H=1/{Nc} based on approximate spectra (Ritz values) from the first {max_iters} iterations of solving the model diffusion problem with coefficient functions "
-        f"{', '.join([coef_func.latex for coef_func in COEF_FUNCS])} "
-        f"using 2-OAS preconditioners with {', '.join([coarse_space_cls.SHORT_NAME for _, coarse_space_cls in PRECONDITIONERS])} coarse spaces."
-        " The bounds ($\\textbf{bound}$) "
+        f"PCG iteration bounds for coefficient function {coef_func.latex} based on approximate spectra (Ritz values) from the first {max_iters} iterations of solving the model diffusion problem on the meshes "
+        f"{', '.join(meshes_names)} "
+        f"using 2-OAS preconditioners with {', '.join(coarse_space_names)} coarse spaces."
+        " The $\\textbf{bound}$ columns show the values of the CG iteration bounds "
         f"{', '.join(bounds)}"
-        " and the iteration ($\\textbf{iter.}$) at which they are obtained are shown."
+        " and the ($\\textbf{iter.}$) column shows the iteration at which these are obtained."
     )
 
     styler.to_latex(
@@ -172,17 +199,21 @@ def generate_iteration_bound_table(
         hrules=True,
     )
 
-    styler.to_html(
-        tab_fp.with_suffix(".html"),
-        caption=caption,
-        label=f"tab:cg_iteration_bound_Nc{Nc}_N={max_iters}",
-        clines="skip-last;data",
-        convert_css=True,
-        position_float="centering",
-        multicol_align="|c|",
-        hrules=True,
-    )
+    if show:
+        with tempfile.NamedTemporaryFile(suffix=".html", delete=False) as tmp:
+            styler.to_html(
+                tmp.name,
+                caption=caption,
+                label=f"tab:cg_iteration_bound_Nc{Nc}_N={max_iters}",
+                clines="skip-last;data",
+                convert_css=True,
+                position_float="centering",
+                multicol_align="|c|",
+                hrules=True,
+            )
+
+            webbrowser.open(f"file://{tmp.name}")
 
 
 if __name__ == "__main__":
-    generate_iteration_bound_table(DefaultQuadMeshParams.Nc64)
+    generate_iteration_bound_table(CoefFunc.THREE_LAYER_VERTEX_INCLUSIONS)
