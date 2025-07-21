@@ -22,6 +22,7 @@ from hcmsfem.preconditioners import (
 )
 from hcmsfem.problems import CoefFunc
 from hcmsfem.solvers import (
+    CGIterationBound,
     CustomCG,
     mixed_sharpened_cg_iteration_bound,
     partition_eigenspectrum,
@@ -39,10 +40,14 @@ N_ITERATIONS = 1200  # for RGDSW left cluster stabilizes around 1200 iterations
 SPECTRUM_PLOT_FREQ = 5
 
 # preconditioner and coarse space class to plot
-PRECONDITIONER = (TwoLevelSchwarzPreconditioner, AMSCoarseSpace)
+PRECONDITIONER = (TwoLevelSchwarzPreconditioner, GDSWCoarseSpace)
 
 # meshes to plot
-MESHES = [DefaultQuadMeshParams.Nc4, DefaultQuadMeshParams.Nc16, DefaultQuadMeshParams.Nc64]
+MESHES = [
+    DefaultQuadMeshParams.Nc4,
+    DefaultQuadMeshParams.Nc16,
+    DefaultQuadMeshParams.Nc64,
+]
 
 # coef_funcs to plot
 COEF_FUNCS = [CoefFunc.THREE_LAYER_VERTEX_INCLUSIONS]
@@ -160,8 +165,7 @@ for i, mesh_params in enumerate(MESHES):
         bound_ax.xaxis.set_major_locator(MultipleLocator(SPECTRUM_PLOT_FREQ))
 
         # plot spectra
-        previous_eigs = np.array([], dtype=float)
-        convergence_eigs = np.array([], dtype=float)
+        cg_iter_bound = CGIterationBound(log_rtol=LOG_RTOL, exact_convergence=False)
         for iteration, spectrum in enumerate(spectra):
             if iteration % SPECTRUM_PLOT_FREQ != 0:
                 continue
@@ -197,29 +201,16 @@ for i, mesh_params in enumerate(MESHES):
                 markersize=10,
             )
 
-            # check for convergence
-            current_eigs = []
-            start = 0
-            for end in partition_indices:
-                current_eigs += [spectrum[start], spectrum[end]]
-                start = end + 1
-            current_eigs = np.array(current_eigs, dtype=float)
-            all_close = False
-            if len(previous_eigs) == len(current_eigs):
-                all_close = np.allclose(previous_eigs / current_eigs, 1, atol=1e-1)
-            found_earlier_convergence = False
-            if len(convergence_eigs) == len(current_eigs):
-                found_earlier_convergence = np.allclose(
-                    convergence_eigs / current_eigs, 1, atol=1e-1
-                )
-            if all_close and not found_earlier_convergence:
-                convergence_eigs = current_eigs
-                bound_ax.axvline(iteration, color="red", linestyle="--", linewidth=0.5)
-                LOGGER.info(
-                    f"Novel convergence detected at iteration {iteration}",
-                )
-            previous_eigs = current_eigs
+            # update CG bound with the current spectrum
+            cg_iter_bound.update(spectrum)
 
+        # print CG iteration bound information
+        LOGGER.info(
+            f"CG Iteration Bound for {shorthand} on mesh H = 1/{1 / mesh_params.coarse_mesh_size:.0f} with coef_func {coef_func.short_name} converged after {len(array_zip['eigenvalues'])} iterations."
+        )
+        LOGGER.info(str(cg_iter_bound))
+
+        # style the spectra axis
         spectra_ax.set_yscale("log")
         spectra_ax.grid(True, axis="x", linestyle="--", linewidth=0.5)
         spectra_ax.xaxis.set_major_locator(MultipleLocator(SPECTRUM_PLOT_FREQ))
