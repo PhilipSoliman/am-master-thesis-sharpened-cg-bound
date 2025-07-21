@@ -6,7 +6,6 @@ from typing import Optional
 import numpy as np
 import pandas as pd
 from sharpened_bound_vs_iterations import (
-    COEF_FUNCS,
     MESHES,
     N_ITERATIONS,
     PRECONDITIONERS,
@@ -14,7 +13,7 @@ from sharpened_bound_vs_iterations import (
 )
 
 from hcmsfem import LOGGER
-from hcmsfem.meshes import DefaultQuadMeshParams, MeshParams
+from hcmsfem.cli import CLI_ARGS
 from hcmsfem.problems import CoefFunc
 from hcmsfem.root import get_venv_root
 
@@ -170,7 +169,7 @@ def generate_iteration_bound_table(
 
     # rotate bound and iter column headers
     styler.map_index(
-        lambda v: "rotatebox:{45}--rwrap;font-weight: bold;", level=1, axis=1
+        lambda v: "rotatebox:{45}--rwrap--latex;font-weight: bold;", level=1, axis=1
     )
 
     # table file path
@@ -215,5 +214,17 @@ def generate_iteration_bound_table(
             webbrowser.open(f"file://{tmp.name}")
 
 
-if __name__ == "__main__":
+if CLI_ARGS.generate_output:
+    generate_iteration_bound_table(CoefFunc.CONSTANT)
     generate_iteration_bound_table(CoefFunc.THREE_LAYER_VERTEX_INCLUSIONS)
+    generate_iteration_bound_table(
+        CoefFunc.EDGE_SLABS_AROUND_VERTICES_INCLUSIONS, max_iters=300
+    )
+elif CLI_ARGS.show_output:
+    generate_iteration_bound_table(CoefFunc.CONSTANT, show=True)
+    generate_iteration_bound_table(
+        CoefFunc.EDGE_SLABS_AROUND_VERTICES_INCLUSIONS, show=True
+    )
+    generate_iteration_bound_table(
+        CoefFunc.THREE_LAYER_VERTEX_INCLUSIONS, show=True, max_iters=300
+    )

@@ -1,0 +1,32 @@
+\begin{table}[H]
+\centering
+\caption{PCG iteration bounds for coefficient function $\mathcal{C}_{\mathrm{edge \ slabs, \ around \ vertices}}$ based on approximate spectra (Ritz values) from the first 300 iterations of solving the model diffusion problem on the meshes $H=1/4$, $H=1/8$, $H=1/16$, $H=1/32$, $H=1/64$ using 2-OAS preconditioners with GDSW, RGDSW, AMS coarse spaces. The $\textbf{bound}$ columns show the values of the CG iteration bounds $m_1$, $m_{N_{\text{cluster}}}$, $m_{N_{\text{tail-cluster}}}$, $m_{\text{estimate}}$ and the ($\textbf{iter.}$) column shows the iteration at which these are obtained.}
+\label{tab:cg_iteration_bound_Nc64_N=300}
+\begin{tabular}{llrrrrrrrrr}
+\toprule
+ &  & m & \multicolumn{2}{|c|}{$m_1$} & \multicolumn{2}{|c|}{$m_{N_{\text{cluster}}}$} & \multicolumn{2}{|c|}{$m_{N_{\text{tail-cluster}}}$} & \multicolumn{2}{|c|}{$m_{\text{estimate}}$} \\
+ &  & \rotatebox{45}{\bfseries } & \rotatebox{45}{\bfseries bound} & \rotatebox{45}{\bfseries iter.} & \rotatebox{45}{\bfseries bound} & \rotatebox{45}{\bfseries iter.} & \rotatebox{45}{\bfseries bound} & \rotatebox{45}{\bfseries iter.} & \rotatebox{45}{\bfseries bound} & \rotatebox{45}{\bfseries iter.} \\
+\midrule
+\multirow[c]{3}{*}{$H=1/4$} & GDSW & 80 & 124,727 & 36 & 88 & 36 & 88 & 36 & 88 & 36 \\
+ & RGDSW & 81 & 117,699 & 36 & 133 & 36 & 61 & 36 & 97 & 36 \\
+ & AMS & 83 & 105,144 & 66 & 218 & 66 & 111 & 66 & 165 & 66 \\
+\cline{1-11}
+\multirow[c]{3}{*}{$H=1/8$} & GDSW & 261 & 127,648 & 96 & 383 & 96 & 173 & 96 & 278 & 96 \\
+ & RGDSW & 494 & 124,745 & 186 & 1,274 & 186 & 583 & 186 & 929 & 186 \\
+ & AMS & 171 & 110,677 & 71 & 302 & 71 & 123 & 71 & 213 & 71 \\
+\cline{1-11}
+\multirow[c]{3}{*}{$H=1/16$} & GDSW & 346 & 123,872 & 76 & 306 & 76 & 134 & 76 & 220 & 76 \\
+ & RGDSW & 1,406 & 122,195 & 241 & 2,185 & 241 & 979 & 241 & 1,582 & 241 \\
+ & AMS & 238 & 110,969 & 81 & 310 & 81 & 126 & 81 & 218 & 81 \\
+\cline{1-11}
+\multirow[c]{3}{*}{$H=1/32$} & GDSW & 363 & 122,634 & 76 & 310 & 76 & 136 & 76 & 223 & 76 \\
+ & RGDSW & 3,082 & 109,007 & 271 & 1,415 & 271 & 920 & 271 & 1,168 & 271 \\
+ & AMS & 276 & 116,797 & 191 & 344 & 191 & 251 & 191 & 298 & 191 \\
+\cline{1-11}
+\multirow[c]{3}{*}{$H=1/64$} & GDSW & 407 & 127,897 & 186 & 485 & 186 & 268 & 186 & 377 & 186 \\
+ & RGDSW & 6,766 & 69,645 & 291 & 2,612 & 291 & 956 & 291 & 1,784 & 291 \\
+ & AMS & 310 & 120,694 & 196 & 357 & 196 & 260 & 196 & 309 & 196 \\
+\cline{1-11}
+\bottomrule
+\end{tabular}
+\end{table}
