@@ -24,21 +24,13 @@ Firstly, the [hcmsfem](https://github.com/PhilipSoliman/hcmsfem) repository is s
 ```bash
 git submodule update --init
 ```
-This clones hcmsfem repository at the specific commit on the [philip-soliman-am-master-thesis](https://github.com/PhilipSoliman/hcmsfem/tree/philip-soliman-am-master-thesis) branch from which this main repository benefits. For more information on how to use git submodules, refer to the [Git Submodules documentation](https://git-scm.com/book/en/v2/Git-Tools-Submodules).
+This clones hcmsfem repository at the specific commit on the [philip-soliman-am-master-thesis](https://github.com/PhilipSoliman/hcmsfem/tree/philip-soliman-am-master-thesis) branch on which this main repository relies. For more information on how to use git submodules, refer to the [Git Submodules documentation](https://git-scm.com/book/en/v2/Git-Tools-Submodules).
 
-Second, run the provided [setup_env.py](hcmsfem/setup_env.py) script. On Linux, you might need to give it appropriate rights by running the following command (in a bash shell):
+Second, run the provided [setup_env.py](setup_env.py) script. On Linux, you might need to give it appropriate rights by running the following command (in a bash shell):
 ```bash
-chmod +x hcmsfem/setup_env.py
+chmod +x setup_env.py
 ```
-The script automatically sets up a virtual environment, installs hcmsfem and all requirements it relies on; listed in its [pyproject.toml](hcmsfem/pyproject.toml) file. Simply use your python installation to run the script:
-```bash
-<python-executable> hcmsfem/setup_env.py --parent
-```
-The `--parent` flag ensures that the virtual environment, logs, data and figures folders are created in this repository's root. For more setup options, run the script with the `--help` flag to see all available options:
-```bash
-<python-executable> hcmsfem/setup_env.py --help
-```
-On Windows, the `setup_env.py` script will also activate the environment for you, while on Linux you will need to explicitly do so by running the following command (in a bash shell):
+On Windows, the `setup_env.py` script will also activate the environment for you, while on Linux you will need to explicitly do so by running the following command (in a bash shell) located in the root of this repository:
 ```bash
 source .venv/bin/activate
 ```
