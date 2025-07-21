@@ -12,6 +12,7 @@ from approximate_spectra import (
 from hcmsfem.eigenvalues import eigs
 from hcmsfem.logger import LOGGER, PROGRESS
 from hcmsfem.solvers import (
+    CGIterationBound,
     CustomCG,
     mixed_sharpened_cg_iteration_bound,
     sharpened_cg_iteration_bound,
@@ -21,7 +22,10 @@ from hcmsfem.solvers import (
 LOG_RTOL = np.log(RTOL)
 
 # max number of iterations to calculate (n_iters = min(N_ITERATIONS, len(alpha)-1))
-N_ITERATIONS = 1000
+N_ITERATIONS = 1200
+
+# CG iteration bound update frequency
+UPDATE_FREQUENCY = 5
 
 
 def calculate_sharpened_bound_vs_iterations():
@@ -59,7 +63,7 @@ def calculate_sharpened_bound_vs_iterations():
                         ),
                     )
 
-                    # loop over iterations
+                    # loop over CG iterations
                     num_iterations = min(N_ITERATIONS, len(alpha) - 1)
                     eigenvalue_task = progress.add_task(
                         f"Calculating upperbound",
@@ -70,6 +74,9 @@ def calculate_sharpened_bound_vs_iterations():
                     )
                     niters_sharp = np.zeros(num_iterations, dtype=int)
                     niters_sharp_mixed = np.full(num_iterations, np.nan, dtype=float)
+                    cg_bound = CGIterationBound(
+                        log_rtol=LOG_RTOL, exact_convergence=False
+                    )
                     for j in range(num_iterations):
                         progress.update(
                             eigenvalue_task,
@@ -109,9 +116,30 @@ def calculate_sharpened_bound_vs_iterations():
                         )
                         niters_sharp_mixed[j] = niter_sharp_mixed
 
+                        # update CG iteration bound
+                        if j % UPDATE_FREQUENCY == 0:
+                            cg_bound.update(eigenvalues)
+
                         # update progress bar
                         progress.advance(eigenvalue_task)
                     progress.remove_task(eigenvalue_task)
+
+                    # show the CG iteration bound
+                    cg_bound.show()
+
+                    # extract bounds as arrays
+                    classic_bound = np.array(
+                        [[*classic] for classic in cg_bound.classic_l]
+                    )
+                    multi_cluster_bound = np.array(
+                        [[*multi_cluster] for multi_cluster in cg_bound.multi_cluster_l]
+                    )
+                    tail_cluster_bound = np.array(
+                        [[*tail_cluster] for tail_cluster in cg_bound.tail_cluster_l]
+                    )
+                    estimate = np.array(
+                        [[*estimate] for estimate in cg_bound.estimate_l]
+                    )
 
                     # save arrays
                     np.savez(
@@ -121,6 +149,10 @@ def calculate_sharpened_bound_vs_iterations():
                         niters_sharp=niters_sharp,
                         niters_sharp_mixed=niters_sharp_mixed,
                         eigenvalues=array_zip["eigenvalues"],
+                        classic_bound=classic_bound,
+                        multi_cluster_bound=multi_cluster_bound,
+                        tail_cluster_bound=tail_cluster_bound,
+                        estimate=estimate,
                     )
 
                 else:
