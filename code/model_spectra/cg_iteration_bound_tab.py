@@ -275,5 +275,3 @@ elif CLI_ARGS.show_output:
     generate_iteration_bound_table(
         CoefFunc.THREE_LAYER_VERTEX_INCLUSIONS, show=True, max_iters=300
     )
-
-generate_iteration_bound_table(CoefFunc.THREE_LAYER_VERTEX_INCLUSIONS, show=True)
