@@ -34,7 +34,7 @@
 
 \RequirePackage[pdfusetitle,hidelinks]{hyperref} % Extensive support for hypertext
 \RequirePackage[noabbrev]{cleveref} % Intelligent cross-referencing
-\RequirePackage{xcolor}     % Driver-independent color extensions
+\RequirePackage[table]{xcolor}     % Driver-independent color extensions
 \RequirePackage{tikz}       % Create PostScript and PDF graphics
 \RequirePackage{xspace}     % Define commands that appear not to eat spaces
 \RequirePackage{microtype}  % Refinements towards typographical perfection
