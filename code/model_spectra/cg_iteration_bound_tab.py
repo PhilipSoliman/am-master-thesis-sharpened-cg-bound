@@ -5,6 +5,7 @@ from typing import Optional
 
 import numpy as np
 import pandas as pd
+from matplotlib.colors import LinearSegmentedColormap
 from sharpened_bound_vs_iterations import (
     MESHES,
     N_ITERATIONS,
@@ -19,6 +20,11 @@ from hcmsfem.root import get_venv_root
 
 # save directory for the table
 SAVE_DIR = get_venv_root() / "tables"
+
+# colour gradient for the table
+low_colour = "#e2e4fb" 
+high_colour = "#405FE5"
+two_color = LinearSegmentedColormap.from_list("twocolor", [low_colour, high_colour])
 
 
 def generate_iteration_bound_table(
@@ -101,7 +107,7 @@ def generate_iteration_bound_table(
                     m_classic[mask][-1] if np.any(mask) else (None, None)
                 )
                 diff_m_classic = (
-                    abs(m_classic_b - m) if m_classic_b is not None else np.nan
+                    int(abs(m_classic_b - m)) if m_classic_b is not None else np.nan
                 )
 
                 mask = (
@@ -113,7 +119,7 @@ def generate_iteration_bound_table(
                     m_multi_cluster[mask][-1] if np.any(mask) else (None, None)
                 )
                 diff_m_multi_cluster = (
-                    abs(m_multi_cluster_b - m)
+                    int(abs(m_multi_cluster_b - m))
                     if m_multi_cluster_b is not None
                     else np.nan
                 )
@@ -127,7 +133,7 @@ def generate_iteration_bound_table(
                     m_tail_cluster[mask][-1] if np.any(mask) else (None, None)
                 )
                 diff_m_tail_cluster = (
-                    abs(m_tail_cluster_b - m)
+                    int(abs(m_tail_cluster_b - m))
                     if m_tail_cluster_b is not None
                     else np.nan
                 )
@@ -141,7 +147,7 @@ def generate_iteration_bound_table(
                     m_estimate[mask][-1] if np.any(mask) else (None, None)
                 )
                 diff_m_estimate = (
-                    abs(m_estimate_b - m) if m_estimate_b is not None else np.nan
+                    int(abs(m_estimate_b - m)) if m_estimate_b is not None else np.nan
                 )
 
                 # construct row
@@ -190,18 +196,20 @@ def generate_iteration_bound_table(
     # set precision for all columns
     styler.format(precision=0, na_rep="-", thousands=",")
 
-    # TODO: def bound_color function in terms of rel. difference with actual number of iterations
-    def unmark_nan(s):
-        return ["background-color: #add8e6" if pd.isna(v) else "" for v in s]
+    # apply background gradient to the bound columns
+    def unmark_nan(s):  # nan colour
+        return [f"background-color: {low_colour}" if pd.isna(v) else "" for v in s]
+
     for i, idx in enumerate(df.index):
         subset = pd.IndexSlice[[idx], pd.IndexSlice[:, "bound"]]
         diff = differences[i]
-        diff = np.argsort(diff)  # sort indices of differences
+        rank = np.argsort(np.argsort(diff))  # sort indices of differences
+        score = 1 - rank / len(differences[i])  # normalize to [0, 1]
         styler.background_gradient(
-            cmap="YlGn",
+            cmap=two_color,
             subset=subset,
             axis=1,
-            gmap= -diff,
+            gmap=score,
         ).apply(subset=subset, func=unmark_nan)
 
     # rotate bound and iter column headers
