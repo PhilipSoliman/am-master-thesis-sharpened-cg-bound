@@ -1,3 +1,5 @@
+import atexit
+import os
 import tempfile
 import webbrowser
 from pathlib import Path
@@ -22,7 +24,7 @@ from hcmsfem.root import get_venv_root
 SAVE_DIR = get_venv_root() / "tables"
 
 # colour gradient for the table
-low_colour = "#e2e4fb" 
+low_colour = "#e2e4fb"
 high_colour = "#405FE5"
 two_color = LinearSegmentedColormap.from_list("twocolor", [low_colour, high_colour])
 
@@ -260,6 +262,15 @@ def generate_iteration_bound_table(
 
             webbrowser.open(f"file://{tmp.name}")
 
+        # Register cleanup
+        def cleanup_tmp():
+            try:
+                os.remove(tmp.name)
+            except Exception:
+                print(f"Could not delete temporary file {tmp.name}")
+
+        atexit.register(cleanup_tmp)
+
 
 if CLI_ARGS.generate_output:
     generate_iteration_bound_table(CoefFunc.CONSTANT)
@@ -275,3 +286,4 @@ elif CLI_ARGS.show_output:
     generate_iteration_bound_table(
         CoefFunc.THREE_LAYER_VERTEX_INCLUSIONS, show=True, max_iters=300
     )
+    input("Press Enter to exit...")
