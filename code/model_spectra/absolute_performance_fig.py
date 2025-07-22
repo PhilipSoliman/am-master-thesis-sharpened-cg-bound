@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Type
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -13,6 +14,11 @@ from approximate_spectra import (
 from hcmsfem.cli import CLI_ARGS
 from hcmsfem.logger import LOGGER
 from hcmsfem.plot_utils import save_latex_figure, set_mpl_cycler
+from hcmsfem.preconditioners import (
+    AMSCoarseSpace,
+    CoarseSpace,
+    TwoLevelSchwarzPreconditioner,
+)
 from hcmsfem.problems import CoefFunc
 from hcmsfem.solvers import (
     classic_cg_iteration_bound,
@@ -27,8 +33,8 @@ COEF_FUNCS = [
 ]
 
 # constants
-FIGWIDTH = 2
-FIGHEIGHT = 2
+FIGWIDTH = 3
+FIGHEIGHT = 3
 FONTSIZE = 9
 RECIPROCAL_COARSE_MESH_SIZES = [round(1 / mesh.coarse_mesh_size) for mesh in MESHES]
 XTICKS = [rf"$\mathbf{{H = 1/{Nc}}}$" for Nc in RECIPROCAL_COARSE_MESH_SIZES]
@@ -38,29 +44,31 @@ LOG_RTOL = np.log(RTOL)
 # set matplotlib cycler
 set_mpl_cycler(lines=True, colors=True, markers=True)
 
-# initialize figure and axes
-fig, axs = plt.subplots(
-    len(PRECONDITIONERS),
-    len(COEF_FUNCS),
-    figsize=(FIGWIDTH * len(COEF_FUNCS), FIGHEIGHT * len(PRECONDITIONERS)),
-    squeeze=False,
-    sharex=True,
-    sharey=True,
-)
 
-# to differentiate between actual iterations, classical and sharpened bounds
-iter_colors = [None] * 4
-iter_markers = [".", "x", "^", "o"]
-iter_linestyles = ["-", "--", "-.", ":"]
-
-# main loop
-for i, ((preconditioner_cls, coarse_space_cls), precond_axs) in enumerate(
-    zip(PRECONDITIONERS, axs)
+def plot_absolute_performance(
+    preconditioner_cls: Type[TwoLevelSchwarzPreconditioner],
+    coarse_space_cls: Type[CoarseSpace],
+    legend: bool = False,
 ):
+    # initialize figure and axes
+    fig, axs = plt.subplots(
+        1,
+        len(COEF_FUNCS),
+        figsize=(FIGWIDTH * len(COEF_FUNCS), FIGHEIGHT),
+        squeeze=True,
+        sharex=True,
+        sharey=True,
+    )
+
+    # to differentiate between actual iterations, classical and sharpened bounds
+    iter_colors = [None] * 4
+    iter_markers = [".", "x", "^", "o"]
+    iter_linestyles = ["-", "--", "-.", ":"]
+
     # preconditioner shorthand
     shorthand = f"{preconditioner_cls.SHORT_NAME}-{coarse_space_cls.SHORT_NAME}"
 
-    for j, coef_func in enumerate(COEF_FUNCS):
+    for i, coef_func in enumerate(COEF_FUNCS):
         LOGGER.debug(f"Processing coefficient function: {coef_func.short_name}")
         niters = []
         niters_classical = []
@@ -119,7 +127,7 @@ for i, ((preconditioner_cls, coarse_space_cls), precond_axs) in enumerate(
                 exit()
 
         # get the axes for the preconditioner
-        ax = precond_axs[j]
+        ax = axs[i]
 
         # plot iterations & bounds
         niters_line = ax.plot(
@@ -177,36 +185,48 @@ for i, ((preconditioner_cls, coarse_space_cls), precond_axs) in enumerate(
         ax.set_yscale("log")
 
     # add title to top row axes
-    if i == 0:
-        for j, ax in enumerate(precond_axs):
-            ax.text(
-                0.5,
-                1.0,
-                COEF_FUNCS[j].latex,
-                fontweight="bold",
-                fontsize=FONTSIZE,
-                ha="center",
-                va="bottom",
-                transform=ax.transAxes,
-            )
+    for i, ax in enumerate(axs):
+        ax.text(
+            0.5,
+            1.0,
+            COEF_FUNCS[i].latex,
+            fontweight="bold",
+            fontsize=FONTSIZE,
+            ha="center",
+            va="bottom",
+            transform=ax.transAxes,
+        )
 
     # add tick labels and xlabel to the last column axes
-    if i == len(PRECONDITIONERS) - 1:
-        for ax in precond_axs:
-            ax.set_xticklabels(XTICKS, rotation=45, ha="right")
+    for ax in axs:
+        ax.set_xticklabels(XTICKS, rotation=45, ha="right", fontsize=8)
 
     # add ylabel and legend to the first column axes
-    precond_axs[0].set_ylabel(shorthand, fontweight="bold", fontsize=FONTSIZE)
+    # axs[0].set_ylabel(shorthand, fontweight="bold", fontsize=FONTSIZE)
 
     # add legend to the first plot
-    if i == 2:
-        precond_axs[0].legend(fontsize=FONTSIZE, loc="center left")
+    if legend:
+        axs[0].legend(fontsize=FONTSIZE, loc="center left")
 
-# tight layout for the figure
-fig.tight_layout()
+    # tight layout for the figure
+    fig.tight_layout()
 
-if CLI_ARGS.generate_output:
-    fn = Path(__file__).name.replace("_fig.py", "")
-    save_latex_figure(fn, fig)
+    return fig
+
+
+# main loop
+for i, ((preconditioner_cls, coarse_space_cls)) in enumerate(PRECONDITIONERS):
+    legend = False
+    # if coarse_space_cls == AMSCoarseSpace:
+    #     legend = True
+    fig = plot_absolute_performance(
+        preconditioner_cls,
+        coarse_space_cls,
+        legend=legend,
+    )
+    shorthand = f"{preconditioner_cls.SHORT_NAME}-{coarse_space_cls.SHORT_NAME}"
+    if CLI_ARGS.generate_output:
+        fn = Path(__file__).name.replace("_fig.py", f"_{shorthand}")
+        save_latex_figure(fn, fig)
 if CLI_ARGS.show_output:
     plt.show()
