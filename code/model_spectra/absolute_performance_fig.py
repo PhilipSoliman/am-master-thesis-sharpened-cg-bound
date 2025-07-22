@@ -27,8 +27,8 @@ COEF_FUNCS = [
 ]
 
 # constants
-FIGWIDTH = 3
-FIGHEIGHT = 3
+FIGWIDTH = 2.5
+FIGHEIGHT = 2.5
 RECIPROCAL_COARSE_MESH_SIZES = [round(1 / mesh.coarse_mesh_size) for mesh in MESHES]
 XTICKS = [rf"$\mathbf{{H = 1/{Nc}}}$" for Nc in RECIPROCAL_COARSE_MESH_SIZES]
 XTICK_LOCS = np.arange(len(RECIPROCAL_COARSE_MESH_SIZES), dtype=int)
@@ -197,8 +197,8 @@ for i, ((preconditioner_cls, coarse_space_cls), precond_axs) in enumerate(
     precond_axs[0].set_ylabel(shorthand, fontweight="bold")
 
     # add legend to the first plot
-    if i == 0:
-        precond_axs[0].legend(fontsize=10, bbox_to_anchor=(0, 0.9), loc="upper left")
+    if i == 2:
+        precond_axs[0].legend(fontsize=10, loc="center left")
 
 # tight layout for the figure
 fig.tight_layout()
