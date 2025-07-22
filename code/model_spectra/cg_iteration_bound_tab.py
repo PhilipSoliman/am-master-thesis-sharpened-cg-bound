@@ -34,7 +34,7 @@ def generate_iteration_bound_table(
         coef_func (CoefFunc): The coefficient function to use.
         max_iters (Optional[int]): Maximum number of iterations to consider for the table.
             If None, it will be determined based on the length of the eigenvalues.
-        max_iter_percentage (float): Percentage of the maximum number of iterations to consider.
+        max_iter_percentage (float): Percentage of the iterations to convergence to consider.
             Defaults to 0.75.
     """
 
@@ -49,7 +49,7 @@ def generate_iteration_bound_table(
     cidx = pd.MultiIndex.from_product([bounds, bound_and_iter])
     cidx = pd.MultiIndex.from_arrays(
         [
-            ["m"] + cidx.get_level_values(0).tolist(),
+            ["$m$"] + cidx.get_level_values(0).tolist(),
             [""] + cidx.get_level_values(1).tolist(),
         ]
     )
@@ -61,7 +61,6 @@ def generate_iteration_bound_table(
     ]
     iidx = pd.MultiIndex.from_product(
         [
-            # [coef_func.latex for coef_func in COEF_FUNCS],
             meshes_names,
             coarse_space_names,
         ]
@@ -69,6 +68,7 @@ def generate_iteration_bound_table(
 
     # get data from saved arrays
     data = []
+    differences = []
     for mesh_params in MESHES:
         for preconditioner_cls, coarse_space_cls in PRECONDITIONERS:
             fp = get_spectrum_save_path(
@@ -100,6 +100,9 @@ def generate_iteration_bound_table(
                 m_classic_i, m_classic_b = (
                     m_classic[mask][-1] if np.any(mask) else (None, None)
                 )
+                diff_m_classic = (
+                    abs(m_classic_b - m) if m_classic_b is not None else np.nan
+                )
 
                 mask = (
                     m_multi_cluster[:, 0] <= _max_iters
@@ -108,6 +111,11 @@ def generate_iteration_bound_table(
                 )
                 m_multi_cluster_i, m_multi_cluster_b = (
                     m_multi_cluster[mask][-1] if np.any(mask) else (None, None)
+                )
+                diff_m_multi_cluster = (
+                    abs(m_multi_cluster_b - m)
+                    if m_multi_cluster_b is not None
+                    else np.nan
                 )
 
                 mask = (
@@ -118,6 +126,11 @@ def generate_iteration_bound_table(
                 m_tail_cluster_i, m_tail_cluster_b = (
                     m_tail_cluster[mask][-1] if np.any(mask) else (None, None)
                 )
+                diff_m_tail_cluster = (
+                    abs(m_tail_cluster_b - m)
+                    if m_tail_cluster_b is not None
+                    else np.nan
+                )
 
                 mask = (
                     m_estimate[:, 0] <= _max_iters
@@ -126,6 +139,9 @@ def generate_iteration_bound_table(
                 )
                 m_estimate_i, m_estimate_b = (
                     m_estimate[mask][-1] if np.any(mask) else (None, None)
+                )
+                diff_m_estimate = (
+                    abs(m_estimate_b - m) if m_estimate_b is not None else np.nan
                 )
 
                 # construct row
@@ -140,6 +156,15 @@ def generate_iteration_bound_table(
                         m_tail_cluster_i,
                         m_estimate_b,
                         m_estimate_i,
+                    ]
+                )
+
+                differences.append(
+                    [
+                        diff_m_classic,
+                        diff_m_multi_cluster,
+                        diff_m_tail_cluster,
+                        diff_m_estimate,
                     ]
                 )
 
@@ -166,11 +191,25 @@ def generate_iteration_bound_table(
     styler.format(precision=0, na_rep="-", thousands=",")
 
     # TODO: def bound_color function in terms of rel. difference with actual number of iterations
+    def unmark_nan(s):
+        return ["background-color: #add8e6" if pd.isna(v) else "" for v in s]
+    for i, idx in enumerate(df.index):
+        subset = pd.IndexSlice[[idx], pd.IndexSlice[:, "bound"]]
+        diff = differences[i]
+        diff = np.argsort(diff)  # sort indices of differences
+        styler.background_gradient(
+            cmap="YlGn",
+            subset=subset,
+            axis=1,
+            gmap= -diff,
+        ).apply(subset=subset, func=unmark_nan)
 
     # rotate bound and iter column headers
-    styler.map_index(
-        lambda v: "rotatebox:{45}--rwrap--latex;font-weight: bold;", level=1, axis=1
-    )
+    # styler.map_index(
+    #     lambda v: "rotatebox:{45}--rwrap--latex;font-weight: bold;", level=1, axis=1
+    # )
+    styler.map_index(lambda v: "font-weight: bold;", level=0, axis=0)
+    styler.map_index(lambda v: "font-weight: bold;", level=0, axis=1)
 
     # table file path
     Nc = int(1 / mesh_params.coarse_mesh_size)
@@ -178,20 +217,20 @@ def generate_iteration_bound_table(
 
     # table caption
     caption = (
-        f"PCG iteration bounds for coefficient function {coef_func.latex} based on approximate spectra (Ritz values) from the first {max_iters} iterations of solving the model diffusion problem on the meshes "
+        f"PCG iteration bounds for solving the model diffusion problem with coefficient function {coef_func.latex}. Bounds are based on approximate spectra (Ritz values) obtained during the initial PCG iterations and are show for meshes "
         f"{', '.join(meshes_names)} "
-        f"using 2-OAS preconditioners with {', '.join(coarse_space_names)} coarse spaces."
+        f"and 2-OAS preconditioners with {', '.join(coarse_space_names)} coarse spaces."
         " The $\\textbf{bound}$ columns show the values of the CG iteration bounds "
         f"{', '.join(bounds)}"
-        " and the ($\\textbf{iter.}$) column shows the iteration at which these are obtained."
+        " and the $\\textbf{iter.}$ columns show the iteration at which those bounds are obtained."
     )
 
     styler.to_latex(
         tab_fp,
         caption=caption,
         position="H",
-        label=f"tab:cg_iteration_bound_Nc{Nc}_N={max_iters}",
-        clines="skip-last;data",
+        label=f"tab:cg_iteration_bound_coef={coef_func.short_name}",
+        clines="all;data",
         convert_css=True,
         position_float="centering",
         multicol_align="|c|",
@@ -228,3 +267,5 @@ elif CLI_ARGS.show_output:
     generate_iteration_bound_table(
         CoefFunc.THREE_LAYER_VERTEX_INCLUSIONS, show=True, max_iters=300
     )
+
+generate_iteration_bound_table(CoefFunc.THREE_LAYER_VERTEX_INCLUSIONS, show=True)

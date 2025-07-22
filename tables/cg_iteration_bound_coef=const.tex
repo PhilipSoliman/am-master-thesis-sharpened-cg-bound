@@ -1,32 +1,42 @@
 \begin{table}[H]
 \centering
-\caption{PCG iteration bounds for coefficient function $\mathcal{C}_{\mathrm{const}}$ based on approximate spectra (Ritz values) from the first None iterations of solving the model diffusion problem on the meshes $H=1/4$, $H=1/8$, $H=1/16$, $H=1/32$, $H=1/64$ using 2-OAS preconditioners with GDSW, RGDSW, AMS coarse spaces. The $\textbf{bound}$ columns show the values of the CG iteration bounds $m_1$, $m_{N_{\text{cluster}}}$, $m_{N_{\text{tail-cluster}}}$, $m_{\text{estimate}}$ and the ($\textbf{iter.}$) column shows the iteration at which these are obtained.}
-\label{tab:cg_iteration_bound_Nc64_N=None}
+\caption{PCG iteration bounds for solving the model diffusion problem with coefficient function $\mathcal{C}_{\mathrm{const}}$. Bounds are based on approximate spectra (Ritz values) obtained during the initial PCG iterations and are show for meshes $H=1/4$, $H=1/8$, $H=1/16$, $H=1/32$, $H=1/64$ and 2-OAS preconditioners with GDSW, RGDSW, AMS coarse spaces. The $\textbf{bound}$ columns show the values of the CG iteration bounds $m_1$, $m_{N_{\text{cluster}}}$, $m_{N_{\text{tail-cluster}}}$, $m_{\text{estimate}}$ and the $\textbf{iter.}$ columns show the iteration at which those bounds are obtained.}
+\label{tab:cg_iteration_bound_coef=const}
 \begin{tabular}{llrrrllrrll}
 \toprule
- &  & m & \multicolumn{2}{|c|}{$m_1$} & \multicolumn{2}{|c|}{$m_{N_{\text{cluster}}}$} & \multicolumn{2}{|c|}{$m_{N_{\text{tail-cluster}}}$} & \multicolumn{2}{|c|}{$m_{\text{estimate}}$} \\
- &  & \rotatebox{45}{\bfseries } & \rotatebox{45}{\bfseries bound} & \rotatebox{45}{\bfseries iter.} & \rotatebox{45}{\bfseries bound} & \rotatebox{45}{\bfseries iter.} & \rotatebox{45}{\bfseries bound} & \rotatebox{45}{\bfseries iter.} & \rotatebox{45}{\bfseries bound} & \rotatebox{45}{\bfseries iter.} \\
+ &  & \bfseries $m$ & \multicolumn{2}{|c|}{\bfseries $m_1$} & \multicolumn{2}{|c|}{\bfseries $m_{N_{\text{cluster}}}$} & \multicolumn{2}{|c|}{\bfseries $m_{N_{\text{tail-cluster}}}$} & \multicolumn{2}{|c|}{\bfseries $m_{\text{estimate}}$} \\
+ &  &  & bound & iter. & bound & iter. & bound & iter. & bound & iter. \\
 \midrule
-\multirow[c]{3}{*}{$H=1/4$} & GDSW & 23 & 34 & 11 & - & - & 34 & 11 & - & - \\
- & RGDSW & 21 & 40 & 11 & - & - & 25 & 11 & - & - \\
- & AMS & 18 & 23 & 11 & - & - & 20 & 11 & - & - \\
-\cline{1-11}
-\multirow[c]{3}{*}{$H=1/8$} & GDSW & 30 & 37 & 16 & - & - & 32 & 16 & - & - \\
- & RGDSW & 32 & 43 & 11 & - & - & 43 & 11 & - & - \\
- & AMS & 21 & 23 & 11 & - & - & 23 & 11 & - & - \\
-\cline{1-11}
-\multirow[c]{3}{*}{$H=1/16$} & GDSW & 33 & 37 & 16 & - & - & 32 & 16 & - & - \\
- & RGDSW & 38 & 45 & 16 & - & - & 28 & 16 & - & - \\
- & AMS & 22 & 24 & 16 & - & - & 24 & 16 & - & - \\
-\cline{1-11}
-\multirow[c]{3}{*}{$H=1/32$} & GDSW & 35 & 37 & 16 & - & - & 28 & 16 & - & - \\
- & RGDSW & 42 & 44 & 16 & - & - & 28 & 16 & - & - \\
- & AMS & 22 & 24 & 16 & - & - & 24 & 16 & - & - \\
-\cline{1-11}
-\multirow[c]{3}{*}{$H=1/64$} & GDSW & 36 & 37 & 16 & - & - & 28 & 16 & - & - \\
- & RGDSW & 45 & 44 & 16 & - & - & 36 & 16 & - & - \\
- & AMS & 23 & 29 & 11 & - & - & 29 & 11 & - & - \\
-\cline{1-11}
+\multirow[c]{3}{*}{\bfseries $H=1/4$} & GDSW & 23 & {\cellcolor[HTML]{004529}} \color[HTML]{F1F1F1} 34 & 11 & {\cellcolor[HTML]{BCE395}} \color[HTML]{000000} {\cellcolor[HTML]{ADD8E6}} - & - & {\cellcolor[HTML]{379E54}} \color[HTML]{F1F1F1} 34 & 11 & {\cellcolor[HTML]{FFFFE5}} \color[HTML]{000000} {\cellcolor[HTML]{ADD8E6}} - & - \\
+\cline{2-11}
+\bfseries  & RGDSW & 21 & {\cellcolor[HTML]{BCE395}} \color[HTML]{000000} 40 & 11 & {\cellcolor[HTML]{004529}} \color[HTML]{F1F1F1} {\cellcolor[HTML]{ADD8E6}} - & - & {\cellcolor[HTML]{379E54}} \color[HTML]{F1F1F1} 25 & 11 & {\cellcolor[HTML]{FFFFE5}} \color[HTML]{000000} {\cellcolor[HTML]{ADD8E6}} - & - \\
+\cline{2-11}
+\bfseries  & AMS & 18 & {\cellcolor[HTML]{BCE395}} \color[HTML]{000000} 23 & 11 & {\cellcolor[HTML]{004529}} \color[HTML]{F1F1F1} {\cellcolor[HTML]{ADD8E6}} - & - & {\cellcolor[HTML]{379E54}} \color[HTML]{F1F1F1} 20 & 11 & {\cellcolor[HTML]{FFFFE5}} \color[HTML]{000000} {\cellcolor[HTML]{ADD8E6}} - & - \\
+\cline{1-11} \cline{2-11}
+\multirow[c]{3}{*}{\bfseries $H=1/8$} & GDSW & 30 & {\cellcolor[HTML]{BCE395}} \color[HTML]{000000} 37 & 16 & {\cellcolor[HTML]{004529}} \color[HTML]{F1F1F1} {\cellcolor[HTML]{ADD8E6}} - & - & {\cellcolor[HTML]{379E54}} \color[HTML]{F1F1F1} 32 & 16 & {\cellcolor[HTML]{FFFFE5}} \color[HTML]{000000} {\cellcolor[HTML]{ADD8E6}} - & - \\
+\cline{2-11}
+\bfseries  & RGDSW & 32 & {\cellcolor[HTML]{004529}} \color[HTML]{F1F1F1} 43 & 11 & {\cellcolor[HTML]{BCE395}} \color[HTML]{000000} {\cellcolor[HTML]{ADD8E6}} - & - & {\cellcolor[HTML]{379E54}} \color[HTML]{F1F1F1} 43 & 11 & {\cellcolor[HTML]{FFFFE5}} \color[HTML]{000000} {\cellcolor[HTML]{ADD8E6}} - & - \\
+\cline{2-11}
+\bfseries  & AMS & 21 & {\cellcolor[HTML]{004529}} \color[HTML]{F1F1F1} 23 & 11 & {\cellcolor[HTML]{BCE395}} \color[HTML]{000000} {\cellcolor[HTML]{ADD8E6}} - & - & {\cellcolor[HTML]{379E54}} \color[HTML]{F1F1F1} 23 & 11 & {\cellcolor[HTML]{FFFFE5}} \color[HTML]{000000} {\cellcolor[HTML]{ADD8E6}} - & - \\
+\cline{1-11} \cline{2-11}
+\multirow[c]{3}{*}{\bfseries $H=1/16$} & GDSW & 33 & {\cellcolor[HTML]{BCE395}} \color[HTML]{000000} 37 & 16 & {\cellcolor[HTML]{004529}} \color[HTML]{F1F1F1} {\cellcolor[HTML]{ADD8E6}} - & - & {\cellcolor[HTML]{379E54}} \color[HTML]{F1F1F1} 32 & 16 & {\cellcolor[HTML]{FFFFE5}} \color[HTML]{000000} {\cellcolor[HTML]{ADD8E6}} - & - \\
+\cline{2-11}
+\bfseries  & RGDSW & 38 & {\cellcolor[HTML]{004529}} \color[HTML]{F1F1F1} 45 & 16 & {\cellcolor[HTML]{BCE395}} \color[HTML]{000000} {\cellcolor[HTML]{ADD8E6}} - & - & {\cellcolor[HTML]{379E54}} \color[HTML]{F1F1F1} 28 & 16 & {\cellcolor[HTML]{FFFFE5}} \color[HTML]{000000} {\cellcolor[HTML]{ADD8E6}} - & - \\
+\cline{2-11}
+\bfseries  & AMS & 22 & {\cellcolor[HTML]{004529}} \color[HTML]{F1F1F1} 24 & 16 & {\cellcolor[HTML]{BCE395}} \color[HTML]{000000} {\cellcolor[HTML]{ADD8E6}} - & - & {\cellcolor[HTML]{379E54}} \color[HTML]{F1F1F1} 24 & 16 & {\cellcolor[HTML]{FFFFE5}} \color[HTML]{000000} {\cellcolor[HTML]{ADD8E6}} - & - \\
+\cline{1-11} \cline{2-11}
+\multirow[c]{3}{*}{\bfseries $H=1/32$} & GDSW & 35 & {\cellcolor[HTML]{004529}} \color[HTML]{F1F1F1} 37 & 16 & {\cellcolor[HTML]{BCE395}} \color[HTML]{000000} {\cellcolor[HTML]{ADD8E6}} - & - & {\cellcolor[HTML]{379E54}} \color[HTML]{F1F1F1} 28 & 16 & {\cellcolor[HTML]{FFFFE5}} \color[HTML]{000000} {\cellcolor[HTML]{ADD8E6}} - & - \\
+\cline{2-11}
+\bfseries  & RGDSW & 42 & {\cellcolor[HTML]{004529}} \color[HTML]{F1F1F1} 44 & 16 & {\cellcolor[HTML]{BCE395}} \color[HTML]{000000} {\cellcolor[HTML]{ADD8E6}} - & - & {\cellcolor[HTML]{379E54}} \color[HTML]{F1F1F1} 28 & 16 & {\cellcolor[HTML]{FFFFE5}} \color[HTML]{000000} {\cellcolor[HTML]{ADD8E6}} - & - \\
+\cline{2-11}
+\bfseries  & AMS & 22 & {\cellcolor[HTML]{004529}} \color[HTML]{F1F1F1} 24 & 16 & {\cellcolor[HTML]{BCE395}} \color[HTML]{000000} {\cellcolor[HTML]{ADD8E6}} - & - & {\cellcolor[HTML]{379E54}} \color[HTML]{F1F1F1} 24 & 16 & {\cellcolor[HTML]{FFFFE5}} \color[HTML]{000000} {\cellcolor[HTML]{ADD8E6}} - & - \\
+\cline{1-11} \cline{2-11}
+\multirow[c]{3}{*}{\bfseries $H=1/64$} & GDSW & 36 & {\cellcolor[HTML]{004529}} \color[HTML]{F1F1F1} 37 & 16 & {\cellcolor[HTML]{BCE395}} \color[HTML]{000000} {\cellcolor[HTML]{ADD8E6}} - & - & {\cellcolor[HTML]{379E54}} \color[HTML]{F1F1F1} 28 & 16 & {\cellcolor[HTML]{FFFFE5}} \color[HTML]{000000} {\cellcolor[HTML]{ADD8E6}} - & - \\
+\cline{2-11}
+\bfseries  & RGDSW & 45 & {\cellcolor[HTML]{004529}} \color[HTML]{F1F1F1} 44 & 16 & {\cellcolor[HTML]{BCE395}} \color[HTML]{000000} {\cellcolor[HTML]{ADD8E6}} - & - & {\cellcolor[HTML]{379E54}} \color[HTML]{F1F1F1} 36 & 16 & {\cellcolor[HTML]{FFFFE5}} \color[HTML]{000000} {\cellcolor[HTML]{ADD8E6}} - & - \\
+\cline{2-11}
+\bfseries  & AMS & 23 & {\cellcolor[HTML]{004529}} \color[HTML]{F1F1F1} 29 & 11 & {\cellcolor[HTML]{BCE395}} \color[HTML]{000000} {\cellcolor[HTML]{ADD8E6}} - & - & {\cellcolor[HTML]{379E54}} \color[HTML]{F1F1F1} 29 & 11 & {\cellcolor[HTML]{FFFFE5}} \color[HTML]{000000} {\cellcolor[HTML]{ADD8E6}} - & - \\
+\cline{1-11} \cline{2-11}
 \bottomrule
 \end{tabular}
 \end{table}

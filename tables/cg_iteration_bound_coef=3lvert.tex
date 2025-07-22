@@ -1,32 +1,42 @@
 \begin{table}[H]
 \centering
-\caption{PCG iteration bounds for coefficient function $\mathcal{C}_{\mathrm{3layer, \ vert}}$ based on approximate spectra (Ritz values) from the first None iterations of solving the model diffusion problem on the meshes $H=1/4$, $H=1/8$, $H=1/16$, $H=1/32$, $H=1/64$ using 2-OAS preconditioners with GDSW, RGDSW, AMS coarse spaces. The $\textbf{bound}$ columns show the values of the CG iteration bounds $m_1$, $m_{N_{\text{cluster}}}$, $m_{N_{\text{tail-cluster}}}$, $m_{\text{estimate}}$ and the ($\textbf{iter.}$) column shows the iteration at which these are obtained.}
-\label{tab:cg_iteration_bound_Nc64_N=None}
+\caption{PCG iteration bounds for solving the model diffusion problem with coefficient function $\mathcal{C}_{\mathrm{3layer, \ vert}}$. Bounds are based on approximate spectra (Ritz values) obtained during the initial PCG iterations and are show for meshes $H=1/4$, $H=1/8$, $H=1/16$, $H=1/32$, $H=1/64$ and 2-OAS preconditioners with GDSW, RGDSW, AMS coarse spaces. The $\textbf{bound}$ columns show the values of the CG iteration bounds $m_1$, $m_{N_{\text{cluster}}}$, $m_{N_{\text{tail-cluster}}}$, $m_{\text{estimate}}$ and the $\textbf{iter.}$ columns show the iteration at which those bounds are obtained.}
+\label{tab:cg_iteration_bound_coef=3lvert}
 \begin{tabular}{llrrrrrrrrr}
 \toprule
- &  & m & \multicolumn{2}{|c|}{$m_1$} & \multicolumn{2}{|c|}{$m_{N_{\text{cluster}}}$} & \multicolumn{2}{|c|}{$m_{N_{\text{tail-cluster}}}$} & \multicolumn{2}{|c|}{$m_{\text{estimate}}$} \\
- &  & \rotatebox{45}{\bfseries } & \rotatebox{45}{\bfseries bound} & \rotatebox{45}{\bfseries iter.} & \rotatebox{45}{\bfseries bound} & \rotatebox{45}{\bfseries iter.} & \rotatebox{45}{\bfseries bound} & \rotatebox{45}{\bfseries iter.} & \rotatebox{45}{\bfseries bound} & \rotatebox{45}{\bfseries iter.} \\
+ &  & \bfseries $m$ & \multicolumn{2}{|c|}{\bfseries $m_1$} & \multicolumn{2}{|c|}{\bfseries $m_{N_{\text{cluster}}}$} & \multicolumn{2}{|c|}{\bfseries $m_{N_{\text{tail-cluster}}}$} & \multicolumn{2}{|c|}{\bfseries $m_{\text{estimate}}$} \\
+ &  &  & bound & iter. & bound & iter. & bound & iter. & bound & iter. \\
 \midrule
-\multirow[c]{3}{*}{$H=1/4$} & GDSW & 62 & 225,419 & 26 & 111 & 26 & 59 & 26 & 85 & 26 \\
- & RGDSW & 78 & 224,028 & 26 & 109 & 26 & 58 & 26 & 84 & 26 \\
- & AMS & 20 & 23 & 11 & - & - & 22 & 11 & - & - \\
-\cline{1-11}
-\multirow[c]{3}{*}{$H=1/8$} & GDSW & 237 & 300,788 & 51 & 641 & 51 & 91 & 51 & 366 & 51 \\
- & RGDSW & 242 & 302,967 & 51 & 638 & 51 & 86 & 51 & 362 & 51 \\
- & AMS & 22 & 23 & 11 & - & - & 22 & 11 & - & - \\
-\cline{1-11}
-\multirow[c]{3}{*}{$H=1/16$} & GDSW & 403 & 350,992 & 96 & 949 & 96 & 148 & 96 & 549 & 96 \\
- & RGDSW & 442 & 351,891 & 96 & 948 & 96 & 147 & 96 & 548 & 96 \\
- & AMS & 22 & 23 & 11 & - & - & 22 & 11 & - & - \\
-\cline{1-11}
-\multirow[c]{3}{*}{$H=1/32$} & GDSW & 607 & 367,021 & 161 & 2,228 & 161 & 231 & 161 & 1,230 & 161 \\
- & RGDSW & 606 & 368,220 & 216 & 2,277 & 216 & 290 & 216 & 1,284 & 216 \\
- & AMS & 22 & 23 & 11 & - & - & 22 & 11 & - & - \\
-\cline{1-11}
-\multirow[c]{3}{*}{$H=1/64$} & GDSW & 797 & 359,087 & 46 & 1,764 & 46 & 85 & 46 & 925 & 46 \\
- & RGDSW & 778 & 359,976 & 51 & 1,763 & 51 & 85 & 51 & 924 & 51 \\
- & AMS & 22 & 23 & 11 & - & - & 22 & 11 & - & - \\
-\cline{1-11}
+\multirow[c]{3}{*}{\bfseries $H=1/4$} & GDSW & 62 & {\cellcolor[HTML]{BCE395}} \color[HTML]{000000} 225,419 & 26 & {\cellcolor[HTML]{FFFFE5}} \color[HTML]{000000} 111 & 26 & {\cellcolor[HTML]{379E54}} \color[HTML]{F1F1F1} 59 & 26 & {\cellcolor[HTML]{004529}} \color[HTML]{F1F1F1} 85 & 26 \\
+\cline{2-11}
+\bfseries  & RGDSW & 78 & {\cellcolor[HTML]{FFFFE5}} \color[HTML]{000000} 224,028 & 26 & {\cellcolor[HTML]{BCE395}} \color[HTML]{000000} 109 & 26 & {\cellcolor[HTML]{379E54}} \color[HTML]{F1F1F1} 58 & 26 & {\cellcolor[HTML]{004529}} \color[HTML]{F1F1F1} 84 & 26 \\
+\cline{2-11}
+\bfseries  & AMS & 20 & {\cellcolor[HTML]{BCE395}} \color[HTML]{000000} 23 & 11 & {\cellcolor[HTML]{004529}} \color[HTML]{F1F1F1} {\cellcolor[HTML]{ADD8E6}} - & - & {\cellcolor[HTML]{379E54}} \color[HTML]{F1F1F1} 22 & 11 & {\cellcolor[HTML]{FFFFE5}} \color[HTML]{000000} {\cellcolor[HTML]{ADD8E6}} - & - \\
+\cline{1-11} \cline{2-11}
+\multirow[c]{3}{*}{\bfseries $H=1/8$} & GDSW & 237 & {\cellcolor[HTML]{FFFFE5}} \color[HTML]{000000} 300,788 & 51 & {\cellcolor[HTML]{BCE395}} \color[HTML]{000000} 641 & 51 & {\cellcolor[HTML]{379E54}} \color[HTML]{F1F1F1} 91 & 51 & {\cellcolor[HTML]{004529}} \color[HTML]{F1F1F1} 366 & 51 \\
+\cline{2-11}
+\bfseries  & RGDSW & 242 & {\cellcolor[HTML]{FFFFE5}} \color[HTML]{000000} 302,967 & 51 & {\cellcolor[HTML]{BCE395}} \color[HTML]{000000} 638 & 51 & {\cellcolor[HTML]{379E54}} \color[HTML]{F1F1F1} 86 & 51 & {\cellcolor[HTML]{004529}} \color[HTML]{F1F1F1} 362 & 51 \\
+\cline{2-11}
+\bfseries  & AMS & 22 & {\cellcolor[HTML]{BCE395}} \color[HTML]{000000} 23 & 11 & {\cellcolor[HTML]{004529}} \color[HTML]{F1F1F1} {\cellcolor[HTML]{ADD8E6}} - & - & {\cellcolor[HTML]{379E54}} \color[HTML]{F1F1F1} 22 & 11 & {\cellcolor[HTML]{FFFFE5}} \color[HTML]{000000} {\cellcolor[HTML]{ADD8E6}} - & - \\
+\cline{1-11} \cline{2-11}
+\multirow[c]{3}{*}{\bfseries $H=1/16$} & GDSW & 403 & {\cellcolor[HTML]{FFFFE5}} \color[HTML]{000000} 350,992 & 96 & {\cellcolor[HTML]{BCE395}} \color[HTML]{000000} 949 & 96 & {\cellcolor[HTML]{379E54}} \color[HTML]{F1F1F1} 148 & 96 & {\cellcolor[HTML]{004529}} \color[HTML]{F1F1F1} 549 & 96 \\
+\cline{2-11}
+\bfseries  & RGDSW & 442 & {\cellcolor[HTML]{FFFFE5}} \color[HTML]{000000} 351,891 & 96 & {\cellcolor[HTML]{BCE395}} \color[HTML]{000000} 948 & 96 & {\cellcolor[HTML]{379E54}} \color[HTML]{F1F1F1} 147 & 96 & {\cellcolor[HTML]{004529}} \color[HTML]{F1F1F1} 548 & 96 \\
+\cline{2-11}
+\bfseries  & AMS & 22 & {\cellcolor[HTML]{BCE395}} \color[HTML]{000000} 23 & 11 & {\cellcolor[HTML]{004529}} \color[HTML]{F1F1F1} {\cellcolor[HTML]{ADD8E6}} - & - & {\cellcolor[HTML]{379E54}} \color[HTML]{F1F1F1} 22 & 11 & {\cellcolor[HTML]{FFFFE5}} \color[HTML]{000000} {\cellcolor[HTML]{ADD8E6}} - & - \\
+\cline{1-11} \cline{2-11}
+\multirow[c]{3}{*}{\bfseries $H=1/32$} & GDSW & 607 & {\cellcolor[HTML]{BCE395}} \color[HTML]{000000} 367,021 & 161 & {\cellcolor[HTML]{FFFFE5}} \color[HTML]{000000} 2,228 & 161 & {\cellcolor[HTML]{379E54}} \color[HTML]{F1F1F1} 231 & 161 & {\cellcolor[HTML]{004529}} \color[HTML]{F1F1F1} 1,230 & 161 \\
+\cline{2-11}
+\bfseries  & RGDSW & 606 & {\cellcolor[HTML]{BCE395}} \color[HTML]{000000} 368,220 & 216 & {\cellcolor[HTML]{FFFFE5}} \color[HTML]{000000} 2,277 & 216 & {\cellcolor[HTML]{379E54}} \color[HTML]{F1F1F1} 290 & 216 & {\cellcolor[HTML]{004529}} \color[HTML]{F1F1F1} 1,284 & 216 \\
+\cline{2-11}
+\bfseries  & AMS & 22 & {\cellcolor[HTML]{BCE395}} \color[HTML]{000000} 23 & 11 & {\cellcolor[HTML]{004529}} \color[HTML]{F1F1F1} {\cellcolor[HTML]{ADD8E6}} - & - & {\cellcolor[HTML]{379E54}} \color[HTML]{F1F1F1} 22 & 11 & {\cellcolor[HTML]{FFFFE5}} \color[HTML]{000000} {\cellcolor[HTML]{ADD8E6}} - & - \\
+\cline{1-11} \cline{2-11}
+\multirow[c]{3}{*}{\bfseries $H=1/64$} & GDSW & 797 & {\cellcolor[HTML]{FFFFE5}} \color[HTML]{000000} 359,087 & 46 & {\cellcolor[HTML]{BCE395}} \color[HTML]{000000} 1,764 & 46 & {\cellcolor[HTML]{379E54}} \color[HTML]{F1F1F1} 85 & 46 & {\cellcolor[HTML]{004529}} \color[HTML]{F1F1F1} 925 & 46 \\
+\cline{2-11}
+\bfseries  & RGDSW & 778 & {\cellcolor[HTML]{FFFFE5}} \color[HTML]{000000} 359,976 & 51 & {\cellcolor[HTML]{BCE395}} \color[HTML]{000000} 1,763 & 51 & {\cellcolor[HTML]{379E54}} \color[HTML]{F1F1F1} 85 & 51 & {\cellcolor[HTML]{004529}} \color[HTML]{F1F1F1} 924 & 51 \\
+\cline{2-11}
+\bfseries  & AMS & 22 & {\cellcolor[HTML]{BCE395}} \color[HTML]{000000} 23 & 11 & {\cellcolor[HTML]{004529}} \color[HTML]{F1F1F1} {\cellcolor[HTML]{ADD8E6}} - & - & {\cellcolor[HTML]{379E54}} \color[HTML]{F1F1F1} 22 & 11 & {\cellcolor[HTML]{FFFFE5}} \color[HTML]{000000} {\cellcolor[HTML]{ADD8E6}} - & - \\
+\cline{1-11} \cline{2-11}
 \bottomrule
 \end{tabular}
 \end{table}
