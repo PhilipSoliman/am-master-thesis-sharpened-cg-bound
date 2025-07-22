@@ -124,7 +124,7 @@ for i, ((preconditioner_cls, coarse_space_cls), precond_axs) in enumerate(
         niters_line = ax.plot(
             XTICK_LOCS,
             niters,
-            label="Iterations",
+            label="$m$",
             linestyle=iter_linestyles[0],
         )
 
@@ -135,7 +135,7 @@ for i, ((preconditioner_cls, coarse_space_cls), precond_axs) in enumerate(
             linestyle=iter_linestyles[1],
             marker=iter_markers[1],
             alpha=0.75,
-            label="Classical Bound",
+            label="$m_1$",
         )
         if iter_colors[1] is None:
             iter_colors[1] = niters_classical_line[0].get_color()
@@ -149,7 +149,7 @@ for i, ((preconditioner_cls, coarse_space_cls), precond_axs) in enumerate(
             linestyle=iter_linestyles[2],
             marker=iter_markers[2],
             alpha=0.75,
-            label="Sharpened Bound",
+            label="$m_{N_{\\mathrm{cluster}}}$",
         )
         if iter_colors[2] is None:
             iter_colors[2] = niters_sharpened_line[0].get_color()
@@ -163,7 +163,7 @@ for i, ((preconditioner_cls, coarse_space_cls), precond_axs) in enumerate(
             linestyle=iter_linestyles[2],
             marker=iter_markers[2],
             alpha=0.75,
-            label="Sharpened Bound (Mixed)",
+            label="$m_{N_{\\mathrm{tail-cluster}}}$",
         )
         if iter_colors[3] is None:
             iter_colors[3] = niters_sharpened_mixed_line[0].get_color()
@@ -198,7 +198,7 @@ for i, ((preconditioner_cls, coarse_space_cls), precond_axs) in enumerate(
 
     # add legend to the first plot
     if i == 0:
-        precond_axs[0].legend()
+        precond_axs[0].legend(fontsize=10, bbox_to_anchor=(0, 0.9), loc="upper left")
 
 # tight layout for the figure
 fig.tight_layout()
