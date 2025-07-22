@@ -1,4 +1,18 @@
 \chapter{Results}\label{ch:results}
+
+\section{Application to eigenspectra at convergence}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{absolute_performance.pdf}
+    \caption{}
+    \label{fig:cg_sharpened_bound}
+\end{figure}
+
+\section{Early estimation of CG iterations}
+\input{../tables/cg_iteration_bound_coef=const.tex}
+\input{../tables/cg_iteration_bound_coef=3lvert.tex}
+\input{../tables/cg_iteration_bound_coef=slabs_around_vertices.tex}
+
 \section{Implications for research}\label{sec:cg_sharpened_convrate_implications}
 The preliminary results discussed in this chapter show that we can find both an a priori analytic two-cluster (\cref{eq:cg_iteration_bound_2_clusters}) and multiple-cluster (\cref{eq:cg_iteration_bound_multiple_clusters}) sharpened iteration bound for the CG method. The latter can also be implemented as a sequential, numerical algorithm that can be applied to artificially constructed spectra in \cref{fig:cg_sharpened_bound}. The sharpened bound appears to perform best in the two-cluster case, which has the most correspondence to the eigenspectrum of a typical (preconditioned) Darcy problem. Hence, \ref{rq:subsidiary:heuristic} is answered positively. 
 
