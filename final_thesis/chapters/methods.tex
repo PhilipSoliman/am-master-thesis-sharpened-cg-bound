@@ -1,5 +1,5 @@
 \chapter{Methodology}\label{ch:methods}
-The methods described in this chapter are adapted from the ideas discussed in \cite[Section 4]{cg_sharpened_convrate_Axelsson1976}. Therein \citeauthor{cg_sharpened_convrate_Axelsson1976} presents a sharpened CG iteration bound for two characteristic eigenspectra. The eigenspectrum consisting of two disjoint clusters and the \textit{two-cluster bound} $m_2$ developed for it in \cref{sec:cg_sharpened_convrate} are central to this thesis. In \cref{sec:performance_ratio} the two-cluster bound is compared to its classical predecessor $m$ from \cref{eq:cg_convergence_rate_bound_iterations_approx}, where a necessary condition is derived for which $m_2 < m$. The two-cluster bound is then generalized to a multiple-cluster bound in \cref{sec:multiple_clusters}. Finally, the condition obtained in \cref{sec:performance_ratio} and the multiple-cluster bound are combined with a simple algorithm for splitting the eigenspectrum into clusters, resulting in a novel algorithm for a sharpened CG iteration bound, \cref{alg:sharpened_cg_bound}. 
+The methods described in this chapter are adapted from the ideas discussed in \cite[Section 4]{cg_sharpened_convrate_Axelsson1976}. Therein \citeauthor{cg_sharpened_convrate_Axelsson1976} presents a sharpened CG iteration bound for two characteristic eigenspectra. The eigenspectrum consisting of two disjoint clusters and the \textit{two-cluster bound} $m_2$ developed for it in \cref{sec:cg_sharpened_convrate} are central to this thesis. In \cref{sec:performance_ratio} the two-cluster bound is compared to its classical predecessor $m$ from \cref{eq:cg_convergence_rate_bound_iterations_approx}, where a necessary condition is derived for which $m_2 < m_1$. The two-cluster bound is then generalized to a multiple-cluster bound in \cref{sec:multiple_clusters}. Finally, the condition obtained in \cref{sec:performance_ratio} and the multiple-cluster bound are combined with a simple algorithm for splitting the eigenspectrum into clusters, resulting in a novel algorithm for a sharpened CG iteration bound, \cref{alg:sharpened_cg_bound}.
 
 \section{Two cluster case}\label{sec:cg_sharpened_convrate}
 On the eigenspectrum of $A$, consider two intervals $[a, b]$ and $[c, d]$ with $0 < a < b < c < d$ such that all eigenvalues of $A$ are contained in the union of these two intervals. Additionally, we have $\kappa(A) = \frac{d}{a}$. We treat the following two cases simultaneously
@@ -15,7 +15,7 @@ where $N_{\text{tail}}$ is the number of eigenvalues in the tail. The first case
 \begin{figure}[H]
     \centering
     \input{../tikz/eigenvalue_clusters.tex}
-    \caption{Eigenspectrum of $A$ with two clusters and a tail of eigenvalues.}
+    \caption{Eigenspectrum of $A$ with two clusters (above) and a combination of a tail and cluster (below).}
     \label{fig:eigenvalue_clusters}
 \end{figure}
 
@@ -25,8 +25,8 @@ The CG error \cref{eq:cg_error_bound} suggests we look for a polynomial $r_{m_2}
 \begin{equation}
     \hat{r}^{(i)}_p (x)
     \begin{cases}
-        \hat{C}_p&, \text{if } i = 1\\
-        \overset{p}{\underset{i=1}{\prod}} (1 - x/\lambda_i)&, \text{if } i = 2, p = N_{\text{tail}}\\
+        \hat{C}_p                                            & , \text{if } i = 1                      \\
+        \overset{p}{\underset{j=1}{\prod}} (1 - x/\lambda_j) & , \text{if } i = 2, p = N_{\text{tail}} \\
     \end{cases}
     \label{eq:residual_polynomial_rm}
 \end{equation}
@@ -38,13 +38,13 @@ and
 Indeed, the product $r_{m_2} = \hat{r}_p \hat{r}_{m_2-p} \in \mathcal{P}_{m_2}$. Hence, we can use the residual polynomial functions to bound the error at the $m^{\text{th}}$ iterate. Now, we obtain the following intermediate bounds
 \begin{subequations}
     \begin{align}
-        \max_{\lambda \in [a,b]} |r_{m_2}(\lambda)| \leq \max_{\lambda \in [a,b]} |\hat{r}^{(i)}_p(\lambda)| \max_{\lambda \in [a,b]} |\hat{r}_{m_2-p}(\lambda)| &\leq \max_{\lambda \in [a,b]} |\hat{r}^{(i)}_p(\lambda)|, \ \text{and} \label{eq:residual_polynomial_bound_ab}\\
-        \max_{\lambda \in [c,d]} |r_{m_2}(\lambda)| \leq \max_{\lambda \in [c,d]} |\hat{r}^{(i)}_p(\lambda)| \max_{\lambda \in [c,d]} |\hat{r}_{m_2-p}(\lambda)| &\leq \max_{\lambda \in [c,d]} |\hat{r}_{p}(\lambda)|/C_{m_2-p}\left(\frac{d+c}{d-c}\right) \label{eq:residual_polynomial_bound_cd}
+        \max_{\lambda \in [a,b]} |r_{m_2}(\lambda)| \leq \max_{\lambda \in [a,b]} |\hat{r}^{(i)}_p(\lambda)| \max_{\lambda \in [a,b]} |\hat{r}_{m_2-p}(\lambda)| & \leq \max_{\lambda \in [a,b]} |\hat{r}^{(i)}_p(\lambda)|, \ \text{and} \label{eq:residual_polynomial_bound_ab}                     \\
+        \max_{\lambda \in [c,d]} |r_{m_2}(\lambda)| \leq \max_{\lambda \in [c,d]} |\hat{r}^{(i)}_p(\lambda)| \max_{\lambda \in [c,d]} |\hat{r}_{m_2-p}(\lambda)| & \leq \max_{\lambda \in [c,d]} |\hat{r}_{p}(\lambda)|/C_{m_2-p}\left(\frac{d+c}{d-c}\right) \label{eq:residual_polynomial_bound_cd}
     \end{align}
 \end{subequations}
-where the first result follows from the fact that $|\hat{r}_{m-p}(x)| < 1 \ \forall x \in [a,b]$ and the second result from 
+where the first result follows from the fact that $|\hat{r}_{m_2-p}(x)| < 1 \ \forall x \in [a,b]$ and the second result from
 \[
-    \left|C_{m-p}\left(\frac{d+c -2x}{d-c}\right)\right| < 1 \ \forall x \in [c,d].
+    \left|C_{m_2-p}\left(\frac{d+c -2x}{d-c}\right)\right| < 1 \ \forall x \in [c,d].
 \]
 
 Furthermore, using the equality \cref{eq:chebyshev_polynomial_approximation}, we have
@@ -56,8 +56,8 @@ and
 \begin{equation}
     \max_{\lambda \in [a,b]} |\hat{r}^{(i)}_p(\lambda)| \leq
     \begin{cases}
-        2\left(\frac{\sqrt{b}-\sqrt{a}}{\sqrt{b}+\sqrt{a}}\right)^p=\eta_1 &, \text{if } i = 1,\\
-        \left(\frac{b}{a}-1\right)^p=\eta_2 &, \text{if } i = 2, p = N_{\text{tail}},
+        2\left(\frac{\sqrt{b}-\sqrt{a}}{\sqrt{b}+\sqrt{a}}\right)^p=\eta_1 & , \text{if } i = 1,                      \\
+        \left(\frac{b}{a}-1\right)^p=\eta_2                                & , \text{if } i = 2, p = N_{\text{tail}},
     \end{cases}
     \label{eq:residual_polynomial_bound_ab_i}
 \end{equation}
@@ -74,7 +74,7 @@ Next, $\hat{r}^{(i)}_p$ in $[c,d]$ is bounded by its maximum value within $[a,b]
 \end{equation*}
 with $\eta_i$ as defined in \cref{eq:residual_polynomial_bound_ab_i}.
 
-At this point we have ensured that $\max_{\lambda \in [a,b]}|r_{m_2}|$ is bounded by $\epsilon$ using \cref{eq:residual_polynomial_bound_ab}. So it remains to bound $\max_{\lambda \in [c,d]}|r_{m_2}|$ in \cref{eq:residual_polynomial_bound_cd}. Using above results we can write 
+At this point we have ensured that $\max_{\lambda \in [a,b]}|r_{m_2}|$ is bounded by $\epsilon$ using \cref{eq:residual_polynomial_bound_ab}. So it remains to bound $\max_{\lambda \in [c,d]}|r_{m_2}|$ in \cref{eq:residual_polynomial_bound_cd}. Using above results we can write
 \begin{equation*}
     \max_{\lambda \in [c,d]} |r_{m_2}(\lambda)| < \epsilon,
 \end{equation*}
@@ -85,43 +85,43 @@ if we require that
 \end{equation}
 Using that for $x_1, x_2, x_3 \in \mathbb{R}^+$ with $x_1 > x_3$ and $z = \frac{x_1 - x_2}{x_3}$
 \begin{align*}
-    C_p(z) & \leq \left(z + \sqrt{z^2 - 1}\right)^p \\
-    & = \left( \frac{x_1 - x_2}{x_3} + \sqrt{ \left[\frac{x_1 - x_2}{x_3}\right]^2 -1}\right)^p \\
-    & \leq \left( \frac{x_1}{x_3} + \sqrt{ \left[\frac{x_1}{x_3}\right]^2 - 1}\right)^p \\
-    & \leq \left( \frac{2x_1}{x_3}\right)^p,
+    C_p(z) & \leq \left(z + \sqrt{z^2 - 1}\right)^p                                                    \\
+           & = \left( \frac{x_1 - x_2}{x_3} + \sqrt{ \left[\frac{x_1 - x_2}{x_3}\right]^2 -1}\right)^p \\
+           & \leq \left( \frac{x_1}{x_3} + \sqrt{ \left[\frac{x_1}{x_3}\right]^2 - 1}\right)^p         \\
+           & \leq \left( \frac{2x_1}{x_3}\right)^p,
 \end{align*}
 and substituting $x_1 = 2d$, $x_2 = b + a$ and $x_3 = b - a$ we obtain the following inequality
 \begin{equation}
-    \eta_i \left(\frac{4d}{b-a} \right)^p /C_{m_2-p}\left(\frac{d+c}{d-c}\right) < \epsilon. 
+    \eta_i \left(\frac{4d}{b-a} \right)^p /C_{m_2-p}\left(\frac{d+c}{d-c}\right) < \epsilon.
     \label{eq:chebyshev_degree_p_bound}
 \end{equation}
 Moreover,
 \begin{align*}
-    \eta_i \left(\frac{4d}{b-a}\right)^p &= 
+    \eta_i \left(\frac{4d}{b-a}\right)^p & =
     \begin{cases}
-        2\left(\frac{\sqrt{b} - \sqrt{a}}{\sqrt{b} + \sqrt{a}} \frac{4d}{b-a}\right)^p &, \text{if } i = 1\\
-        \left(\frac{b - a}{a}\frac{4d}{b-a}\right)^p &, \text{if } i = 2,
-    \end{cases}\\
-    &=
+        2\left(\frac{\sqrt{b} - \sqrt{a}}{\sqrt{b} + \sqrt{a}} \frac{4d}{b-a}\right)^p & , \text{if } i = 1  \\
+        \left(\frac{b - a}{a}\frac{4d}{b-a}\right)^p                                   & , \text{if } i = 2,
+    \end{cases} \\
+                                         & =
     \begin{cases}
-        2\left(\frac{4d}{b + 2\sqrt{ab} + a}\right)^p &, \text{if } i = 1\\
-        \left(\frac{4d}{a}\right)^p &, \text{if } i = 2,
-    \end{cases}\\
-    &\leq 2
+        2\left(\frac{4d}{b + 2\sqrt{ab} + a}\right)^p & , \text{if } i = 1  \\
+        \left(\frac{4d}{a}\right)^p                   & , \text{if } i = 2,
+    \end{cases}                                                                                                                                \\
+                                         & \leq 2
     \begin{cases}
-        \left(\frac{4d}{b}\right)^p &, \text{if } i = 1\\
-        \left(\frac{4d}{a}\right)^p &, \text{if } i = 2,
+        \left(\frac{4d}{b}\right)^p & , \text{if } i = 1  \\
+        \left(\frac{4d}{a}\right)^p & , \text{if } i = 2,
     \end{cases}
 \end{align*}
 We can therefore require that the bound in \cref{eq:chebyshev_degree_p_bound} is satisfied if we have
 \[
     1/C_{m_2-p}\left(\frac{d+c}{d-c}\right) \leq \frac{\epsilon}{2\left( \frac{4d}{e_i}\right)^p},
 \]
-where 
+where
 \[
     e_i = \begin{cases}
-        b &, \text{if } i = 1\\
-        a &, \text{if } i = 2.\\
+        b & , \text{if } i = 1  \\
+        a & , \text{if } i = 2. \\
     \end{cases}
 \]
 Again using \cref{eq:chebyshev_polynomial_bound} and solving for the degree $m_2 - p$ we obtain
@@ -133,7 +133,7 @@ which leads to the following bound for the number of iterations \cite[Equation 4
     m_2=\left\lfloor\frac{1}{2} \sqrt{\frac{d}{c}} \ln (2 / \epsilon)+\left(1+\frac{1}{2} \sqrt{\frac{d}{c}} \ln (4 d / e_i)\right) p\right\rfloor,
     \label{eq:cg_iteration_bound_2_clusters}
 \end{equation}
-where 
+where
 \[
     1 \leq p \leq \min\left(\left\lfloor\frac{1}{2}\sqrt{\frac{b}{a}}\ln{\frac{2}{\epsilon}} + 1 \right\rfloor, N_{\text{tail}}\right).
 \]
@@ -141,53 +141,58 @@ where
 \section{Performance ratio of the two-cluster bound}\label{sec:performance_ratio}
 In this section we assume that we are dealing with an eigenspectrum of the form $\sigma_1(A)$, i.e. we are only treating case 1. For this case, we compare the new bound in \cref{eq:cg_iteration_bound_2_clusters} to the (approximated) classical bound in \cref{eq:cg_convergence_rate_bound_iterations_approx}. We will see that the new bound is not absolutely sharper than the classical one. However, we will derive an approximate, though accurate, criterion (see \cref{eq:threshold_inequality_explicit_expansion}) that allows us to discern under what conditions the new bound \textit{is} sharper.
 
-To that end, we introduce a measure of performance as the ratio of the number of iterations predicted by the classical bound to that predicted by the sharpened bound
-\begin{equation}
-    P = \frac{m}{m_2}.
-    \label{eq:performance_ratio}
-\end{equation}
-Consequently, the goal of this section is two-fold; determine the minimum value of $P$ and the conditions for which $P > 1$. We also introduce the left and right cluster condition numbers $\kappa_l = \frac{b}{a} > 1$ and $\kappa_r = \frac{d}{b} > 1$. Rewriting the bound from \cref{eq:cg_iteration_bound_2_clusters} in terms of the condition numbers gives
+To that end, we restate \cref{eq:cg_convergence_rate_bound_iterations_approx} here for easy reference
+\[
+    m_1(\kappa) = \left\lfloor\frac{\sqrt{\kappa}}{2}\ln\left(\frac{2}{\epsilon}\right) + 1\right\rfloor.
+\]
+Note that $\epsilon$ is generally a predetermined constant. Therefore, we leave it out of as an argument of $m_1$. Similarly, we rewrite the bound from \cref{eq:cg_iteration_bound_2_clusters} in terms of the left and right cluster condition numbers $\kappa_l = \frac{b}{a} > 1$ and $\kappa_r = \frac{d}{b} > 1$ as
 \[
     m_2(\kappa, \kappa_l, \kappa_r)=\left\lfloor\frac{\sqrt{\kappa_r}}{2} \ln (2 / \epsilon)+\left(1+\frac{\sqrt{\kappa_r}}{2} \ln \left(\frac{4\kappa}{\kappa_l}\right)\right) p\right\rfloor.
 \]
 Then, substituting $p$ gives
 \begin{equation}
     m_2(\kappa, \kappa_l, \kappa_r)=\left\lfloor
-        1 
-        + \frac{\sqrt{\kappa_r}}{2}\ln\left(\frac{4\kappa}{\kappa_l}\right)
-        + \frac{1}{2}\ln\left(\frac{2}{\epsilon}\right)\left(
-            \sqrt{\kappa_l}
-            + \sqrt{\kappa_r}
-            + \frac{\sqrt{\kappa_l\kappa_r}}{2}\ln\left(\frac{4\kappa}{\kappa_l}\right)
-        \right)
+    1
+    + \frac{\sqrt{\kappa_r}}{2}\ln\left(\frac{4\kappa}{\kappa_l}\right)
+    + \frac{1}{2}\ln\left(\frac{2}{\epsilon}\right)\left(
+    \sqrt{\kappa_l}
+    + \sqrt{\kappa_r}
+    + \frac{\sqrt{\kappa_l\kappa_r}}{2}\ln\left(\frac{4\kappa}{\kappa_l}\right)
+    \right)
     \right\rfloor.
     \label{eq:cg_iteration_bound_2_clusters_condition_numbers}
-\end{equation} 
+\end{equation}
+Next we introduce a measure of performance as the ratio of the number of iterations predicted by the classical bound to that predicted by the sharpened bound
+\begin{equation}
+    P = \frac{m_1}{m_2}.
+    \label{eq:performance_ratio}
+\end{equation}
+Consequently, the goal of this section is two-fold; determine the minimum value of $P$ and the conditions on $\kappa,\kappa_l,\kappa_r$ for which $P > 1$.
 
 \subsection{Uniform spectrum performance}\label{sec:cg_sharpened_convrate_uniform_performance}
 In order to see that the new bound is not absolutely sharper than the classical one, we determine the minimum value of $P$. We know that the product of two lower order Chebyshev polynomials is not optimal for a uniform eigenspectrum, cf. the proof of Chebyshev optimality outlined in \cref{th:minmax_polynomial}. Therefore, we assume that the minimum value of $P$ is attained for the case of a uniform eigenspectrum, i.e. $a<b=c<d$, and we can set $\kappa=\kappa_l\kappa_r$, which yields
 \begin{equation}
     m_2(\kappa=\kappa_l\kappa_r, \kappa_l, \kappa_r)=\left\lfloor
-        1 
-        + \frac{\sqrt{\kappa_r}}{2}\ln\left(4\kappa_r\right)
-        + \underbrace{\frac{\sqrt{\kappa}}{2}\ln\left(\frac{2}{\epsilon}\right)}_{=m(\kappa)-1}\left(
-            \underbrace{
-                \frac{1}{\sqrt{\kappa_l}}
-                + \frac{1}{\sqrt{\kappa_r}}
-                + \frac{\ln\left(4\kappa_r\right)}{2}
-            }_{:= q(\kappa_l, \kappa_r)}
-        \right)
+    1
+    + \frac{\sqrt{\kappa_r}}{2}\ln\left(4\kappa_r\right)
+    + \underbrace{\frac{\sqrt{\kappa}}{2}\ln\left(\frac{2}{\epsilon}\right)}_{=m_1(\kappa_l\kappa_r)-1}\left(
+    \underbrace{
+            \frac{1}{\sqrt{\kappa_l}}
+            + \frac{1}{\sqrt{\kappa_r}}
+            + \frac{\ln\left(4\kappa_r\right)}{2}
+        }_{:= q(\kappa_l, \kappa_r)}
+    \right)
     \right\rfloor.
     \label{eq:cg_iteration_bound_2_clusters_uniform}
 \end{equation}
 We recognize the classical CG bound as the factor in front of the last term in \cref{eq:cg_iteration_bound_2_clusters_uniform}. Now, the performance ratio $P$ in \cref{eq:performance_ratio} satisfies
 \begin{equation}
-    P(\kappa=\kappa_l\kappa_r, \kappa_l, \kappa_r) = P_{\text{uniform}}(\kappa_l, \kappa_r) = \left(\frac{1 + \frac{1}{2}\sqrt{\kappa_r}\ln(4\kappa_r)}{m(\kappa_l\kappa_r)} + \frac{m(\kappa_l\kappa_r)-1}{m(\kappa_l\kappa_r)}q(\kappa_l, \kappa_r)\right)^{-1},
+    P(\kappa=\kappa_l\kappa_r, \kappa_l, \kappa_r) = P_{\text{uniform}}(\kappa_l, \kappa_r) = \left(\frac{1 + \frac{1}{2}\sqrt{\kappa_r}\ln(4\kappa_r)}{m_1(\kappa_l\kappa_r)} + \frac{m_1(\kappa_l\kappa_r)-1}{m_1(\kappa_l\kappa_r)}q(\kappa_l, \kappa_r)\right)^{-1},
     \label{eq:performance_ratio_uniform}
 \end{equation}
 which can be expanded as
 \[
-    P_{\text{uniform}}(\kappa_l, \kappa_r) = \frac{m(\kappa_l\kappa_r)-1}{m(\kappa_l\kappa_r)}\left[q(\kappa_l, \kappa_r)^{-1} - \frac{1 + \frac{1}{2}\sqrt{\kappa_r}\ln(4\kappa_r)}{(m(\kappa_l\kappa_r)-1)q(\kappa_l, \kappa_r)^2} + \mathcal{O}\left(\frac{1}{(m(\kappa_l\kappa_r)-1)^2q(\kappa_l, \kappa_r)^3}\right)\right].
+    P_{\text{uniform}}(\kappa_l, \kappa_r) = \frac{m_1(\kappa_l\kappa_r)-1}{m_1(\kappa_l\kappa_r)}\left[q(\kappa_l, \kappa_r)^{-1} - \frac{1 + \frac{1}{2}\sqrt{\kappa_r}\ln(4\kappa_r)}{(m_1(\kappa_l\kappa_r)-1)q(\kappa_l, \kappa_r)^2} + \mathcal{O}\left(\frac{1}{(m_1(\kappa_l\kappa_r)-1)^2q(\kappa_l, \kappa_r)^3}\right)\right].
 \]
 Next, we require that $\kappa_r \gtrsim 5$, for which it holds that $\frac{1}{\sqrt{\kappa_l}} + \frac{1}{\sqrt{\kappa_r}} < \frac{\ln\left(4\kappa_r\right)}{2}, \ \forall \kappa_l \geq 1$. This requirement on $\kappa_r$ ensures that we can expand $q(\kappa_l, \kappa_r)^{-1}$ as follows
 \[
@@ -195,21 +200,21 @@ Next, we require that $\kappa_r \gtrsim 5$, for which it holds that $\frac{1}{\s
 \]
 which gives the performance for a uniform eigenspectrum as
 \begin{align}
-    P_{\text{uniform}}(\kappa_l, \kappa_r) &\approx \frac{1}{\ln(4\kappa_r)} \left(1 - \frac{1}{\sqrt{\kappa_l}\ln\left(\frac{2}{\epsilon}\right)}\right) \notag \\
-    &\quad - \frac{1}{\ln(4\kappa_r)^2}\left(\frac{1}{\sqrt{\kappa_l}} + \frac{1}{\sqrt{\kappa_r}} + \frac{1}{\sqrt{\kappa_l\kappa_r}\ln\left(\frac{2}{\epsilon}\right)}\right) \notag \\
-    &\quad + \mathcal{O}\left(\frac{1}{\ln(4\kappa_r)}\left[\frac{1}{\ln(4\kappa_r)^2} + \frac{1}{\kappa_l\kappa_r\ln\left(\frac{2}{\epsilon}\right)^2}\right]\right).
+    P_{\text{uniform}}(\kappa_l, \kappa_r) & \approx \frac{1}{\ln(4\kappa_r)} \left(1 - \frac{1}{\sqrt{\kappa_l}\ln\left(\frac{2}{\epsilon}\right)}\right) \notag                                                              \\
+                                           & \quad - \frac{1}{\ln(4\kappa_r)^2}\left(\frac{1}{\sqrt{\kappa_l}} + \frac{1}{\sqrt{\kappa_r}} + \frac{1}{\sqrt{\kappa_l\kappa_r}\ln\left(\frac{2}{\epsilon}\right)}\right) \notag \\
+                                           & \quad + \mathcal{O}\left(\frac{1}{\ln(4\kappa_r)}\left[\frac{1}{\ln(4\kappa_r)^2} + \frac{1}{\kappa_l\kappa_r\ln\left(\frac{2}{\epsilon}\right)^2}\right]\right).
     \label{eq:performance_ratio_uniform_expansion}
 \end{align}
 The approximate equality in \cref{eq:performance_ratio_uniform_expansion} stems from the fact that
 \[
-    \frac{m(\kappa_l\kappa_r)-1}{m(\kappa_l\kappa_r)} \underset{\kappa_l\kappa_r \geq 5}{\approx} 1.
+    \frac{m_1(\kappa_l\kappa_r)-1}{m_1(\kappa_l\kappa_r)} \underset{\kappa_l\kappa_r \geq 5}{\approx} 1.
 \]
 
 Equation \ref{eq:performance_ratio_uniform_expansion} shows that the uniform (minimum) performance $P_{\text{uniform}}(\kappa_l, \kappa_r)$ tends in its leading order term to $1/\ln(4\kappa_r)$ as $\kappa_l \to \infty$. That is, let $P^{(i)}_{\text{uniform}}$ denote the $i$-th order expansion of \cref{eq:performance_ratio_uniform_expansion}, then
 \[
     P_{\text{uniform}}(\kappa_l, \kappa_r) \lesssim \frac{1}{\ln(4\kappa_r)} = P^{(0)}_{\text{uniform}}(\kappa_r).
 \]
-Only for small $\kappa_l = \frac{\kappa}{\kappa_r}$ does the first order term become significant. Additionally, \cref{eq:performance_ratio_uniform_expansion} shows that for increasing $\kappa_r$ we expect a decreasing minimum performance. We also find that the new bound $m_2(\kappa,\kappa_l,\kappa_r)$ is not absolutely sharper than the classical bound $m(\kappa)$. In fact, based on the terms in the expansion of \cref{eq:performance_ratio_uniform_expansion} we can say that
+Only for small $\kappa_l = \frac{\kappa}{\kappa_r}$ does the first order term become significant. Additionally, \cref{eq:performance_ratio_uniform_expansion} shows that for increasing $\kappa_r$ we expect a decreasing minimum performance. We also find that the new bound $m_2(\kappa,\kappa_l,\kappa_r)$ is not absolutely sharper than the classical bound $m_1(\kappa)$. In fact, based on the terms in the expansion of \cref{eq:performance_ratio_uniform_expansion} we can say that
 \begin{equation}
     P^{(1)}_{\text{uniform}}(\kappa_l, \kappa_r) \lesssim P_{\text{uniform}}(\kappa_l, \kappa_r) \lesssim P^{(0)}_{\text{uniform}}(\kappa_r),
     \label{eq:performance_ratio_no_improvement_bounds}
@@ -218,7 +223,7 @@ Only for small $\kappa_l = \frac{\kappa}{\kappa_r}$ does the first order term be
 \subsection{Performance threshold}\label{sec:performance_threshold}
 Now that we have established that the new bound is not absolutely sharper than the classical one, we can determine the conditions under which the new bound is sharper. We know that for $\kappa=\kappa_r\kappa_l$ the performance ratio $P$ is given by \cref{eq:performance_ratio_uniform}. We now solve the inverse problem, i.e. for what $\kappa$ is $P \geq 1$? This gives the following inequality
 \[
-    \frac{m}{m_2} \geq 1 \Rightarrow m(\kappa) \geq m_2(\kappa, \kappa_l, \kappa_r),
+    \frac{m_1}{m_2} \geq 1 \Rightarrow m_1(\kappa) \geq m_2(\kappa, \kappa_l, \kappa_r),
 \]
 which can be rewritten as
 \begin{equation}
@@ -246,12 +251,12 @@ where $W_{-1}$ is the first negative branch of the Lambert $\mathrm{W}$ function
 or, in terms of the original condition numbers
 \begin{equation}
     \kappa \geq 4\kappa_l\kappa_r W_{-1}\left(-\frac{1}{2\sqrt{\kappa_r}\exp\left(\frac{1}{\sqrt{\kappa_r}}\right)}\right)^2 = T_{\kappa}(\kappa_l, \kappa_r).
-    \label{eq:threshold_inequality_explicit}    
+    \label{eq:threshold_inequality_explicit}
 \end{equation}
 The evaluation of the Lambert $\mathrm{W}$ function is not a trivial task and often requires numerical methods for accurate computation \cite{evaluation_of_the_lambert_w_function_Corless1996}. Luckily, there exists an expansion of $\mathrm{W}_{-1}(x)$ for $x\rightarrow0^-$ \cite[Equation 4.19]{evaluation_of_the_lambert_w_function_Corless1996}. Let $x$ be as above and set $L = \ln(-x)$ and $l = \ln(-L)$, then
 \begin{equation}
     \kappa \geq 4\kappa_l\kappa_r \left(L - l + \frac{l}{L}\right)^2 + \mathcal{O}\left(\frac{\kappa_l\kappa_rl^4}{L^4}\right) := T^{(0)}_{\kappa}(\kappa_l, \kappa_r) + \mathcal{O}\left(\frac{\kappa_l\kappa_rl^4}{L^4}\right).
-    \label{eq:threshold_inequality_explicit_expansion}    
+    \label{eq:threshold_inequality_explicit_expansion}
 \end{equation}
 
 Combining the results of this section with those of \cref{sec:cg_sharpened_convrate_uniform_performance} we can now say that as long as $\kappa_l\kappa_r \leq \kappa \leq T_{\kappa}(\kappa_l, \kappa_r)$, the performance ratio satisfies
@@ -259,17 +264,17 @@ Combining the results of this section with those of \cref{sec:cg_sharpened_convr
     P_{\text{uniform}}(\kappa_l, \kappa_r) \leq P(\kappa, \kappa_l, \kappa_r) \leq P_{\text{threshold}} \lesssim 1,
     \label{eq:performance_bounds}
 \end{equation}
-and, conversely, if $\kappa > T_{\kappa}(\kappa_l, \kappa_r)$, then 
+and, conversely, if $\kappa > T_{\kappa}(\kappa_l, \kappa_r)$, then
 \[
     P(\kappa, \kappa_l, \kappa_r) > P_{\text{threshold}}
 \]
 
 \subsection{Performance plot}
-Figure \ref{fig:two_cluster_bound_performance} visualizes all the findings regarding the performance of the two-cluster bound $m_2$. 
+Figure \ref{fig:two_cluster_bound_performance} visualizes all the findings regarding the performance of the two-cluster bound $m_2$.
 \begin{figure}[H]
     \centering
     \includegraphics[width=\textwidth]{performance_vs_condition_number.pdf}
-    \caption{Performance ratio of the classical bound $m$ from \cref{eq:cg_convergence_rate_bound_iterations_approx} and the new two-cluster bound $m_2$ from \cref{eq:cg_iteration_bound_2_clusters} as a function of the global condition number $\kappa$ for right cluster condition number $\kappa_r = 5$ (\textbf{left}) and $\kappa_r = 10^3$ (\textbf{right}). All plots contain graphs for spectra with $\kappa_l = 1, 10, 10^2, 10^3, 10^4$. The plots also contain a red, shaded region for which $P_{\text{uniform}} < P < 1$, a diagonally hashed region resembling the performance bounds from \cref{eq:performance_bounds}, a red, dashed line resembling the first order expansion of the uniform performance ratio, $P^{(1)}_{\text{uniform}}$ from \cref{eq:performance_ratio_uniform_expansion}, and both the exact and approximate $\kappa$-threshold values for each $\kappa_l$ graph from \cref{eq:threshold_inequality_explicit,eq:threshold_inequality_explicit_expansion}, respectively.}
+    \caption{Performance ratio of the classical bound $m_1$ from \cref{eq:cg_convergence_rate_bound_iterations_approx} and the two-cluster bound $m_2$ from \cref{eq:cg_iteration_bound_2_clusters} as a function of the global condition number $\kappa$ for right cluster condition number $\kappa_r = 5$ (\textbf{left}) and $\kappa_r = 10^3$ (\textbf{right}). All plots contain graphs for spectra with $\kappa_l = 1, 10, 10^2, 10^3, 10^4$. The plots also contain a red, shaded region for which $P_{\text{uniform}} < P < 1$, a diagonally hashed region resembling the performance bounds from \cref{eq:performance_bounds}, a red, dashed line resembling the first order expansion of the uniform performance ratio, $P^{(1)}_{\text{uniform}}$ from \cref{eq:performance_ratio_uniform_expansion}, and both the exact and approximate $\kappa$-threshold values for each $\kappa_l$ graph from \cref{eq:threshold_inequality_explicit,eq:threshold_inequality_explicit_expansion}, respectively.}
     \label{fig:two_cluster_bound_performance}
 \end{figure}
 We can notice that the performance graphs for various left cluster widths $\kappa_l$ grow with the square root of the global condition number, i.e. $P \approx \mathcal{O}(\sqrt{\kappa})$, as the slope of these lines is approximately $1/2$. This is to be expected from \cref{eq:cg_iteration_bound_2_clusters_condition_numbers}, since for constant $\kappa_l,\kappa_r$, and $\kappa > T_h(\kappa_l, \kappa_r) \gg 1$ we have that $P = \mathcal{O}\left(\frac{\sqrt{\kappa}}{\ln(4\kappa)}\right)$. The slope of the term $\frac{\sqrt{\kappa}}{\ln(4\kappa)}$ in a log-log plot satisfies
@@ -279,30 +284,37 @@ We can notice that the performance graphs for various left cluster widths $\kapp
 Next to this we can see that the first order expansion of the uniform performance ratio $P^{(1)}_{\text{uniform}}$ agrees well with the minimum performance bound as long as $\kappa = \kappa_l\kappa_r \gg 1$, which is in agreement with the error terms in \cref{eq:performance_ratio_uniform_expansion} and the minimum performance bound from \cref{eq:performance_bounds}. Finally, we see that both $T_{\kappa}(\kappa_l, \kappa_r)$ and its zeroth order expansion $T^{(0)}_{\kappa}(\kappa_l, \kappa_r)$ from \cref{eq:threshold_inequality_explicit,eq:threshold_inequality_explicit_expansion} are accurate approximations of the actual $\kappa$-threshold value at which $P=1$, and even more so for larger values of $\kappa,\kappa_r$. We do see a deviation of both $T_{\kappa}(\kappa_l, \kappa_r)$ and $T^{(0)}_{\kappa}(\kappa_l, \kappa_r)$ for $\kappa_l\leq\kappa_r$. Again, this is in agreement with the error terms in \cref{eq:approximate_performance_ratio_threshold}.
 
 \section{Performance of the tail-cluster bound}\label{sec:tail_cluster_bound_performance}
-The two-cluster bound from \cref{eq:cg_iteration_bound_2_clusters} is also derived for the case of a right cluster with a tail of eigenvalues $\sigma_2$, i.e. the case where the left cluster is a tail cluster. In this case, we can also derive a minimum performance ratio $P^{\text{tail}}_{\text{uniform}}$. We again consider a uniform spectrum, i.e. $a<b=c<d$, and we can set $\kappa=\kappa_l\kappa_r$. The tail-cluster bound is given by \cref{eq:cg_iteration_bound_2_clusters} with $p = N_{\text{tail}} \leq \left\lfloor\frac{\sqrt{\kappa_l}}{2}\ln{\frac{2}{\epsilon}} + 1 \right\rfloor $. This gives
+The two-cluster bound from \cref{eq:cg_iteration_bound_2_clusters} is also derived for the spectrum $\sigma_2$, i.e. the case of a right cluster with a tail of eigenvalues to the left of it. In this case we can also derive a condition for which $m_2 < m_1$, or $P > 1$. The tail-cluster bound is given by \cref{eq:cg_iteration_bound_2_clusters} with $p = N_{\text{tail}} \leq \left\lfloor\frac{\sqrt{\kappa_l}}{2}\ln{\frac{2}{\epsilon}} + 1 \right\rfloor $. This gives
 \[
-    m_2(\kappa=\kappa_l\kappa_r, p, \kappa_r) = \left\lfloor
-        \frac{\sqrt{\kappa_r}}{2}\ln\left(\frac{2}{\epsilon}\right) 
-        + p \left(
-            1 + \frac{\sqrt{\kappa_r}}{2}\ln\left(\frac{4\kappa}{\kappa_l}\right)
-        \right)
+    m_2(\kappa, \kappa_l, \kappa_r, p) = \left\lfloor
+    \frac{\sqrt{\kappa_r}}{2}\ln\left(\frac{2}{\epsilon}\right)
+    + p \left(
+    1 + \frac{\sqrt{\kappa_r}}{2}\ln\left(\frac{4\kappa}{\kappa_l}\right)
+    \right)
     \right\rfloor.
 \]
-The performance ratio $P^{\text{tail}}_{\text{uniform}}$ is given by
+The performance ratio is now given by
 \begin{equation}
-    P^{\text{tail}}_{\text{uniform}}(\kappa_l, \kappa_r) = \frac{\sqrt{\kappa_l}\ln\left(\frac{2}{\epsilon}\right)}{p\ln(4\kappa_r)} - \mathcal{O}\left(\frac{\sqrt{\kappa_l}\ln\left(\frac{2}{\epsilon}\right)}{p^2\ln(4\kappa_r)^2}\right), \quad \text{for } \kappa_l \geq \kappa_r < \frac{1}{2\epsilon}.
-    \label{eq:performance_ratio_tail_uniform}
+    P_{\text{tail-cluster}}(\kappa, \kappa_l, \kappa_r, p) = \frac{\sqrt{\frac{\kappa}{\kappa_r}}\ln\left(\frac{2}{\epsilon}\right)}{p\ln\left(\frac{4\kappa}{\kappa_l}\right)} - \mathcal{O}\left(\sqrt{\frac{\kappa}{\kappa_r}}\frac{\ln\left(\frac{2}{\epsilon}\right) + \frac{2p}{\sqrt{\kappa_r}}}{p^2\ln\left(\frac{4\kappa}{\kappa_l}\right)^2}\right), \quad \text{for } p \geq \left\lceil\log_{\frac{4\kappa}{\kappa_l}}\left(\frac{2}{\epsilon}\right)\right\rceil.
+    \label{eq:performance_ratio_tail_cluster}
 \end{equation}
-Equation \ref{eq:performance_ratio_tail_uniform} shows that
+Equation \ref{eq:performance_ratio_tail_cluster} shows that
 \[
-    P^{\text{tail}}_{\text{uniform}}(\kappa_l, \kappa_r) \longrightarrow \frac{1}{\ln(4\kappa_r)} \approx P^{(0)}_{\text{uniform}}(\kappa_r) \quad \text{as } p \to \left\lfloor\frac{\sqrt{\kappa_l}}{2}\ln{\frac{2}{\epsilon}} + 1 \right\rfloor,
+    P_{\text{tail-cluster}}(\kappa, \kappa_l, \kappa_r, p) \longrightarrow \frac{1}{\ln(4\kappa_r)} \approx P^{(0)}_{\text{uniform}}(\kappa_r) \text{ as } p \to \left\lfloor\frac{\sqrt{\kappa_l}}{2}\ln{\frac{2}{\epsilon}} + 1 \right\rfloor \text{ and } \kappa \to \kappa_l\kappa_r,
 \]
-that is, the minimum performance of the tail-cluster bound reduces to the leading order term of the two-cluster bound's minimum performance from \cref{eq:performance_ratio_uniform_expansion} as $p$ approaches its maximum value. Another crucial aspect about $P^{\text{tail}}_{\text{uniform}}(\kappa_l, \kappa_r)$ is recovered when we require its leading order term to be larger than $1$, giving us the following inequality
+that is, the minimum performance of the tail-cluster bound reduces to the leading order term of the two-cluster bound's minimum performance from \cref{eq:performance_ratio_uniform_expansion} as $p$ approaches its maximum value. Another crucial aspect about $P_{\text{tail-cluster}}(\kappa, \kappa_l, \kappa_r, p)$ is recovered when we require its leading order term to be larger than $1$, giving us the following inequality
 \begin{equation}
-    p < \sqrt{\kappa_l}\log_{4\kappa_r}\left(\frac{2}{\epsilon}\right).
+    p < \left\lfloor\sqrt{\frac{\kappa}{\kappa_r}}\log_{\frac{4\kappa}{\kappa_l}}\left(\frac{2}{\epsilon}\right)\right\rfloor.
     \label{eq:tail_cluster_bound_sparsity_condition}
 \end{equation}
 Equation \ref{eq:tail_cluster_bound_sparsity_condition} can be interpreted as a \textit{sparsity condition} on the tail cluster, i.e. the tail cluster must be sparse enough to ensure that the performance ratio is larger than $1$.
+
+Finally, we found that the tail-cluster bound is sharper than the classical bound if the following conditions on $p$ hold
+\begin{equation}
+    \left\lceil\log_{\frac{4\kappa}{\kappa_l}}\left(\frac{2}{\epsilon}\right)\right\rceil \leq p \leq \left\lfloor\sqrt{\frac{\kappa}{\kappa_r}}\log_{\frac{4\kappa}{\kappa_l}}\left(\frac{2}{\epsilon}\right)\right\rfloor.
+    \label{eq:tail_cluster_bound_condition}
+\end{equation}
+The left-hand side inequality of \cref{eq:tail_cluster_bound_condition} ensures that the expansion made in \cref{eq:performance_ratio_tail_cluster} is valid. Notice that for $\epsilon = 10^{-8}$, $\kappa\approx 10^{8}$ and $\kappa_l\approx 10$ this left-hand side of \cref{eq:tail_cluster_bound_condition} is approximately equal to 1, in which case we can neglect it as a condition on $p$ as $p\geq 1$ is always satisfied. We will reconsider the validity of this simplification in \cref{ch:results}, but for now we say that the tail-cluster bound is sharper than the classical bound if \cref{eq:tail_cluster_bound_sparsity_condition} holds.
 
 \section{Generalization to multiple clusters}\label{sec:multiple_clusters}
 The technique outlined in \cref{sec:cg_sharpened_convrate} starts at the left most cluster $[a,b]$, finds the Chebyshev degree $p_1=p$ satisfying \cref{eq:chebyshev_degree_p}, moves to the neighboring cluster $[c,d]$ and finds the Chebyshev degree $p_2 = m_2 - p$ satisfying \cref{eq:relative_error_bound_mp}. Rewriting \cref{eq:relative_error_bound_mp} gives the following equation for $p_2$:
@@ -316,7 +328,7 @@ where
 \]
 is the Chebyshev polynomial corresponding to the first cluster.
 
-Suppose there is a third cluster to the right of $[c,d]$, i.e. $[e,f]$. We can repeat the process and find the Chebyshev degree $p_3$ satisfying a similar equation as \cref{eq:chebyshev_degree_p_prime} for the third cluster. 
+Suppose there is a third cluster to the right of $[c,d]$, i.e. $[e,f]$. We can repeat the process and find the Chebyshev degree $p_3$ satisfying a similar equation as \cref{eq:chebyshev_degree_p_prime} for the third cluster.
 \[
     \frac{1}{C_{p_3}\left(\frac{f+e}{f-e}\right)} \leq \frac{\epsilon}{C^{(1)}_{p_1}(f)C^{(2)}_{p_2}(f)} = \epsilon_3,
 \]
@@ -325,6 +337,13 @@ This leads to the general equation for the Chebyshev degree $p_i$ of the $i^{\te
     \frac{1}{C_{p_i}\left(\frac{b_i + a_i}{b_i - a_i}\right)} \leq \frac{\epsilon}{\prod_{j=1}^{i-1} C^{(j)}_{p_j}(b_i)} = \epsilon_i.
     \label{eq:chebyshev_degree_p_i}
 \end{equation}
+An eigenvalue spectrum of this kind is visualized in \cref{fig:multiple_eigenvalue_clusters}.
+\begin{figure}[H]
+    \centering
+    \input{../tikz/multiple_eigenvalue_clusters.tex}
+    \caption{Example of an eigenvalue spectrum consisting of multiple clusters.}
+    \label{fig:multiple_eigenvalue_clusters}
+\end{figure}
 
 The Chebyshev polynomials $\tilde{C}_p$ grow rapidly outside the interval $[-1,1]$ \cite[Section 4]{cg_sharpened_convrate_Axelsson1976}. Therefore, it can be cumbersome for a computer to evaluate the product of the $C^{(j)}_{p_j}(b_i)$ terms in the denominator of \cref{eq:chebyshev_degree_p_i}, as it might result in floating-point number overflow. Instead, we first apply \cref{eq:chebyshev_polynomial_bound} and introduce the cluster condition numbers $\kappa_i = \frac{b_i}{a_i}$, where $i$ is the index of the cluster. We can then rewrite \cref{eq:chebyshev_degree_p_i} using \cref{eq:chebyshev_polynomial_approximation} as follows
 \begin{equation*}
@@ -348,17 +367,17 @@ and
     \ln{C_{p_j}(z^{(j)}_2)} \approx p_j \ln{\left[z^{(j)}_2 + \sqrt{\left(z^{(j)}_2\right)^2 - 1}\right]} - \ln{2},
     \label{eq:chebyshev_polynomial_bound_z2}
 \end{equation}
-both of which become more accurate approximations as $z,m\rightarrow\infty$. Introducing 
+both of which become more accurate approximations as $z,m\rightarrow\infty$. Introducing
 \begin{align*}
-    \zeta^{(i,j)}_1 &= z^{(i,j)}_1 - \sqrt{\left(z^{(i,j)}_1\right)^2 - 1}, \\
-    \zeta^{(j)}_2 &= z^{(j)}_2 + \sqrt{\left(z^{(j)}_2\right)^2 - 1}, \text{ and}\\
-    f_i &= \frac{\sqrt{\kappa_i} - 1}{\sqrt{\kappa_i} + 1},
+    \zeta^{(i,j)}_1 & = z^{(i,j)}_1 - \sqrt{\left(z^{(i,j)}_1\right)^2 - 1},         \\
+    \zeta^{(j)}_2   & = z^{(j)}_2 + \sqrt{\left(z^{(j)}_2\right)^2 - 1}, \text{ and} \\
+    f_i             & = \frac{\sqrt{\kappa_i} - 1}{\sqrt{\kappa_i} + 1},
 \end{align*}
 with $\kappa_i$ the $i^{\text{th}}$ cluster condition number, and substituting the inequalities \ref{eq:chebyshev_polynomial_bound_z1} and \ref{eq:chebyshev_polynomial_bound_z2} back into the bound for $p_i$ gives
 \begin{align*}
-    p_i &\leq \left\lceil\frac{\ln{\frac{\epsilon}{2}} - \sum_{j=1}^{i-1} p_j\left(\ln{\zeta^{(i,j)}_1} - \ln{\zeta^{(j)}_2} \right)}{\ln{f_i}}\right\rceil \\
-    &= \left\lceil\log_{f_i}{\frac{\epsilon}{2}} - \sum_{j=1}^{i-1} p_j\left(\log_{f_i}{\zeta^{(i,j)}_1} - \log_{f_i}{\zeta^{(j)}_2} \right)\right\rceil\\
-    &= \left\lceil\log_{f_i}{\frac{\epsilon}{2}} - \sum_{j=1}^{i-1} p_j\log_{f_i}{\frac{\zeta^{(i,j)}_1}{\zeta^{(j)}_2}} \right\rceil
+    p_i & \leq \left\lceil\frac{\ln{\frac{\epsilon}{2}} - \sum_{j=1}^{i-1} p_j\left(\ln{\zeta^{(i,j)}_1} - \ln{\zeta^{(j)}_2} \right)}{\ln{f_i}}\right\rceil  \\
+        & = \left\lceil\log_{f_i}{\frac{\epsilon}{2}} - \sum_{j=1}^{i-1} p_j\left(\log_{f_i}{\zeta^{(i,j)}_1} - \log_{f_i}{\zeta^{(j)}_2} \right)\right\rceil \\
+        & = \left\lceil\log_{f_i}{\frac{\epsilon}{2}} - \sum_{j=1}^{i-1} p_j\log_{f_i}{\frac{\zeta^{(i,j)}_1}{\zeta^{(j)}_2}} \right\rceil
 \end{align*}
 Note that in general $f_i < 1$ and $\zeta^{(i,j)}_1 > \zeta^{(j)}_2$. Therefore, term $\log_{f_i}{\left(\frac{\zeta^{(i,j)}_1}{\zeta^{(j)}_2}\right)} < 0$. So we multiply this term by $-1$ and obtain
 \begin{equation}
@@ -373,32 +392,65 @@ Equation \ref{eq:chebyshev_degree_p_i_explicit} gives us a way to calculate the 
     \label{eq:cg_iteration_bound_multiple_clusters}
 \end{equation}
 
-We summarize the techniques outlined in this section in \cref{alg:multi_cluster_bound}. The algorithm takes a set of clusters and a relative error tolerance $\epsilon$ as input and returns the multi-cluster CG bound $m_{N_{\text{clusters}}}$. The algorithm iterates over all clusters, calculating the Chebyshev degree $p_i$ for each cluster based on the previous clusters' degrees and the relative error tolerance. Finally, it sums up all the degrees to obtain the multi-cluster CG bound.
+\subsection{Single-eigenvalue and tail clusters}\label{sec:cg_single_eigenvalue_tail_clusters}
+We have not yet generalized to an eigenvalue spectrum consisting of multiple tail clusters, nor have we treated the case of a cluster $[a_s, b_s]$ with $a_s=b_s$, that is, a cluster consisting of just a single eigenvalue. Moreover, the most general eigenvalue spectrum can consist of any combination of clusters, tail clusters and single eigenvalue clusters, as shown in \cref{fig:general_spectrum}.
+\begin{figure}[H]
+    \centering
+    \input{../tikz/general_spectrum.tex}
+    \caption{Example of the most general eigenvalue spectrum. In order from left to right; a tail cluster $[a_1, b_1]$, a cluster $[a_2, b_2]$, a single eigenvalue cluster $[a_{n-1}, a_{n-1}]$ and another cluster $[a_n, b_n]$.}
+    \label{fig:general_spectrum}
+\end{figure}
+
+Fortunately, we can treat the cases of single eigenvalue and tail clusters in the same way. Indeed, let $\Lambda_{st}$ be the set of all eigenvalues residing in either single eigenvalue clusters or tail clusters. Now consider a polynomial similar to \cref{eq:residual_polynomial_rm} for the case $i=2$, that is
+\begin{equation}
+    r_{st}(x) = \prod_{\lambda\in\Lambda_{st}} \left(1 - \frac{x}{\lambda}\right).
+\end{equation}
+The degree of $r_{st}$ is equal to the number of eigenvalues in $\Lambda_{st}$, which we denote as $N_{st}$. Now $N_{st}$, unlike the degrees $p_j$ of the Chebyshev polynomials corresponding to the clusters $C^{(j)}_{p_j}$, is fixed. Therefore, the contribution of the single eigenvalue and tail clusters to the CG bound is simply $N_{st}$. However, $r_{st}$ may still influence the degrees $p_j$ through its effect on the global residual polynomial $r(x)$, which is defined as
+\begin{equation}
+    r(x) = r_{st}(x) \prod_{i=1}^{N_{\text{clusters}}} C^{(i)}_{p_i}(x).
+    \label{eq:general_residual_polynomial}
+\end{equation}
+In particular, we rewrite \cref{eq:chebyshev_degree_p_i_explicit} as
+\begin{equation}
+    p_i \leq \left\lceil\log_{f_i}{\frac{\epsilon}{2}} + \sum_{j=1}^{i-1} p_j\log_{f_i}{\frac{\zeta^{(j)}_2}{\zeta^{(i,j)}_1}} - \sum_{\lambda\in\Lambda_{st}}
+    \log_{f_i}\left(1-\frac{b_i}{\lambda}\right)\right\rceil,
+\end{equation}
+and \cref{eq:cg_iteration_bound_multiple_clusters} as
+\begin{equation}
+    m_{N_{\text{clusters}}} = N_{st} + \sum_{i=1}^{N_{\text{clusters}}} p_i.
+    \label{eq:cg_iteration_bound_multiple_clusters_s}
+\end{equation}
+
+\subsection{Algorithm for multi-cluster CG bound}\label{sec:cg_multi_cluster_bound_algorithm}
+We summarize the techniques outlined in this section in \cref{alg:multi_cluster_bound}. The algorithm takes a set of clusters, a (possibly empty) set of tail eigenvalues $\Lambda_t$ and a relative error tolerance $\epsilon$ as input and returns the multi-cluster CG bound $m_{N_{\text{clusters}}}$. The algorithm iterates over all clusters, calculating the Chebyshev degree $p_i$ for each cluster based on the previous clusters' degrees and the relative error tolerance. It also treats single eigenvalue and tail cluster as discussed in \cref{sec:cg_single_eigenvalue_tail_clusters}. Finally, it sums up all the Chebyshev degrees and the contributions from the single eigenvalue and tail clusters to obtain the multi-cluster CG bound.
 \begin{algorithm}[H]
-    \caption{$\operatorname{MultiClusterCGIterationBound}(\text{clusters}, \epsilon)$}
+    \caption{$\operatorname{MultiClusterCGIterationBound}(\text{clusters}, \Lambda_t, \epsilon)$}
     \begin{algorithmic}[1]
-        \State \textbf{Input:} Sorted set $\text{clusters} = \langle[a_1, b_1], [a_2, b_2], \ldots, [a_{N_{\text{clusters}}}, b_{N_{\text{clusters}}}]\rangle$ and relative error tolerance $\epsilon$
+        \State \textbf{Input:} Sorted set $\text{clusters} = \langle[a_1, b_1], [a_2, b_2], \ldots, [a_{N_{\text{clusters}}}, b_{N_{\text{clusters}}}]\rangle$, a set of tail eigenvalues $\Lambda_t$ and relative error tolerance $\epsilon$
         \State \textbf{Output:} Multi-cluster CG bound $m_{N_{\text{clusters}}}$
+        \State Construct $\text{clusters}_s \gets \{[a_s, b_s] \in \text{clusters}|a_s=b_s\}$
+        \State Construct $\Lambda_{st} \gets \Lambda_t \cup \{\lambda_s\in\mathbb{R}^+|[\lambda_s, \lambda_s] \in \text{clusters}_s\}$
+        \State Set $N_{st} \gets |\Lambda_{st}|$
         \State Initialize $P \gets \emptyset$
-        \For{$[a_i, b_i] \in \text{clusters}$} 
-            \State $\epsilon_i \gets \ln(\epsilon)$
-            \For{$[a_j, b_j] \in \text{clusters}_{<i}$} \Comment{$\text{clusters}_{<i}$ = all clusters to the left of $[a_i, b_i]$}
-                \State $z_1 \gets \frac{b_j + a_j - 2b_i}{b_j - a_j}$
-                \State $z_2 \gets \frac{b_j + a_j}{b_j - a_j}$
-                \State $p_j \gets P[j]$
-                \State $\epsilon_i \gets \epsilon_i - p_j \left(\ln(z_1^2 -1) - \ln\left(z_2 + \sqrt{z_2^2 -1}\right)\right)$
-            \EndFor
-            \State $f_i \gets \frac{\sqrt{\kappa_i} - 1}{\sqrt{\kappa_i} + 1}$, where $\kappa_i = \frac{b_i}{a_i}$
-            \State $p_i \gets \left\lceil\log_{f_i}\left(\frac{\epsilon_i}{2}\right)\right\rceil$
-            \State $P \gets P \cup \langle p_i \rangle$
+        \For{$[a_i, b_i] \in \text{clusters}\setminus\text{clusters}_s$}
+        \State $f_i \gets \frac{\sqrt{\kappa_i} - 1}{\sqrt{\kappa_i} + 1}$, where $\kappa_i = \frac{b_i}{a_i}$
+        \State $\epsilon_i \gets \ln(\epsilon) - \sum_{\lambda\in\Lambda_{st}} \log_{f_i}\left(1-\frac{b_i}{\lambda}\right)$
+        \For{$[a_j, b_j] \in \text{clusters}_{<i}\setminus\text{clusters}_s$} \Comment{$\text{clusters}_{<i}$ = all clusters to the left of $[a_i, b_i]$}
+        \State $z_1 \gets \frac{b_j + a_j - 2b_i}{b_j - a_j}$
+        \State $z_2 \gets \frac{b_j + a_j}{b_j - a_j}$
+        \State $p_j \gets P[j]$
+        \State $\epsilon_i \gets \epsilon_i - p_j \left(\ln(z_1^2 -1) - \ln\left(z_2 + \sqrt{z_2^2 -1}\right)\right)$
         \EndFor
-        \State $m_{N_{\text{clusters}}} \gets \sum_{i=1}^{N_{\text{clusters}}} P[i]$
+        \State $p_i \gets \left\lceil\log_{f_i}\left(\frac{\epsilon_i}{2}\right)\right\rceil$
+        \State $P \gets P \cup \langle p_i \rangle$
+        \EndFor
+        \State $m_{N_{\text{clusters}}} \gets N_{st} + \sum_{i=1}^{N_{\text{clusters}}} P[i]$
         \State \Return $m_{N_{\text{clusters}}}$
     \end{algorithmic}
     \label{alg:multi_cluster_bound}
 \end{algorithm}
 
-\section{Algorithm for sharpened CG bound}\label{sec:cg_sharpened_convrate_multiple_clusters_algorithm}
+\section{Algorithm for sharpened CG bound}\label{sec:cg_iteration_bound_algorithm}
 In this section we combine the findings of \cref{sec:performance_ratio,sec:multiple_clusters} to derive a flexible algorithm for determining a sharpened CG bound. The idea is to use a simple algorithm to split the eigenspectrum into two clusters. Then, we calculate the left and right cluster condition numbers $\kappa_l$ and $\kappa_r$ and check if the approximate threshold condition in \cref{eq:threshold_inequality_explicit_expansion} is satisfied. In fact, the algorithm will recursively apply the previous two steps, stopping only when the threshold condition is not satisfied. The result is a list of indices at which to split the eigenspectrum, yielding an ordered set of clusters $\langle[a_i, b_i]\rangle_{i=1}^{N_{\text{clusters}}}$, where $N_{\text{clusters}}$ is the number of clusters. Finally, the algorithm computes the Chebyshev degrees $p_i$ for each cluster using \cref{eq:chebyshev_degree_p_i_explicit} and sums these up to obtain the sharpened CG bound $m_{N_{\text{clusters}}}$.
 
 Given an eigenspectrum $\sigma = \{\lambda_1, \lambda_2, \ldots, \lambda_n\}$ with $0 < \lambda_1 \leq \lambda_2 \leq \cdots \leq \lambda_n$, we need to determine a split point. We choose to split the eigenspectrum at the \textit{largest logarithmic gap} between consecutive eigenvalues.
@@ -409,11 +461,11 @@ Given an eigenspectrum $\sigma = \{\lambda_1, \lambda_2, \ldots, \lambda_n\}$ wi
         \State \textbf{Output:} Split index $k^*$ such that clusters are $\langle\lambda_1, \ldots, \lambda_{k^*}\rangle$ and $\langle\lambda_{k^*+1}, \ldots, \lambda_n\rangle$
         \State Initialize $\text{max\_gap} \gets 0$, $k^* \gets 1$
         \For{$i = 1$ to $n-1$}
-            \State Compute logarithmic gap: $g_i \gets \ln(\lambda_{i+1}) - \ln(\lambda_i) = \ln\left(\frac{\lambda_{i+1}}{\lambda_i}\right)$
-            \If{$g_i > \text{max\_gap}$}
-                \State $\text{max\_gap} \gets g_i$
-                \State $k^* \gets i$
-            \EndIf
+        \State Compute logarithmic gap: $g_i \gets \ln(\lambda_{i+1}) - \ln(\lambda_i) = \ln\left(\frac{\lambda_{i+1}}{\lambda_i}\right)$
+        \If{$g_i > \text{max\_gap}$}
+        \State $\text{max\_gap} \gets g_i$
+        \State $k^* \gets i$
+        \EndIf
         \EndFor
         \State \Return $k^*$
     \end{algorithmic}
@@ -432,9 +484,9 @@ Recursive application of \cref{alg:split_eigenspectrum} with stopping criterion 
         \State $\kappa_l \gets \frac{\lambda_{k^*}}{\lambda_1}$
         \State $\kappa_r \gets \frac{\lambda_n}{\lambda_{k^*+1}}$
         \If{$\kappa > T^{(0)}(\kappa_l,\kappa_r)$}
-            \State \Return $\operatorname{PartitionEigenspectrum}(\sigma_{\leq k^*}) \cup k^* + 1 + \operatorname{PartitionEigenspectrum}(\sigma_{>k^*})$
+        \State \Return $\operatorname{PartitionEigenspectrum}(\sigma_{\leq k^*}) \cup k^* + 1 + \operatorname{PartitionEigenspectrum}(\sigma_{>k^*})$
         \Else
-            \State \Return $\langle n \rangle$ \Comment{No further partitioning needed, return last index}
+        \State \Return $\langle n \rangle$ \Comment{No further partitioning needed, return last index}
         \EndIf
     \end{algorithmic}
     \label{alg:partition_eigenspectrum}
@@ -450,8 +502,8 @@ Finally, we can combine the partitioning from \cref{alg:partition_eigenspectrum}
         \State Initialize $\text{clusters} \gets \emptyset$, $k_a \gets 1$
         \State $K^* \gets \operatorname{PartitionEigenspectrum}(\sigma)$
         \For{$k_b \in K^*$}
-            \State $\text{clusters} \gets \text{clusters} \cup \langle[\sigma[k_a], \sigma[k_b]]\rangle$
-            \State $k_a \gets k_b + 1$
+        \State $\text{clusters} \gets \text{clusters} \cup \langle[\sigma[k_a], \sigma[k_b]]\rangle$
+        \State $k_a \gets k_b + 1$
         \EndFor
         \State \Return $\operatorname{MultiClusterCGIterationBound}(\text{clusters}, \epsilon)$
     \end{algorithmic}

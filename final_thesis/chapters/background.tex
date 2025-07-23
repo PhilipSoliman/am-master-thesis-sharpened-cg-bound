@@ -324,7 +324,7 @@ From \cref{th:cg_convergence_rate_bound} and \cref{def:cg_convergence_criterion}
 \end{equation*}
 such that number of iterations $m$ is bounded by
 \begin{equation}
-  m \leq \left\lceil\log_f\left(\frac{\epsilon}{2}\right)\right\rceil = \textrm{int}\left[\log_f\left(\frac{\epsilon}{2}\right) + 1\right] = m_1,
+  m \leq \left\lceil\log_f\left(\frac{\epsilon}{2}\right)\right\rceil = \textrm{int}\left[\log_f\left(\frac{\epsilon}{2}\right) + 1\right],
   \label{eq:cg_convergence_rate_bound_iterations}
 \end{equation}
 where $f = \frac{\sqrt{\kappa} - 1}{\sqrt{\kappa} + 1} < 1$ \footnote{Note that the $\log(f)$ is negative, flipping in the inequality.} is the CG \textit{convergence rate}. Equation \ref{eq:cg_convergence_rate_bound_iterations} could in principle be used as a stopping criterion, but it is not practical, since we generally do not know the condition number $\kappa$ of $A$ a priori.
@@ -335,11 +335,11 @@ The iteration bound given in \cref{eq:cg_convergence_rate_bound_iterations} can 
 \]
 to write
 \[
-  \left(\frac{\sqrt{\kappa} - 1}{\sqrt{\kappa} + 1}\right)^{m_1} \leq \exp \left(-\frac{2m_1}{\sqrt{\kappa}}\right) \leq \frac{\epsilon}{2},
+  \left(\frac{\sqrt{\kappa} - 1}{\sqrt{\kappa} + 1}\right)^{m} \leq \exp \left(-\frac{2m}{\sqrt{\kappa}}\right) \leq \frac{\epsilon}{2},
 \]
 which can be rearranged to give
 \begin{equation}
-    m \leq \left\lceil\frac{\sqrt{\kappa}}{2}\ln\left(\frac{2}{\epsilon}\right)\right\rceil = \textrm{int}\left[\frac{\sqrt{\kappa}}{2}\ln\left(\frac{2}{\epsilon}\right) + 1\right] = \tilde{m}_1.
+    m \leq \left\lceil\frac{\sqrt{\kappa}}{2}\ln\left(\frac{2}{\epsilon}\right)\right\rceil = \left\lfloor\frac{\sqrt{\kappa}}{2}\ln\left(\frac{2}{\epsilon}\right) + 1\right\rfloor = m_1.
   \label{eq:cg_convergence_rate_bound_iterations_approx}
 \end{equation}
 Equation \ref{eq:cg_convergence_rate_bound_iterations_approx} is the one used in the introduction to discuss CG's complexity.
