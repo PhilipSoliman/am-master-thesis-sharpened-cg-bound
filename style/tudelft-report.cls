@@ -24,6 +24,7 @@
 \RequirePackage{booktabs}   % Publication quality tables
 \RequirePackage{longtable}  % Allow tables to flow over page boundaries
 \RequirePackage{multirow}   % Create tabular cells spanning multiple rows
+\RequirePackage{varwidth} 
 
 \RequirePackage{graphicx}   % Enhanced support for images
 \RequirePackage{float}      % Improved interface for floating objects
