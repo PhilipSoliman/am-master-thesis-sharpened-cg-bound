@@ -54,13 +54,9 @@ def generate_iteration_bound_table(
         "$m_{N_{\\text{tail-cluster}}}$",
         "$m_{\\text{estimate}}$",
     ]
-    cidx = pd.MultiIndex.from_arrays(
-        [
-            ["$m$"] + bounds + ["iter."],
-        ]
-    )
+    cidx = pd.Index(["$m$"] + bounds + ["\\textbf{iter.}"])
     meshes_names = [
-        f"$H=1/{int(1 / mesh_params.coarse_mesh_size)}$" for mesh_params in MESHES
+        f"$\\mathbf{{H=1/{int(1 / mesh_params.coarse_mesh_size)}}}$" for mesh_params in MESHES
     ]
     coarse_space_names = [
         coarse_space_cls.SHORT_NAME for _, coarse_space_cls in PRECONDITIONERS
@@ -163,7 +159,7 @@ def generate_iteration_bound_table(
     # get styler
     styler = df.style
 
-    # set precision for all columns
+    # set number precision and thousands format for all columns
     styler.format(precision=0, na_rep="-", thousands=",")
 
     # apply background gradient to the bound columns
@@ -186,12 +182,8 @@ def generate_iteration_bound_table(
             gmap=score,
         ).apply(subset=subset, func=unmark_nan)
 
-    # rotate bound and iter column headers
-    # styler.map_index(
-    #     lambda v: "rotatebox:{45}--rwrap--latex;font-weight: bold;", level=1, axis=1
-    # )
-    styler.map_index(lambda v: "font-weight: bold;", level=0, axis=0)
-    styler.map_index(lambda v: "font-weight: bold;", level=1, axis=0)
+    # (Optional) set bold font for indices with plain text names (does not apply to LaTeX)
+    # styler.map_index(lambda v: "font-weight: bold;", level=1, axis=0)
 
     # table file path
     Nc = int(1 / mesh_params.coarse_mesh_size)
@@ -199,12 +191,10 @@ def generate_iteration_bound_table(
 
     # table caption
     caption = (
-        f"PCG iteration bounds for solving the model diffusion problem with coefficient function {coef_func.latex}. Bounds are based on approximate spectra (Ritz values) obtained during the initial PCG iterations and are show for meshes "
+        f"PCG iteration bounds {', '.join(bounds)} for solving the model diffusion problem with coefficient function {coef_func.latex}. Bounds are based on approximate spectra (Ritz values) obtained during the initial PCG iterations and are shown for meshes "
         f"{', '.join(meshes_names)} "
-        f"and 2-OAS preconditioners with {', '.join(coarse_space_names)} coarse spaces."
-        " The $\\textbf{bound}$ columns show the values of the CG iteration bounds "
-        f"{', '.join(bounds)}"
-        " and the $\\textbf{iter.}$ columns show the iteration at which those bounds are obtained."
+        f"and 2-OAS preconditioners with {', '.join(coarse_space_names)} coarse spaces. "
+        "The $\\textbf{iter.}$ column shows the iteration at which the bounds are obtained."
     )
 
     styler.to_latex(
