@@ -14,8 +14,8 @@ from hcmsfem.logger import LOGGER, PROGRESS
 from hcmsfem.solvers import (
     CGIterationBound,
     CustomCG,
-    mixed_sharpened_cg_iteration_bound,
-    sharpened_cg_iteration_bound,
+    multi_cluster_cg_iteration_bound,
+    multi_tail_cluster_cg_iteration_bound,
 )
 
 # tolerance
@@ -66,14 +66,14 @@ def calculate_sharpened_bound_vs_iterations():
                     # loop over CG iterations
                     num_iterations = min(N_ITERATIONS, len(alpha) - 1)
                     eigenvalue_task = progress.add_task(
-                        f"Calculating upperbound",
+                        f"Loop over CG iterations",
                         total=num_iterations,
                     )
                     eigenvalue_desc = (
                         progress.get_description(eigenvalue_task) + " ({})"
                     )
-                    niters_sharp = np.zeros(num_iterations, dtype=int)
-                    niters_sharp_mixed = np.full(num_iterations, np.nan, dtype=float)
+                    niters_multi_cluster = np.zeros(num_iterations, dtype=int)
+                    niters_tail_cluster = np.full(num_iterations, np.nan, dtype=float)
                     cg_bound = CGIterationBound(
                         log_rtol=LOG_RTOL, exact_convergence=False
                     )
@@ -100,21 +100,21 @@ def calculate_sharpened_bound_vs_iterations():
                         progress.update(
                             eigenvalue_task,
                             description=eigenvalue_desc.format(
-                                "applying sharpened bound(s)"
+                                "applying sharpened bounds"
                             ),
                         )
 
                         # calculate sharpened bound
-                        niter_sharp = sharpened_cg_iteration_bound(
+                        niter_multi_cluster = multi_cluster_cg_iteration_bound(
                             eigenvalues, log_rtol=LOG_RTOL, exact_convergence=False
                         )
-                        niters_sharp[j] = niter_sharp
+                        niters_multi_cluster[j] = niter_multi_cluster
 
                         # calculate sharpened mixed bound
-                        niter_sharp_mixed = mixed_sharpened_cg_iteration_bound(
+                        niter_tail_cluster = multi_tail_cluster_cg_iteration_bound(
                             eigenvalues, log_rtol=LOG_RTOL, exact_convergence=False
                         )
-                        niters_sharp_mixed[j] = niter_sharp_mixed
+                        niters_tail_cluster[j] = niter_tail_cluster
 
                         # update CG iteration bound
                         if j % UPDATE_FREQUENCY == 0:
@@ -146,8 +146,8 @@ def calculate_sharpened_bound_vs_iterations():
                         fp,
                         alpha=array_zip["alpha"],
                         beta=array_zip["beta"],
-                        niters_sharp=niters_sharp,
-                        niters_sharp_mixed=niters_sharp_mixed,
+                        niters_multi_cluster=niters_multi_cluster,
+                        niters_tail_cluster=niters_tail_cluster,
                         eigenvalues=array_zip["eigenvalues"],
                         classic_bound=classic_bound,
                         multi_cluster_bound=multi_cluster_bound,

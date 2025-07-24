@@ -15,7 +15,7 @@ from hcmsfem.cli import get_cli_args
 from hcmsfem.logger import LOGGER, PROGRESS
 from hcmsfem.meshes import DefaultQuadMeshParams
 from hcmsfem.plot_utils import save_latex_figure, set_mpl_cycler, set_mpl_style
-from hcmsfem.solvers import mixed_sharpened_cg_iteration_bound
+from hcmsfem.solvers import multi_tail_cluster_cg_iteration_bound
 
 PLOT_MESHES = [DefaultQuadMeshParams.Nc8, DefaultQuadMeshParams.Nc64]
 SHOW_BOUNDS = False
@@ -72,8 +72,8 @@ def plot_sharpened_bound_vs_iterations(
             if fp.exists():
                 # Load the alpha and beta arrays from the saved numpy file
                 array_zip = np.load(fp)
-                niters_sharp = array_zip["niters_sharp"]
-                niters_sharp_mixed = array_zip["niters_sharp_mixed"]
+                niters_multi_cluster = array_zip["niters_multi_cluster"]
+                niters_tail_cluster = array_zip["niters_tail_cluster"]
 
                 # eigenvalues at convergence
                 convergence_eigenvalues = array_zip["eigenvalues"]
@@ -89,8 +89,8 @@ def plot_sharpened_bound_vs_iterations(
                 ax,
                 shorthand,
                 convergence_eigenvalues,
-                niters_sharp,
-                niters_sharp_mixed,
+                niters_multi_cluster,
+                niters_tail_cluster,
                 show_bounds,
             )
 
@@ -109,8 +109,8 @@ def plot_bounds(
     ax,
     shorthand,
     convergence_eigenvalues,
-    niters_sharp,
-    niters_sharp_mixed,
+    niters_multi_cluster,
+    niters_tail_cluster,
     show_bounds: bool,
     n_iters=N_ITERATIONS,
     moving_avg_window=MOVING_AVG_WINDOW,
@@ -118,20 +118,19 @@ def plot_bounds(
     # get number of iterations to plot
     n_iters_plot = min(len(convergence_eigenvalues) - 1, n_iters)
 
-    # plot the two versions of the sharpened bound
-    sharp_iters = niters_sharp
+    # plot multi-cluster bound
     sharp_line = ax.plot(
         range(n_iters_plot),
-        sharp_iters[:n_iters_plot],
+        niters_multi_cluster[:n_iters_plot],
         marker="v" if show_bounds else None,
         linestyle="None",
         markersize=3,
     )
 
-    sharp_mixed_iters = niters_sharp_mixed
+    # plot tail-cluster bound
     sharp_mixed_line = ax.plot(
         range(n_iters_plot),
-        sharp_mixed_iters[:n_iters_plot],
+        niters_tail_cluster[:n_iters_plot],
         marker="^" if show_bounds else None,
         linestyle="None",
         markersize=3,
@@ -140,7 +139,7 @@ def plot_bounds(
     # plot average of sharpened bounds
     ax.plot(
         range(n_iters_plot),
-        (sharp_iters[:n_iters_plot] + sharp_mixed_iters[:n_iters_plot]) / 2,
+        (niters_multi_cluster[:n_iters_plot] + niters_tail_cluster[:n_iters_plot]) / 2,
         label=f"{shorthand} (2-AVG)",
         linestyle="--",
         color="blue",
@@ -149,7 +148,7 @@ def plot_bounds(
     # plot moving min of sharp bound
     moving_min_sharp = np.min(
         np.lib.stride_tricks.sliding_window_view(
-            sharp_iters[:n_iters_plot], moving_avg_window
+            niters_multi_cluster[:n_iters_plot], moving_avg_window
         ),
         axis=1,
     )
@@ -164,7 +163,7 @@ def plot_bounds(
     # plot moving min of sharp mixed bound
     moving_min_sharp_mixed = np.min(
         np.lib.stride_tricks.sliding_window_view(
-            sharp_mixed_iters[:n_iters_plot], moving_avg_window
+            niters_tail_cluster[:n_iters_plot], moving_avg_window
         ),
         axis=1,
     )
@@ -188,7 +187,7 @@ def plot_bounds(
 
     # plot upper bound at convergence
     ax.axhline(
-        mixed_sharpened_cg_iteration_bound(
+        multi_tail_cluster_cg_iteration_bound(
             convergence_eigenvalues, log_rtol=LOG_RTOL, exact_convergence=False
         ),
         linestyle="--",
@@ -198,7 +197,7 @@ def plot_bounds(
 
     # plot actual number of iterations
     ax.axhline(
-        len(convergence_eigenvalues) - 1,
+        len(convergence_eigenvalues),
         linestyle="-",
         color=ax.lines[-1].get_color(),
         linewidth=0.8,
@@ -269,7 +268,7 @@ if ARGS.generate_output:
         )
         fn = Path(__file__).name.replace("_fig.py", f"_{shorthand}")
         save_latex_figure(fn, fig)
-if ARGS.show_output:
+if True:  # ARGS.show_output:
     figs = []
     for preconditioner in PRECONDITIONERS:
         fig, _ = plot_sharpened_bound_vs_iterations(

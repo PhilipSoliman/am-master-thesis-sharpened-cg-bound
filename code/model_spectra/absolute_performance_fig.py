@@ -22,8 +22,8 @@ from hcmsfem.preconditioners import (
 from hcmsfem.problems import CoefFunc
 from hcmsfem.solvers import (
     classic_cg_iteration_bound,
-    mixed_sharpened_cg_iteration_bound,
-    sharpened_cg_iteration_bound,
+    multi_cluster_cg_iteration_bound,
+    multi_tail_cluster_cg_iteration_bound,
 )
 
 # define coefficient functions to use
@@ -63,7 +63,8 @@ def plot_absolute_performance(
     # to differentiate between actual iterations, classical and sharpened bounds
     iter_colors = [None] * 4
     iter_markers = [".", "x", "^", "o"]
-    iter_linestyles = ["-", "--", "-.", ":"]
+    # Use visually distinct linestyles: solid, dashed, dotted, dash-dot-dot
+    iter_linestyles = ["-", "--", ":", "-."]
 
     # preconditioner shorthand
     shorthand = f"{preconditioner_cls.SHORT_NAME}-{coarse_space_cls.SHORT_NAME}"
@@ -72,8 +73,8 @@ def plot_absolute_performance(
         LOGGER.debug(f"Processing coefficient function: {coef_func.short_name}")
         niters = []
         niters_classical = []
-        niters_sharpened = []
-        niters_sharpened_mixed = []
+        niters_multi_cluster = []
+        niters_tail_cluster = []
         for mesh_params in MESHES:
             LOGGER.debug(f"Processing mesh H = {1/mesh_params.coarse_mesh_size:.0f}")
 
@@ -100,21 +101,21 @@ def plot_absolute_performance(
                 )
 
                 # get sharpened bound
-                niters_sharpened.append(
-                    sharpened_cg_iteration_bound(
+                niters_multi_cluster.append(
+                    multi_cluster_cg_iteration_bound(
                         eigenvalues, log_rtol=LOG_RTOL, exact_convergence=False
                     )
                 )
 
                 # get mixed sharpened bound
-                niters_sharpened_mixed.append(
-                    mixed_sharpened_cg_iteration_bound(
+                niters_tail_cluster.append(
+                    multi_tail_cluster_cg_iteration_bound(
                         eigenvalues, log_rtol=LOG_RTOL, exact_convergence=False
                     )
                 )
 
                 LOGGER.debug(
-                    f"niters: {niters[-1]}, classical: {niters_classical[-1]}, improved: {niters_sharpened[-1] if niters_sharpened[-1] is not None else 'N/A'}"
+                    f"niters: {niters[-1]}, classical: {niters_classical[-1]}, improved: {niters_multi_cluster[-1] if niters_multi_cluster[-1] is not None else 'N/A'}"
                 )
 
             else:
@@ -151,33 +152,33 @@ def plot_absolute_performance(
         else:
             niters_classical_line[0].set_color(iter_colors[1])
 
-        # plot improved bound
-        niters_sharpened_line = ax.plot(
+        # plot multi-cluster bound
+        niters_multi_cluster_line = ax.plot(
             XTICK_LOCS,
-            niters_sharpened,
+            niters_multi_cluster,
             linestyle=iter_linestyles[2],
             marker=iter_markers[2],
             alpha=0.75,
             label="$m_{N_{\\mathrm{cluster}}}$",
         )
         if iter_colors[2] is None:
-            iter_colors[2] = niters_sharpened_line[0].get_color()
+            iter_colors[2] = niters_multi_cluster_line[0].get_color()
         else:
-            niters_sharpened_line[0].set_color(iter_colors[2])
+            niters_multi_cluster_line[0].set_color(iter_colors[2])
 
-        # plot mixed sharpened bound
-        niters_sharpened_mixed_line = ax.plot(
+        # plot tail-cluster bound
+        niters_tail_cluster_line = ax.plot(
             XTICK_LOCS,
-            niters_sharpened_mixed,
-            linestyle=iter_linestyles[2],
-            marker=iter_markers[2],
+            niters_tail_cluster,
+            linestyle=iter_linestyles[3],
+            marker=iter_markers[3],
             alpha=0.75,
             label="$m_{N_{\\mathrm{tail-cluster}}}$",
         )
         if iter_colors[3] is None:
-            iter_colors[3] = niters_sharpened_mixed_line[0].get_color()
+            iter_colors[3] = niters_tail_cluster_line[0].get_color()
         else:
-            niters_sharpened_mixed_line[0].set_color(iter_colors[3])
+            niters_tail_cluster_line[0].set_color(iter_colors[3])
 
         # format the axes (all)
         ax.grid()
@@ -202,7 +203,7 @@ def plot_absolute_performance(
         ax.set_xticklabels(XTICKS, rotation=45, ha="right", fontsize=8)
 
     # add ylabel and legend to the first column axes
-    # axs[0].set_ylabel(shorthand, fontweight="bold", fontsize=FONTSIZE)
+    axs[0].set_ylabel(shorthand, fontweight="bold", fontsize=FONTSIZE)
 
     # add legend to the first plot
     if legend:

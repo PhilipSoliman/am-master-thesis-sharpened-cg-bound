@@ -24,10 +24,10 @@ from hcmsfem.problems import CoefFunc
 from hcmsfem.solvers import (
     CGIterationBound,
     CustomCG,
-    mixed_sharpened_cg_iteration_bound,
+    multi_cluster_cg_iteration_bound,
+    multi_tail_cluster_cg_iteration_bound,
     partition_eigenspectrum,
-    partition_mixed_eigenspectrum,
-    sharpened_cg_iteration_bound,
+    partition_eigenspectrum_tails,
 )
 
 # tolerance
@@ -102,8 +102,8 @@ for i, mesh_params in enumerate(MESHES):
                 total=num_iterations,
             )
             eigenvalue_desc = progress.get_description(eigenvalue_task) + " ({})"
-            niters_sharp = np.zeros(num_iterations, dtype=int)
-            niters_sharp_mixed = np.full(num_iterations, np.nan, dtype=float)
+            niters_multi_cluster = np.zeros(num_iterations, dtype=int)
+            niters_tail_cluster = np.full(num_iterations, np.nan, dtype=float)
             for k in range(num_iterations):
                 progress.update(
                     eigenvalue_task,
@@ -127,16 +127,16 @@ for i, mesh_params in enumerate(MESHES):
                 )
 
                 # calculate sharpened bound
-                niter_sharp = sharpened_cg_iteration_bound(
+                niter_multi_cluster = multi_cluster_cg_iteration_bound(
                     eigenvalues, log_rtol=LOG_RTOL, exact_convergence=False
                 )
-                niters_sharp[k] = niter_sharp
+                niters_multi_cluster[k] = niter_multi_cluster
 
                 # calculate sharpened mixed bound
-                niter_sharp_mixed = mixed_sharpened_cg_iteration_bound(
+                niter_tail_cluster = multi_tail_cluster_cg_iteration_bound(
                     eigenvalues, log_rtol=LOG_RTOL, exact_convergence=False
                 )
-                niters_sharp_mixed[k] = niter_sharp_mixed
+                niters_tail_cluster[k] = niter_tail_cluster
 
                 # update progress bar
                 progress.advance(eigenvalue_task)
@@ -157,8 +157,8 @@ for i, mesh_params in enumerate(MESHES):
             bound_ax,
             shorthand,
             array_zip["eigenvalues"],
-            niters_sharp,
-            niters_sharp_mixed,
+            niters_multi_cluster,
+            niters_tail_cluster,
             show_bounds=True,
             n_iters=N_ITERATIONS,
         )
@@ -189,7 +189,7 @@ for i, mesh_params in enumerate(MESHES):
             )
 
             # plot mixed partition indices
-            partition_indices_mixed = partition_mixed_eigenspectrum(
+            partition_indices_mixed = partition_eigenspectrum_tails(
                 spectrum, log_rtol=LOG_RTOL
             )
             spectra_ax.plot(
