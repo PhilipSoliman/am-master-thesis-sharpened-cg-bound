@@ -54,12 +54,9 @@ def generate_iteration_bound_table(
         "$m_{N_{\\text{tail-cluster}}}$",
         "$m_{\\text{estimate}}$",
     ]
-    bound_and_iter = ["bound", "iter."]
-    cidx = pd.MultiIndex.from_product([bounds, bound_and_iter])
     cidx = pd.MultiIndex.from_arrays(
         [
-            ["$m$"] + cidx.get_level_values(0).tolist(),
-            [""] + cidx.get_level_values(1).tolist(),
+            ["$m$"] + bounds + ["iter."],
         ]
     )
     meshes_names = [
@@ -92,79 +89,49 @@ def generate_iteration_bound_table(
                 m_multi_cluster = array_zip["multi_cluster_bound"]
                 m_tail_cluster = array_zip["tail_cluster_bound"]
                 m_estimate = array_zip["estimate"]
+                cluster_convergence_iterations = array_zip[
+                    "cluster_convergence_iterations"
+                ]
 
                 # determine the maximum number of iterations
+                _max_iters = min(N_ITERATIONS, round(m * max_iter_percentage))
                 _max_iters = (
-                    min(N_ITERATIONS, round(m * max_iter_percentage))
-                    if max_iters is None
-                    else max_iters
+                    min(_max_iters, max_iters) if max_iters is not None else _max_iters
+                )
+
+                # get most recent iteration for the bounds
+                if not np.any(cluster_convergence_iterations <= _max_iters):
+                    LOGGER.warning(
+                        "No convergence iterations found within the specified max_iters."
+                    )
+                    cluster_convergence_iterations = np.array([_max_iters])
+                mask = cluster_convergence_iterations <= _max_iters
+                iteration = (
+                    cluster_convergence_iterations[mask][-1] if np.any(mask) else None
                 )
 
                 # get most recent bounds but limited to max_iters
-                mask = (
-                    m_classic[:, 0] <= _max_iters
-                    if m_classic.size
-                    else np.array([], dtype=bool)
-                )
-                m_classic_i, m_classic_b = (
-                    m_classic[mask][-1] if np.any(mask) else (None, None)
-                )
-                diff_m_classic = (
-                    int(abs(m_classic_b - m)) if m_classic_b is not None else np.nan
-                )
+                m_classic_b = m_classic[iteration]
+                diff_m_classic = int(abs(m_classic_b - m))
 
-                mask = (
-                    m_multi_cluster[:, 0] <= _max_iters
-                    if m_multi_cluster.size
-                    else np.array([], dtype=bool)
-                )
-                m_multi_cluster_i, m_multi_cluster_b = (
-                    m_multi_cluster[mask][-1] if np.any(mask) else (None, None)
-                )
-                diff_m_multi_cluster = (
-                    int(abs(m_multi_cluster_b - m))
-                    if m_multi_cluster_b is not None
-                    else np.nan
-                )
+                m_multi_cluster_b = m_multi_cluster[iteration]
+                diff_m_multi_cluster = int(abs(m_multi_cluster_b - m))
 
-                mask = (
-                    m_tail_cluster[:, 0] <= _max_iters
-                    if m_tail_cluster.size
-                    else np.array([], dtype=bool)
-                )
-                m_tail_cluster_i, m_tail_cluster_b = (
-                    m_tail_cluster[mask][-1] if np.any(mask) else (None, None)
-                )
-                diff_m_tail_cluster = (
-                    int(abs(m_tail_cluster_b - m))
-                    if m_tail_cluster_b is not None
-                    else np.nan
-                )
+                m_tail_cluster_b = m_tail_cluster[iteration]
+                diff_m_tail_cluster = int(abs(m_tail_cluster_b - m))
 
-                mask = (
-                    m_estimate[:, 0] <= _max_iters
-                    if m_estimate.size
-                    else np.array([], dtype=bool)
-                )
-                m_estimate_i, m_estimate_b = (
-                    m_estimate[mask][-1] if np.any(mask) else (None, None)
-                )
-                diff_m_estimate = (
-                    int(abs(m_estimate_b - m)) if m_estimate_b is not None else np.nan
-                )
+                m_estimate_b = m_estimate[iteration]
+                diff_m_estimate = int(abs(m_estimate_b - m))
 
                 # construct row
                 data.append(
                     [
                         m,
                         m_classic_b,
-                        m_classic_i,
                         m_multi_cluster_b,
-                        m_multi_cluster_i,
                         m_tail_cluster_b,
-                        m_tail_cluster_i,
                         m_estimate_b,
-                        m_estimate_i,
+                        iteration,
                     ]
                 )
 
@@ -179,7 +146,7 @@ def generate_iteration_bound_table(
 
             else:
                 # Provide a clickable link to the script in the repo using Rich markup with absolute path
-                approx_path = Path(__file__).parent / "sharpened_bound_vs_iterations.py"
+                approx_path = Path(__file__).parent / "sharerations.py"
                 LOGGER.error(
                     f"File %s does not exist. Run '[link=file:{approx_path}]sharpened_bound_vs_iterations.py[/link]' first.",
                     fp,
@@ -204,7 +171,7 @@ def generate_iteration_bound_table(
         return [f"background-color: {low_colour}" if pd.isna(v) else "" for v in s]
 
     for i, idx in enumerate(df.index):
-        subset = pd.IndexSlice[[idx], pd.IndexSlice[:, "bound"]]
+        subset = pd.IndexSlice[[idx], pd.IndexSlice["bound"]]
         diff = differences[i]
         # rank differences from smallest to largest
         rank = rankdata(diff, method="dense") - 1  # substract 1 for 0-based index
