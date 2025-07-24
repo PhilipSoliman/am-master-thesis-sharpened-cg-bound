@@ -111,16 +111,16 @@ def generate_iteration_bound_table(
                 )
 
                 # get most recent bounds but limited to max_iters
-                m_classic_b = m_classic[iteration]
+                m_classic_b = m_classic[mask][-1]
                 diff_m_classic = int(abs(m_classic_b - m))
 
-                m_multi_cluster_b = m_multi_cluster[iteration]
+                m_multi_cluster_b = m_multi_cluster[mask][-1]
                 diff_m_multi_cluster = int(abs(m_multi_cluster_b - m))
 
-                m_tail_cluster_b = m_tail_cluster[iteration]
+                m_tail_cluster_b = m_tail_cluster[mask][-1]
                 diff_m_tail_cluster = int(abs(m_tail_cluster_b - m))
 
-                m_estimate_b = m_estimate[iteration]
+                m_estimate_b = m_estimate[mask][-1]
                 diff_m_estimate = int(abs(m_estimate_b - m))
 
                 # construct row
@@ -171,7 +171,7 @@ def generate_iteration_bound_table(
         return [f"background-color: {low_colour}" if pd.isna(v) else "" for v in s]
 
     for i, idx in enumerate(df.index):
-        subset = pd.IndexSlice[[idx], pd.IndexSlice["bound"]]
+        subset = pd.IndexSlice[[idx], bounds]
         diff = differences[i]
         # rank differences from smallest to largest
         rank = rankdata(diff, method="dense") - 1  # substract 1 for 0-based index
@@ -191,7 +191,7 @@ def generate_iteration_bound_table(
     #     lambda v: "rotatebox:{45}--rwrap--latex;font-weight: bold;", level=1, axis=1
     # )
     styler.map_index(lambda v: "font-weight: bold;", level=0, axis=0)
-    styler.map_index(lambda v: "font-weight: bold;", level=0, axis=1)
+    styler.map_index(lambda v: "font-weight: bold;", level=1, axis=0)
 
     # table file path
     Nc = int(1 / mesh_params.coarse_mesh_size)

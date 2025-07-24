@@ -127,20 +127,6 @@ def calculate_sharpened_bound_vs_iterations():
                     # show the CG iteration bound
                     cg_bound.show()
 
-                    # extract bounds as arrays
-                    classic_bound = np.array(
-                        [[*classic] for classic in cg_bound.classic_l]
-                    )
-                    multi_cluster_bound = np.array(
-                        [[*multi_cluster] for multi_cluster in cg_bound.multi_cluster_l]
-                    )
-                    tail_cluster_bound = np.array(
-                        [[*tail_cluster] for tail_cluster in cg_bound.tail_cluster_l]
-                    )
-                    estimate = np.array(
-                        [[*estimate] for estimate in cg_bound.estimate_l]
-                    )
-
                     # save arrays
                     np.savez(
                         fp,
@@ -149,10 +135,11 @@ def calculate_sharpened_bound_vs_iterations():
                         niters_multi_cluster=niters_multi_cluster,
                         niters_tail_cluster=niters_tail_cluster,
                         eigenvalues=array_zip["eigenvalues"],
-                        classic_bound=classic_bound,
-                        multi_cluster_bound=multi_cluster_bound,
-                        tail_cluster_bound=tail_cluster_bound,
-                        estimate=estimate,
+                        classic_bound=cg_bound.classic_l,
+                        multi_cluster_bound=cg_bound.multi_cluster_l,
+                        tail_cluster_bound=cg_bound.tail_cluster_l,
+                        estimate=cg_bound.estimate_l,
+                        cluster_convergence_iterations=cg_bound.iterations,
                     )
 
                 else:
