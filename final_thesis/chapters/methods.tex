@@ -314,7 +314,7 @@ Finally, we found that the tail-cluster bound is sharper than the classical boun
     \left\lceil\log_{\frac{4\kappa}{\kappa_l}}\left(\frac{2}{\epsilon}\right)\right\rceil \leq p \leq \left\lfloor\sqrt{\frac{\kappa}{\kappa_r}}\log_{\frac{4\kappa}{\kappa_l}}\left(\frac{2}{\epsilon}\right)\right\rfloor.
     \label{eq:tail_cluster_bound_condition}
 \end{equation}
-The left-hand side inequality of \cref{eq:tail_cluster_bound_condition} ensures that the expansion made in \cref{eq:performance_ratio_tail_cluster} is valid. Notice that for $\epsilon = 10^{-8}$, $\kappa\approx 10^{8}$ and $\kappa_l\approx 10$ this left-hand side of \cref{eq:tail_cluster_bound_condition} is approximately equal to 1, in which case we can neglect it as a condition on $p$ as $p\geq 1$ is always satisfied. We will reconsider the validity of this simplification in \cref{ch:results}, but for now we say that the tail-cluster bound is sharper than the classical bound if \cref{eq:tail_cluster_bound_sparsity_condition} holds.
+The left-hand side inequality of \cref{eq:tail_cluster_bound_condition} ensures that the expansion made in \cref{eq:performance_ratio_tail_cluster} is valid and can be interpreted as a minimum \textit{density condition} on $p$. Notice that for $\epsilon = 10^{-8}$, $\kappa\approx 10^{8}$ and $\kappa_l\approx 10$ this left-hand side of \cref{eq:tail_cluster_bound_condition} is approximately equal to 1, in which case we can neglect it as a condition on $p$ as $p\geq 1$ is always satisfied. We will reconsider the validity of this simplification in \cref{ch:results}, but for now we say that the tail-cluster bound is sharper than the classical bound if \cref{eq:tail_cluster_bound_sparsity_condition} holds.
 
 \section{Generalization to multiple clusters}\label{sec:multiple_clusters}
 The technique outlined in \cref{sec:cg_sharpened_convrate} starts at the left most cluster $[a,b]$, finds the Chebyshev degree $p_1=p$ satisfying \cref{eq:chebyshev_degree_p}, moves to the neighboring cluster $[c,d]$ and finds the Chebyshev degree $p_2 = m_2 - p$ satisfying \cref{eq:relative_error_bound_mp}. Rewriting \cref{eq:relative_error_bound_mp} gives the following equation for $p_2$:
@@ -420,7 +420,7 @@ where $\Lambda_{t} = \cup_{j} \Lambda_{t_j}$. Hence, we recover $r_t(x)$ from \c
 The degree of $r_{t}$ is equal to the number of eigenvalues in $\Lambda_{t}$, which we denote as $N_{t}$. Now $N_{t}$, unlike the degrees $p_i$ of the Chebyshev polynomials $C^{(i)}_{p_i}$ corresponding to the clusters, is fixed. Therefore, the contribution of the tail clusters to the CG bound is simply $N_{t}$. However, $r_{t}$ may still influence the degrees $p_i$ through its contribution to the global residual polynomial $r(x)$ defined in \cref{eq:residual_polynomial_tail_clusters_global}. In particular, we rewrite \cref{eq:chebyshev_degree_p_i_explicit} as
 \begin{equation}
     p_i \leq \left\lceil\log_{f_i}{\frac{\epsilon}{2}} + \sum_{j=1}^{i-1} p_j\log_{f_i}{\frac{\zeta^{(j)}_2}{\zeta^{(i,j)}_1}} - \sum_{\lambda\in\Lambda_{t}}
-    \log_{f_i}\left(1-\frac{h_i}{\lambda}\right)\right\rceil,
+    \log_{f_i}\left|1-\frac{h_i}{\lambda}\right|\right\rceil,
 \end{equation}
 where
 \[
@@ -440,12 +440,12 @@ We summarize the techniques outlined in this section in \cref{alg:generalized_cg
     \begin{algorithmic}[1]
         \State \textbf{Input:} Sorted set $\text{clusters} = \langle[a_1, b_1], [a_2, b_2], \ldots, [a_{N_{\text{clusters}}}, b_{N_{\text{clusters}}}]\rangle$, a set of tail eigenvalues $\Lambda_t$ and relative error tolerance $\epsilon$
         \State \textbf{Output:} Generalized multi-tail-cluster CG iteration bound $m_N$
-        \State Set $N_{t} \gets |\Lambda_{t}|$
-        \State Initialize $P \gets \emptyset$
+        \State Initialize $N_{t} \gets |\Lambda_{t}|$, $P \gets \emptyset$
+        \State Construct the residual polynomial $\ln|r_{t}|(x) = \sum_{\lambda\in\Lambda_{t}} \ln\left|1 - \frac{x}{\lambda}\right|$
         \For{$[a_i, b_i] \in \text{clusters}$}
         \State $f_i \gets \frac{\sqrt{\kappa_i} - 1}{\sqrt{\kappa_i} + 1}$, where $\kappa_i = \frac{b_i}{a_i}$
-        \State $r_{t,\text{max}} \gets \max\{\left|r_{t}(x)\right| : x \in [a_i, b_i]\}$
-        \State $\epsilon_i \gets \ln(\epsilon) - \ln(r_{t,\text{max}})$
+        \State $\ln|r_{t}|_{\text{max}} \gets \max\{\ln|r_{t}|(x) : x \in [a_i, b_i]\}$
+        \State $\epsilon_i \gets \ln(\epsilon) - \ln|r_{t}|_{\text{max}}$
         \For{$[a_j, b_j] \in \text{clusters}_{<i}$} \Comment{$\text{clusters}_{<i}$ = all clusters to the left of $[a_i, b_i]$}
         \State $z_1 \gets \frac{b_j + a_j - 2b_i}{b_j - a_j}$
         \State $z_2 \gets \frac{b_j + a_j}{b_j - a_j}$
@@ -462,14 +462,14 @@ We summarize the techniques outlined in this section in \cref{alg:generalized_cg
 \end{algorithm}
 
 \section{Algorithms for sharpened CG iteration bounds}\label{sec:cg_iteration_bound_algorithm}
-In this section we combine the findings of \cref{sec:performance_ratio,sec:tail_cluster_bound_performance,sec:multiple_clusters} to derive a flexible algorithm for determining a sharpened CG bound. The main goal of the algorithms in this section is to partition a given eigenspectrum in such a way such that the resulting set of clusters and possibly tail eigenvalues can be fed into \cref{alg:generalized_cg_bound} to obtain $m_{N_{\text{clusters}}}$. However, to ensure that $m_{N_{\text{clusters}}} < m_1$ the partitioning of the eigenspectrum should satisfy the performance conditions derived in \cref{sec:performance_threshold,sec:tail_cluster_bound_performance}. 
+In this section we combine the findings of \cref{sec:performance_ratio,sec:tail_cluster_bound_performance,sec:multiple_clusters} to derive two flexible algorithms for determining a sharpened CG bound, \cref{alg:multi_cluster_cg_bound,alg:multi_tail_cluster_cg_bound}. The main goal of the algorithms in this section is to partition a given eigenspectrum in such a way such that the resulting set of clusters and possibly tail eigenvalues can be fed into \cref{alg:generalized_cg_bound} to obtain CG iteration bounds $m_{N_{\text{cluster}}}$ and $m_{N_{\text{tail-cluster}}}$. However, to ensure that $m_{N_{\text{cluster}}} < m_1$ and $m_{N_{\text{tail-cluster}}} < m_1$ the partitioning of the eigenspectrum should satisfy the performance conditions derived in \cref{sec:performance_threshold,sec:tail_cluster_bound_performance}, respectively.
 
 \subsection{Multi-cluster CG iteration bound}\label{sec:partition_eigenspectrum}
-Here we only consider partitioning a spectrum into clusters, that is we do not look for possible tail eigenvalues. Later in \cref{sec:partition_eigenspectrum_tail} we will see how to extend the algorithms we derive to the incorporate clusters of tail eigenvalues. 
+We start by exclusively partitioning a spectrum into clusters, that is we do not look for possible tail eigenvalues. Later in \cref{sec:partition_eigenspectrum_tail} we will see how to extend the algorithms we derive to the incorporate clusters of tail eigenvalues. 
 
-The idea is to use a simple algorithm to split an eigenspectrum into two clusters. Then, we calculate the left and right cluster condition numbers $\kappa_l$ and $\kappa_r$ and check if the approximate threshold condition in \cref{eq:threshold_inequality_explicit_expansion} is satisfied. In fact, the algorithm recursively applies the previous two steps, stopping only when the threshold condition is not satisfied. The result is a list of indices at which to split the eigenspectrum, yielding an ordered set of clusters $\langle[a_i, b_i]\rangle_{i=1}^{N_{\text{clusters}}}$, where $N_{\text{clusters}}$ is the number of clusters. Finally, we can use \cref{alg:generalized_cg_bound} to calculate the generalized CG iteration bound for a spectrum consisting of purely clusters, $m_{N_{\text{clusters}}}$.
+The idea is to use a simple algorithm to split an eigenspectrum into two clusters. Then, we calculate the left and right cluster condition numbers $\kappa_l$ and $\kappa_r$ and check if the approximate threshold condition in \cref{eq:threshold_inequality_explicit_expansion} is satisfied. In fact, the algorithm recursively applies the previous two steps, stopping only when the threshold condition is not satisfied. The result is a list of indices at which to split the eigenspectrum, yielding an ordered set of clusters $\langle[a_i, b_i]\rangle_{i=1}^{N_{\text{cluster}}}$, where $N_{\text{cluster}}$ is the number of clusters. Finally, we can use \cref{alg:generalized_cg_bound} to calculate the generalized CG iteration bound for a spectrum consisting of purely clusters, $m_{N_{\text{cluster}}}$.
 
-To that end, suppose we are given a sorted set of eigenvalues $\sigma = \langle\lambda_1, \lambda_2, \ldots, \lambda_n\rangle$ with $0 < \lambda_1 \leq \lambda_2 \leq \cdots \leq \lambda_n$. We need to find an \textit{optimal} way of splitting this set in two disjoin sets. In order to do so we turn to \cref{fig:two_cluster_bound_performance}, in which it is shown that the performance of the two-cluster bound $m_2$ relative to the classical bound $m_1$ for fixed $\kappa$ increases both with smaller $\kappa_l$ and $\kappa_r$. Therefore, we expect to get the greatest performance gain from splitting the spectrum between those eigenvalues that share the largest ratio. That is to say, we can always write 
+To that end, suppose we are given a sorted set of eigenvalues $\sigma = \langle\lambda_1, \lambda_2, \ldots, \lambda_n\rangle$ with $0 < \lambda_1 \leq \lambda_2 \leq \cdots \leq \lambda_n$. We need to find an \textit{optimal} way of splitting this set in two disjoint sets. In order to do so, we turn to \cref{fig:two_cluster_bound_performance}, in which it is shown that the performance of the two-cluster bound $m_2$ relative to the classical bound $m_1$ for fixed $\kappa$ increases both with smaller $\kappa_l$ and $\kappa_r$. Therefore, we expect to get the greatest performance gain from splitting the spectrum between those eigenvalues that share the largest ratio. That is to say, we can always write
 \[
     \kappa = \frac{\lambda_{k^*}}{\lambda_1}\frac{\lambda_{k^*+1}}{\lambda_{k^*}}\frac{\lambda_n}{\lambda_{k^*+1}} = \kappa_l\kappa_m\kappa_r,
 \]
@@ -530,10 +530,10 @@ Finally, we can combine the partitioning from \cref{alg:partition_eigenspectrum}
         \State $K^* \gets \operatorname{PartitionEigenspectrum}(\sigma)$
         \For{$k_b \in K^*$}
         \If{$k_a = k_b$}
-        \State $\Lambda_t \gets \Lambda_t \cup \{\sigma[k_a]\}$ \Comment{Single eigenvalue cluster, add to tail eigenvalues}
-        \State \textbf{continue} 
+            \State $\Lambda_t \gets \Lambda_t \cup \{\sigma[k_a]\}$ \Comment{Single eigenvalue cluster, add to tail eigenvalues}
+        \Else
+            \State $\text{clusters} \gets \text{clusters} \cup \langle[\sigma[k_a], \sigma[k_b]]\rangle$
         \EndIf
-        \State $\text{clusters} \gets \text{clusters} \cup \langle[\sigma[k_a], \sigma[k_b]]\rangle$
         \State $k_a \gets k_b + 1$
         \EndFor
         \State $m_{N_{\text{cluster}}} \gets \operatorname{GeneralizedCGIterationBound}(\text{clusters}, \Lambda_t, \epsilon)$
@@ -590,10 +590,9 @@ We are now in a position to formulate the final algorithm of this chapter, the m
         \State Initialize $\Lambda_t \gets \emptyset$, $I_t\gets\emptyset$, $\text{clusters} \gets \emptyset$, $k_a\gets 1$
         \State $K^* \gets \operatorname{PartitionEigenspectrumTails}(\sigma, \Lambda_t, I_t)$
         \For{$k_b \in K^*$}
-        \If{$k_a \in I_t$}
-            \State \textbf{continue} \Comment{Skip tail clusters, they are already added to $\Lambda_t$}
+        \If{$k_a \notin I_t$} \Comment{Cluster is \textbf{not} a tail cluster}
+            \State $\text{clusters} \gets \text{clusters} \cup \langle[\sigma[k_a], \sigma[k_b]]\rangle$
         \EndIf
-        \State $\text{clusters} \gets \text{clusters} \cup \langle[\sigma[k_a], \sigma[k_b]]\rangle$
         \State $k_a \gets k_b + 1$
         \EndFor
         \State $m_{N_{\text{tail-cluster}}} \gets \operatorname{GeneralizedCGIterationBound}(\text{clusters}, \Lambda_t, \epsilon)$
