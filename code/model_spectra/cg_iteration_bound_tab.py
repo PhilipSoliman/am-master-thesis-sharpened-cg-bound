@@ -56,7 +56,8 @@ def generate_iteration_bound_table(
     ]
     cidx = pd.Index(["$m$"] + bounds + ["\\textbf{iter.}"])
     meshes_names = [
-        f"$\\mathbf{{H=1/{int(1 / mesh_params.coarse_mesh_size)}}}$" for mesh_params in MESHES
+        f"$\\mathbf{{H=1/{int(1 / mesh_params.coarse_mesh_size)}}}$"
+        for mesh_params in MESHES
     ]
     coarse_space_names = [
         coarse_space_cls.SHORT_NAME for _, coarse_space_cls in PRECONDITIONERS
@@ -234,18 +235,33 @@ def generate_iteration_bound_table(
         atexit.register(cleanup_tmp)
 
 
+max_iters = 300
+max_iter_percentage = 0.6
 if CLI_ARGS.generate_output:
     generate_iteration_bound_table(CoefFunc.CONSTANT)
-    generate_iteration_bound_table(CoefFunc.THREE_LAYER_VERTEX_INCLUSIONS)
     generate_iteration_bound_table(
-        CoefFunc.EDGE_SLABS_AROUND_VERTICES_INCLUSIONS, max_iters=300
+        CoefFunc.THREE_LAYER_VERTEX_INCLUSIONS,
+        max_iters=max_iters,
+        max_iter_percentage=max_iter_percentage,
+    )
+    generate_iteration_bound_table(
+        CoefFunc.EDGE_SLABS_AROUND_VERTICES_INCLUSIONS,
+        max_iters=max_iters,
+        max_iter_percentage=max_iter_percentage,
     )
 elif CLI_ARGS.show_output:
     generate_iteration_bound_table(CoefFunc.CONSTANT, show=True)
     generate_iteration_bound_table(
-        CoefFunc.EDGE_SLABS_AROUND_VERTICES_INCLUSIONS, show=True
+        CoefFunc.THREE_LAYER_VERTEX_INCLUSIONS,
+        show=True,
+        max_iters=max_iters,
+        max_iter_percentage=max_iter_percentage,
     )
     generate_iteration_bound_table(
-        CoefFunc.THREE_LAYER_VERTEX_INCLUSIONS, show=True, max_iters=300
+        CoefFunc.EDGE_SLABS_AROUND_VERTICES_INCLUSIONS,
+        show=True,
+        max_iters=max_iters,
+        max_iter_percentage=max_iter_percentage,
     )
+
     input("Press Enter to exit...")
