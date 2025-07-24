@@ -18,7 +18,7 @@ from hcmsfem.plot_utils import save_latex_figure, set_mpl_cycler, set_mpl_style
 from hcmsfem.solvers import multi_tail_cluster_cg_iteration_bound
 
 PLOT_MESHES = [DefaultQuadMeshParams.Nc8, DefaultQuadMeshParams.Nc64]
-SHOW_BOUNDS = False
+SHOW_BOUNDS = True
 
 # set matplotlib style & cycler
 set_mpl_style()
@@ -268,7 +268,7 @@ if ARGS.generate_output:
         )
         fn = Path(__file__).name.replace("_fig.py", f"_{shorthand}")
         save_latex_figure(fn, fig)
-if True:  # ARGS.show_output:
+if ARGS.show_output:
     figs = []
     for preconditioner in PRECONDITIONERS:
         fig, _ = plot_sharpened_bound_vs_iterations(
