@@ -8,6 +8,7 @@ from typing import Optional
 import numpy as np
 import pandas as pd
 from matplotlib.colors import LinearSegmentedColormap
+from scipy.stats import rankdata
 from sharpened_bound_vs_iterations import (
     MESHES,
     N_ITERATIONS,
@@ -205,8 +206,12 @@ def generate_iteration_bound_table(
     for i, idx in enumerate(df.index):
         subset = pd.IndexSlice[[idx], pd.IndexSlice[:, "bound"]]
         diff = differences[i]
-        rank = np.argsort(np.argsort(diff))  # sort indices of differences
-        score = 1 - rank / len(differences[i])  # normalize to [0, 1]
+        # rank differences from smallest to largest
+        rank = rankdata(diff, method="dense") - 1  # substract 1 for 0-based index
+
+        # normalize the score to [0, 1]
+        n_unique = len(np.unique(diff))
+        score = 1 - rank / n_unique
         styler.background_gradient(
             cmap=two_color,
             subset=subset,
