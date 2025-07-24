@@ -1,1 +1,42 @@
 \chapter{Implementation}\label{ch:implementation}
+In this chapter we discuss the implementation of \cref{prob:elliptic_problem_discretized} and the PCG method used to solve it, together with the relevant preconditioners from \cref{sec:schwarz_methods,sec:tailored_coarse_spaces}. We narrow the scope of the family of problems described by \cref{prob:elliptic_problem_discretized} to three specific instances of the coefficient function $\mathcal{C}$. All implementations in this chapter, as well as the algorithms described in \cref{sec:cg_multi_cluster_bound_algorithm,sec:cg_iteration_bound_algorithm} are available in the online \href{https://github.com/PhilipSoliman/hcmsfem}{\textit{High-Contrast Multi-Scale FEM}} repository. For specific references to scripts or classes in the repository, we refer to the repository's top-level \texttt{README.md} file.
+
+\section{Implementation of the elliptic problem}\label{sec:implementation_elliptic_problem}
+We consider a square domain $\Omega = [0,1]^2$ and introduce two conforming quadrilateral meshes $Q_h$ and $Q_H$ with fine and coarse mesh sizes $h$ and $H$, respectively, where $h = H/2^r$ and $r\in\mathbb{N}$ a positive integer. We fix $r=4$ and limit our study to the set of meshes
+\begin{equation}
+    \mathcal{Q} = \{(Q_h, Q_H)\mid H\in\{1/4, 1/8, 1/16, 1/32, 1/64\}\}.
+    \label{eq:meshes}
+\end{equation}
+The \textit{fine} and \textit{coarse} meshes $Q_h, Q_H$ for $H=1/4$ are shown in \cref{fig:mesh_4}.
+\begin{figure}[H]
+    \centering
+    \includegraphics{mesh_and_coefficient_functions_meshes_and_domains.pdf}
+    \caption{Plot of the conforming fine and coarse meshes $Q_h$ and $Q_H$ for $H=1/4$ (\textbf{left}) and some of the overlapping subdomains $\Omega_i$ (\textbf{right}).}
+    \label{fig:mesh_4}
+\end{figure}
+Next, we construct a FE space $V_h$ from first order Legendre polynomials $\phi_i$ associated to each internal fine mesh vertex $v^h_i$ in $Q_h$ and locally defined on all quadrilateral elements $q_j$ sharing $v^h_i$. That is
+\[
+    \text{supp}(\phi_i) = \bigcup_{j: v^h_i\in q_j, q_j \in Q_h} q_j, \quad \forall i\in\{1,\ldots,n\}.
+\]
+This defines the stiffness matrix $A$ and load vector $b$ as specified in \cref{prob:elliptic_problem_discretized}.
+
+We construct for each fine mesh $Q_h$ three coefficient functions $\mathcal{C}_{\text{const}}\equiv 1$, $\mathcal{C}_{\text{3layer, vert}}$ and $\mathcal{C}_{\text{edge slabs, around vertices}}$, the latter two of which are high-contrast coefficient functions with a periodic structure, as shown in \cref{fig:coefficient_functions}. 
+\begin{figure}[H]
+    \includegraphics{mesh_and_coefficient_functions_3lvert.pdf}
+    \caption{Plot of the coefficient function $\mathcal{C}_{\text{3layer, vert}}$ and $\mathcal{C}_{\text{edge slabs, around vertices}}$ defined on the fine mesh $Q_h$ for $H=1/4$. The contrast is $\frac{\mathcal{C}_{\text{max}}}{\mathcal{C}_{\text{min}}} = 10^8$ for both coefficient functions.}
+    \label{fig:coefficient_functions}
+\end{figure}
+The coefficient functions $\mathcal{C}_{\text{3layer, vert}}$, $\mathcal{C}_{\text{edge slabs, around vertices}}$ are centered on or around those fine mesh vertices that lie on two coarse mesh edges $e_i^H\in Q_H$.
+
+Finally, it is important to note that the meshes $\mathcal{M}$, finite element space $V_h$ and coefficient functions in \cref{fig:coefficient_functions} are the same as the ones in \cite{ams_coarse_space_comp_study_Alves2024}.
+
+\section{Implementation of the PCG method}\label{sec:implementation_pcg}
+We implement a \ref{pcg_type:left} method to solve the linear system arising from the discretization of the elliptic problem. To that end we first decompose the fine mesh $Q_h$ into overlapping subdomains $\Omega_i$ to be used for the alternating Schwarz method, as visualized in \cref{fig:mesh_4}. Then, we construct preconditioners with a general form similar to \cref{eq:ASM_preconditioner_coarse}
+\[
+    M^{-1} = R_0^T A_0^{-1} R_0 + \sum_{i=1}^{N_{\text{sub}}} R_i^T A_i^{-1} R_i,
+\]
+where $R_i$ is the \textit{restriction operator} to and $A_i = R_i^T A R_i$ is the \textit{local operator} on $\Omega_i \ \forall i \geq 1$. Also, $N_{\text{sub}} = \left(\frac{1}{H}\right)^2$, or simply the number of coarse mesh elements in $Q_H$. Similarly, the \textit{coarse restriction} operator $R_0$ and corresponding \textit{coarse operator} $A_0 = R_0^T A R_0$ are constructed as discussed in \cref{sec:tailored_coarse_spaces}. We construct $R_0$ for the GDSW, RGDSW, and AMS coarse spaces, resulting in the following two-level overlapping Schwarz preconditioners
+\begin{equation}
+    \mathcal{M}^{-1} =  \left\{M^{-1}_{\text{2-OAS-GDSW}}, M^{-1}_{\text{2-OAS-RGDSW}}, M^{-1}_{\text{2-OAS-AMS}}\right\}.
+    \label{eq:preconditioners}
+\end{equation}
