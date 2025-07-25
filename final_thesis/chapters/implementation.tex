@@ -18,7 +18,7 @@ Next, we construct a FE space $V_h$ from first order Legendre polynomials $\phi_
 \[
     \text{supp}(\phi_i) = \bigcup_{j: v^h_i\in q_j, q_j \in Q_h} q_j, \quad \forall i\in\{1,\ldots,n\}.
 \]
-This defines the stiffness matrix $A$ and load vector $b$ as specified in \cref{prob:elliptic_problem_discretized}.
+This defines the stiffness matrix $A$ and load vector $\mathbf{b}$ as specified in \cref{prob:elliptic_problem_discretized}.
 
 We construct for each fine mesh $Q_h$ three coefficient functions $\mathcal{C}_{\text{const}}\equiv 1$, $\mathcal{C}_{\text{3layer, vert}}$ and $\mathcal{C}_{\text{edge slabs, around vertices}}$, the latter two of which are high-contrast coefficient functions with a periodic structure, as shown in \cref{fig:coefficient_functions}. 
 \begin{figure}[H]
@@ -35,7 +35,7 @@ We implement a \ref{pcg_type:left} method to solve the linear system arising fro
 \[
     M^{-1} = R_0^T A_0^{-1} R_0 + \sum_{i=1}^{N_{\text{sub}}} R_i^T A_i^{-1} R_i,
 \]
-where $R_i$ is the \textit{restriction operator} to and $A_i = R_i^T A R_i$ is the \textit{local operator} on $\Omega_i \ \forall i \geq 1$. Also, $N_{\text{sub}} = \left(\frac{1}{H}\right)^2$, or simply the number of coarse mesh elements in $Q_H$. Similarly, the \textit{coarse restriction} operator $R_0$ and corresponding \textit{coarse operator} $A_0 = R_0^T A R_0$ are constructed as discussed in \cref{sec:tailored_coarse_spaces}. We construct $R_0$ for the GDSW, RGDSW, and AMS coarse spaces, resulting in the following two-level overlapping Schwarz preconditioners
+where $R_i$ is the \textit{restriction operator} to and $A_i = R_i^T A R_i$ is the \textit{local operator} on $\Omega_i \ \forall i \geq 1$. Also, $N_{\text{sub}} = (1/H)^2$, or simply the number of coarse mesh elements in $Q_H$. Similarly, the \textit{coarse restriction} operator $R_0$ and corresponding \textit{coarse operator} $A_0 = R_0^T A R_0$ are constructed as discussed in \cref{sec:tailored_coarse_spaces}. We construct $R_0$ for the GDSW, RGDSW, and AMS coarse spaces, resulting in the following two-level overlapping Schwarz preconditioners
 \begin{equation}
     \mathcal{M}^{-1} =  \left\{M^{-1}_{\text{2-OAS-GDSW}}, M^{-1}_{\text{2-OAS-RGDSW}}, M^{-1}_{\text{2-OAS-AMS}}\right\}.
     \label{eq:preconditioners}

@@ -18,6 +18,7 @@ from sharpened_bound_vs_iterations import (
 
 from hcmsfem import LOGGER
 from hcmsfem.cli import CLI_ARGS
+from hcmsfem.plot_utils import CustomColors
 from hcmsfem.problems import CoefFunc
 from hcmsfem.root import get_venv_root
 
@@ -25,8 +26,8 @@ from hcmsfem.root import get_venv_root
 SAVE_DIR = get_venv_root() / "tables"
 
 # colour gradient for the table
-low_colour = "#e2e4fb"
-high_colour = "#405FE5"
+low_colour = CustomColors.SOFTSKY.value # "#e2e4fb"
+high_colour = CustomColors.RED.value # "#405FE5"
 two_color = LinearSegmentedColormap.from_list("twocolor", [low_colour, high_colour])
 
 
