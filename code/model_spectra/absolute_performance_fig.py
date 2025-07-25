@@ -100,14 +100,14 @@ def plot_absolute_performance(
                     )
                 )
 
-                # get sharpened bound
+                # get multi-cluster bound
                 niters_multi_cluster.append(
                     multi_cluster_cg_iteration_bound(
                         eigenvalues, log_rtol=LOG_RTOL, exact_convergence=False
                     )
                 )
 
-                # get mixed sharpened bound
+                # get tail-cluster bound
                 niters_tail_cluster.append(
                     multi_tail_cluster_cg_iteration_bound(
                         eigenvalues, log_rtol=LOG_RTOL, exact_convergence=False
@@ -216,18 +216,19 @@ def plot_absolute_performance(
 
 
 # main loop
-for i, ((preconditioner_cls, coarse_space_cls)) in enumerate(PRECONDITIONERS):
-    legend = False
-    # if coarse_space_cls == AMSCoarseSpace:
-    #     legend = True
-    fig = plot_absolute_performance(
-        preconditioner_cls,
-        coarse_space_cls,
-        legend=legend,
-    )
-    shorthand = f"{preconditioner_cls.SHORT_NAME}-{coarse_space_cls.SHORT_NAME}"
-    if CLI_ARGS.generate_output:
-        fn = Path(__file__).name.replace("_fig.py", f"_{shorthand}")
-        save_latex_figure(fn, fig)
-if CLI_ARGS.show_output:
-    plt.show()
+if __name__ == "__main__":
+    for i, ((preconditioner_cls, coarse_space_cls)) in enumerate(PRECONDITIONERS):
+        legend = False
+        # if coarse_space_cls == AMSCoarseSpace:
+        #     legend = True
+        fig = plot_absolute_performance(
+            preconditioner_cls,
+            coarse_space_cls,
+            legend=legend,
+        )
+        shorthand = f"{preconditioner_cls.SHORT_NAME}-{coarse_space_cls.SHORT_NAME}"
+        if CLI_ARGS.generate_output:
+            fn = Path(__file__).name.replace("_fig.py", f"_{shorthand}")
+            save_latex_figure(fn, fig)
+    if CLI_ARGS.show_output:
+        plt.show()
