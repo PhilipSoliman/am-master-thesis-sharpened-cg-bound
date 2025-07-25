@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import Type
 
+import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
 import numpy as np
 from approximate_spectra import (
@@ -36,6 +37,7 @@ COEF_FUNCS = [
 FIGWIDTH = 3
 FIGHEIGHT = 3
 FONTSIZE = 9
+LEGEND_SIZE = 0.3
 RECIPROCAL_COARSE_MESH_SIZES = [round(1 / mesh.coarse_mesh_size) for mesh in MESHES]
 XTICKS = [rf"$\mathbf{{H = 1/{Nc}}}$" for Nc in RECIPROCAL_COARSE_MESH_SIZES]
 XTICK_LOCS = np.arange(len(RECIPROCAL_COARSE_MESH_SIZES), dtype=int)
@@ -50,15 +52,18 @@ def plot_absolute_performance(
     coarse_space_cls: Type[CoarseSpace],
     legend: bool = False,
 ):
-    # initialize figure and axes
-    fig, axs = plt.subplots(
-        1,
-        len(COEF_FUNCS),
-        figsize=(FIGWIDTH * len(COEF_FUNCS), FIGHEIGHT),
-        squeeze=True,
-        sharex=True,
-        sharey=True,
+    # initialize figure and axes for legend
+    fig = plt.figure(figsize=(FIGWIDTH * len(COEF_FUNCS), FIGHEIGHT + LEGEND_SIZE))
+    gs = gridspec.GridSpec(
+        2, len(COEF_FUNCS), height_ratios=[1, LEGEND_SIZE / FIGHEIGHT]
     )
+    axs = []
+    for i in range(len(COEF_FUNCS)):
+        axs.append(
+            fig.add_subplot(gs[0, i], sharey=None if i == 0 else axs[0])
+        )
+    legend_ax = fig.add_subplot(gs[1, :])
+    legend_ax.axis("off")
 
     # to differentiate between actual iterations, classical and sharpened bounds
     iter_colors = [None] * 4
@@ -205,9 +210,17 @@ def plot_absolute_performance(
     # add ylabel and legend to the first column axes
     axs[0].set_ylabel(shorthand, fontweight="bold", fontsize=FONTSIZE)
 
-    # add legend to the first plot
+    # add legend to the bottom axis
     if legend:
-        axs[0].legend(fontsize=FONTSIZE, loc="center left")
+        handles, labels = axs[0].get_legend_handles_labels()
+        legend_ax.legend(
+            handles,
+            labels,
+            fontsize=FONTSIZE,
+            loc="center",
+            ncol=len(labels),
+            frameon=False,
+        )
 
     # tight layout for the figure
     fig.tight_layout()
@@ -218,7 +231,7 @@ def plot_absolute_performance(
 # main loop
 if __name__ == "__main__":
     for i, ((preconditioner_cls, coarse_space_cls)) in enumerate(PRECONDITIONERS):
-        legend = False
+        legend = True
         # if coarse_space_cls == AMSCoarseSpace:
         #     legend = True
         fig = plot_absolute_performance(

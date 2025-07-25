@@ -14,11 +14,11 @@ from sharpened_bound_vs_iterations import N_ITERATIONS
 from hcmsfem.cli import CLI_ARGS, get_cli_args
 from hcmsfem.logger import LOGGER, PROGRESS
 from hcmsfem.meshes import DefaultQuadMeshParams
-from hcmsfem.plot_utils import save_latex_figure, set_mpl_cycler, set_mpl_style
+from hcmsfem.plot_utils import save_latex_figure, set_mpl_cycler, set_mpl_style, CustomColors
 from hcmsfem.solvers import multi_tail_cluster_cg_iteration_bound
 
 PLOT_MESHES = [DefaultQuadMeshParams.Nc8, DefaultQuadMeshParams.Nc64]
-SHOW_BOUNDS = True
+SHOW_BOUND_MARKERS = True
 
 # set matplotlib style & cycler
 set_mpl_style()
@@ -37,7 +37,7 @@ MOVING_AVG_WINDOW = 10
 
 
 def plot_sharpened_bound_vs_iterations(
-    preconditioner, meshes=MESHES, coef_funcs=COEF_FUNCS, show_bounds=True
+    preconditioner, meshes=MESHES, coef_funcs=COEF_FUNCS, show_bound_markers=True
 ) -> tuple[plt.Figure, str]:
     # get preconditioner class and coarse space class
     preconditioner_cls, coarse_space_cls = preconditioner
@@ -90,7 +90,7 @@ def plot_sharpened_bound_vs_iterations(
                 convergence_eigenvalues,
                 niters_multi_cluster,
                 niters_tail_cluster,
-                show_bounds,
+                show_bound_markers,
             )
 
         # advance main task
@@ -110,7 +110,7 @@ def plot_bounds(
     convergence_eigenvalues,
     niters_multi_cluster,
     niters_tail_cluster,
-    show_bounds: bool,
+    show_bound_markers: bool,
     n_iters=N_ITERATIONS,
     moving_avg_window=MOVING_AVG_WINDOW,
 ):
@@ -121,18 +121,22 @@ def plot_bounds(
     sharp_line = ax.plot(
         range(n_iters_plot),
         niters_multi_cluster[:n_iters_plot],
-        marker="v" if show_bounds else None,
+        marker="^" if show_bound_markers else None, 
         linestyle="-",
-        markersize=1,
+        markersize=2,
+        color=CustomColors.NAVY.value,
+        label="$m_{N_{\\text{multi-cluster}}}$",
     )
 
     # plot tail-cluster bound
     sharp_mixed_line = ax.plot(
         range(n_iters_plot),
         niters_tail_cluster[:n_iters_plot],
-        marker="^" if show_bounds else None,
-        linestyle="--",
-        markersize=1,
+        marker="o" if show_bound_markers else None,
+        linestyle="-",
+        markersize=2,
+        color=CustomColors.GOLD.value,
+        label="$m_{N_{\\text{tail-cluster}}}$",
     )
 
     # plot average of sharpened bounds
@@ -141,7 +145,9 @@ def plot_bounds(
         (niters_multi_cluster[:n_iters_plot] + niters_tail_cluster[:n_iters_plot]) / 2,
         label="$m_{\\text{estimate}}$",
         linestyle="--",
-        # color="blue",
+        marker="s" if show_bound_markers else None,
+        markersize=2,
+        color=CustomColors.SKY.value,
     )
 
     # # plot moving min of sharp bound
@@ -192,14 +198,14 @@ def plot_bounds(
         linestyle="--",
         color="black",
         linewidth=0.8,
-        label="$m_{N_{\\text{tail-cluster}}}(\sigma(T_m))$",
+        # label="$m_{N_{\\text{tail-cluster}}}(\sigma(T_m))$",
     )
 
     # plot actual number of iterations
     ax.axhline(
         len(convergence_eigenvalues),
         linestyle="-",
-        color="black",
+        color=CustomColors.RED.value,
         linewidth=0.8,
         label=f"$m$",
     )
@@ -211,7 +217,6 @@ def plot_bounds(
         linestyle="--",
         color="black",
         linewidth=0.8,
-        label="\\ln(i)",
     )
 
     # log scale y-axis
@@ -258,14 +263,14 @@ def style_figure(fig, axs, shorthand, meshes, coef_funcs):
     # )
 
     # tight layout for the figure
-    fig.tight_layout(pad=1.3)
+    # fig.tight_layout(pad=1.3)
 
 
 if __name__ == "__main__":
     if CLI_ARGS.generate_output:
         for preconditioner in PRECONDITIONERS:
             fig, shorthand = plot_sharpened_bound_vs_iterations(
-                preconditioner, meshes=PLOT_MESHES, show_bounds=SHOW_BOUNDS
+                preconditioner, meshes=PLOT_MESHES, show_bound_markers=SHOW_BOUND_MARKERS
             )
             fn = Path(__file__).name.replace("_fig.py", f"_{shorthand}")
             save_latex_figure(fn, fig)
@@ -273,7 +278,7 @@ if __name__ == "__main__":
         figs = []
         for preconditioner in PRECONDITIONERS:
             fig, _ = plot_sharpened_bound_vs_iterations(
-                preconditioner, meshes=PLOT_MESHES, show_bounds=SHOW_BOUNDS
+                preconditioner, meshes=PLOT_MESHES, show_bound_markers=SHOW_BOUND_MARKERS
             )
             figs.append(fig)
         plt.show()

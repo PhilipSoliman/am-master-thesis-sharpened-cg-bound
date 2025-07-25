@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
 import numpy as np
 from approximate_spectra import COEF_FUNCS, RTOL, get_spectrum_save_path
@@ -56,6 +57,15 @@ MESHES = [
 # coef_funcs to plot
 COEF_FUNCS = [CoefFunc.EDGE_SLABS_AROUND_VERTICES_INCLUSIONS]
 
+FIGHEIGHT = 2
+
+# legend
+LEGEND_SIZE = 1.0
+FONTSIZE = 10
+
+# plot
+PADDING = 0.1
+
 
 def plot_bound_and_spectrum(PRECONDITIONER) -> plt.Figure:
     progress = PROGRESS.get_active_progress_bar()
@@ -66,12 +76,42 @@ def plot_bound_and_spectrum(PRECONDITIONER) -> plt.Figure:
     main_desc += " ([bold]H = 1/{0:.0f}, CF = {1}[/bold], M = {2})"
 
     # initialize figure and axes
-    fig, axs = plt.subplots(
-        2 * len(COEF_FUNCS),
-        len(MESHES),
-        figsize=(6 * len(MESHES), 2 * FIGHEIGHT * len(COEF_FUNCS)),
-        squeeze=False,
-        sharex=True,
+    # fig, axs = plt.subplots(
+    #     2 * len(COEF_FUNCS),
+    #     len(MESHES),
+    #     figsize=(6 * len(MESHES), 2 * FIGHEIGHT * len(COEF_FUNCS)),
+    #     squeeze=False,
+    #     sharex=True,
+    # )
+    # initialize figure and axes for legend
+    fig = plt.figure(
+        figsize=(6 * len(MESHES), FIGHEIGHT * len(COEF_FUNCS) + LEGEND_SIZE)
+    )
+    # Reduce legend row height for less blank space
+    gs = gridspec.GridSpec(
+        3,
+        len(COEF_FUNCS),
+        height_ratios=[
+            FIGHEIGHT * len(COEF_FUNCS),
+            FIGHEIGHT * len(COEF_FUNCS),
+            LEGEND_SIZE,
+        ],
+        hspace=0.1,
+    )
+    axs = []
+    for i in range(2 * len(COEF_FUNCS)):
+        mesh_axs = []
+        for j in range(len(MESHES)):
+            mesh_axs.append(
+                fig.add_subplot(gs[i, j], sharex=None if j == 0 else mesh_axs[0])
+            )
+        axs.append(mesh_axs)
+    axs = np.array(axs)
+    legend_ax = fig.add_subplot(gs[2, :])
+    legend_ax.axis("off")
+    # Further tighten layout between subplots and minimize edge padding
+    fig.subplots_adjust(
+        hspace=0.1, left=PADDING, right=1 - PADDING, top=1 - PADDING, bottom=0
     )
 
     # main plot loop
@@ -170,11 +210,14 @@ def plot_bound_and_spectrum(PRECONDITIONER) -> plt.Figure:
                 array_zip["eigenvalues"],
                 niters_multi_cluster,
                 niters_tail_cluster,
-                show_bounds=False,
+                show_bound_markers=False,
                 n_iters=N_ITERATIONS,
             )
-            bound_ax.xaxis.set_major_locator(MultipleLocator(SPECTRUM_PLOT_FREQ))
-            # bound_ax.legend()
+            bound_ax.xaxis.set_major_locator(MultipleLocator(N_ITERATIONS // 10))
+            bound_ax.tick_params(
+                axis="x", which="both", top=False, labelbottom=False
+            )
+            bound_ax.set_xlim(0, N_ITERATIONS)
 
             # plot spectra
             cg_iter_bound = CGIterationBound(log_rtol=LOG_RTOL, exact_convergence=False)
@@ -225,14 +268,26 @@ def plot_bound_and_spectrum(PRECONDITIONER) -> plt.Figure:
             # style the spectra axis
             spectra_ax.set_yscale("log")
             spectra_ax.grid(True, axis="x", linestyle="--", linewidth=0.5)
+            spectra_ax.set_xlim(0, N_ITERATIONS)
             spectra_ax.xaxis.set_major_locator(MultipleLocator(N_ITERATIONS // 10))
-            spectra_ax.set_xlabel("Iteration $i$")
+            # spectra_ax.set_xlabel("Iteration $i$")
 
         # advance main task
         progress.advance(main_task)
 
     # style the figure
     style_figure(fig, axs, shorthand, MESHES, COEF_FUNCS)
+
+    # add legend
+    handles, labels = axs[0, 0].get_legend_handles_labels()
+    legend_ax.legend(
+        handles,
+        labels,
+        fontsize=FONTSIZE,
+        loc="center",
+        ncol=len(labels),
+        frameon=False,
+    )
 
     # stop progress bar
     progress.soft_stop()
@@ -244,7 +299,7 @@ if __name__ == "__main__":
     figs = []
     for PRECONDITIONER in PRECONDITIONERS:
         fig = plot_bound_and_spectrum(PRECONDITIONER)
-        fig.tight_layout()
+        # fig.tight_layout()
         shorthand = PRECONDITIONER[0].SHORT_NAME + "-" + PRECONDITIONER[1].SHORT_NAME
         if CLI_ARGS.generate_output:
             fn = Path(__file__).name.replace("_fig.py", f"_{shorthand}")
