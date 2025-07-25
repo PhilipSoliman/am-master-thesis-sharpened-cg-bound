@@ -1,5 +1,5 @@
 \chapter{Results}\label{ch:results}
-In this chapter we present and discuss two experiments with the sharpened CG iteration bounds from \cref{alg:multi_cluster_cg_bound,alg:multi_tail_cluster_cg_bound} applied to the approximate eigenspectra calculated as by-product of the PCG method applied to the discretized elliptic problem \cref{prob:elliptic_problem_discretized}. The first experiment in \cref{sec:sharpness_of_bounds} tests the absolute sharpness of the new bounds as compared to the actual number of CG iterations required for convergence given a residual error tolerance $\epsilon_r$. Where the first experiment presumes a full spectrum to be available at the time of calculating the new bounds, this is usually not the case in practice. Therefore, the second experiment in \cref{sec:early_estimation_of_iterations} investigates the capability of the new bounds to predict the number of CG iterations required for convergence, but based on approximate spectra obtained in the first $N_{iter}$ iterations. Each experiment is conducted on the same set of meshes $\mathcal{Q}$, using the preconditioners from $\mathcal{M}^{-1}$ and for at least the two coefficient functions $\mathcal{C}_{\text{3layer, vert}}$ and $\mathcal{C}_{\text{edge slabs, around vertices}}$ as described in \cref{ch:implementation}. 
+In this chapter we present and discuss two experiments with the sharpened CG iteration bounds from \cref{alg:multi_cluster_cg_bound,alg:multi_tail_cluster_cg_bound} applied to the approximate eigenspectra calculated as a by-product of the PCG method applied to the discretized elliptic problem \cref{prob:elliptic_problem_discretized}. The first experiment in \cref{sec:sharpness_of_bounds} tests the absolute sharpness of the new bounds as compared to the actual number of CG iterations required for convergence given a residual error tolerance $\epsilon_r$. Where the first experiment presumes a full spectrum to be available at the time of calculating the new bounds, this is usually not the case in practice. Therefore, the second experiment in \cref{sec:early_estimation_of_iterations} investigates the capability of the new bounds to predict the number of CG iterations required for convergence, but based on approximate spectra obtained in the first $N_{iter}$ iterations. Each experiment is conducted on the same set of meshes $\mathcal{Q}$, using the preconditioners from $\mathcal{M}^{-1}$ and for at least the two coefficient functions $\mathcal{C}_{\text{3layer, vert}}$ and $\mathcal{C}_{\text{edge slabs, around vertices}}$ as described in \cref{ch:implementation}. 
 
 \section{Sharpness of bounds}\label{sec:sharpness_of_bounds}
 Here we run the PCG method from \cref{alg:pcg_left} until we achieve convergence in the sense of \cref{th:residual_convergence_criterion} with $\epsilon_r=10^{-8}$. Every iteration we store the CG coefficients $\alpha,\beta$ such that at convergence we can construct the Lanczos matrix $T_m$ using \cref{eq:cg_lanczos_eta,eq:cg_lanczos_delta,eq:lanczos_tridiagonal}. Then, we calculate all eigenvalues of $T_m$, also known as \textit{Ritz} values. The eigenvalue spectrum $\sigma(T_m)$ at convergence of the PCG method is a \textit{good} approximation of the spectrum $\sigma(M^{-1}A)$. Therefore, we can use as input $\sigma(T_m)$ for the multi-cluster and multi-tail-cluster CG iteration bounds from \cref{alg:multi_cluster_cg_bound,alg:multi_tail_cluster_cg_bound} and study how well the bounds match the actual number of CG iterations $m$ required for convergence. 
@@ -43,8 +43,19 @@ Additionally, it appears $m_{N_{\text{tail-cluster}}} \lesssim m_{N_{\text{clust
 
 \section{Early estimation of CG iteration bounds}\label{sec:early_estimation_of_iterations}
 \todo{Add plot of bounds convergence on some high-contrast coefficient function for a robust coarse space (AMS) together with its eigenspectrum. Explain the migration of Ritz values and the fact that we need to wait for temporary convergence of clusters to reliably calculate and update the new bounds.}
+\begin{figure}[H]
+    \centering
+    \includegraphics{bound_and_spectrum_vs_iterations_2-OAS-AMS.pdf}
+    \caption{}
+    \label{fig:bound_and_spectrum_vs_iterations_2-OAS-AMS}
+\end{figure}
+\begin{figure}[H]
+    \centering
+    \includegraphics{bound_and_spectrum_vs_iterations_2-OAS-RGDSW.pdf}
+    \caption{}
+    \label{fig:bound_and_spectrum_vs_iterations_2-OAS-RGDSW}
+\end{figure}
 \todo{Show the convergence of the RGDSW bound. Ritz value migration happens more slowly so we need more iterations before we can update the bounds.}
-We also consider the coefficient function $\mathcal{C}_{\text{const}}$ here.
 \todo{Explain setup of tables}
 \input{../tables/cg_iteration_bound_coef=const.tex}
 \input{../tables/cg_iteration_bound_coef=3lvert.tex}
