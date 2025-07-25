@@ -11,7 +11,7 @@ from approximate_spectra import (
 )
 from sharpened_bound_vs_iterations import N_ITERATIONS
 
-from hcmsfem.cli import get_cli_args
+from hcmsfem.cli import CLI_ARGS, get_cli_args
 from hcmsfem.logger import LOGGER, PROGRESS
 from hcmsfem.meshes import DefaultQuadMeshParams
 from hcmsfem.plot_utils import save_latex_figure, set_mpl_cycler, set_mpl_style
@@ -25,7 +25,6 @@ set_mpl_style()
 set_mpl_cycler(colors=True)
 
 # get cli args
-ARGS = get_cli_args()
 FIGWIDTH = 5
 FIGHEIGHT = 2
 
@@ -123,8 +122,8 @@ def plot_bounds(
         range(n_iters_plot),
         niters_multi_cluster[:n_iters_plot],
         marker="v" if show_bounds else None,
-        linestyle="None",
-        markersize=3,
+        linestyle="-",
+        markersize=1,
     )
 
     # plot tail-cluster bound
@@ -132,58 +131,58 @@ def plot_bounds(
         range(n_iters_plot),
         niters_tail_cluster[:n_iters_plot],
         marker="^" if show_bounds else None,
-        linestyle="None",
-        markersize=3,
+        linestyle="--",
+        markersize=1,
     )
 
     # plot average of sharpened bounds
     ax.plot(
         range(n_iters_plot),
         (niters_multi_cluster[:n_iters_plot] + niters_tail_cluster[:n_iters_plot]) / 2,
-        label=f"{shorthand} (2-AVG)",
+        label="$m_{\\text{estimate}}$",
         linestyle="--",
-        color="blue",
+        # color="blue",
     )
 
-    # plot moving min of sharp bound
-    moving_min_sharp = np.min(
-        np.lib.stride_tricks.sliding_window_view(
-            niters_multi_cluster[:n_iters_plot], moving_avg_window
-        ),
-        axis=1,
-    )
-    ax.plot(
-        moving_avg_window + np.arange(len(moving_min_sharp)),
-        moving_min_sharp,
-        label=f"Sharpened bound (MM)",
-        linestyle="--",
-        color=sharp_line[0].get_color(),
-    )
+    # # plot moving min of sharp bound
+    # moving_min_sharp = np.min(
+    #     np.lib.stride_tricks.sliding_window_view(
+    #         niters_multi_cluster[:n_iters_plot], moving_avg_window
+    #     ),
+    #     axis=1,
+    # )
+    # ax.plot(
+    #     moving_avg_window + np.arange(len(moving_min_sharp)),
+    #     moving_min_sharp,
+    #     label=f"Sharpened bound (MM)",
+    #     linestyle="--",
+    #     color=sharp_line[0].get_color(),
+    # )
 
-    # plot moving min of sharp mixed bound
-    moving_min_sharp_mixed = np.min(
-        np.lib.stride_tricks.sliding_window_view(
-            niters_tail_cluster[:n_iters_plot], moving_avg_window
-        ),
-        axis=1,
-    )
-    ax.plot(
-        moving_avg_window + np.arange(len(moving_min_sharp_mixed)),
-        moving_min_sharp_mixed,
-        label=f"Sharpened Mixed Bound (MM)",
-        linestyle="--",
-        color=sharp_mixed_line[0].get_color(),
-    )
+    # # plot moving min of sharp mixed bound
+    # moving_min_sharp_mixed = np.min(
+    #     np.lib.stride_tricks.sliding_window_view(
+    #         niters_tail_cluster[:n_iters_plot], moving_avg_window
+    #     ),
+    #     axis=1,
+    # )
+    # ax.plot(
+    #     moving_avg_window + np.arange(len(moving_min_sharp_mixed)),
+    #     moving_min_sharp_mixed,
+    #     label=f"Sharpened Mixed Bound (MM)",
+    #     linestyle="--",
+    #     color=sharp_mixed_line[0].get_color(),
+    # )
 
-    # plot average of two moving mins
-    moving_mins_avg = (moving_min_sharp + moving_min_sharp_mixed) / 2
-    ax.plot(
-        moving_avg_window + np.arange(len(moving_mins_avg)),
-        moving_mins_avg,
-        label=f"Sharpened Bound (MM Avg)",
-        linestyle="--",
-        color="black",
-    )
+    # # plot average of two moving mins
+    # moving_mins_avg = (moving_min_sharp + moving_min_sharp_mixed) / 2
+    # ax.plot(
+    #     moving_avg_window + np.arange(len(moving_mins_avg)),
+    #     moving_mins_avg,
+    #     label=f"Sharpened Bound (MM Avg)",
+    #     linestyle="--",
+    #     color="black",
+    # )
 
     # plot upper bound at convergence
     ax.axhline(
@@ -191,17 +190,18 @@ def plot_bounds(
             convergence_eigenvalues, log_rtol=LOG_RTOL, exact_convergence=False
         ),
         linestyle="--",
-        color=ax.lines[-1].get_color(),
+        color="black",
         linewidth=0.8,
+        label="$m_{N_{\\text{tail-cluster}}}(\sigma(T_m))$",
     )
 
     # plot actual number of iterations
     ax.axhline(
         len(convergence_eigenvalues),
         linestyle="-",
-        color=ax.lines[-1].get_color(),
+        color="black",
         linewidth=0.8,
-        label=f"{shorthand} (actual)",
+        label=f"$m$",
     )
 
     # plot y=x
@@ -211,7 +211,7 @@ def plot_bounds(
         linestyle="--",
         color="black",
         linewidth=0.8,
-        label="y=x",
+        label="\\ln(i)",
     )
 
     # log scale y-axis
@@ -239,40 +239,41 @@ def style_figure(fig, axs, shorthand, meshes, coef_funcs):
         ax = axs[row_idx, 0]
 
         # Use axes coordinates to place the text just outside the left of the axes
-        fig.text(
-            0,  # x-position (fraction of figure width, adjust as needed)
-            ax.get_position().y0
-            + ax.get_position().height / 2,  # y-position (center of the row)
-            coef_func.latex,  # use LaTeX representation
-            va="center",
-            ha="left",
-            rotation=90,
-            fontweight="bold",
-            fontsize=14,
-        )
+        # fig.text(
+        #     0,  # x-position (fraction of figure width, adjust as needed)
+        #     ax.get_position().y0
+        #     + ax.get_position().height / 2,  # y-position (center of the row)
+        #     coef_func.latex,  # use LaTeX representation
+        #     va="center",
+        #     ha="left",
+        #     rotation=90,
+        #     fontweight="bold",
+        #     fontsize=14,
+        # )
 
     # figure title
-    fig.suptitle(
-        f"Sharpened CG Iteration Bound vs Iterations ({shorthand})",
-        fontweight="bold",
-    )
+    # fig.suptitle(
+    #     f"Sharpened CG Iteration Bound vs Iterations ({shorthand})",
+    #     fontweight="bold",
+    # )
 
     # tight layout for the figure
     fig.tight_layout(pad=1.3)
 
 
-if ARGS.generate_output:
-    for preconditioner in PRECONDITIONERS:
-        fig, shorthand = plot_sharpened_bound_vs_iterations(
-            preconditioner, meshes=PLOT_MESHES, show_bounds=SHOW_BOUNDS
-        )
-        fn = Path(__file__).name.replace("_fig.py", f"_{shorthand}")
-        save_latex_figure(fn, fig)
-if ARGS.show_output:
-    figs = []
-    for preconditioner in PRECONDITIONERS:
-        fig, _ = plot_sharpened_bound_vs_iterations(
-            preconditioner, meshes=PLOT_MESHES, show_bounds=SHOW_BOUNDS
-        )
-        figs.append(fig)
-    plt.show()
+if __name__ == "__main__":
+    if CLI_ARGS.generate_output:
+        for preconditioner in PRECONDITIONERS:
+            fig, shorthand = plot_sharpened_bound_vs_iterations(
+                preconditioner, meshes=PLOT_MESHES, show_bounds=SHOW_BOUNDS
+            )
+            fn = Path(__file__).name.replace("_fig.py", f"_{shorthand}")
+            save_latex_figure(fn, fig)
+    if CLI_ARGS.show_output:
+        figs = []
+        for preconditioner in PRECONDITIONERS:
+            fig, _ = plot_sharpened_bound_vs_iterations(
+                preconditioner, meshes=PLOT_MESHES, show_bounds=SHOW_BOUNDS
+            )
+            figs.append(fig)
+        plt.show()
