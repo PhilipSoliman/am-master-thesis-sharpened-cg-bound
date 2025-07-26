@@ -5,25 +5,31 @@ The main research question in this work is as follows:
     \par
     How can we sharpen the CG iteration bound for Schwarz-preconditioned high-contrast heterogeneous scalar-elliptic problems beyond the classical condition number-based bound?
 \end{researchq}
-For instance, in \cite{ams_coarse_space_comp_study_Alves2024}, the AMS and GDSW preconditioners significantly outperform the RGDSW preconditioner, despite all three having similar condition numbers. The key differences appear in their spectral gap and cluster width, highlighting the need for additional spectral characteristics to refine existing bounds.
+For instance, in \cite{ams_coarse_space_comp_study_Alves2024}, a two-level Schwarz preconditioner with either one of the AMS and GDSW coarse spaces significantly outperform the same preconditioner with RGDSW coarse space, despite all three preconditioned systems having similar condition numbers. The key differences appear in their spectral gap and cluster width, highlighting the need for further investigation into spectral properties beyond the condition number.
 
 \section{Subsidiary research questions}
 \begin{subsidiaryq} \label{rq:subsidiaries}
     To answer the main research question, we address the following subsidiary questions:
     \setlength\itemindent{1in}
     \begin{enumerate}[label=\textbf{Q\arabic*}, ref=\textbf{Q\arabic*}, leftmargin=1cm]
-        \item\label{rq:subsidiary:measures} What spectral characteristics, like the condition number, can we define to estimate the distribution of eigenvalues in the eigenspectrum in the case of high-contrast heterogeneous problems?
-        \item\label{rq:subsidiary:estimation} How can we estimate any of the spectral characteristics defined in \ref{rq:subsidiary:measures} for the eigenspectrum in the particular case of a model Darcy problem?
-        \item\label{rq:subsidiary:heuristic} Given a certain eigenspectrum, how can we sharpen the CG iteration bound?
-        \item\label{rq:subsidiary:performance} How does the sharpened bound from \ref{rq:subsidiary:heuristic} perform for an unpreconditioned Darcy problem in comparison with the classical bound in \cref{eq:cg_convergence_rate}?
-        \item\label{rq:subsidiary:dependance} How does the performance described in \ref{rq:subsidiary:performance} of a sharpened bound vary with the measures found in \ref{rq:subsidiary:measures}?
-        \item\label{rq:subsidiary:preconditioners} How can we employ the sharpened bound to distinguish between the performance of Schwarz-like preconditioners? 
-        % \item\label{rq:subsidiary:formilization} Can we formalize a method to estimate the eigenspectrum beyond the condition number?
+        \item\label{rq:subsidiary:heuristic} Given a certain eigenspectrum, can we construct a bound that is sharper than the classical condition number-based bound?
+        \item\label{rq:subsidiary:measures} How does the number of CG iterations necessary for convergence of high-contrast heterogeneous problems depend on spectral characteristics other than the condition number?
+        \item\label{rq:subsidiary:preconditioners} Can we obtain a priori estimates for the number of iterations necessary for convergence of a PCG method with Schwarz-like preconditioners?
     \end{enumerate}
 \end{subsidiaryq}
 
 \section{Motivation}
-This research is important because current studies primarily focus on selecting between different Schwarz preconditioners for the Darcy problem, yet condition numbers fail to distinguish them effectively. The ability to differentiate preconditioners based on spectral properties would improve the selection process. Applying sharpened bounds could lead to better predictions of preconditioner performance and improved efficiency in solving high-contrast problems.
+This research has great practical importance for the selection of the most efficient preconditioner for a given high-contrast problem. Clearly, the condition number does not suffice to differentiate between preconditioners, as outlined in \cite{ams_coarse_space_comp_study_Alves2024}. Thus, having the ability to differentiate preconditioners based on spectral characteristics from, for instance, their approximate eigenspectra would improve the selection process.
+
+On top of that, having sharp(er) bounds for (P)CG methods allows for more efficient allocation of computational resources, as it allows for a more accurate estimate of the number of iterations necessary for convergence. This is particularly important in high-performance computing environments, where the cost of each iteration can be significant.
+
+Moreover, the computational complexity of (P)CG methods is given in \cref{eq:cg_complexity,eq:pcg_complexity}. Hence, if we can find a bound that scales better with the other spectral characteristics, we can possibly show that (P)CG methods with Schwarz-like preconditioners are applicable to a wider range of high-contrast problems than previously thought. This would open up new avenues for research and applications in the field of numerical analysis and scientific computing.
 
 \section{Challenges}\label{sec:challenges}
-The main challenge lies in quantitatively estimating the spectrum of the preconditioned system. The literature provides a priori condition number estimates for various Schwarz preconditioners. For instance, in the simple cases of the additive Schwarz preconditioner with either a \ref{ASM_coarse_space:nicolaides} or \ref{ASM_coarse_space:local_eigenfunctions} an a priori estimate for the condition number is given by \cref{eq:two_level_ASM_condition_number} in combination with either \cref{eq:c0_nicolaides} or \cref{eq:c0_local_eigenfunctions}, respectively. The same can be said for the MsFEM and ACMS preconditioners. Despite this, there is no established method for estimating the full eigenspectrum. Without such an estimate, refining the CG iteration bound remains difficult. Overcoming this limitation is central to this work.
+Finding sharper bounds than the classical condition number-based bound is a non-trivial task. The main challenge lies in the fact that the condition number is a measure of the worst-case scenario, while we are interested in the average-case behavior of the (P)CG method. This requires a more nuanced understanding of the eigenspectrum and its impact on the convergence of the method.
+
+Assuming we have some expression for a sharper bound, the following challenge then lies in obtaining a priori estimates for the spectrum of the preconditioned system. The literature does provide condition number estimates for various Schwarz preconditioners. For instance, in the simple cases of the additive Schwarz preconditioner with either a \ref{ASM_coarse_space:nicolaides} or \ref{ASM_coarse_space:local_eigenfunctions} an a priori estimate for the condition number is given by \cref{eq:two_level_ASM_condition_number} in combination with either \cref{eq:c0_nicolaides} or \cref{eq:c0_local_eigenfunctions}, respectively. The same can be said for the MsFEM and ACMS preconditioners, as is seen in \cref{sec:tailored_coarse_spaces}.
+
+However, these estimates are not always sharp, and they do not provide information about the spectral gap or cluster width of the preconditioned system. This is where the challenge lies: how can we obtain a priori estimates of the spectral characteristics necessary for the sharp bound?
+
+Fortunately, we can always obtain a posteriori estimates for the spectrum of the preconditioned system, as is done in \cref{ch:results}. However, this requires the computation of the eigenspectrum of the preconditioned system, which can be computationally expensive. This is where the use of iterative methods such as (P)CG comes in handy, as they allow us to compute the eigenspectrum during the solution of the linear system.
