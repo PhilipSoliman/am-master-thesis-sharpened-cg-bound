@@ -13,6 +13,7 @@ from hcmsfem.problems import CoefFunc, Problem, SourceFunc
 
 FIGWIDTH = 3.0
 FIGHEIGHT = 3.0
+A4_HEIGHT = 11.69
 CONTRAST_COLOR = CustomColors.RED.value
 BACKGROUND_COLOR = CustomColors.NAVY.value
 
@@ -162,13 +163,136 @@ def plot_coefficient_functions(two_mesh: TwoLevelMesh) -> plt.Figure:
     return fig
 
 
+def plot_cover_image(two_mesh: TwoLevelMesh) -> plt.Figure:
+    """
+    Plot the edge slabs of the two-level mesh.
+    """
+    set_mpl_style()
+    clip_factor = (
+        1.1  # make image slightly larger than A4 so that clipping leaves no margin
+    )
+    fig, ax = plt.subplots(
+        1,
+        1,
+        figsize=(A4_HEIGHT, clip_factor * A4_HEIGHT),
+        squeeze=True,
+        sharex=True,
+        sharey=True,
+    )
+
+    # plot coarse mesh on both axes
+    two_mesh.plot_mesh(ax, mesh_type="coarse")
+
+    # instantiate diffusion problem
+    problem = Problem(
+        [HomogeneousDirichlet(ProblemType.DIFFUSION)],
+        mesh=two_mesh,
+        ptype=ProblemType.DIFFUSION,
+    )
+
+    # construct fespace
+    problem.construct_fespace()
+
+    ######################
+    # three layer vertex #
+    ######################
+    free_coarse_nodes = list(problem.fes.free_component_tree_dofs.keys())
+
+    # loop over coarse nodes and set high contrast to 3 layers of elements around them
+    contrast_elements = []
+    for coarse_node in free_coarse_nodes:
+        mesh_el = two_mesh.fine_mesh[coarse_node]
+        elements_first_layer = set(mesh_el.elements)
+        for element_first_layer in elements_first_layer:
+            contrast_elements.append(element_first_layer.nr)
+
+            # get second layer elements
+            outer_vertices_first_layer = set(
+                two_mesh.fine_mesh[element_first_layer].vertices
+            ) - set([coarse_node])
+            for outer_vertex_first_layer in outer_vertices_first_layer:
+                # filter inner elements
+                elements_second_layer = (
+                    set(two_mesh.fine_mesh[outer_vertex_first_layer].elements)
+                    - elements_first_layer
+                )
+                for element_second_layer in elements_second_layer:
+                    # add second layer
+                    contrast_elements.append(element_second_layer.nr)
+
+                    # get third layer elements
+                    outer_vertices_second_layer = (
+                        set(two_mesh.fine_mesh[element_second_layer].vertices)
+                        - outer_vertices_first_layer
+                        - set([coarse_node])
+                    )
+                    for outer_vertex_second_layer in outer_vertices_second_layer:
+                        # filter inner elements
+                        elements_third_layer = (
+                            set(two_mesh.fine_mesh[outer_vertex_second_layer].elements)
+                            - elements_first_layer
+                            - elements_second_layer
+                        )
+                        for element_third_layer in elements_third_layer:
+                            # add third layer
+                            contrast_elements.append(element_third_layer.nr)
+
+    for el_nr in contrast_elements:
+        two_mesh.plot_element(
+            ax,
+            two_mesh.fine_mesh[ngs.ElementId(el_nr)],
+            two_mesh.fine_mesh,
+            fillcolor=CONTRAST_COLOR,
+            edgecolor="black",
+            linewidth=0.1,
+            alpha=1.0,
+        )
+    all_elements = np.array([el.nr for el in two_mesh.fine_mesh.Elements()])
+    background_elements = np.setdiff1d(
+        all_elements, contrast_elements, assume_unique=True
+    )
+    for el_nr in background_elements:
+        two_mesh.plot_element(
+            ax,
+            two_mesh.fine_mesh[ngs.ElementId(el_nr)],
+            two_mesh.fine_mesh,
+            fillcolor=BACKGROUND_COLOR,
+            edgecolor=BACKGROUND_COLOR,
+            linewidth=0.1,
+            alpha=0.9,
+        )
+
+    # turn off all style elements and make plot fit to the figure
+    ax.axis("off")
+    ax.tick_params(
+        axis="both",
+        which="both",
+        bottom=False,
+        top=False,
+        left=False,
+        right=False,
+        labelbottom=False,
+        labelleft=False,
+    )
+
+    # set padding to zero
+    ax.margins(0, 0)
+
+    return fig
+
+
 if __name__ == "__main__":
-    two_mesh = TwoLevelMesh(mesh_params=DefaultQuadMeshParams.Nc4)
-    figs = [plot_meshes_and_domains(two_mesh), plot_coefficient_functions(two_mesh)]
+    two_mesh_4 = TwoLevelMesh(mesh_params=DefaultQuadMeshParams.Nc4)
+    two_mesh_16 = TwoLevelMesh(mesh_params=DefaultQuadMeshParams.Nc16)
+    figs = [
+        plot_meshes_and_domains(two_mesh_4),
+        plot_coefficient_functions(two_mesh_4),
+        plot_cover_image(two_mesh_16),
+    ]
     fns = [
         "meshes_and_domains",
-        CoefFunc.THREE_LAYER_VERTEX_INCLUSIONS.short_name,
-        CoefFunc.EDGE_SLABS_AROUND_VERTICES_INCLUSIONS.short_name,
+        "coefficient_functions",
+        "cover",
     ]
     for fig, fn in zip(figs, fns):
         fig.tight_layout()

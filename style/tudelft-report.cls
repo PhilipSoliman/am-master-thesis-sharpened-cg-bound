@@ -27,6 +27,7 @@
 \RequirePackage{varwidth} 
 
 \RequirePackage{graphicx}   % Enhanced support for images
+\RequirePackage[export]{adjustbox}  % Enhanced box commands for graphics
 \RequirePackage{float}      % Improved interface for floating objects
 \RequirePackage[labelfont=bf,justification=centering,footnotesize]{caption} % Captions
 \RequirePackage{subcaption} % Support for sub-captions
@@ -294,35 +295,38 @@
 
         %% Add the cover image
         \ifdefined\@coverimage
-            \node[above=0,inner sep=0] at (current page.south) {%
-                \includegraphics[width=\paperwidth]{\@coverimage} 
+            \node[anchor=south,yshift=-5mm] at (current page.south) {%
+                \adjincludegraphics[height=310mm,clip]{\@coverimage}
             };
         \else
             \pagecolor{coverbackground}\afterpage{\nopagecolor}
         \fi
 
-        %% Add the affiliation on the left
-        \node[rotate=90,below right=40mm and 3mm] at (current page.west) {%
-            \ifdefvoid{\@affiliation}{}{\color{affiliation}\coverstyle\@affiliation}};
-
+        %% Add a full-page overlay with the same styling as the banner
+        \node[fill=black!85,minimum width={\paperwidth},minimum height={\paperheight},opacity=0.6,text opacity=1] at (current page.center) {};
+        
         %% Add the logo in the bottom left
-        \node[above right=10mm] at (current page.south west) {%
-            \includegraphics[width=0.35\linewidth]{\@logoimage}};
+        \node[above right=15mm and 9mm] at (current page.south west) {%
+            \includegraphics[width=0.25\linewidth]{\@logoimage}};
+        
+        %% Add the affiliation on the below logo
+        \node[above right=10mm and 10mm] at (current page.south west) {%
+            \ifdefvoid{\@affiliation}{}{\color{affiliation}\coverstyle\fontsize{10}{10}\@affiliation}};
 
         %% Add the banner with the title, subtitle, subject and author(s)
-        \node[below=2cm,fill=black!85,minimum width={\paperwidth},inner ysep=25pt,opacity=0.6,text opacity=1] at (current page.north) {%
+        \node[below=2cm,minimum width={\paperwidth},inner ysep=25pt,text opacity=1] at (current page.north) {%
             \begin{minipage}{0.9\paperwidth}
                 %% Format and add the title
                 \color{title}\raggedright\largecoverstyle\fontsize{40}{40}\selectfont%
                     \@title \\[0.5ex]
                 %% Format and add (optional) subtitle
-                \coverstyle\fontsize{24}{24}\selectfont%
+                \coverstyle\fontsize{22}{22}\selectfont%
                 \ifdefvoid{\@subtitle}{}{\color{subtitle}\@subtitle \\[2.5ex]}%
                 %% Format and add (optional) subject
-                \coverstyle\fontsize{20}{20}\selectfont%
+                \coverstyle\fontsize{16}{16}\selectfont%
                 \ifdefvoid{\@subject}{}{\color{subject}\@subject \\[0.5ex]}
                 %% Format and add author or table of authors
-                \coverstyle\fontsize{20}{20}\selectfont%
+                \coverstyle\fontsize{14}{14}\selectfont%
                     \ifdefvoid{\@covertable}{\color{author}\@author}{\@covertable}
             \end{minipage}};
 
