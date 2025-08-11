@@ -1,5 +1,5 @@
 \chapter{Mathematical background}\label{ch:background}
-In \cref{sec:cg_method} we discuss the classification of the CG method as both an error projection and a Krylov subspace method. We then derive the convergence rate of CG in \cref{sec:cg_convergence_rate}, as well as the influence of the eigenvalues of the system matrix $A$ on that rate in \cref{sec:cg_eigenvalue_distribution}. The latter is important, since it shows that the condition number $\kappa(A)$ is not the only factor influencing the convergence rate of CG. The first part ends with a brief review of the PCG method in \cref{sec:cg_preconditioning}. Then, the second part of this chapter \cref{sec:schwarz_methods} concerns the Schwarz methods, which are a class of domain decomposition methods. Schwarz methods can be used to construct preconditioners for use in PCG, even though these were originally devised as fixed point iteration methods for solving PDEs on complex domains. In \cref{sec:schwarz_convergence}, we also see some conditioner number estimates that are classically used to estimate the convergence rate of PCG.
+In \fullref{sec:cg_method} we discuss the classification of the CG method as both an error projection and a Krylov subspace method. We then derive the convergence rate of CG in \fullref{sec:cg_convergence}, as well as the influence of the eigenvalues of the system matrix $A$ on that rate in \fullref{sec:cg_eigenvalue_distribution}. The latter is important, since it shows that the condition number $\kappa(A)$ is not the only factor influencing the convergence rate of CG. The first part ends with a brief review of the PCG method in \fullref{sec:cg_preconditioning}. Then, the second part of this chapter \fullref{sec:schwarz_methods} concerns the Schwarz methods, which are a class of domain decomposition methods. Schwarz methods can be used to construct preconditioners for use in PCG, even though these were originally devised as fixed point iteration methods for solving PDEs on complex domains.
 
 \section{Conjugate gradient method}\label{sec:cg_method}
 We seek to solve the linear system of equations $A\mathbf{u} = \mathbf{b}$, where $A$ is a symmetric positive definite (SPD) matrix. These properties of $A$ make the CG method particularly suitable for solving the system, as motivated in the \cref{ch:introduction}.
@@ -33,7 +33,7 @@ The subclass of \textit{error projection methods} defined by \cref{def:error_pro
 \end{fancydef}
 Error projection methods owe their name to the following central \cref{th:error_projection_method}.
 \begin{fancyth}{Error minimization in $A$-norm}{error_projection_method}
-  Given a linear system $A\mathbf{u} = \mathbf{b}$ with $A$ SPD and solution $\mathbf{u}^{*}$. Define the errors $\mathbf{e}_0 = \mathbf{u}^{*} - \mathbf{u}_0$ and $\mathbf{e}_{\text{new}} = \mathbf{u}^{*} - \mathbf{u}_{\text{new}}$. Then, an error projection step minimizes the $A$-norm of the error in the affine subspace $\mathbf{u}_0 + \mathcal{K}$.
+  Given a linear system $A\mathbf{u} = \mathbf{b}$ with $A$ SPD and exact solution $\mathbf{u}^{*}$. Define the errors $\mathbf{e}_0 = \mathbf{u}^{*} - \mathbf{u}_0$ and $\mathbf{e}_{\text{new}} = \mathbf{u}^{*} - \mathbf{u}_{\text{new}}$. Then, an error projection step minimizes the $A$-norm of the error in the affine subspace $\mathbf{u}_0 + \mathcal{K}$.
 \end{fancyth}
 \begin{proof}
   We have
@@ -96,12 +96,13 @@ Krylov subspace methods form yet another subclass of projection methods and are 
   \label{eq:cg_krylov_space}
 \end{equation}
 or $\mathcal{K}_m$ as a shorthand.
-\begin{definition}
+
+The dimension of $\mathcal{K}_m(A_0, \mathbf{r}_0)$ is related to the grade of $\mathbf{r}_0$ with respect to $A_0$, which is defined in \cref{def:cg_grade}.
+\begin{fancydef}{Grade of a vector}{cg_grade}
   The grade of a vector $\mathbf{v}$ with respect to a matrix $A$ is the lowest degree of the polynomial $q$ such that $q(A)\mathbf{v} = 0$.
-  \label{def:cg_grade}
-\end{definition}
+\end{fancydef}
 Consequently,
-\begin{theorem}
+\begin{fancyth}{Dimension of Krylov subspace}{cg_krylov_subspace}
   The Krylov subspace $\mathcal{K}_m$ is of dimension $m$ if and only if the grade $\mu$ of $\mathbf{v}$ with respect to $A$ is not less than $m$ \cite[proposition 6.2]{iter_method_saad},
   \begin{equation*}
     \dim(\mathcal{K}_m) = m \iff \mu \geq m,
@@ -111,35 +112,37 @@ Consequently,
     \dim(\mathcal{K}_m) = \min \{m, \textrm{grade}(\mathbf{v})\}.
     \label{eq:cg_krylov_dimension}
   \end{equation}
-  \label{th:cg_krylov_dimension}
-\end{theorem}
+\end{fancyth}
 
-\begin{definition}
+A key property of the Krylov subspace methods is their ability to represent product of polynomials of $A$ by some vector $\mathbf{v} \in \mathbb{R}^n$ in terms of section of $A$ in $\mathcal{K}_m$, see \cref{def:cg_restriction_operator,def:cg_section_operator}. 
+\begin{fancydef}{Restriction of an operator}{cg_restriction_operator}
   The action of a matrix $A$ can be thought of as a mapping
   \begin{equation*}
-    \mathbb{R}^n \rightarrow \mathbb{R}^n: v \mapsto A v
+    \mathbb{R}^n \rightarrow \mathbb{R}^n: \mathbf{v} \mapsto A \mathbf{v}
   \end{equation*}
   Thus the domain and codomain of $A$ are $\mathbb{R}^n$. Let $X \subset \mathbb{R}^n$, we can consider the map
   \begin{equation*}
-    X \rightarrow \mathbb{R}^n: v \mapsto A v
+    X \rightarrow \mathbb{R}^n: \mathbf{v} \mapsto A \mathbf{v}
   \end{equation*}
   instead. The only difference from $A$ is that the domain is $X$. This map is defined as the restriction $A_{\left.\right|_X}$ of $A$ to $X$.
-\end{definition}
-
-\begin{definition}
+\end{fancydef}
+\begin{fancydef}{Section of an operator}{cg_section_operator}
   Let $Q$ be a projector onto the subspace $X$. Then the section of the operator $A$ onto $X$ is defined as $QA_{\left.\right|_X}$.
-\end{definition}
+\end{fancydef}
 
-\begin{theorem}
+Finally, we can state the polynomial representation property of the Krylov subspace methods.
+\begin{fancyth}{Polynomial representation}{cg_polynomial}
   Let $Q_m$ be any projector onto $\mathcal{K}_m$ and let $A_m$ be the section of $A$ to $\mathcal{K}_m$, that is, $A_m=Q_m A_{\left.\right|\mathcal{K}_m}$. Then for any polynomial $q$ of degree not exceeding $m-1$ \cite[proposition 6.3]{iter_method_saad},
   \begin{equation*}
-    q(A) v=q\left(A_m\right) v
+    q(A) \mathbf{v}=q\left(A_m\right) \mathbf{v}
   \end{equation*}
   and for any polynomial of degree $\leq m$,
   \begin{equation*}
-    Q_m q(A) v=q\left(A_m\right) v
+    Q_m q(A) \mathbf{v}=q\left(A_m\right) \mathbf{v}
   \end{equation*}
-\end{theorem}
+\end{fancyth}
+
+Theorem \ref{th:cg_polynomial} shows that, for given restriction and projection matrices $Q_m,P_m$ to $\mathcal{K}_m$, a matrix of the form $H_m = Q_m^T A P_m$ represents the action of $q(A)$ on $\mathbf{v}$. Choosing $Q_m=P_m=V_m$, we obtain the Hessenberg matrix from \cref{def:hessenberg_matrix,eq:lanczos_tridiagonal} resulting from \cref{alg:lanczos_linear_systems}. Additionally, from the Cayley-Hamilton theorem, we know that $m<n$. Therefore, the dimension of $\mathcal{K}_m$ is smaller than $n$. It follows that Krylov subspaces are able to efficiently represent the product of polynomials of $A$ by $\mathbf{v}$ with the smaller dimensional matrix $H_m$. This is a crucial property for the CG method as well, since the solution it generates contains a product of a polynomial of $A$ and the initial residual $\mathbf{r}_0$, see \cref{th:cg_approximate_solution}. Moreover, the \cref{th:cg_polynomial} ensures that CG converges in a finite amount of steps, which technically makes it an exact solution method instead of an iterative one.
 
 \subsection{CG algorithm}
 The CG method exists in the intersection of error projection methods and Krylov subspace methods, as it is a projection method with the choice $\mathcal{L} = \mathcal{K} = \mathcal{K}_m$. We can derive the CG method starting from Arnoldi's method, see \cref{alg:arnoldi_linear_systems}. Arnoldi's method is much like \cref{alg:error_projection_method} in that it uses a Gramm-Schmidt orthogonalization procedure to obtain the basis $V$ of the Krylov subspace $\mathcal{K}_m$ and a projection step to update the solution. Where Arnoldi's method is applicable to non-symmetric matrices by performing a full orthogonalization step, CG leverages the symmetry of $A$ by doing a partial orthogonalization step. The latter is possible, since the CG method only needs to maintain the orthogonality of the residuals $\mathbf{r}_j$ with respect to the previous residuals $\mathbf{r}_{j-1}$ and not with respect to all previous residuals $\mathbf{r}_{j-2}, \dots, \mathbf{r}_0$. The full derivation is discussed in the Appendix, \cref{sec:cg_derivation} and results in \cref{alg:cg}.
@@ -170,7 +173,7 @@ A crucial property of the approximate solution that \cref{alg:cg} produces is gi
   The CG method is a projection method with the choice $\mathcal{L} = \mathcal{K} = \mathcal{K}_m$. Hence, the approximate solution $\mathbf{u}_m$ is an element of the affine Krylov subspace $\mathbf{u}_0 + \mathcal{K}_m(A, \mathbf{r}_0)$, see \cref{def:error_projection_method}. The result follows from the fact that the Krylov subspace $\mathcal{K}_m(A, \mathbf{r}_0)$ is spanned by the vectors $\{\mathbf{r}_0, A\mathbf{r}_0, A^2\mathbf{r}_0, \dots, A^{m-1}\mathbf{r}_0\}$ and that the approximate solution $\mathbf{u}_m$ is a linear combination of these vectors. The coefficients of this linear combination are given by the \textit{CG solution coefficients} $c_i$.
 \end{proof}
 
-\subsection{CG convergence}\label{sec:cg_convergence}
+\subsection{Convergence of CG}\label{sec:cg_convergence}
 We derive a general bound for the error of the CG method in
 \begin{fancyth}{CG general error bound}{cg_error_bound}
   Suppose we apply the CG method to the linear system $A\mathbf{u} = \mathbf{b}$ with $A$ SPD and the exact solution $\mathbf{u}^*$. Then, the error of the $m^{\text{th}}$ iterate $\mathbf{e}_m = \mathbf{u}^* - \mathbf{u}_m$ is bounded as
