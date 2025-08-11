@@ -71,19 +71,6 @@ The particular implementation of domain decomposition method and coarse space re
 
 This thesis seeks to review the applicability of the bound in \cref{eq:pcg_complexity} to problems like \cref{prob:elliptic_problem}. The bound relies on an overestimation of the actual number of iterations $m$ required for convergence and overstates the role of the condition number $\kappa(M^{-1}A)$ in determining the convergence rate of CG. We will see in \cref{sec:cg_eigenvalue_distribution} that the actual number of iterations $m$ is much smaller than the classical bound that \cref{eq:pcg_complexity} relies on and that the condition number $\kappa(M^{-1}A)$ is not the only factor influencing the convergence rate of CG. 
 
-% This thesis answers the following central question:
-% \vspace{0.5em}
-% \begin{center}
-% \textit{\textbf{Can we derive more precise bounds for the convergence rate of the Conjugate Gradient (CG) method in high-contrast scalar elliptic problems, improving upon the classical condition number based bound?}}
-% \end{center}
-% \vspace{0.5em}
-
-% To answer this central question, the thesis explores several sub-questions:
-% \begin{enumerate}
-%     \item Can we derive an explicit expression of the convergence rate of CG that either as least as sharp or sharper than the classical bound depending on the contrast in the coefficient $\mathcal{C}$?
-% \end{enumerate}
-
-% The hope is that addressing these questions leads to a richer understanding of the convergence rate of the (P)CG method in the specific case of high-contrast problems and, subsequently, aid in the selection of suitable preconditioners $M$.
 The main research question in this work is as follows:
 \begin{researchq} \label{rq:main}
     \par
@@ -97,13 +84,13 @@ For instance, in \cite{ams_coarse_space_comp_study_Alves2024}, a two-level Schwa
     \begin{enumerate}[label=\textbf{Q\arabic*}, ref=\textbf{Q\arabic*}, leftmargin=1cm]
         \item\label{rq:subsidiary:heuristic} Given a certain eigenspectrum, can we construct a bound that is sharper than the classical condition number-based bound?
         \item\label{rq:subsidiary:measures} How does the number of CG iterations necessary for convergence of high-contrast heterogeneous problems depend on spectral characteristics other than the condition number?
-        \item\label{rq:subsidiary:preconditioners} Can we obtain a priori estimates for the number of iterations necessary for convergence of a PCG method with Schwarz-like preconditioners?
+        \item\label{rq:subsidiary:preconditioners} Can we obtain a priori estimates for the number of iterations necessary for convergence of   a PCG method with Schwarz-like preconditioners?
     \end{enumerate}
 \end{subsidiaryq}
 
 This research has great practical importance for the selection of the most efficient preconditioner for a given high-contrast problem. The condition number does not suffice to differentiate between preconditioners, as outlined in \cite{ams_coarse_space_comp_study_Alves2024}. Thus, having the ability to differentiate preconditioners based on spectral characteristics from, for instance, their approximate eigenspectra would improve the selection process.
 
-On top of that, having sharp(er) bounds for (P)CG methods allows for more efficient allocation of computational resources, as it allows for a more accurate estimate of the number of iterations necessary for convergence. This is particularly important in high-performance computing environments, where the cost of each iteration can be significant.
+On top of that, having sharper bounds for (P)CG methods allows for more efficient allocation of computational resources, as it allows for a more accurate estimate of the number of iterations necessary for convergence. This is particularly important in high-performance computing environments, where the cost of each iteration can be significant.
 
 As mentioned above, the computational complexity of (P)CG methods is given in \cref{eq:cg_complexity,eq:pcg_complexity}. If we can find a bound that scales better with the other spectral characteristics, we can possibly show that (P)CG methods with Schwarz-like preconditioners are applicable to a wider range of high-contrast problems than previously thought. This would open up new avenues for research and applications in the field of numerical analysis and scientific computing.
 
