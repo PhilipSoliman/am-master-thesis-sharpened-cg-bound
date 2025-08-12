@@ -293,10 +293,11 @@ and
 \end{equation}
 Here we have used the definition of $T_m$ and the fact that the residuals are multiples of the Lanczos vectors $\mathbf{r}_j = \text{scalar} \times \mathbf{v}_j$ \cite[Equation 6.103]{iter_method_saad}.
 
-\section{Construction of two-level additive Schwarz preconditioner} \label{sec:schwarz_convergence}
-In this section we discuss the general idea behind as well as the construction of robust coarse spaces to be used in conjunction with the One-level Schwarz preconditioner, ultimately leading to a Two-level Schwarz preconditioner. The coarse space is constructed using the eigenfunctions corresponding to the smallest $m_j$ eigenvalues resulting from a local eigenproblem in each subdomain $\Omega_j$. The coarse space is then constructed by taking the span of the $m_j$ eigenvectors corresponding to the smallest eigenvalues in each subdomain. Finally, bounds for the full preconditioned system's condition number are provided. All of this can be found in \cite[Sections 5.1-5.5]{schwarz_methods_Dolean_2015}.
+\section{Blueprint for the Two-level Schwarz preconditioner} \label{sec:schwarz_convergence}
+In this section we discuss the general idea behind as well as the construction of robust coarse spaces to be used in conjunction with the One-level Schwarz preconditioner, ultimately leading to a Two-level Schwarz preconditioner. We construct the Schwarz preconditioner with both a Nicolaides coarse space from \cref{eq:schwarz_nicolaides_coarse_space} and one based on the Dirichlet-to-Neumann map from \cref{def:dirichlet_to_neumann_map}. The latter coarse space is constructed using the eigenfunctions corresponding to the smallest $m_j$ eigenvalues resulting from a local eigenproblem in each subdomain $\Omega_j$. The coarse space is then constructed by taking the span of the $m_j$ eigenvectors corresponding to the smallest eigenvalues in each subdomain. Finally, bounds for the two full preconditioned systems' condition numbers are provided. All of this can be found in \cite[Sections 5.1-5.5]{schwarz_methods_Dolean_2015}.
 
-To that end we first consider the convergence of the original Schwarz method stated in definition \ref{def:schwarz_algorithm} for two simple one- and two-dimensional domains $\Omega$.
+\subsection{Motivation}\label{sec:schwarz_motivation}
+First we consider the convergence of the original Schwarz method stated in definition \ref{def:schwarz_algorithm} for two simple one- and two-dimensional domains $\Omega$. This motivates the construction of the coarse space.
 
 \subsubsection{1D case}
 Let $L>0$ and the domain $\Omega = (0,L)$. The domain is split into two subdomains $\Omega_1 = (0,L_1)$ and $\Omega_2 = (l_2,L)$ such that $l_2\leq L_1$. Instead of solving for $u_{1,2}$ directly, we solve for the error $e^n_{1,2} = u^{n}_{1,2} - u_{|\Omega_i}$, which by linearity of the Poisson problem as well as the original Schwarz algorithm satisfies
@@ -350,11 +351,8 @@ such that the convergence factor is \cite[Equation 1.36]{schwarz_methods_Dolean_
 \end{equation}
 which indicates that the convergence is quicker as the overlap increases as before. Next to this, it also shows that the convergence is quicker for higher $k$.
 
-\subsubsection{Construction of two-level additive Schwarz preconditioner}
-In this section we will construct a coarse space for \cref{prob:elliptic_problem}. The coarse space is constructed using the eigenfunctions corresponding to the smallest $m_j$ eigenvalues resulting from a local eigenproblem in each subdomain $\Omega_j$. The coarse space is then constructed by taking the span of the $m_j$ eigenvectors corresponding to the smallest eigenvalues in each subdomain. This coarse space is subsequently used to construct the two level additive Schwarz preconditioner, and bounds for its condition number are provided as well.
-All of this can be found in \cite[Sections 5.1-5.5]{schwarz_methods_Dolean_2015}.
-
-We partition $\Omega$ into $N_{\text{sub}}$ subdomains $\Omega_j$, which overlap each other by one or several layers of elements in the triangulation $\mathcal{T}$. We make the the following observations
+\subsection{Construction of two-level additive Schwarz preconditioner}\label{sec:two_level_ASM_construction}
+Here we present the construction of a full two-level Schwarz preconditioner. We partition $\Omega$ into $N_{\text{sub}}$ subdomains $\Omega_j$, which overlap each other by one or several layers of elements in the triangulation $\mathcal{T}$. We make the following general assumptions.
 \begin{enumerate}[label=\textbf{D\arabic*}, ref=\textbf{D\arabic*}]
   \item\label{ASM_observation:basis_inclusion} For every degree of freedom $k\in\mathcal{N}$, there is a subdomain $\Omega_j$ such that $\phi_k$ has support in $\Omega_j$ \cite[Lemma 5.3]{schwarz_methods_Dolean_2015}.
   \item\label{ASM_observation:multiplicity_of_intersections} The maximum number of subdomains a mesh element can belong to is given by
@@ -413,13 +411,13 @@ Then their matrix counterparts are given by
   \tilde{P}_j & =  A_j^{-1} R_j^T A,      \\
   P_j         & = R_j^T A_j^{-1} R_j^T A,
 \end{align*}
-where $A_j = R_j A R_j^T$. From this we can construct the two-level additive Schwarz method as
+where $A_j = R_j A R_j^T$ and its inverse is obtained using an exact solver. From this we can construct the two-level additive Schwarz preconditioned system as
 \begin{equation}
   M_{\text{ASM,2}}^{-1} A = \sum_{j=1}^{N_{\text{sub}}} P_j.
   \label{eq:two_level_ASM_projections}
 \end{equation}
 
-\subsection{Convergence of two-level additive Schwarz}\label{sec:two_level_ASM_convergence}
+\subsection{Convergence of two-level additive Schwarz system}\label{sec:two_level_ASM_convergence}
 In the following, we denote
 \[
   \mathcal{P}_{\text{ad}} = \sum_{j=1}^{N_{\text{sub}}} \mathcal{P}_j,
@@ -517,7 +515,6 @@ The value of $C_0$ depends on the projection operator $\Pi_j$ onto the chosen co
     \label{eq:c0_local_eigenfunctions}
   \end{equation}
 \end{enumerate}
-\todo{Add further simplification and explanation of the bounds \cref{eq:c0_nicolaides,eq:c0_local_eigenfunctions}.}
 
 \section{Chebyshev approximation}\label{sec:chebyshev_approximation}
 This section contains the definition of Chebyshev polynomials of the first kind, some of their properties and their application to a minimization problem akin to the one described in \cref{th:cg_convergence_rate_bound}.
