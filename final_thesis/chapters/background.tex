@@ -660,14 +660,7 @@ where $R_0$ is a matrix representing the coarse space. The solution to this prob
 \]
 where $r = f - A \mathbf{u}$ is the residual and the matrix $A_0 = R_0 A R_0^T$ is called the \textit{coarse operator}.
 
-The coarse space $R_0$ can be constructed in various ways. The classical way is called the Nicolaides space \cite[Section 4.2]{schwarz_methods_Dolean_2015}, which uses the discrete partition of unity operators $D_i$ as examplified in \cref{eq:schwarz_partition_of_unity_FEM} to get
-\begin{equation}
-  R_0 = \sum_{i=1}^{N_{\text{sub}}} R_i^T D_i R_i.
-  \label{eq:schwarz_nicolaides_coarse_space}
-\end{equation}
-Note that the coarse space in \cref{eq:schwarz_nicolaides_coarse_space} has a block-diagonal form, which allows for efficient computation of the coarse operator.
-
-Finally, the coarse space correction term can be added to the Schwarz preconditioners \cref{eq:ASM_preconditioner,eq:RAS_preconditioner} to get the following preconditioners
+The coarse space correction term can be added to the one-level Schwarz preconditioners \cref{eq:ASM_preconditioner,eq:RAS_preconditioner} to get the following preconditioners
 \begin{subequations}
   \begin{align}
     M_{\text{ASM,2}} & = R_0^T A_0^{-1} R_0 + \sum_{i=1}^{N_{\text{sub}}} R_i^T A_i^{-1} R_i , \label{eq:ASM_preconditioner_coarse}    \\
@@ -675,17 +668,27 @@ Finally, the coarse space correction term can be added to the Schwarz preconditi
   \end{align}
 \end{subequations}
 
-As seen in \cref{sec:schwarz_motivation} the local error in any subdomain in the Schwarz method satisfies the homogeneous version of the original problem, i.e. right-hand side $f = 0$. At the interface the local error has a Dirichlet boundary condition that equals the error of the neighboring subdomain. Additionally, the convergence factor, e.g. $\rho_{\text{2D}}$, depends on the frequency of the modes in the local error. In particular, small frequencies appear to have slow convergence. The question thus becomes how to get rid of these small frequency modes in the local errors of all subdomains. One possible answer is the so-called Dirichlet-to-Neumann map \cite[Definition 5.1]{schwarz_methods_Dolean_2015}
-\begin{fancydef}{Dirichlet-to-Neumann map for \cref{prob:elliptic_problem}}{dirichlet_to_neumann_map}
-  For any function defined on the interface $u_{\delta\Omega_j}: \delta\Omega_j \mapsto \mathbb{R}$, we consider the Dirichlet-to-Neumann map
+\subsubsection{Coarse spaces}
+The coarse space $R_0$ can be constructed in various ways. The classical way is called the Nicolaides space \cite[Section 4.2]{schwarz_methods_Dolean_2015}, which uses the discrete partition of unity operators $D_i$ as exemplified in \cref{eq:schwarz_partition_of_unity_FEM} to get
+\begin{equation}
+  R_0 = \sum_{i=1}^{N_{\text{sub}}} R_i^T D_i R_i.
+  \label{eq:schwarz_nicolaides_coarse_space}
+\end{equation}
+Note that the coarse space in \cref{eq:schwarz_nicolaides_coarse_space} has a block-diagonal form, which allows for efficient computation of the coarse operator.
+
+Another way to construct $R_0$ is based on the analysis of the local errors in the Schwarz method. As seen in \cref{sec:schwarz_motivation} the local error in any subdomain produced by the original (one-level) Schwarz method satisfies the homogeneous version of the original problem, i.e. right-hand side $f = 0$. At the interface the local error has a Dirichlet boundary condition that equals the error of the neighboring subdomain. Additionally, the convergence factor, e.g. $\rho_{\text{2D}}$, depends on the frequency of the modes in the local error. In particular, small frequencies appear to have slow convergence. The question thus becomes how to get rid of these small frequency modes in the local errors of all subdomains. 
+
+One possible answer is the so-called Dirichlet-to-Neumann map \cite[Definition 5.1]{schwarz_methods_Dolean_2015}
+\begin{fancydef}{Dirichlet-to-Neumann map}{dirichlet_to_neumann_map}
+  For any function defined on the interface $u_{\partial\Omega_j}: \delta\Omega_j \mapsto \mathbb{R}$, we consider the Dirichlet-to-Neumann map
   \[
-    \operatorname{DtN}_{\Omega_j}\left(u_{\delta\Omega_j}\right)=\left.\frac{\partial v}{\partial \mathbf{n}_j}\right|_{\delta\Omega_j},
+    \operatorname{DtN}_{\Omega_j}\left(u_{\partial\Omega_j}\right)=\left.\frac{\partial v}{\partial \mathbf{n}_j}\right|_{\partial\Omega_j},
   \]
   where $\delta\Omega_j:=\partial \Omega_j \backslash \partial \Omega$ and $v$ satisfies
   \begin{equation}
     \begin{aligned}
       -\nabla\cdot\left(\mathcal{C}\nabla v\right) & =0            & \text { in } \Omega_j,                               \\
-      v                                            & =u_{\delta\Omega_j} & \text { on } \delta\Omega_j,                               \\
+      v                                            & =u_{\partial\Omega_j} & \text { on } \delta\Omega_j,                               \\
       v                                            & =0            & \text { on } \partial \Omega_j \cap \partial \Omega.
     \end{aligned}
     \label{eq:dirichlet_to_neumann_map_subproblem}
@@ -698,12 +701,18 @@ Hence we aim to solve the eigenvalue problem
 \[
   \operatorname{DtN}_{\Omega_j}\left(v\right) = \lambda v,
 \]
-which can be reformulated in the variational form. To that end let $w\in H^1(\Omega_j)$ with $w_{\delta\Omega_j\cap\delta\Omega} \equiv 0$ be a test function. Multiply both sides of \cref{eq:dirichlet_to_neumann_map_subproblem} by $w$, integrate over $\Omega_j$ and apply the divergence theorem to get
+which can be reformulated in the variational form. To that end let $w\in H^1(\Omega_j)$ with $w_{\partial\Omega_j\cap\partial\Omega} \equiv 0$ be a test function. Multiply both sides of \cref{eq:dirichlet_to_neumann_map_subproblem} by $w$, integrate over $\Omega_j$ and apply the divergence theorem to get
 \[
-  \int_{\Omega_j} \mathcal{C}\nabla v \cdot \nabla w - \int_{\delta\Omega_j} \mathcal{C}\frac{\partial v}{\partial \mathbf{n}_j}w = 0, \quad \forall w.
+  \int_{\Omega_j} \mathcal{C}\nabla v \cdot \nabla w - \int_{\partial\Omega_j} \mathcal{C}\frac{\partial v}{\partial \mathbf{n}_j}w = 0, \quad \forall w.
 \]
-Then, using that $v=u_{\delta\Omega_j}$ on $\delta\Omega_j$ we get that $\frac{\partial v}{\partial \mathbf{n}_j} = \operatorname{DtN}(v) = \lambda v $ on $\delta\Omega_j$. This leads to the following variational eigenvalue problem
+Then, using that $v=u_{\partial\Omega_j}$ on $\partial\Omega_j$ we get that $\frac{\partial v}{\partial \mathbf{n}_j} = \operatorname{DtN}(v) = \lambda v $ on $\partial\Omega_j$. This leads to the following variational eigenvalue problem
 \begin{equation}
-  \text{Find } (v, \lambda) \text{ s.t. } \int_{\Omega_j} \mathcal{C}\nabla v \cdot \nabla w - \lambda \int_{\delta\Omega_j} \mathcal{C}vw = 0, \quad \forall w.
+  \text{Find } (v, \lambda) \text{ s.t. } \int_{\Omega_j} \mathcal{C}\nabla v \cdot \nabla w - \lambda \int_{\partial\Omega_j} \mathcal{C}vw = 0, \quad \forall w.
   \label{eq:dirichlet_to_neumann_map_eigenproblem}
+\end{equation}
+
+In \fullref{sec:two_level_ASM_construction} the full construction of the coarse space $R_0$ is detailed, including the use of the Dirichlet-to-Neumann map to identify and eliminate low-frequency modes in the local errors. Then, in \fullref{sec:two_level_ASM_convergence} the convergence properties of the two-level additive Schwarz method are discussed. By combining and simplifying the \cref{eq:two_level_ASM_condition_number,eq:c0_nicolaides,eq:c0_local_eigenfunctions} as well as choosing $\lambda_{m_j +1}$ to be greater than or equal to the subdomain diameter $H_j^{-1}$ we obtain
+\begin{equation}
+  \kappa(M^{-1}_{\text{ASM,2}}A) \lesssim C \left(\frac{\mathcal{C}_{\text{max}}}{\mathcal{C}_{\text{min}}}\right)\left(C' + \frac{H}{\delta}\right). 
+  \label{eq:two_level_ASM_condition_bound_Nico}
 \end{equation}

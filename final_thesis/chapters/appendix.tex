@@ -293,8 +293,8 @@ and
 \end{equation}
 Here we have used the definition of $T_m$ and the fact that the residuals are multiples of the Lanczos vectors $\mathbf{r}_j = \text{scalar} \times \mathbf{v}_j$ \cite[Equation 6.103]{iter_method_saad}.
 
-\section{Blueprint for the Two-level Schwarz preconditioner} \label{sec:schwarz_convergence}
-In this section we discuss the general idea behind as well as the construction of robust coarse spaces to be used in conjunction with the One-level Schwarz preconditioner, ultimately leading to a Two-level Schwarz preconditioner. We construct the Schwarz preconditioner with both a Nicolaides coarse space from \cref{eq:schwarz_nicolaides_coarse_space} and one based on the Dirichlet-to-Neumann map from \cref{def:dirichlet_to_neumann_map}. The latter coarse space is constructed using the eigenfunctions corresponding to the smallest $m_j$ eigenvalues resulting from a local eigenproblem in each subdomain $\Omega_j$. The coarse space is then constructed by taking the span of the $m_j$ eigenvectors corresponding to the smallest eigenvalues in each subdomain. Finally, bounds for the two full preconditioned systems' condition numbers are provided. All of this can be found in \cite[Sections 5.1-5.5]{schwarz_methods_Dolean_2015}.
+\section{Blueprint for the Two-level Schwarz preconditioner}\label{sec:schwarz_convergence}
+In this section we discuss the general idea behind as well as the construction of robust coarse spaces to be used in conjunction with the One-level Schwarz preconditioner, ultimately leading to a Two-level Schwarz preconditioner. To that end, we first motivate the need for an additional level or coarse space in \fullref{sec:schwarz_motivation} by studying the convergence factor of the original Schwarz method. In \fullref{sec:two_level_ASM_construction} we construct the Schwarz preconditioner with both a Nicolaides coarse space from \cref{eq:schwarz_nicolaides_coarse_space} and one based on the Dirichlet-to-Neumann map from \cref{def:dirichlet_to_neumann_map}. The latter coarse space is constructed using the eigenfunctions corresponding to the smallest $m_j$ eigenvalues resulting from a local eigenproblem in each subdomain $\Omega_j$ defined in \cref{eq:dirichlet_to_neumann_map_eigenproblem}. Finally, in \fullref{sec:two_level_ASM_convergence} bounds for the two full preconditioned systems' condition numbers are provided. All of this can be found in \cite[Sections 5.1-5.5]{schwarz_methods_Dolean_2015}.
 
 \subsection{Motivation}\label{sec:schwarz_motivation}
 First we consider the convergence of the original Schwarz method stated in definition \ref{def:schwarz_algorithm} for two simple one- and two-dimensional domains $\Omega$. This motivates the construction of the coarse space.
@@ -454,23 +454,38 @@ where $\Theta_i$ is the set of indices of subdomains with color $i$ and $i = 1, 
 \end{align*}
 where the extra one comes from the coarse projection operator $\mathcal{P}_0$. Note that this bound can be made sharper by using \cref{ASM_observation:multiplicity_of_intersections} to get $\lambda_{\text{max}}(\mathcal{P}_{\text{\Theta}_i}) \leq k_0 + 1$.
 
-On the other hand, it can be shown that the minimum eigenvalue satisfies provided that $v\in V_h$ admits a $C_0$-stable decomposition \cite[Theorem 5.11]{schwarz_methods_Dolean_2015}
+Next, we define a stable decomposition \cite[Definition 5.10]{schwarz_methods_Dolean_2015}.
+\begin{APPfancydef}{$C_0$-stable decomposition (uniform)}{C_0_stable_decomposition}
+  A function $v\in V_h$ is said to admit a $C_0$-stable decomposition if there exists a uniform constant $C_0 > 0$ such that
+  \[
+    \sum_{j=0}^{N_{\text{sub}}} \|E_j v\|_a^2 \leq C_0^2 \|v\|_a^2
+  \]
+\end{APPfancydef}
+It can be shown that the minimum eigenvalue satisfies
 \[
-  \lambda_{\text{min}}(\mathcal{P}_{\text{ad}}) \geq C_0^{-2}.
+  \lambda_{\text{min}}(\mathcal{P}_{\text{ad}}) \geq C_0^{-2},
+\]
+provided that every $v\in V_h$ admits a $C_0$-stable decomposition in the sense of \cref{def:C_0_stable_decomposition} \cite[Theorem 5.11]{schwarz_methods_Dolean_2015}. Note that through the equivalence of norms, we have
+\[
+  \mathcal{C}_{\text{min}} \|\nabla v\|^2 \leq \|v\|_a^2 \leq \mathcal{C}_{\text{max}} \|\nabla v\|^2.
+\]
+Therefore, we can conclude that every $v\in V_h$ admits a $C_0$-stable decomposition if and only if
+\[
+  \sum_{j=0}^{N_{\text{sub}}} \|E_j \nabla v\|^2 \leq \frac{\mathcal{C}_{\text{max}}}{\mathcal{C}_{\text{min}}}C_0^2 \|\nabla v\|^2.
 \]
 
 Finally, we can write the condition number of the two-level additive Schwarz preconditioner as
 \begin{equation}
-  \kappa(P_{\text{ad}}) \leq \left( N_c + 1 \right) C_0^2.
+  \kappa(P_{\text{ad}}) \leq \frac{\mathcal{C}_{\text{max}}}{\mathcal{C}_{\text{min}}} \left( N_c + 1 \right) C_0^2.
   \label{eq:two_level_ASM_condition_number}
 \end{equation}
 
-The value of $C_0$ depends on the projection operator $\Pi_j$ onto the chosen coarse space $V_0$ for each subdomain.
+The constant $C_0$ depends on the projection operator $\Pi_j$ onto the chosen coarse space $V_0$ for each subdomain and is fully derived in \cite[Sections 5.5-5.7]{schwarz_methods_Dolean_2015}. We present the main results below.
 \begin{enumerate}[label=\Roman*., ref=\textbf{ASM type \Roman* coarse space}]
   \item\label{ASM_coarse_space:nicolaides} \textbf{Nicolaides coarse space} The projection operator is defined as
   \begin{equation}
     \Pi_j^{\text{Nico}}u = \begin{cases}
-      (\frac{1}{|\Omega_j|}\int_{\Omega_j} u)\mathbf{1}_{\Omega_j}, & \delta\Omega_j \cap \delta \Omega = \emptyset, \\
+      \left(\frac{1}{|\Omega_j|}\int_{\Omega_j} u\right)\mathbf{1}_{\Omega_j}, & \delta\Omega_j \cap \delta \Omega = \emptyset, \\
       0,                                                            & \text{otherwise},
     \end{cases}
     \label{eq:nicolaides_coarse_space_projection}
@@ -489,10 +504,10 @@ The value of $C_0$ depends on the projection operator $\Pi_j$ onto the chosen co
   \]
   that is the number of subdomains that are not connected to the boundary of the domain $\Omega$. In this case \cite[Theorem 5.16]{schwarz_methods_Dolean_2015},
   \begin{equation}
-    C_0^{2} = \left(8 + 8 C_{\chi}^2 \max_{j=1}^{N_{\text{sub}}}\left[C_P^2 + C^{-1}_{\text{tr}}\frac{H_j}{\delta_j}\right]k_0 C_{I_h}(k_0 + 1) + 1\right),
+    C_{0,\text{Nico}}^{2} = \left(8 + 8 C_{\chi}^2 \max_{j=1}^{N_{\text{sub}}}\left[C_P^2 + C^{-1}_{\text{tr}}\frac{H_j}{\delta_j}\right]k_0 C_{I_h}(k_0 + 1) + 1\right),
     \label{eq:c0_nicolaides}
   \end{equation}
-  where $H_j$ is the diameter of the subdomain $\Omega_j$, $C_p$ the Poincaré constant following from \cite[Lemma 5.18]{schwarz_methods_Dolean_2015} and $C_{\text{tr}}$ is the trace constant.
+  where $H_j$ is the diameter of the subdomain $\Omega_j$, $C_{\chi}$ the partition of unity constant from \cref{ASM_observation:partition_of_unity}, $C_p$ the Poincaré constant following from \cite[Lemma 5.18]{schwarz_methods_Dolean_2015}, $C_{\text{tr}}$ the trace constant and $C_{I_h}$ the stable interpolation constant.
   \item\label{ASM_coarse_space:local_eigenfunctions} \textbf{Local eigenfunctions coarse space} The projection operator is defined as
   \[
     \Pi_j^{\text{spec}}u = \sum_{k=1}^{m_j} a_{\Omega_j}(u, v^{(j)}_k) v^{(j)}_k,
@@ -511,7 +526,7 @@ The value of $C_0$ depends on the projection operator $\Pi_j$ onto the chosen co
   \]
   In this case \cite[Theorem 5.17]{schwarz_methods_Dolean_2015}
   \begin{equation}
-    C_0^{2} = \left(8 + 8 C_{\chi}^2 \max_{j=1}^{N_{\text{sub}}}\left[C_P^2 + C^{-1}_{\text{tr}}\frac{1}{\delta_j\lambda_{m_j +1}}\right]k_0 C_{I_h}(k_0 + 1) + 1\right).
+    C_{0,\text{DtN}}^{2} = \left(8 + 8 C_{\chi}^2 \max_{j=1}^{N_{\text{sub}}}\left[C_P^2 + C^{-1}_{\text{tr}}\frac{1}{\delta_j\lambda_{m_j +1}}\right]k_0 C_{I_h}(k_0 + 1) + 1\right).
     \label{eq:c0_local_eigenfunctions}
   \end{equation}
 \end{enumerate}
