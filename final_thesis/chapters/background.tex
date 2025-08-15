@@ -711,8 +711,21 @@ Then, using that $v=u_{\partial\Omega_j}$ on $\partial\Omega_j$ we get that $\fr
   \label{eq:dirichlet_to_neumann_map_eigenproblem}
 \end{equation}
 
-In \fullref{sec:two_level_ASM_construction} the full construction of the coarse space $R_0$ is detailed, including the use of the Dirichlet-to-Neumann map to identify and eliminate low-frequency modes in the local errors. Then, in \fullref{sec:two_level_ASM_convergence} the convergence properties of the two-level additive Schwarz method are discussed. By combining and simplifying the \cref{eq:two_level_ASM_condition_number,eq:c0_nicolaides,eq:c0_local_eigenfunctions} as well as choosing $\lambda_{m_j +1}$ to be greater than or equal to the subdomain diameter $H_j^{-1}$ we obtain
-\begin{equation}
-  \kappa(M^{-1}_{\text{ASM,2}}A) \lesssim C \left(\frac{\mathcal{C}_{\text{max}}}{\mathcal{C}_{\text{min}}}\right)\left(C' + \frac{H}{\delta}\right). 
-  \label{eq:two_level_ASM_condition_bound_Nico}
-\end{equation}
+In \fullref{sec:two_level_ASM_construction} the full construction of the coarse space $R_0$ is detailed, including the use of the Dirichlet-to-Neumann map to identify and eliminate low-frequency modes in the local errors. Then, in \fullref{sec:two_level_ASM_convergence} the convergence properties of the two-level additive Schwarz method are discussed. By combining and simplifying the \cref{eq:two_level_ASM_condition_number,eq:c0_nicolaides,eq:c0_local_eigenfunctions}, we obtain
+\begin{subequations}
+  \begin{align}
+    \kappa(M^{-1}_{\text{ASM,2,\text{Nico}}}A) \lesssim C \left(\frac{\mathcal{C}_{\text{max}}}{\mathcal{C}_{\text{min}}}\right)\left(C' + \frac{H}{\delta}\right). 
+    \label{eq:two_level_ASM_condition_bound_Nico}\\
+    \kappa(M^{-1}_{\text{ASM,2,\text{DtN}}}A) \lesssim C \left(\frac{\mathcal{C}_{\text{max}}}{\mathcal{C}_{\text{min}}}\right)\left(C' + \frac{1}{\lambda_c\delta}\right), 
+    \label{eq:two_level_ASM_condition_bound_DtN}
+  \end{align}
+\end{subequations}
+where $\delta$ is the size of the overlap between subdomains, $H$ the typical size of the subdomains, $\mathcal{C}_{\text{max}}$ and $\mathcal{C}_{\text{min}}$ are the maximum and minimum values of the coefficient function $\mathcal{C}$ in \cref{eq:dirichlet_to_neumann_map_subproblem}, respectively, $C$ and $C'$ are constants that depend on the geometry of the problem and $\lambda_c$ is related to the cut-off eigenvalue for the eigenpairs of the Dirichlet-to-Neumann map operator. The first bound \cref{eq:two_level_ASM_condition_bound_Nico} is for the Nicolaides coarse space, while the second bound \cref{eq:two_level_ASM_condition_bound_DtN} is for the Dirichlet-to-Neumann coarse space.
+
+Notice that the bounds \cref{eq:two_level_ASM_condition_bound_Nico,eq:two_level_ASM_condition_bound_DtN} are both robust to the scaling in the fine-mesh size, that is they do not contain the any terms depending on $h$. This is an important feature of the two-level Schwarz method.
+
+Additionally, the bounds in \cref{eq:two_level_ASM_condition_bound_Nico,eq:two_level_ASM_condition_bound_DtN} contain the contrast of the coefficient function $\mathcal{C}$, which plays a crucial role in the convergence behavior of the two-level additive Schwarz method, as explained in \cite{msfem_coarse_space_Graham_2007}. In high-contrast problems, where the ratio $\frac{\mathcal{C}_{\text{max}}}{\mathcal{C}_{\text{min}}}$ is large, the condition number of the preconditioned system can become very large, leading to a theoretically predicted slow convergence of the PCG method via \cref{eq:cg_convergence_rate_bound_iterations_approx,eq:pcg_complexity}.
+
+Fortunately, the bound in \cref{eq:two_level_ASM_condition_bound_DtN} contains the reciprocal of the cut-off eigenvalue $\lambda_c$, which can help mitigate the effects of high contrast and result in a lower condition number and faster convergence of PCG than for the Nicolaides coarse space. In this case, the two-level additive Schwarz method with the Dirichlet-to-Neumann coarse space is defined to be robust with respect to the contrast of the coefficient function $\mathcal{C}$, as the condition number does not depend on the contrast.
+
+However, in most cases it is not possible to select $\lambda_c$ such that the contrast fully cancels in the condition number bound. As a consequence, the preconditioned system maintains a large condition number and its spectrum contains a spectral gap. The convergence of these kinds of systems is the main concern of this thesis. 
