@@ -26,9 +26,13 @@ from hcmsfem.root import get_venv_root
 SAVE_DIR = get_venv_root() / "tables"
 
 # colour gradient for the table
-low_colour = "#e2e4fb" # CustomColors.SOFTSKY.value # "#e2e4fb"
-high_colour = CustomColors.SKY.value # "#405FE5"
-two_color = LinearSegmentedColormap.from_list("twocolor", [low_colour, high_colour])
+nan_color = "#f0f0f0"
+warning_color = CustomColors.RED.value
+middle_color = "#e2e4fb"
+high_color = CustomColors.SKY.value
+three_color = LinearSegmentedColormap.from_list(
+    "threecolor", [warning_color, middle_color, high_color]
+)
 
 
 def generate_iteration_bound_table(
@@ -55,7 +59,7 @@ def generate_iteration_bound_table(
         "$m_{N_{\\text{tail-cluster}}}$",
         "$m_{\\text{estimate}}$",
     ]
-    cidx = pd.Index(["$m$"] + bounds + ["\\textbf{iter.}"])
+    cidx = pd.Index(["$m$"] + bounds + ["$i$"])
     meshes_names = [
         f"$\\mathbf{{H=1/{int(1 / mesh_params.coarse_mesh_size)}}}$"
         for mesh_params in MESHES
@@ -110,16 +114,16 @@ def generate_iteration_bound_table(
 
                 # get most recent bounds but limited to max_iters
                 m_classic_b = m_classic[mask][-1]
-                diff_m_classic = int(abs(m_classic_b - m))
+                diff_m_classic = int(m_classic_b - m)
 
                 m_multi_cluster_b = m_multi_cluster[mask][-1]
-                diff_m_multi_cluster = int(abs(m_multi_cluster_b - m))
+                diff_m_multi_cluster = int(m_multi_cluster_b - m)
 
                 m_tail_cluster_b = m_tail_cluster[mask][-1]
-                diff_m_tail_cluster = int(abs(m_tail_cluster_b - m))
+                diff_m_tail_cluster = int(m_tail_cluster_b - m)
 
                 m_estimate_b = m_estimate[mask][-1]
-                diff_m_estimate = int(abs(m_estimate_b - m))
+                diff_m_estimate = int(m_estimate_b - m)
 
                 # construct row
                 data.append(
@@ -166,22 +170,42 @@ def generate_iteration_bound_table(
 
     # apply background gradient to the bound columns
     def unmark_nan(s):  # nan colour
-        return [f"background-color: {low_colour}" if pd.isna(v) else "" for v in s]
+        return [f"background-color: {nan_color}" if pd.isna(v) else "" for v in s]
 
     for i, idx in enumerate(df.index):
         subset = pd.IndexSlice[[idx], bounds]
-        diff = differences[i]
-        # rank differences from smallest to largest
-        rank = rankdata(diff, method="dense") - 1  # substract 1 for 0-based index
+        diff = np.array(differences[i])
+        negative_diffs = np.abs(diff[diff < 0])
+        positive_diffs = np.abs(diff[diff >= 0])
 
-        # normalize the score to [0, 1]
-        n_unique = len(np.unique(diff))
-        score = 1 - rank / n_unique
+        # rank differences from smallest to largest, substract 1 for 0-based index
+        negative_rank = rankdata(negative_diffs, method="dense") - 1
+        positive_rank = rankdata(positive_diffs, method="dense") - 1
+
+        # normalize scores (negative to 0 to 0.5 and positive from 0.5 to 1)
+        negative_scores = (
+            0.5 * (negative_rank / len(np.unique(negative_diffs)))
+            if len(negative_diffs) > 0
+            else np.array([])
+        )
+
+        positive_scores = (
+            0.5 * (2 - positive_rank / len(np.unique(positive_diffs)))
+            if len(positive_diffs) > 0
+            else np.array([])
+        )
+
+        # apply gradient for possible lower bounds (warning)
+        score = np.zeros(len(diff))
+        score[diff < 0] = negative_scores
+        score[diff >= 0] = positive_scores
         styler.background_gradient(
-            cmap=two_color,
+            cmap=three_color,
             subset=subset,
             axis=1,
             gmap=score,
+            vmin=0,
+            vmax=1,
         ).apply(subset=subset, func=unmark_nan)
 
     # (Optional) set bold font for indices with plain text names (does not apply to LaTeX)
@@ -196,7 +220,7 @@ def generate_iteration_bound_table(
         f"PCG iteration bounds {', '.join(bounds)} for solving the model diffusion problem with coefficient function {coef_func.latex}. Bounds are based on approximate spectra (Ritz values) obtained during the initial PCG iterations and are shown for meshes "
         f"{', '.join(meshes_names)} "
         f"and 2-OAS preconditioners with {', '.join(coarse_space_names)} coarse spaces. "
-        "The $\\textbf{iter.}$ column shows the iteration at which the bounds are obtained."
+        "The $i$ column shows the iteration at which the bounds are obtained. The color of each cell indicates whether the bound is larger (blue) or smaller (red) than the number of iterations required for convergence $m$. The shade of the cell represents the tightness of the bound. That is, the darker a cell is, the tighter the bound."
     )
 
     styler.to_latex(

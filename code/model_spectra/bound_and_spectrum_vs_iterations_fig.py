@@ -1,5 +1,7 @@
+from itertools import cycle
 from pathlib import Path
 
+import matplotlib.colors as mcolors
 import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
 import numpy as np
@@ -16,7 +18,7 @@ from hcmsfem.cli import CLI_ARGS
 from hcmsfem.eigenvalues import eigs
 from hcmsfem.logger import LOGGER, PROGRESS
 from hcmsfem.meshes import DefaultQuadMeshParams
-from hcmsfem.plot_utils import save_latex_figure
+from hcmsfem.plot_utils import CustomColors, save_latex_figure
 from hcmsfem.preconditioners import (
     AMSCoarseSpace,
     GDSWCoarseSpace,
@@ -39,8 +41,19 @@ LOG_RTOL = np.log(RTOL)
 # number of iterations to calculate
 N_ITERATIONS = 300  # for RGDSW left cluster stabilizes around 1200 iterations
 
-# spectrum plot frequency
+# spectrum plot
 SPECTRUM_PLOT_FREQ = 5
+low_colour = "#b7b7b7"  # CustomColors.SOFTSKY.value # "#e2e4fb"
+high_colour = CustomColors.SKY.value  # "#405FE5"
+cmap = mcolors.LinearSegmentedColormap.from_list(
+    "custom_gradient", [low_colour, high_colour]
+)
+SPECTRA_COLORS_CYCLER = cycle(
+    [
+        mcolors.to_hex(cmap(i))
+        for i in np.linspace(0, 1, N_ITERATIONS // (10 * SPECTRUM_PLOT_FREQ))
+    ]
+)
 
 # preconditioner and coarse space class to plot
 PRECONDITIONERS = [
@@ -60,7 +73,7 @@ COEF_FUNCS = [CoefFunc.EDGE_SLABS_AROUND_VERTICES_INCLUSIONS]
 FIGHEIGHT = 2
 
 # legend
-LEGEND_SIZE = 1.0
+LEGEND_SIZE = 1.5
 FONTSIZE = 10
 
 # plot
@@ -75,14 +88,6 @@ def plot_bound_and_spectrum(PRECONDITIONER) -> plt.Figure:
     main_desc = progress.get_description(main_task)
     main_desc += " ([bold]H = 1/{0:.0f}, CF = {1}[/bold], M = {2})"
 
-    # initialize figure and axes
-    # fig, axs = plt.subplots(
-    #     2 * len(COEF_FUNCS),
-    #     len(MESHES),
-    #     figsize=(6 * len(MESHES), 2 * FIGHEIGHT * len(COEF_FUNCS)),
-    #     squeeze=False,
-    #     sharex=True,
-    # )
     # initialize figure and axes for legend
     fig = plt.figure(
         figsize=(6 * len(MESHES), FIGHEIGHT * len(COEF_FUNCS) + LEGEND_SIZE)
@@ -96,7 +101,7 @@ def plot_bound_and_spectrum(PRECONDITIONER) -> plt.Figure:
             FIGHEIGHT * len(COEF_FUNCS),
             LEGEND_SIZE,
         ],
-        hspace=0.1,
+        hspace=0.15,
     )
     axs = []
     for i in range(2 * len(COEF_FUNCS)):
@@ -109,10 +114,9 @@ def plot_bound_and_spectrum(PRECONDITIONER) -> plt.Figure:
     axs = np.array(axs)
     legend_ax = fig.add_subplot(gs[2, :])
     legend_ax.axis("off")
+
     # Further tighten layout between subplots and minimize edge padding
-    fig.subplots_adjust(
-        hspace=0.1, left=PADDING, right=1 - PADDING, top=1 - PADDING, bottom=0
-    )
+    fig.subplots_adjust(hspace=0.1, left=0.12, right=0.97, top=0.9, bottom=0)
 
     # main plot loop
     for i, mesh_params in enumerate(MESHES):
@@ -214,10 +218,9 @@ def plot_bound_and_spectrum(PRECONDITIONER) -> plt.Figure:
                 n_iters=N_ITERATIONS,
             )
             bound_ax.xaxis.set_major_locator(MultipleLocator(N_ITERATIONS // 10))
-            bound_ax.tick_params(
-                axis="x", which="both", top=False, labelbottom=False
-            )
+            bound_ax.tick_params(axis="x", which="both", top=False, labelbottom=False)
             bound_ax.set_xlim(0, N_ITERATIONS)
+            bound_ax.set_ylabel("Bound $m(T_i)$")
 
             # plot spectra
             cg_iter_bound = CGIterationBound(log_rtol=LOG_RTOL, exact_convergence=False)
@@ -230,20 +233,21 @@ def plot_bound_and_spectrum(PRECONDITIONER) -> plt.Figure:
                     spectrum,
                     linestyle="None",
                     marker="x",
+                    color=next(SPECTRA_COLORS_CYCLER),
                 )
 
-                # plot partition indices
+                # plot cluster indices
                 partition_indices = partition_eigenspectrum(spectrum)
                 spectra_ax.plot(
                     np.full_like(partition_indices, iteration),
                     spectrum[partition_indices],
                     linestyle="None",
                     marker="_",
-                    color="red",
+                    color=CustomColors.NAVY.value,
                     markersize=10,
                 )
 
-                # plot mixed partition indices
+                # plot tail-cluster indices
                 partition_indices_mixed = partition_eigenspectrum_tails(
                     spectrum, log_rtol=LOG_RTOL
                 )
@@ -252,7 +256,7 @@ def plot_bound_and_spectrum(PRECONDITIONER) -> plt.Figure:
                     spectrum[partition_indices_mixed],
                     linestyle="None",
                     marker="|",
-                    color="green",
+                    color=CustomColors.GOLD.value,
                     markersize=10,
                 )
 
@@ -270,7 +274,8 @@ def plot_bound_and_spectrum(PRECONDITIONER) -> plt.Figure:
             spectra_ax.grid(True, axis="x", linestyle="--", linewidth=0.5)
             spectra_ax.set_xlim(0, N_ITERATIONS)
             spectra_ax.xaxis.set_major_locator(MultipleLocator(N_ITERATIONS // 10))
-            # spectra_ax.set_xlabel("Iteration $i$")
+            spectra_ax.set_xlabel("Iteration $i$")
+            spectra_ax.set_ylabel("Spectrum $\\sigma(T_i)$")
 
         # advance main task
         progress.advance(main_task)
@@ -284,7 +289,7 @@ def plot_bound_and_spectrum(PRECONDITIONER) -> plt.Figure:
         handles,
         labels,
         fontsize=FONTSIZE,
-        loc="center",
+        loc="lower center",
         ncol=len(labels),
         frameon=False,
     )
@@ -299,7 +304,6 @@ if __name__ == "__main__":
     figs = []
     for PRECONDITIONER in PRECONDITIONERS:
         fig = plot_bound_and_spectrum(PRECONDITIONER)
-        # fig.tight_layout()
         shorthand = PRECONDITIONER[0].SHORT_NAME + "-" + PRECONDITIONER[1].SHORT_NAME
         if CLI_ARGS.generate_output:
             fn = Path(__file__).name.replace("_fig.py", f"_{shorthand}")
