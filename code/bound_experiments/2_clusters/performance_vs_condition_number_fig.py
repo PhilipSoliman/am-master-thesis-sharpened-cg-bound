@@ -3,6 +3,7 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib import gridspec
 from matplotlib.axes import Axes
 from scipy.optimize import brentq, fsolve, root_scalar
 from scipy.special import lambertw
@@ -34,9 +35,11 @@ MAX_CONDITION_NUMBER = 1e10  # maximum global condition number
 # plot
 FIGWIDTH = 3.5 * len(RIGHT_CLUSTER_CONDITION_NUMBERS)
 FIGHEIGHT = (FIGWIDTH / len(RIGHT_CLUSTER_CONDITION_NUMBERS)) * len(MIN_EIGS)
-LEGEND_HEIGHT = 0.1
+LEGEND_HEIGHT = 0.2
 RESOLUTION = int(1e3)
 YLIMIT = (5e-2, 1e4)  # y-axis limits for performance plot
+PADDING = 0.01
+LEGEND_FONT_SIZE = 10
 
 
 #############
@@ -450,13 +453,26 @@ def plot_performance_curves(
 #########################
 # CALCULATE PERFORMANCE #
 #########################
-fig, axs = plt.subplots(
-    nrows=len(MIN_EIGS),
-    ncols=len(RIGHT_CLUSTER_CONDITION_NUMBERS),
-    figsize=(FIGWIDTH, FIGHEIGHT),
-    sharex=True,
-    sharey=True,
-    squeeze=False,
+fig = plt.figure(figsize=(FIGWIDTH, FIGHEIGHT + LEGEND_HEIGHT))
+gs = gridspec.GridSpec(
+    len(MIN_EIGS) + 1,
+    len(RIGHT_CLUSTER_CONDITION_NUMBERS),
+    height_ratios=[FIGHEIGHT/len(MIN_EIGS)] * len(MIN_EIGS) + [LEGEND_HEIGHT],
+    hspace=0.4,
+)
+axs = []
+for i in range(len(MIN_EIGS)):
+    cols = []
+    for j in range(len(RIGHT_CLUSTER_CONDITION_NUMBERS)):
+        cols.append(
+            fig.add_subplot(gs[i, j], sharex=None if j == 0 else cols[0])
+        )
+    axs.append(cols)
+axs = np.array(axs)
+legend_ax = fig.add_subplot(gs[-1, :])
+legend_ax.axis("off")
+fig.subplots_adjust(
+    hspace=0.1, left=0.1, right=0.99, top=0.95, bottom=0
 )
 
 for row, min_eig in enumerate(MIN_EIGS):
@@ -499,13 +515,22 @@ for row, min_eig in enumerate(MIN_EIGS):
             uniform_performance,
         )
         if row == 0 and col == 1:
-            ax.legend(fontsize=9, loc="upper left", framealpha=0.7, shadow=False)
+            handles, labels = axs[0, 0].get_legend_handles_labels()
+            legend_ax.legend(
+                handles,
+                labels,
+                fontsize=LEGEND_FONT_SIZE,
+                loc="center",
+                ncol=len(labels),
+                frameon=False,
+                columnspacing=1.0,
+            )
         if row == 0 and col == 0:
             ax.set_xlim((condition_numbers[0] / 2, MAX_CONDITION_NUMBER * 100))
             steps = int(np.log10(MAX_CONDITION_NUMBER / condition_numbers[0]))
             ax.set_xscale("log")
             ticks = np.logspace(
-                np.log10(condition_numbers[0]),
+                np.log10(1),
                 np.log10(MAX_CONDITION_NUMBER),
                 steps + 2,
             )
@@ -541,7 +566,7 @@ for row, min_eig in enumerate(MIN_EIGS):
         # turn on grid
         ax.grid(which="both", linestyle="--", linewidth=0.5, alpha=0.7)
 
-fig.tight_layout()
+# fig.tight_layout()
 
 if CLI_ARGS.generate_output:
     fn = Path(__file__).name.replace("_fig.py", "")

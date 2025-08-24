@@ -21,7 +21,7 @@ where $N_{\text{tail}}$ is the number of eigenvalues in the tail. The first case
 
 The CG error \cref{eq:cg_error_bound} suggests we look for a polynomial $r_{m_2}$ of degree $m_2$ that satisfies the constraints of the minimization problem in order to find an iteration bound $m < m_2$. In other words, we do not solve the minimization problem directly, but we make a clever selection of the polynomial $r_{m_2}$ that satisfies the constraints. As a consequence, the actual minimizing polynomial might require a lower degree $m$ to satisfy the same relative error tolerance $\epsilon$. Therefore, the degree $m_2$ we find is at least as large as the actual number of iterations required to achieve the desired relative error tolerance $\epsilon$.
 
-\citeauthor{cg_sharpened_convrate_Axelsson1976} suggests we use not one monolithic residual polynomial function, but a multiplication of two residual polynomial functions $\hat{r}^{(i)}_p(x)$ and $\hat{r}_{m_2-p}(x)$ for the two clusters. The superscript $^{(i)}$ corresponds to the two eigenspectra described above. The residual polynomial functions are defined using \cref{def:scaled_chebyshev_polynomial} and $\gamma = 0$ as follows
+\citeauthor{cg_sharpened_convrate_Axelsson1976} suggests we use not one monolithic residual polynomial function, but a multiplication of two residual polynomial functions $\hat{r}^{(i)}_p(x)$ and $\hat{r}_{m_2-p}(x)$ for the two clusters. The superscript $^{(i)}$ corresponds to the two eigenspectra described above. The residual polynomial functions are constructed from (transformed) Chebyshev polynomials \cref{def:chebyshev_polynomial,def:scaled_chebyshev_polynomial} with $\gamma = 0$ as follows
 \begin{equation}
     \hat{r}^{(i)}_p (x)
     \begin{cases}
@@ -240,11 +240,11 @@ which is a good approximation as long as $\kappa_l \geq \kappa \gg 1$. Next to s
     c_r\sqrt{s} \geq \ln\left(4s\right) + c_r.
     \label{eq:threshold_inequality_s}
 \end{equation}
-We use the Lambert $\mathrm{W}$ function to solve the equality in \cref{eq:threshold_inequality_s} for $s$. In order to do so, we transform the equality into the form $x = y \mathrm{e}^y$ with $y = -\frac{c_r\sqrt{s}}{2}$ and $x = -\frac{c_r}{4\exp\left(\frac{c_r}{2}\right)}$. Then, we can write
+To solve the equality in \cref{eq:threshold_inequality_s} for $s$, we make use of the Lambert $W$ function. The Lambert $W$ function is defined as the solution to the equation $x = y\mathrm{e}^y$. For a real-valued argument $z \in [-1/e, 0)$, the equation has two real solutions, given by the branches $y = W_0(z) > -1$ and $y = W_{-1}(z) \leq -1$. In order to solve \cref{eq:threshold_inequality_s}, we transform the equality into the form $x = y \mathrm{e}^y$ with $y = -\frac{c_r\sqrt{s}}{2} = -\sqrt{\frac{\kappa}{\kappa_l\kappa_r}} < -1$ and $x = -\frac{c_r}{4\exp\left(\frac{c_r}{2}\right)}$. Then, we can write
 \begin{align*}
     -\frac{c_r\sqrt{s}}{2} = y = W_{-1}(x) = W_{-1}\left(-\frac{c_r}{4\exp\left(\frac{c_r}{2}\right)}\right), \quad x \in \left(-\frac{1}{\mathrm{e}}, 0 \right],
 \end{align*}
-where $W_{-1}$ is the first negative branch of the Lambert $\mathrm{W}$ function. The condition on $x$ ensures that $W_{-1}$ evaluates to a real number. Note that $\kappa_r\geq1 \implies c_r \leq 1$. So the condition on $x$ is indeed satisfied. Finally, after substituting $c_r = \frac{2}{\sqrt{\kappa_r}}$ we obtain an explicit expression for the spectral width $s$ in terms of the right cluster condition number $\kappa_r$
+where $W_{-1}$ is the first negative branch of the Lambert $W$ function. The condition on $x$ ensures that $W_{-1}$ evaluates to a real number. Note that $\kappa_r\geq1 \implies c_r \leq 1$. So the condition on $x$ is indeed satisfied. Finally, after substituting $c_r = \frac{2}{\sqrt{\kappa_r}}$ we obtain an explicit expression for the spectral width $s$ in terms of the right cluster condition number $\kappa_r$
 \[
     s(\kappa, \kappa_l) \geq \kappa_r W_{-1}\left(-\frac{1}{2\sqrt{\kappa_r}\exp\left(\frac{1}{\sqrt{\kappa_r}}\right)}\right)^2,
 \]
@@ -253,7 +253,7 @@ or, in terms of the original condition numbers
     \kappa \geq 4\kappa_l\kappa_r W_{-1}\left(-\frac{1}{2\sqrt{\kappa_r}\exp\left(\frac{1}{\sqrt{\kappa_r}}\right)}\right)^2 = T_{\kappa}(\kappa_l, \kappa_r).
     \label{eq:threshold_inequality_explicit}
 \end{equation}
-The evaluation of the Lambert $\mathrm{W}$ function is not a trivial task and often requires numerical methods for accurate computation \cite{evaluation_of_the_lambert_w_function_Corless1996}. Luckily, there exists an expansion of $\mathrm{W}_{-1}(x)$ for $x\rightarrow0^-$ \cite[Equation 4.19]{evaluation_of_the_lambert_w_function_Corless1996}. Let $x$ be as above and set $L = \ln(-x)$ and $l = \ln(-L)$, then
+The evaluation of the Lambert $W$ function is not a trivial task and often requires numerical methods for accurate computation \cite{evaluation_of_the_lambert_w_function_Corless1996}. Luckily, there exists an expansion of $W_{-1}(x)$ for $x\rightarrow0^-$ \cite[Equation 4.19]{evaluation_of_the_lambert_w_function_Corless1996}. Let $x$ be as above and set $L = \ln(-x)$ and $l = \ln(-L)$, then
 \begin{equation}
     \kappa \geq 4\kappa_l\kappa_r \left(L - l + \frac{l}{L}\right)^2 + \mathcal{O}\left(\frac{\kappa_l\kappa_rl^4}{L^4}\right) := T^{(0)}_{\kappa}(\kappa_l, \kappa_r) + \mathcal{O}\left(\frac{\kappa_l\kappa_rl^4}{L^4}\right).
     \label{eq:threshold_inequality_explicit_expansion}
@@ -269,7 +269,6 @@ and, conversely, if $\kappa > T_{\kappa}(\kappa_l, \kappa_r)$, then
     P(\kappa, \kappa_l, \kappa_r) > P_{\text{threshold}}
 \]
 
-\subsection{Performance plot}\label{sec:performance_plot}
 Figure \ref{fig:two_cluster_bound_performance} visualizes all the findings regarding the performance of the two-cluster bound $m_2$.
 \begin{figure}[H]
     \centering
@@ -434,7 +433,7 @@ and \cref{eq:cg_iteration_bound_multiple_clusters} as
 \end{equation}
 
 \subsection{Algorithm for generalized CG bound}\label{sec:cg_multi_cluster_bound_algorithm}
-We summarize the techniques outlined in this section in \cref{alg:generalized_cg_bound}. The algorithm takes a set of clusters, a (possibly empty) set of tail eigenvalues $\Lambda_t$ and a relative error tolerance $\epsilon$ as input and returns the generalized multi-tail-cluster CG iteration bound $m_N$. The algorithm iterates over all clusters, calculating the Chebyshev degree $p_i$ for each cluster based on the previous clusters' degrees and the relative error tolerance. It also treats tail eigenvalues as discussed in \cref{sec:cg_single_eigenvalue_tail_clusters}. Finally, it sums up all the Chebyshev degrees and the contribution from the tail eigenvalues to obtain the multi-cluster CG bound.
+We summarize the techniques outlined in this section in \cref{alg:generalized_cg_bound}. The algorithm takes a set of clusters, a possibly empty set of tail eigenvalues $\Lambda_t$ and a relative error tolerance $\epsilon$ as input and returns the generalized multi-tail-cluster CG iteration bound $m_N$. The algorithm iterates over all clusters, calculating the Chebyshev degree $p_i$ for each cluster based on the previous clusters' degrees and the relative error tolerance. It also treats tail eigenvalues as discussed in \cref{sec:cg_single_eigenvalue_tail_clusters}. Finally, it sums up all the Chebyshev degrees and the contribution from the tail eigenvalues to obtain the multi-cluster CG bound.
 \begin{algorithm}[H]
     \caption{$\operatorname{GeneralizedCGIterationBound}(\text{clusters}, \Lambda_t, \epsilon)$}
     \begin{algorithmic}[1]
@@ -548,7 +547,7 @@ In this section we adapt \cref{alg:partition_eigenspectrum} to check additional 
 \[
     k^* < \left\lfloor\frac{\sqrt{\kappa_l}}{2}\ln{\frac{2}{\epsilon}} + 1 \right\rfloor
 \] 
-and the sparsity condition from \cref{eq:tail_cluster_bound_sparsity_condition}. This results in \cref{alg:partition_eigenspectrum_tails}. Similar to \cref{alg:partition_eigenspectrum}, the algorithm recursively partitions the eigenspectrum, returning the set of split indices $K^*$. In addition, \cref{alg:partition_eigenspectrum_tails} also updates a preinitialized set of tail eigenvalues $\Lambda_t$ and a set of tail cluster start indices $I_t$. The tail cluster start indices are initialized to an offset value, which is incremented by the size of the left-hand partition at each recursive call. This way, the tail cluster start indices are always relative to the original eigenspectrum. The use for tracking the start indices of the tail clusters is to ensure that the tail eigenvalues can be identified and left out of the set of regular clusters upon calling the generalized multi-tail-cluster CG iteration bound in \cref{alg:multi_tail_cluster_cg_bound}.
+and the sparsity condition from \cref{eq:tail_cluster_bound_sparsity_condition}. This results in \cref{alg:partition_eigenspectrum_tails}. Similar to \cref{alg:partition_eigenspectrum}, the algorithm recursively partitions the eigenspectrum, returning the set of split indices $K^*$. In addition, \cref{alg:partition_eigenspectrum_tails} also updates a preinitialized set of tail eigenvalues $\Lambda_t$ and a set of tail cluster start indices $I_t$. The tail cluster start indices are initialized to an offset value, which is incremented by the size of the left-hand partition at each recursive call. This way, the tail cluster start indices are always relative to the original eigenspectrum. The purpose of tracking the start indices of the tail clusters is to ensure that the tail eigenvalues can be identified and left out of the set of regular clusters upon calling the generalized multi-tail-cluster CG iteration bound in \cref{alg:multi_tail_cluster_cg_bound}.
 \begin{algorithm}[H]
     \caption{$\operatorname{PartitionEigenspectrumTails}(\sigma, \Lambda_t\gets\emptyset, I_t\gets\emptyset, \text{offset}\gets1)$}
     \begin{algorithmic}[1]

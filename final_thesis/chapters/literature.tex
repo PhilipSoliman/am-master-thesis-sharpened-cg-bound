@@ -87,19 +87,15 @@ The authors show that the convergence rate strongly depends on the eigenvalue di
 
 Third, in \cite{cg_superlinear_Beckermann2001} the authors provide a proof of CG's superlinear convergence. This proof is fundamentally different from the polynomial-based strategy that is used in the work of \cite{cg_sharpened_convrate_Axelsson1976}, in that this proof is based in the field of \textit{logarithmic potential theory} (LPT). LPT is used to solve the minimization problem in \cref{th:cg_convergence_rate_bound} using a strategy that is akin to how charges distribute themselves over a conductor, the interested reader is referred to \cite{from_potential_theory_to_matrix_iterations_in_six_steps_Driscoll1998}. 
 
-In their analysis of superlinear convergence, \citeauthor{cg_superlinear_Beckermann2001} use concepts from logarithmic potential theory. Their framework begins by modeling the eigenvalues of a family of matrices not as discrete points, but as a continuous distribution, or measure, $\sigma$ on a compact set $S$. The core of their proof recasts the polynomial minimization problem from \cref{th:cg_convergence} into an equivalent problem in potential theory.
+In their analysis of superlinear convergence, \citeauthor{cg_superlinear_Beckermann2001} use concepts from logarithmic potential theory. Their framework begins by modeling the eigenvalues of a family of matrices not as discrete points, but as a continuous distribution, or measure, $\sigma$ on a compact set $S$. The core of their proof recasts the polynomial minimization problem from \cref{th:cg_error_bound} into an equivalent problem in potential theory.
 
 This involves finding a special probability measure, $\mu_t$, that minimizes the logarithmic energy           
 \[
-    I(\mu) = \int U^{\mu} d\mu(\lambda) = \int \int \log \frac{1}{|\lambda-\lambda'|} d\mu(\lambda') d\mu(\lambda)
+    I(\mu) = \int \int \log \frac{1}{|\lambda-\lambda'|} d\mu(\lambda') d\mu(\lambda)
 \]
 under constraints related to the eigenvalue distribution $\sigma$ and the normalized iteration count $t = m/n$. The solution to this energy minimization problem identifies a shrinking family of compact sets, $S(t)$, which represents the "effective" spectrum that the CG polynomial must handle at iteration $m$. As iterations proceed, $t$ increases, and this effective spectral set $S(t)$ becomes smaller.
 
-The resulting asymptotic convergence rate is then described using the Green's function,
-\[
-    g_S(t) = \log \text{cap}(S(t)) - U^{\omega_S(t)}(\lambda),
-\] 
-associated with these shrinking sets. The Green's function is a fundamental tool in potential theory that quantifies how quickly polynomials can decay away from a given set. It is defined in terms of the set's logarithmic capacity, $\text{cap}(S(t))$. The logarithmic capacity can be intuitively understood as a measure of the "size" of the set $S(t)$ from the perspective of polynomial approximation; a smaller capacity implies that it is easier to find a polynomial that is small across the entire set. As the effective spectrum $S(t)$ shrinks with the iteration count, its capacity decreases, leading to a sharper error bound and explaining the observed superlinear convergence.
+The resulting asymptotic convergence rate is then described using the Green's function \cite[Equations 2.22-2.31]{cg_superlinear_Beckermann2001}, $g_S(t)$, associated with these shrinking sets. The Green's function is a fundamental tool in potential theory that quantifies how quickly polynomials can decay away from a given set. It is defined in terms of the set's logarithmic capacity, $\text{cap}(S(t))$. The logarithmic capacity can be intuitively understood as a measure of the "size" of the set $S(t)$ from the perspective of polynomial approximation; a smaller capacity implies that it is easier to find a polynomial that is small across the entire set. As the effective spectrum $S(t)$ shrinks with the iteration count, its capacity decreases, leading to a sharper error bound and explaining the observed superlinear convergence.
 
 In particular, \citeauthor{cg_superlinear_Beckermann2001} derive a new asymptotic error bound that is sharper than the standard estimate. This new bound is expressed via the integral \cite[Equation 1.8]{cg_superlinear_Beckermann2001}:
 \begin{equation}
