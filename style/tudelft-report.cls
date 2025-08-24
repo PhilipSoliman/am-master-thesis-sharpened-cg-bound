@@ -225,7 +225,7 @@
 
 %% Format the section titles and spacing
 \titleformat{\section}
-    {\Large\sectionstyle\bfseries\color{section}}
+    {\fontsize{13}{13}\sectionstyle\bfseries\color{section}}
     {\thesection.}
     {5pt}
     {}
