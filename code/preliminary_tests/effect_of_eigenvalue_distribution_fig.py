@@ -1,7 +1,8 @@
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib import gridspec
 
-from hcmsfem.solvers import CustomCG, multi_cluster_cg_iteration_bound
+from hcmsfem.cli import CLI_ARGS
 from hcmsfem.plot_utils import (
     CustomColors,
     mpl_graph_plot_style,
@@ -9,7 +10,7 @@ from hcmsfem.plot_utils import (
     set_mpl_cycler,
     set_mpl_style,
 )
-from hcmsfem.cli import CLI_ARGS
+from hcmsfem.solvers import CustomCG, generalized_cg_iteration_bound
 
 # constants
 EIGV_SAMPLE_RANGE = (
@@ -30,7 +31,11 @@ NUM_RESPOLY = 3  # number of residual polynomials to plot (from the end)
 RESOLUTION = 2000
 DOMAIN = (0, 1)  # domain for residual polynomial plot
 CODOMAIN = (-1.5, 1.5)
-FIGWIDTH = 5  # inches
+FIGWIDTH = 6  # inches
+LEGEND_SIZE = 0.05  # inches
+FIGRATIO = len(CLUSTER_COUNTS) / len(CLUSTER_SPREADS)  # height/width
+FIGHEIGHT = FIGWIDTH * FIGRATIO + LEGEND_SIZE  # inches
+FONTSIZE = 10
 
 # set matplotlib style
 set_mpl_style()
@@ -66,16 +71,30 @@ for cluster_count in CLUSTER_COUNTS:
         As.append(np.diag(eig_sorted))
         eigs.append(eig_sorted)
 
-# experiments
-figratio = len(CLUSTER_COUNTS) / len(CLUSTER_SPREADS)  # height/width
-fig, axs = plt.subplots(
-    nrows=len(CLUSTER_COUNTS),
-    ncols=len(CLUSTER_SPREADS),
-    sharex=True,
-    sharey=True,
-    squeeze=False,
-    figsize=(FIGWIDTH, FIGWIDTH * figratio),
+# setup figure
+fig = plt.figure(figsize=(FIGWIDTH, FIGHEIGHT))
+gs = gridspec.GridSpec(
+    len(CLUSTER_COUNTS) + 1,
+    len(CLUSTER_SPREADS),
+    height_ratios=[FIGWIDTH] * len(CLUSTER_COUNTS) + [LEGEND_SIZE],
+    hspace=0.15,
 )
+axs = []
+ax_0 = fig.add_subplot(gs[0, 0])
+for i in range(len(CLUSTER_COUNTS)):
+    mesh_axs = []
+    for j in range(len(CLUSTER_SPREADS)):
+        if i == 0 and j == 0:
+            mesh_axs.append(ax_0)
+        else:
+            mesh_axs.append(fig.add_subplot(gs[i, j], sharex=ax_0, sharey=ax_0))
+    axs.append(mesh_axs)
+axs = np.array(axs)
+legend_ax = fig.add_subplot(gs[-1, :])
+legend_ax.axis("off")
+fig.subplots_adjust(hspace=0.1, left=0.12, right=0.97, top=0.95, bottom=0.02)
+
+# experiments
 domain_range = DOMAIN[1] - DOMAIN[0]
 codomain_range = CODOMAIN[1] - CODOMAIN[0]
 classical_iteration_upperbound = 0
@@ -102,7 +121,9 @@ for i, A in enumerate(As):
 
     # sharpened for the number of iterations
     sharpened_iteration_upperbounds.append(
-        multi_cluster_cg_iteration_bound(clusters[i], log_rtol=np.log(custom_cg.tol), exact_convergence=True)
+        generalized_cg_iteration_bound(
+            clusters[i], log_rtol=np.log(custom_cg.tol), exact_convergence=True
+        )
     )
     print(
         f"#clusters: {CLUSTER_COUNTS[row]}, spread: {CLUSTER_SPREADS[col]}, m_p: {sharpened_iteration_upperbounds[-1]}"
@@ -164,19 +185,17 @@ for i, A in enumerate(As):
     )
 
 # plot legend last
-pos_x = 0
-pos_y = 0
-height = 0.1 * codomain_range
-width = 1.1 * domain_range
-axs[0, 0].legend(
-    fontsize=8,
-    loc="lower center",
+handles, labels = axs[0, 0].get_legend_handles_labels()
+legend_ax.legend(
+    handles,
+    labels,
+    fontsize=FONTSIZE,
+    loc="center",
     ncol=NUM_RESPOLY,
     mode="expand",
-    bbox_to_anchor=(pos_x, pos_y, width, height),
-).set_zorder(11)
+    frameon=False,
+)
 
-fig.tight_layout()
 if CLI_ARGS.generate_output:
     save_latex_figure("effect_of_eigenvalue_distribution")
 if CLI_ARGS.show_output:

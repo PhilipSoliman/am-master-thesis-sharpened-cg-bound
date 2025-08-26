@@ -1,14 +1,15 @@
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib import gridspec
 
-from hcmsfem.solvers import CustomCG
+from hcmsfem.cli import CLI_ARGS
 from hcmsfem.plot_utils import (
     mpl_graph_plot_style,
     save_latex_figure,
     set_mpl_cycler,
     set_mpl_style,
 )
-from hcmsfem.cli import CLI_ARGS
+from hcmsfem.solvers import CustomCG
 
 # constants
 EIGV_SAMPLE_RANGE = (
@@ -29,6 +30,13 @@ RESOLUTION = 2000
 DOMAIN = (0, 1)  # domain for residual polynomial plot
 CODOMAIN = (-1.5, 1.5)
 FIGWIDTH = 6  # inches
+LEGEND_SIZE = 0.05  # inches
+FIGRATIO = len(CLUSTER_COUNTS) / 2  # height/width
+FIGHEIGHT = FIGWIDTH * FIGRATIO + LEGEND_SIZE
+HSPACE = 0.2
+WSPACE = 0.45
+PADDING = dict(left=0.12, right=0.99, top=0.95, bottom=0.1)
+FONTSIZE = 10
 
 # set matplotlib style
 set_mpl_style()
@@ -61,29 +69,48 @@ for cluster_count in CLUSTER_COUNTS:
     As.append(np.diag(eig_sorted))
     eigs.append(eig_sorted)
 
-# experiments
-figratio = len(CLUSTER_COUNTS) / 2  # height/width
-fig, axs = plt.subplots(
-    nrows=len(CLUSTER_COUNTS),
-    ncols=2,
-    sharex=False,
-    sharey=False,
-    squeeze=False,
-    figsize=(FIGWIDTH, FIGWIDTH * figratio),
+# initialize figure and axes for legend
+fig = plt.figure(figsize=(FIGWIDTH, FIGHEIGHT))
+gs = gridspec.GridSpec(
+    len(CLUSTER_COUNTS) + 1,
+    2,
+    height_ratios=[FIGWIDTH / 2] * len(CLUSTER_COUNTS) + [LEGEND_SIZE],
+    hspace=HSPACE,
+    wspace=WSPACE,
 )
+axs = []
+for i in range(len(CLUSTER_COUNTS)):
+    mesh_axs = []
+    for j in range(2):
+        mesh_axs.append(fig.add_subplot(gs[i, j]))
+    axs.append(mesh_axs)
+axs = np.array(axs)
+legend_ax = fig.add_subplot(gs[-1, :])
+legend_ax.axis("off")
+fig.subplots_adjust(**PADDING)
 figs_seperate = []
 axs_seperate = []
+legend_axs = []
+PADDING["bottom"] *= 2
 for _ in range(len(CLUSTER_COUNTS)):
-    _fig, _axs = plt.subplots(
-        nrows=1,
-        ncols=2,
-        sharex=False,
-        sharey=False,
-        squeeze=False,
-        figsize=(FIGWIDTH, FIGWIDTH * figratio / len(CLUSTER_COUNTS)),
+    _fig = plt.figure(figsize=(FIGWIDTH, FIGWIDTH / 2 + LEGEND_SIZE))
+    _gs = gridspec.GridSpec(
+        2, 2, height_ratios=[FIGWIDTH / 2, LEGEND_SIZE], hspace=HSPACE, wspace=WSPACE
     )
+    _axs = []
+    for j in range(2):
+        _axs.append(_fig.add_subplot(_gs[0, j]))
+    _axs = np.array([_axs])
+    _legend_ax = _fig.add_subplot(_gs[1, :])
+    _legend_ax.axis("off")
+    _fig.subplots_adjust(**PADDING)
+
+    # store handles
     figs_seperate.append(_fig)
     axs_seperate.append(_axs)
+    legend_axs.append(_legend_ax)
+
+# experiments
 domain_range = DOMAIN[1] - DOMAIN[0]
 codomain_range = CODOMAIN[1] - CODOMAIN[0]
 iteration_upperbound = 0
@@ -97,9 +124,7 @@ for i, A in enumerate(As):
 
     # solve cg for each matrix
     custom_cg = CustomCG(A, b, x0)
-    x, success = custom_cg.solve(
-        save_residuals=True, x_exact=x_exact
-    )
+    x, success = custom_cg.solve(save_residuals=True, x_exact=x_exact)
 
     # upperbound for the number of iterations
     iteration_upperbound = custom_cg.calculate_iteration_upperbound()
@@ -230,23 +255,19 @@ for i, A in enumerate(As):
     )
 
 
-# plot legend last
-pos_x = 0
-pos_y = 0
-height = 0.1 * codomain_range
-width = 1.1 * domain_range
-axs[0, 0].legend(
-    fontsize=8,
-    loc="right",
-    ncol=3,
-    mode="expand",
-    bbox_to_anchor=(pos_x, pos_y, width, height),
-).set_zorder(11)
-
-# tight layout
-fig.tight_layout()
-for _fig in figs_seperate:
-    _fig.tight_layout()
+# legend
+for _ax, _legend_ax in zip(
+    [axs[0, 0]] + [_axs[0, 0] for _axs in axs_seperate], [legend_ax] + legend_axs
+):
+    handles, labels = _ax.get_legend_handles_labels()
+    _legend_ax.legend(
+        handles,
+        labels,
+        fontsize=FONTSIZE,
+        loc="upper center",
+        ncol=len(labels),
+        frameon=False,
+    )
 
 if CLI_ARGS.generate_output:
     save_latex_figure("cg_convergence_extreme_spectra", fig=fig)

@@ -2,10 +2,10 @@
 In \fullref{sec:cg_method} we discuss the classification of the CG method as both an error projection and a Krylov subspace method. We then derive the convergence rate of CG in \fullref{sec:cg_convergence}, as well as the influence of the eigenvalues of the system matrix $A$ on that rate in \fullref{sec:cg_eigenvalue_distribution}. The latter is important, since it shows that the condition number $\kappa(A)$ is not the only factor influencing the convergence rate of CG. The first part ends with a brief review of the PCG method in \fullref{sec:cg_preconditioning}. Then, the second part of this chapter \fullref{sec:schwarz_methods} concerns the Schwarz methods, which are a class of domain decomposition methods. Schwarz methods can be used to construct preconditioners for use in PCG, even though these were originally devised as fixed point iteration methods for solving PDEs on complex domains.
 
 \section{Conjugate gradient method}\label{sec:cg_method}
-We seek to solve the linear system of equations $A\mathbf{u} = \mathbf{b}$, where $A$ is a symmetric positive definite (SPD) matrix. These properties of $A$ make the CG method particularly suitable for solving the system, as motivated in the \cref{ch:introduction}.
+We seek to solve the linear system of equations $A\mathbf{u} = \mathbf{b}$, where $A$ is a symmetric positive definite (SPD) matrix. These properties of $A$ make the CG method particularly suitable for solving the system, as motivated in \fullref{ch:introduction}.
 
 \subsection{Projection methods}
-To further understand the CG method, we need to introduce the class of \textit{projection methods}, which given some initial guess $\mathbf{u}_0$ find an approximation $\mathbf{u}_{\text{new}}$ to the solution of the linear system $A\mathbf{u} = \mathbf{b}$ in a \textit{constrained subspace} $\mathcal{L}\subset\mathbb{R}^n$ using a \textit{correction vector} $\mathbf{c}$ in another subspace $\mathcal{K}\subset\mathbb{R}^n$. That is, projection methods solve the following problem \cite[Equation 5.3]{iter_method_saad}
+To begin to understand the CG method, we need to introduce the class of \textit{projection methods}, which given some initial guess $\mathbf{u}_0$ find an approximation $\mathbf{u}_{\text{new}}$ to the solution of the linear system $A\mathbf{u} = \mathbf{b}$ in a \textit{constrained subspace} $\mathcal{L}\subset\mathbb{R}^n$ using a \textit{correction vector} $\mathbf{c}$ in another subspace $\mathcal{K}\subset\mathbb{R}^n$. That is, projection methods solve the following problem \cite[Equation 5.3]{iter_method_saad}
 \[
   \text{Find } \mathbf{u}_{\text{new}} = \mathbf{u}_0 + \mathbf{c} \in \mathbf{u}_0 + \mathcal{K} \text{ such that } \mathbf{r}_{\text{new}} =  A\mathbf{u}_{\text{new}} - \mathbf{b} = \mathbf{r}_0 - A\mathbf{c} \perp \mathcal{L}.
 \]
@@ -84,7 +84,7 @@ By performing multiple (error) projection steps we obtain a sequence of approxim
   \end{algorithmic}
   \label{alg:error_projection_method}
 \end{algorithm}
-Projection methods differ in their choice of the spaces $\mathcal{K}$ and $\mathcal{L}$ as well as in how they obtain the basis $V$ of $\mathcal{K}$, as well as the so-called \textit{Hessenberg matrix} defined in \cref{def:hessenberg_matrix}.
+Projection methods differ in their choice of the spaces $\mathcal{K}$ and $\mathcal{L}$, as well as in how they obtain the basis $V$ of $\mathcal{K}$ and the so-called \textit{Hessenberg matrix} defined in \cref{def:hessenberg_matrix}.
 \begin{fancydef}{Hessenberg matrix}{hessenberg_matrix}
   The Hessenberg matrix $H$ is defined as the matrix $H = V^TAV$, where $V$ is a matrix whose columns span the subspace $\mathcal{K}$.
 \end{fancydef}
@@ -145,7 +145,7 @@ Finally, we can state the polynomial representation property of the Krylov subsp
 Theorem \ref{th:cg_polynomial} shows that, for given restriction and projection matrices $Q_m$ and $P_m$ to $\mathcal{K}_m$ and a matrix of the form $H_m = Q_m^T A P_m$, $q(H_m)$ represents the action of $q(A)$ on $\mathbf{v}$. Choosing $Q_m=P_m=V_m$, we obtain the Hessenberg matrix from \cref{def:hessenberg_matrix,eq:lanczos_tridiagonal} resulting from \cref{alg:lanczos_linear_systems}. Additionally, from the Cayley-Hamilton theorem, we know that $m<n$. Therefore, the dimension of $\mathcal{K}_m$ is smaller than $n$. It follows that Krylov subspaces are able to efficiently represent the product of polynomials of $A$ by $\mathbf{v}$ with the smaller dimensional matrix $H_m$. This is a crucial property for the CG method as well, since the solution it generates contains a product of a polynomial of $A$ and the initial residual $\mathbf{r}_0$, see \cref{th:cg_approximate_solution}. Moreover, the \cref{th:cg_polynomial} ensures that CG converges in a finite amount of steps, which technically makes it an exact solution method instead of an iterative one.
 
 \subsection{CG algorithm}
-The CG method exists in the intersection of error projection methods and Krylov subspace methods, as it is a projection method with the choice $\mathcal{L} = \mathcal{K} = \mathcal{K}_m$. We can derive the CG method starting from Arnoldi's method, see \cref{alg:arnoldi_linear_systems}. Arnoldi's method is much like \cref{alg:error_projection_method} in that it uses a Gram-Schmidt orthogonalization procedure to obtain the basis $V$ of the Krylov subspace $\mathcal{K}_m$ and a projection step to update the solution. Where Arnoldi's method is applicable to non-symmetric matrices by performing a full orthogonalization step, CG leverages the symmetry of $A$ by doing a partial orthogonalization step. The latter is possible, since the CG method only needs to maintain the orthogonality of the residuals $\mathbf{r}_j$ with respect to the previous residuals $\mathbf{r}_{j-1}$ and not with respect to all previous residuals $\mathbf{r}_{j-2}, \dots, \mathbf{r}_0$. The full derivation is discussed in the Appendix, \cref{sec:cg_derivation} and results in \cref{alg:cg}.
+The CG method exists in the intersection of error projection methods and Krylov subspace methods, as it is a projection method with the choice $\mathcal{L} = \mathcal{K} = \mathcal{K}_m$. We can derive the CG method starting from Arnoldi's method, see \cref{alg:arnoldi_linear_systems}. Arnoldi's method is much like \cref{alg:error_projection_method} in that it uses a Gram-Schmidt orthogonalization procedure to obtain the basis $V$ of the Krylov subspace $\mathcal{K}_m$ and a projection step to update the solution. Where Arnoldi's method is applicable to non-symmetric matrices by performing a full orthogonalization step, CG leverages the symmetry of $A$ by doing a partial orthogonalization step. The latter is possible, since the CG method only needs to maintain the orthogonality of the residuals $\mathbf{r}_j$ with respect to the previous residuals $\mathbf{r}_{j-1}, r_{j-2}$ and not with respect to all previous residuals $\mathbf{r}_{j-3}, \dots, \mathbf{r}_0$. The full derivation is discussed in the Appendix, \cref{sec:cg_derivation} and results in \cref{alg:cg}.
 \begin{algorithm}[H]
   \caption{Conjugate Gradient Method}
   \begin{algorithmic}
@@ -276,8 +276,8 @@ In this case, the relative error tolerance $\epsilon$ achieved by the CG method 
 \]
 which means \cref{eq:residual_convergence_criterion_b} is more optimistic than \cref{eq:residual_convergence_criterion_r}, requiring less CG iterations before it is satisfied. However, if we choose a `bad' initial guess such that $\|\mathbf{r}_0\|_2 \geq \|\mathbf{b}\|_2$, then \cref{eq:residual_convergence_criterion_b} is more pessimistic than \cref{eq:residual_convergence_criterion_r} and will require more CG iterations before it is satisfied. For a good (bad) initial guess we therefore achieve a relative error tolerance larger (smaller) than $\frac{\epsilon_b}{\sqrt{\kappa}}$. In regard to the absolute error tolerance $\tilde{\epsilon}$, we can write using \cref{th:rayleigh_quotient_bound} that
 \begin{enumerate}
-  \item[\textbf{good initial guess}] $\tilde{\epsilon} \geq \frac{\epsilon_b}{\sqrt{\kappa}}\|\mathbf{e}_0\|_A = \frac{\epsilon_b}{\sqrt{\kappa}}\|\mathbf{r}_0\|_{A^{-1}} \geq \frac{\sqrt{\lambda_{\text{min}}}}{\lambda_{\text{max}}}\epsilon_b\|\mathbf{r}_0\|_2\geq \frac{\sqrt{\lambda_{\text{min}}}}{\lambda_{\text{max}}}\epsilon_b\|\mathbf{b}\|_2$,
-  \item[\textbf{bad initial guess}] $\tilde{\epsilon} \leq \frac{\epsilon_b}{\sqrt{\kappa}}\|\mathbf{e}_0\|_A = \frac{\epsilon_b}{\sqrt{\kappa}}\|\mathbf{r}_0\|_{A^{-1}} \leq \frac{\lambda_{\text{min}}}{\sqrt{\lambda_{\text{max}}}}\epsilon_b\|\mathbf{r}_0\|_2 \leq \frac{\lambda_{\text{min}}}{\sqrt{\lambda_{\text{max}}}}\epsilon_b\|\mathbf{b}\|_2$.
+  \item[\textbf{`bad' initial guess}] $\tilde{\epsilon} \geq \frac{\epsilon_b}{\sqrt{\kappa}}\|\mathbf{e}_0\|_A = \frac{\epsilon_b}{\sqrt{\kappa}}\|\mathbf{r}_0\|_{A^{-1}} \geq \frac{\sqrt{\lambda_{\text{min}}}}{\lambda_{\text{max}}}\epsilon_b\|\mathbf{r}_0\|_2\geq \frac{\sqrt{\lambda_{\text{min}}}}{\lambda_{\text{max}}}\epsilon_b\|\mathbf{b}\|_2$,
+  \item[\textbf{`good' initial guess}] $\tilde{\epsilon} \leq \frac{\epsilon_b}{\sqrt{\kappa}}\|\mathbf{e}_0\|_A = \frac{\epsilon_b}{\sqrt{\kappa}}\|\mathbf{r}_0\|_{A^{-1}} \leq \frac{\lambda_{\text{min}}}{\sqrt{\lambda_{\text{max}}}}\epsilon_b\|\mathbf{r}_0\|_2 \leq \frac{\lambda_{\text{min}}}{\sqrt{\lambda_{\text{max}}}}\epsilon_b\|\mathbf{b}\|_2$.
 \end{enumerate}
 In other words, when we use \cref{eq:residual_convergence_criterion_b} as a convergence criterion, the absolute error tolerance we achieve satisfies
 \begin{equation}
@@ -330,7 +330,7 @@ such that number of iterations $m$ is bounded by
   m \leq \left\lceil\log_f\left(\frac{\epsilon}{2}\right)\right\rceil = \textrm{int}\left[\log_f\left(\frac{\epsilon}{2}\right) + 1\right],
   \label{eq:cg_convergence_rate_bound_iterations}
 \end{equation}
-where $f = \frac{\sqrt{\kappa} - 1}{\sqrt{\kappa} + 1} < 1$ \footnote{Note that the $\log(f)$ is negative, flipping in the inequality.} is the CG \textit{convergence rate}. Equation \ref{eq:cg_convergence_rate_bound_iterations} could in principle be used as a stopping criterion, but it is not practical, since we generally do not know the condition number $\kappa$ of $A$ a priori.
+where $f = \frac{\sqrt{\kappa} - 1}{\sqrt{\kappa} + 1} < 1$ is the CG \textit{convergence rate}\footnote{Note that the $\log(f)$ is negative, flipping in the inequality.}. Equation \ref{eq:cg_convergence_rate_bound_iterations} could in principle be used as a stopping criterion, but it is not practical, since we generally do not know the condition number $\kappa$ of $A$ a priori.
 
 The iteration bound given in \cref{eq:cg_convergence_rate_bound_iterations} can be bounded further by using the expansion
 \[
@@ -362,9 +362,9 @@ which implies that CG solves the linear system in $n$ iterations. Furthermore, i
 The strategy of posing a test polynomial $r_{\textrm{test}}$ that satisfies the constraints of the minimization problem to come up with a bound for the error of the CG method is not limited to the Chebyshev polynomial from \cref{th:cg_convergence_rate_bound} or the test polynomial $r_{\textrm{test}}$. In fact, we can use any polynomial $r$ of degree $m$ that satisfies the constraints of the minimization problem. Evaluating the maximum value of this polynomial on the eigenspectrum of $A$ would then result in an error bound. The problem is of course that we want to find a polynomial that gives a \textit{sharp} error bound. In \cref{sec:cg_nonuniform_spectra} we discuss some recent literature using this strategy to achieve sharper bounds than \cref{eq:cg_convergence_rate_bound} and in \cref{ch:methods} we apply the same strategy to find a bound for the error of the CG method for the case of clustered eigenvalues.
 
 \subsection{Influence of eigenvalue distribution on CG convergence}\label{sec:cg_eigenvalue_distribution}
-The bound CG error in \cref{th:cg_convergence_rate_bound} and the convergence rate in \cref{eq:cg_convergence_rate_bound_iterations} are based on the assumption that the eigenvalues of $A$ are uniformly distributed. However, this is not always the case. In this section we discuss the influence of the eigenvalue distribution on the convergence of the CG method. In particular, we will see that if the eigenvalues are clustered around some value, then we can expect a better convergence rate than \cref{eq:cg_convergence_rate_bound}.
+The bound on CG's error in \cref{th:cg_convergence_rate_bound} and the convergence rate in \cref{eq:cg_convergence_rate_bound_iterations} are based on the assumption that the eigenvalues of $A$ are uniformly distributed. However, this is not always the case. In this section we discuss the influence of the eigenvalue distribution on the convergence of the CG method. In particular, we will see that if the eigenvalues are clustered around some value, then we can expect a better convergence rate than \cref{eq:cg_convergence_rate_bound}.
 
-We can write the diagonalization of $A$ as $A = QDQ^T$ with $Q$ being the orthonormal eigenbasis and $D$ the diagonal matrix of eigenvalues, since $A$ is symmetric. The residual polynomial from \cref{eq:cg_error} can then be expressed as $r_m(A) = I - Aq_{m-1}(A) = Q(I - Dq_{m-1}(D))Q^T = Vr_m(D)V^T$. Also note that $\mathbf{e}_0 = x^* - \mathbf{u}_0 = A^{-1}b - \mathbf{u}_0 = A^{-1}\mathbf{r}_0$. As seen in \cref{eq:cg_error}, the error of the $m^{\text{th}}$ iterate of the CG algorithm is given by
+We can write the diagonalization of $A$ as $A = QDQ^T$ with $Q$ being the orthonormal eigenbasis and $D$ the diagonal matrix of eigenvalues, since $A$ is symmetric. The residual polynomial from \cref{eq:cg_error} can then be expressed as $r_m(A) = I - Aq_{m-1}(A) = Q(I - Dq_{m-1}(D))Q^T = Vr_m(D)V^T$. As seen in \cref{eq:cg_error}, the error of the $m^{\text{th}}$ iterate of the CG algorithm is given by
 \begin{equation*}
   ||\mathbf{e}_m||_A^2 = ||r_m(A)\mathbf{e}_0||_A^2,
 \end{equation*}
@@ -439,9 +439,9 @@ which implies
 
 The behavior of the residual polynomials is crucial for understanding the convergence properties of the CG method. In particular, the distribution of the eigenvalues of $A$ significantly affects the convergence rate, as illustrated in \cref{fig:cg_effect_of_eigenvalue_distribution}.
 
-We consider a system $A\mathbf{u}_{\text{test}} = \mathbf{b}_{\text{random}}$ with a known solution $\mathbf{u}_{\text{test}}$ and random load vector $\mathbf{b}_{\text{random}}$. The system size $n=360$ is kept relatively small and the system matrix $A$ is chosen to equal diagonal matrix $D$, making it numerically trivial to determine the exact solution $\mathbf{u}_{\text{test}} = D^{-1}\mathbf{b}_{\text{random}}$. For all plots the lowest and highest eigenvalue in \cref{fig:cg_effect_of_eigenvalue_distribution} are $\lambda_{\text{min}} = 0.1$, $\lambda_{\text{max}} = 0.9$ such that $\kappa = 9$ and $f = \frac{\sqrt{\kappa} - 1}{\sqrt{\kappa} + 1} = \frac{1}{2}$. Furthermore, we use $\mathbf{u}_{0} = \mathbf{0}$, set the relative error tolerance $\epsilon = 10^{-6}$ and use the stopping criterion from \cref{def:cg_convergence_criterion} directly, as $\mathbf{e}_0 = \mathbf{u}_{\text{test}} - \mathbf{u}_{0}$ is known. Note that we could have used the residual stopping criterion from \cref{th:residual_convergence_criterion}, as $\kappa$ is explicitly known in this case. This results in an overall iteration bound from \cref{eq:cg_convergence_rate_bound_iterations} of
+We consider a system $A\mathbf{u}_{\text{test}} = \mathbf{b}_{\text{random}}$ with a known solution $\mathbf{u}_{\text{test}}$ and random load vector $\mathbf{b}_{\text{random}}$. The system size $n=360$ is kept relatively small and the system matrix $A$ is chosen to equal diagonal matrix $D$, making it numerically trivial to determine the exact solution $\mathbf{u}_{\text{test}} = D^{-1}\mathbf{b}_{\text{random}}$. For all plots the lowest and highest eigenvalue in \cref{fig:cg_effect_of_eigenvalue_distribution} are $\lambda_{\text{min}} = 0.1$, $\lambda_{\text{max}} = 0.9$ such that $\kappa = 9$ and $f = \frac{\sqrt{\kappa} - 1}{\sqrt{\kappa} + 1} = \frac{1}{2}$. Furthermore, we use $\mathbf{u}_{0} = \mathbf{0}$, set the relative error tolerance $\epsilon = 10^{-6}$ and use the stopping criterion from \cref{def:cg_convergence_criterion} directly, as $\mathbf{e}_0 = \mathbf{u}_{\text{test}} - \mathbf{u}_{0}$ is known. Alternatively, we could have used the residual stopping criterion from \cref{th:residual_convergence_criterion}, as $\kappa$ is explicitly known in this case. This results in an overall iteration bound from \cref{eq:cg_convergence_rate_bound_iterations} of
 \[
-  m_{\text{classical}} = \left\lceil\log_f\left(\frac{10^{-6}}{2}\right)\right\rceil = 21.
+  m \leq \left\lceil\log_f\left(\frac{10^{-6}}{2}\right)\right\rceil = 21.
 \]
 Hence, the number of iterations required for convergence depends on the specific clustering of the eigenvalues, as pointed out for example in \cite[Section 2.3]{nonlinear_cg_Kelley_1995}.
 
@@ -559,7 +559,7 @@ Existence of a solution is proved by splitting up the original complex domain in
   \]
 \end{fancydef}
 
-The original Schwarz algorithm is sequential and, thereby not allowing parallelization. However, the algorithm can be parallelized. The Jacobi Schwarz method is a generalization of the original Schwarz method, where the subproblems are solved simultaneously and subsequently combined into a global solution \cite{og_alternating_schwarz_Lions1990}. In order to combine local solutions into one global solution, an extension operator $E_i$, $i=1,2$ is used. It is defined as
+The original Schwarz algorithm is sequential and, thereby does not admit parallelization. However, a related algorithm can be parallelized. The Jacobi Schwarz method is a generalization of the original Schwarz method, where the subproblems are solved simultaneously and subsequently combined into a global solution \cite{og_alternating_schwarz_Lions1990}. In order to combine local solutions into one global solution, an extension operator $E_i$, $i=1,2$ is used. It is defined as
 \[
   E_i(v)=v \text { in } \Omega_i, \quad E_i(v)=0 \text { in } \Omega \backslash \Omega_i.
 \]
@@ -582,7 +582,7 @@ The restricted additive Schwarz method (RAS) is similar to ASM, but differs in t
   \chi_i(x)=
   \begin{cases}
     1,      & x \in \Omega_i \setminus \Omega_{3-i},                 \\
-    0,      & x \in \delta \Omega_i \setminus \delta \Omega          \\
+    0,      & x \in \partial \Omega_i \setminus \partial \Omega          \\
     \alpha, & 0 \leq \alpha \leq 1, x \in \Omega_i \cap \Omega_{3-i}
   \end{cases}
 \]
@@ -605,7 +605,7 @@ The RAS algorithm is defined in algorithm \ref{alg:restrictive_additive_schwarz}
 \end{algorithm}
 
 \subsection{Schwarz methods as preconditioners}\label{sec:schwarz_preconditioners}
-This is largely based on Section 1.3.2 of \cite{schwarz_methods_Dolean_2015}. Let  $\mathcal{N}_i$ be the set containing all degrees of freedom in the subdomain $\Omega_i$ and $N_{\text{sub}}$ the number of subdomains such that $n_i = |\mathcal{N}_i|$ is the number of degrees of freedom in the subdomain $\Omega_i$. The global set of degrees of freedom then satisfies
+This section is largely based on Section 1.3.2 of \cite{schwarz_methods_Dolean_2015}. Let  $\mathcal{N}_i$ be the set containing all degrees of freedom in the subdomain $\Omega_i$ and $N_{\text{sub}}$ the number of subdomains such that $n_i = |\mathcal{N}_i|$ is the number of degrees of freedom in the subdomain $\Omega_i$. The global set of degrees of freedom then satisfies
 \[
   \mathcal{N}=\cup_{i=1}^{N_{\text{sub}}} \mathcal{N}_i.
 \]
@@ -680,15 +680,15 @@ Another way to construct $R_0$ is based on the analysis of the local errors in t
 
 One possible answer is the so-called Dirichlet-to-Neumann map \cite[Definition 5.1]{schwarz_methods_Dolean_2015}
 \begin{fancydef}{Dirichlet-to-Neumann map}{dirichlet_to_neumann_map}
-  For any function defined on the interface $u_{\partial\Omega_j}: \delta\Omega_j \mapsto \mathbb{R}$, we consider the Dirichlet-to-Neumann map
+  For any function defined on the interface $u_{\partial\Omega_j}: \partial\Omega_j \mapsto \mathbb{R}$, we consider the Dirichlet-to-Neumann map
   \[
     \operatorname{DtN}_{\Omega_j}\left(u_{\partial\Omega_j}\right)=\left.\frac{\partial v}{\partial \mathbf{n}_j}\right|_{\partial\Omega_j},
   \]
-  where $\delta\Omega_j:=\partial \Omega_j \backslash \partial \Omega$ and $v$ satisfies
+  where $\partial\Omega_j:=\partial \Omega_j \backslash \partial \Omega$ and $v$ satisfies
   \begin{equation}
     \begin{aligned}
       -\nabla\cdot\left(\mathcal{C}\nabla v\right) & =0            & \text { in } \Omega_j,                               \\
-      v                                            & =u_{\partial\Omega_j} & \text { on } \delta\Omega_j,                               \\
+      v                                            & =u_{\partial\Omega_j} & \text { on } \partial\Omega_j,                               \\
       v                                            & =0            & \text { on } \partial \Omega_j \cap \partial \Omega.
     \end{aligned}
     \label{eq:dirichlet_to_neumann_map_subproblem}
@@ -722,7 +722,7 @@ In \fullref{sec:two_level_ASM_construction} the full construction of the coarse 
 \end{subequations}
 where $\delta$ is the size of the overlap between subdomains, $H$ the typical size of the subdomains, $\mathcal{C}_{\text{max}}$ and $\mathcal{C}_{\text{min}}$ are the maximum and minimum values of the coefficient function $\mathcal{C}$ in \cref{eq:dirichlet_to_neumann_map_subproblem}, respectively, $C$ and $C'$ are constants that depend on the geometry of the problem and $\lambda_c$ is related to the cut-off eigenvalue for the eigenpairs of the Dirichlet-to-Neumann map operator. The first bound \cref{eq:two_level_ASM_condition_bound_Nico} is for the Nicolaides coarse space, while the second bound \cref{eq:two_level_ASM_condition_bound_DtN} is for the Dirichlet-to-Neumann coarse space.
 
-Notice that the bounds \cref{eq:two_level_ASM_condition_bound_Nico,eq:two_level_ASM_condition_bound_DtN} are both robust to the scaling in the fine-mesh size, that is they do not contain the any terms depending on $h$. This is an important feature of the two-level Schwarz method.
+Notice that the bounds \cref{eq:two_level_ASM_condition_bound_Nico,eq:two_level_ASM_condition_bound_DtN} are both robust to the scaling in the fine-mesh size, that is they do not contain any terms depending on $h$. This is an important feature of the two-level Schwarz method.
 
 Additionally, the bounds in \cref{eq:two_level_ASM_condition_bound_Nico,eq:two_level_ASM_condition_bound_DtN} contain the contrast of the coefficient function $\mathcal{C}$, which plays a crucial role in the convergence behavior of the two-level additive Schwarz method, as explained in \cite{msfem_coarse_space_Graham_2007}. In high-contrast problems, where the ratio $\frac{\mathcal{C}_{\text{max}}}{\mathcal{C}_{\text{min}}}$ is large, the condition number of the preconditioned system can become very large, leading to a theoretically predicted slow convergence of the PCG method via \cref{eq:cg_convergence_rate_bound_iterations_approx,eq:pcg_complexity}.
 

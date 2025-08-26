@@ -29,7 +29,6 @@
     $u$                    & Exact solution of the elliptic problem.                                                 \\
     $f$                    & Source term belonging to $L^2(\Omega)$.                                                 \\
     $u_D$                  & Dirichlet boundary data.                                                                \\
-    $\delta\Omega$         & Boundary of $\Omega$ (alternative notation for $\partial \Omega$).                      \\
     $u_h$                  & Finite element approximation of $u$.                                                    \\
     $V_h$                  & Finite-dimensional subspace of $H_0^1(\Omega)$.                                         \\
     $V$                    & Solution space $\{u\in H^1(\Omega) | u_{\delta \Omega} = u_D\}$.                        \\
@@ -97,7 +96,7 @@
     $\xi_i$                          & Components of the initial error in the eigenvector basis of $A$.                                            \\
     $\sigma(A)$                      & Spectrum (set of eigenvalues) of $A$.                                                                       \\
     $C_m$                            & Chebyshev polynomial of degree $m$.                                                                         \\
-    $\hat{C}_m$                      & Scaled Chebyshev polynomial adapted to interval $[a,b]$.                                                    \\
+    $\hat{C}_m$                      & Real-valued transformed Chebyshev polynomial adapted to interval $[a,b]$.                                   \\
     $\mathbf{\rho}_0$                & Initial residual in the eigenvector basis of $A$.                                                           \\
     $Q$                              & Orthonormal eigenbasis matrix in diagonalization $A = QDQ^T$.                                               \\
     $D$                              & Diagonal matrix of eigenvalues in diagonalization.                                                          \\
@@ -151,14 +150,14 @@
 
 % Symbols related to eigenspectra and CG convergence bounds
 \begin{longtable}{c p{10cm}}
-    \caption{Symbols related to eigenspectra and CG convergence bounds \fullref{ch:methods}.}\label{tab:eigenspectra_symbols}                                             \\
+    \caption{Symbols related to eigenspectra and CG convergence bounds \fullref{ch:methods}.}\label{tab:eigenspectra_symbols}                                                                    \\
     \hline
-    \textbf{Symbol}                  & \textbf{Description}                                                                                                                                               \\
+    \textbf{Symbol}                  & \textbf{Description}                                                                                                                                      \\
     \hline
     \endfirsthead
 
     \hline
-    \textbf{Symbol}                  & \textbf{Description}                                                                                                                                               \\
+    \textbf{Symbol}                  & \textbf{Description}                                                                                                                                      \\
     \hline
     \endhead
 
@@ -168,39 +167,39 @@
     \hline
     \endlastfoot
 
-    $\sigma_1(A)$                    & Two-cluster eigenspectrum of $A$, defined as the union of two intervals $[a,b] \cup [c,d]$.                                                                        \\
-    $\sigma_2(A)$                    & Eigenspectrum comprising a main cluster and a tail of eigenvalues, with the tail denoted by $N_{\text{tail}}$.                                                     \\
-    $[a,b]$                          & Interval containing the first cluster of eigenvalues.                                                                                                              \\
-    $[c,d]$                          & Interval containing the second cluster of eigenvalues.                                                                                                             \\
-    $N_{\text{tail}}$                & Number of eigenvalues in the tail cluster (when the spectrum has one cluster plus a tail).                                                                         \\
-    $m_2$                            & Sharpened CG iteration bound for two-cluster eigenspectrum.                                                                                                        \\
-    $p$                              & Degree parameter in two-cluster CG bound.                                                                                                                          \\
-    $\kappa_l$                       & Left cluster condition number $\kappa_l = b/a$.                                                                                                                    \\
-    $\kappa_r$                       & Right cluster condition number $\kappa_r = d/c$.                                                                                                                   \\
-    $\hat{r}^{(i)}_p(x)$             & Residual polynomial function for the $i^\text{th}$ cluster, defined piecewise (for $i=1$, via a scaled expression; for $i=2$, as a product over tail eigenvalues). \\
-    $\hat{r}_{\bar{m}-p}(x)$         & Residual polynomial function based on Chebyshev polynomials, corresponding to the complementary polynomial degree $\bar{m}-p$.                                     \\
-    $C^{(i)}_{p}$                    & Cluster-specific Chebyshev polynomial of degree $p$, adapted to the eigenvalue distribution of the $i^\text{th}$ cluster.                                          \\
-    $\eta_1$                         & Upper bound for $\max_{x \in [a,b]} |\hat{r}^{(1)}_p(x)|$, given by $2\left(\frac{\sqrt{b}-\sqrt{a}}{\sqrt{b}+\sqrt{a}}\right)^p$.                                 \\
-    $\eta_2$                         & Upper bound for $\max_{x \in [a,b]} |\hat{r}^{(2)}_p(x)|$, expressed as $\left(\frac{b}{a}-1\right)^p$ when $p=N_{\text{tail}}$.                                   \\
-    $\bar{m}$                        & Total degree of the composite residual polynomial $r_{\bar{m}}$, formed as the product $\hat{r}^{(i)}_p(x)\hat{r}_{\bar{m}-p}(x)$.                                 \\
-    $P$                              & Performance ratio defined as $P = m_1/m_2$.                                                                                                                        \\
-    $P_{\text{uniform}}$             & Performance ratio for uniform eigenspectrum case.                                                                                                                  \\
-    $q(\kappa_l, \kappa_r)$          & Function appearing in uniform spectrum performance analysis.                                                                                                       \\
-    $T_{\kappa}(\kappa_l, \kappa_r)$ & Threshold function for determining when $m_2 < m_1$.                                                                                                               \\
-    $W_{-1}(x)$                      & Lambert W function (principal branch $-1$).                                                                                                                        \\
-    $z^{(i,j)}_1, z^{(j)}_2$         & Chebyshev coordinates in the frame of reference of the $i^{\text{th}}$ cluster.                                                                                    \\
-    $\zeta^{(i,j)}_1, \zeta^{(j)}_2$ & Transformed Chebyshev coordinates for multi-cluster analysis.                                                                                                      \\
-    $k$                              & Positive integer parameter in the Chebyshev inequality, corresponding to the degree in the bound estimate.                                                         \\
-    $p_i$                            & Chebyshev degree associated with the $i^\text{th}$ eigenvalue cluster, determining the contraction factor of that cluster's contribution to the residual.          \\
-    $\kappa_i$                       & Condition number of the $i^\text{th}$ eigenvalue cluster, defined as the ratio of the largest to smallest eigenvalue within the cluster.                           \\
-    $f_i$                            & Convergence factor (or spectral measure) for the $i^\text{th}$ cluster.                                                                                            \\
-    $\Lambda_t$                      & Set of all eigenvalues residing in tail clusters.                                                                                                                  \\
-    $r_t(x)$                         & Residual polynomial for tail clusters: $r_t(x) = \prod_{\lambda\in\Lambda_t} \left(1 - \frac{x}{\lambda}\right)$.                                                  \\
-    $m_{N_{\text{cluster}}}$         & Multi-cluster CG iteration bound.                                                                                                                                  \\
-    $m_{N_{\text{tail-cluster}}}$    & Multi-tail-cluster CG iteration bound.                                                                                                                             \\
-    $K^*$                            & Sorted partition indices for eigenspectrum clustering.                                                                                                             \\
-    $k^*$                            & Split index that maximizes the ratio of consecutive eigenvalues.                                                                                                   \\
-    $I_t$                            & Set of tail cluster start indices.                                                                                                                                 \\
+    $\sigma_1(A)$                    & Two-cluster eigenspectrum of $A$, defined as the union of two intervals $[a,b] \cup [c,d]$.                                                               \\
+    $\sigma_2(A)$                    & Eigenspectrum comprising a main cluster and a tail of eigenvalues, with the tail denoted by $N_{\text{tail}}$.                                            \\
+    $[a,b]$                          & Interval containing the first cluster of eigenvalues.                                                                                                     \\
+    $[c,d]$                          & Interval containing the second cluster of eigenvalues.                                                                                                    \\
+    $N_{\text{tail}}$                & Number of eigenvalues in the tail cluster (when the spectrum has one cluster plus a tail).                                                                \\
+    $m_2$                            & Sharpened CG iteration bound for two-cluster eigenspectrum.                                                                                               \\
+    $p$                              & Degree parameter in two-cluster CG bound.                                                                                                                 \\
+    $\kappa_l$                       & Left cluster condition number $\kappa_l = b/a$.                                                                                                           \\
+    $\kappa_r$                       & Right cluster condition number $\kappa_r = d/c$.                                                                                                          \\
+    $\hat{r}^{(i)}_p(x)$             & Residual polynomial function for the left cluster, defined piecewise for the two-cluster ($i=1$) and tail-cluster ($i=2$) spectrum                        \\
+    $\hat{r}_{\bar{m}-p}(x)$         & Residual polynomial function based on Chebyshev polynomials, corresponding to the complementary polynomial degree $\bar{m}-p$.                            \\
+    $C^{(i)}_{p}$                    & Cluster-specific Chebyshev polynomial of degree $p$, adapted to the eigenvalue distribution of the $i^\text{th}$ cluster.                                 \\
+    $\eta_1$                         & Upper bound for $\max_{x \in [a,b]} |\hat{r}^{(1)}_p(x)|$, given by $2\left(\frac{\sqrt{b}-\sqrt{a}}{\sqrt{b}+\sqrt{a}}\right)^p$.                        \\
+    $\eta_2$                         & Upper bound for $\max_{x \in [a,b]} |\hat{r}^{(2)}_p(x)|$, expressed as $\left(\frac{b}{a}-1\right)^p$ when $p=N_{\text{tail}}$.                          \\
+    $\bar{m}$                        & Total degree of the composite residual polynomial $r_{\bar{m}}$, formed as the product $\hat{r}^{(i)}_p(x)\hat{r}_{\bar{m}-p}(x)$.                        \\
+    $P$                              & Performance ratio defined as $P = m_1/m_2$.                                                                                                               \\
+    $P_{\text{uniform}}$             & Performance ratio for uniform eigenspectrum case.                                                                                                         \\
+    $q(\kappa_l, \kappa_r)$          & Function appearing in uniform spectrum performance analysis.                                                                                              \\
+    $T_{\kappa}(\kappa_l, \kappa_r)$ & Threshold function for determining when $m_2 < m_1$.                                                                                                      \\
+    $W_{-1}(x)$                      & Lambert W function (principal branch $-1$).                                                                                                               \\
+    $z^{(i,j)}_1, z^{(j)}_2$         & Chebyshev coordinates in the frame of reference of the $i^{\text{th}}$ cluster.                                                                           \\
+    $\zeta^{(i,j)}_1, \zeta^{(j)}_2$ & Transformed Chebyshev coordinates for multi-cluster analysis.                                                                                             \\
+    $k$                              & Positive integer parameter in the Chebyshev inequality, corresponding to the degree in the bound estimate.                                                \\
+    $p_i$                            & Chebyshev degree associated with the $i^\text{th}$ eigenvalue cluster, determining the contraction factor of that cluster's contribution to the residual. \\
+    $\kappa_i$                       & Condition number of the $i^\text{th}$ eigenvalue cluster, defined as the ratio of the largest to smallest eigenvalue within the cluster.                  \\
+    $f_i$                            & Convergence factor (or spectral measure) for the $i^\text{th}$ cluster.                                                                                   \\
+    $\Lambda_t$                      & Set of all eigenvalues residing in tail clusters.                                                                                                         \\
+    $r_t(x)$                         & Residual polynomial for tail clusters: $r_t(x) = \prod_{\lambda\in\Lambda_t} \left(1 - \frac{x}{\lambda}\right)$.                                         \\
+    $m_{N_{\text{cluster}}}$         & Multi-cluster CG iteration bound.                                                                                                                         \\
+    $m_{N_{\text{tail-cluster}}}$    & Multi-tail-cluster CG iteration bound.                                                                                                                    \\
+    $K^*$                            & Sorted partition indices for eigenspectrum clustering.                                                                                                    \\
+    $k^*$                            & Split index that maximizes the ratio of consecutive eigenvalues.                                                                                          \\
+    $I_t$                            & Set of tail cluster start indices.                                                                                                                        \\
 \end{longtable}
 
 % Symbols for Implementation
@@ -237,9 +236,9 @@
     $M^{-1}_{\text{2-OAS-GDSW}}$                       & Two-level overlapping additive Schwarz preconditioner with GDSW coarse space.                                            \\
     $M^{-1}_{\text{2-OAS-RGDSW}}$                      & Two-level overlapping additive Schwarz preconditioner with RGDSW coarse space.                                           \\
     $M^{-1}_{\text{2-OAS-AMS}}$                        & Two-level overlapping additive Schwarz preconditioner with AMS coarse space.                                             \\
-    $N_{iter}$                                         & Number of iterations for early estimation experiments.                                                                   \\
-    $f_{\text{iter}}$                                  & Fraction parameter for determining $N_{iter}$.                                                                           \\
-    $N_{update}$                                       & Update frequency for eigenvalue convergence detection.                                                                   \\
+    $N_{\text{iter}}$                                  & Number of iterations for early estimation experiments.                                                                   \\
+    $f_{\text{iter}}$                                  & Fraction parameter for determining $N_{\text{iter}}$.                                                                    \\
+    $N_{\text{update}}$                                & Update frequency for eigenvalue convergence detection.                                                                   \\
     $\tau_{\text{extremal}}$                           & Tolerance parameter for extremal eigenvalue convergence.                                                                 \\
     $m_{\text{estimate}}$                              & Heuristic estimate defined as $m_{\text{estimate}} = \frac{1}{2}(m_{N_{\text{cluster}}} + m_{N_{\text{tail-cluster}}})$. \\
 \end{longtable}

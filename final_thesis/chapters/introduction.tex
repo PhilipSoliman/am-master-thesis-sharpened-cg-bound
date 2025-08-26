@@ -31,7 +31,7 @@ where $n = |\mathcal{N}|$. This leads to the discretized weak formulation
         a(u_h, v_h) = \int_\Omega \mathcal{C}\nabla u_h\cdot\nabla v_h\,dx = \int_\Omega f v_h \,dx = (f, v_h),
         \label{eq:discretized_problem}
     \end{equation}
-    where $a(u_h, v_h)$ is the bilinear form and $(f, v_h)$ is the linear form. \cref{eq:discretized_problem} gives rise to the following system of equations
+    where $a(u_h, v_h)$ is the bilinear form and $(f, v_h)$ is the linear form. Equation (\ref{eq:discretized_problem}) gives rise to the following system of equations
     \begin{equation*}
         A\mathbf{u} = \mathbf{b}, \quad A_{ij} = a(\phi_i, \phi_j), \ b_i = (f, \phi_i) \quad \forall i,j\in\mathcal{N},
     \end{equation*}
@@ -44,7 +44,11 @@ Note that the bilinear form $a$ in \cref{prob:elliptic_problem_discretized} is c
 \begin{equation*}
   a(w,w) = \int_\Omega \mathcal{C} \nabla w\cdot\nabla w\,dx = \int_\Omega \mathcal{C} |\nabla w|^2\,dx = \mathcal{C}_{\text{min}} \|\nabla w\|_{L_2(\Omega)}^2> \frac{\mathcal{C}_{\text{min}}}{C_p^2}\|\nabla w\|_{H^1_0(\Omega)}^2 \geq 0,
 \end{equation*}
-since $\mathcal{C}_{\text{min}}>0$ and with $C_p$ the Poincaré constant. Moreover, for $w = \sum_{i\in\mathcal{N}} w_i \phi_i$ with $\mathbf{w} = (w_1, w_2, \ldots, w_n)^T \neq \mathbf{0}$ we have
+since $\mathcal{C}_{\text{min}}>0$ and with $C_p$ the Poincaré constant. Moreover, for 
+\[
+    w = \sum_{i\in\mathcal{N}} w_i \phi_i \quad \text{with} \quad \mathbf{w} = (w_1, w_2, \ldots, w_n)^T \neq \mathbf{0}
+\]
+we have
 \begin{equation*}
     \mathbf{w}^T A \mathbf{w} = a(w,w) > 0.
 \end{equation*}
@@ -59,9 +63,9 @@ Hence, the number of iterations $m$ required for convergence is a crucial factor
   \mathcal{O}\left(\sqrt{\kappa(A)}\log\left(\frac{2}{\epsilon}\right)n\right),
   \label{eq:cg_complexity}
 \end{equation}
-where $\kappa(A)$ is the condition number of $A$. Comparing \cref{eq:cg_complexity} with the complexity of direct methods, we see that CG is much more efficient for large sparse SPD systems like $A$. 
+where $\kappa(A)$ is the condition number of $A$. Comparing \cref{eq:cg_complexity} with the complexity of direct methods, we see that CG is much more efficient for large sparse SPD matrices like $A$. 
 
-However, the difficulty of allowing for complex domains and a high-contrast coefficient $\mathcal{C}$ resides in that the condition number $\kappa(A)$ can be very large, which in turn increases CG's iteration count and complexity. Handling of complex domains can be done using \textit{domain decomposition methods} and this is the topic of \cref{sec:schwarz_methods}. On the other hand, accounting for the high-contrast coefficient $\mathcal{C}$ concerns the construction of robust \textit{coarse spaces}, some examples of which are given in \cref{ch:literature}.
+However, the difficulty of allowing for a high-contrast coefficient $\mathcal{C}$ and, for instance, complex domains resides in that the condition number $\kappa(A)$ can be very large, which in turn increases CG's iteration count and complexity. Accounting for the high-contrast coefficient $\mathcal{C}$ concerns the construction of robust \textit{coarse spaces}, some examples of which are given in \cref{ch:literature}. On the other hand, handling of complex domains can be done using \textit{domain decomposition methods} and this is the topic of \cref{sec:schwarz_methods}. 
 
 The particular implementation of domain decomposition method and coarse space results in a preconditioner matrix $M\in\mathbb{R}^{n \times n}$, which is used to transform the system $A\mathbf{u} = \mathbf{b}$ into a new system $M^{-1}A\mathbf{u} = M^{-1}\mathbf{b}$ with a (hopefully) smaller condition number. The preconditioned CG method (PCG), described in \cref{sec:cg_preconditioning}, is then used to solve the transformed system. Consequently, using the equivalent of the CG complexity bound \cref{eq:cg_complexity} for PCG, we can determine the performance of PCG with the preconditioner $M$ as
 \begin{equation}
@@ -98,7 +102,7 @@ Finding sharper bounds than the classical condition number-based bound is a non-
 
 Assuming we have some expression for a sharper bound, the following challenge then lies in obtaining a priori estimates for the spectrum of the preconditioned system. The literature does provide condition number estimates for various Schwarz preconditioners. For instance, in the simple cases of the additive Schwarz preconditioner with either a \ref{ASM_coarse_space:nicolaides} or \ref{ASM_coarse_space:local_eigenfunctions} an a priori estimate for the condition number is given by \cref{eq:two_level_ASM_condition_number} in combination with either \cref{eq:c0_nicolaides} or \cref{eq:c0_local_eigenfunctions}, respectively. The same can be said for the MsFEM and ACMS preconditioners, as is seen in \cref{sec:tailored_coarse_spaces}.
 
-However, these estimates are not always sharp, and they do not provide information about the spectral gap or cluster width of the preconditioned system. This is where the challenge lies: how can we obtain a priori estimates of the spectral characteristics necessary for the sharp bound?
+However, these estimates are not always sharp, and they do not provide information about the spectral gap or cluster width of the preconditioned system. So, the challenge remains; how can we obtain a priori estimates of the spectral characteristics necessary for the sharp bound?
 
 Fortunately, we can always obtain a posteriori estimates for the spectrum of the preconditioned system, as is done in \cref{ch:results}. However, this requires the computation of the eigenspectrum of the preconditioned system, which can be computationally expensive. This is where the use of iterative methods such as (P)CG comes in handy, as they allow us to compute the eigenspectrum during the solution of the linear system.
 
