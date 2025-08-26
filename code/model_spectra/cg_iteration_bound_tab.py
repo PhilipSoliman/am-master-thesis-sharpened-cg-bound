@@ -220,7 +220,7 @@ def generate_iteration_bound_table(
         f"PCG iteration bounds {', '.join(bounds)} for solving the model diffusion problem with coefficient function {coef_func.latex}. Bounds are based on approximate spectra (Ritz values) obtained during the initial PCG iterations and are shown for meshes "
         f"{', '.join(meshes_names)} "
         f"and 2-OAS preconditioners with {', '.join(coarse_space_names)} coarse spaces. "
-        "The $i$ column shows the iteration at which the bounds are obtained. The color of each cell indicates whether the bound is larger (blue) or smaller (red) than the number of iterations required for convergence $m$. The shade of the cell represents the tightness of the bound. That is, the darker a cell is, the tighter the bound."
+        "The $i$ column shows the iteration at which the bounds are obtained. The color of each cell indicates whether the bound is larger (blue) or smaller (red) than the number of iterations required for convergence $m$. The shade of the cell is proportional to the absolute difference between $m$ and the bound."
     )
 
     styler.to_latex(

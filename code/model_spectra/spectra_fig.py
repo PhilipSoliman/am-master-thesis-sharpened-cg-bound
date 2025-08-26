@@ -31,6 +31,7 @@ COEF_FUNCS = [
     CoefFunc.EDGE_SLABS_AROUND_VERTICES_INCLUSIONS,
 ]
 FONTSIZE = 9
+MARKERSIZE = 4
 
 
 def plot_spectra(tail: bool) -> plt.Figure:
@@ -125,13 +126,17 @@ def plot_spectra(tail: bool) -> plt.Figure:
 
             # spectra
             for idx, eigenvalues in enumerate(spectra.values()):
+                # seperate cluster and tail eigenvalues
+                sep_eigenvalues = eigenvalues[~np.isin(eigenvalues, tail_eigenvalues[idx])]
+
                 # eigenvalues
                 line = ax.plot(
-                    np.real(eigenvalues),
-                    np.full_like(eigenvalues, idx),
+                    np.real(sep_eigenvalues),
+                    np.full_like(sep_eigenvalues, idx),
                     marker="x",
                     linestyle="None",
                     zorder=5,
+                    markersize=MARKERSIZE,
                 )
 
                 # tail eigenvalues
@@ -142,6 +147,7 @@ def plot_spectra(tail: bool) -> plt.Figure:
                     linestyle="None",
                     zorder=5,
                     color=line[0].get_color(),
+                    markersize=MARKERSIZE
                 )
 
                 # tail cluster indices

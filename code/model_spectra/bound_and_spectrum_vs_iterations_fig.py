@@ -220,7 +220,7 @@ def plot_bound_and_spectrum(PRECONDITIONER) -> plt.Figure:
             bound_ax.xaxis.set_major_locator(MultipleLocator(N_ITERATIONS // 10))
             bound_ax.tick_params(axis="x", which="both", top=False, labelbottom=False)
             bound_ax.set_xlim(0, N_ITERATIONS)
-            bound_ax.set_ylabel("Bound $m(T_i)$")
+            bound_ax.set_ylabel("Bound $m(\\sigma(T_i))$")
 
             # plot spectra
             cg_iter_bound = CGIterationBound(log_rtol=LOG_RTOL, exact_convergence=False)

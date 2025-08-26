@@ -21,7 +21,7 @@ where $N_{\text{tail}}$ is the number of eigenvalues in the tail. The first case
 
 The CG error \cref{eq:cg_error_bound} suggests we look for a polynomial $r_{m_2}$ of degree $m_2$ that satisfies the constraints of the minimization problem in order to find an iteration bound $m < m_2$. In other words, we do not solve the minimization problem directly, but we make a clever selection of the polynomial $r_{m_2}$ that satisfies the constraints. As a consequence, the actual minimizing polynomial might require a lower degree $m$ to satisfy the same relative error tolerance $\epsilon$. Therefore, the degree $m_2$ we find is at least as large as the actual number of iterations required to achieve the desired relative error tolerance $\epsilon$.
 
-\citeauthor{cg_sharpened_convrate_Axelsson1976} suggests we use not one monolithic residual polynomial function, but a multiplication of two residual polynomial functions $\hat{r}^{(i)}_p(x)$ and $\hat{r}_{m_2-p}(x)$ for the two clusters. The superscript $^{(i)}$ corresponds to the two eigenspectra described above. The residual polynomial functions are constructed from (transformed) Chebyshev polynomials \cref{def:chebyshev_polynomial,def:scaled_chebyshev_polynomial} with $\gamma = 0$ as follows
+\citeauthor{cg_sharpened_convrate_Axelsson1976} suggests we use not one monolithic residual polynomial function, but a multiplication of two residual polynomial functions $\hat{r}^{(i)}_p(x)$ and $\hat{r}_{m_2-p}(x)$ for the two clusters. The superscript $^{(i)}$ corresponds to the two eigenspectra described above. The residual polynomial functions are constructed using the (transformed) Chebyshev polynomials from \cref{def:chebyshev_polynomial,def:scaled_chebyshev_polynomial} with $\gamma = 0$ as follows
 \begin{equation}
     \hat{r}^{(i)}_p (x)
     \begin{cases}
@@ -32,7 +32,7 @@ The CG error \cref{eq:cg_error_bound} suggests we look for a polynomial $r_{m_2}
 \end{equation}
 and
 \begin{equation}
-    \hat{r}_{{m_2}-p} (x) = \frac{C_{m_2-p} \left(\frac{d + c - 2x}{d - c}\right)}{C_{m_2-p}\left(\frac{d + c}{d - c}\right)},
+    \hat{r}_{{m_2}-p} (x) = \hat{C}_{m_2-p},
     \label{eq:residual_polynomial_rpm}
 \end{equation}
 Indeed, the product $r_{m_2} = \hat{r}_p \hat{r}_{m_2-p} \in \mathcal{P}_{m_2}$. Hence, we can use the residual polynomial functions to bound the error at the $m^{\text{th}}$ iterate. Now, we obtain the following intermediate bounds
@@ -68,7 +68,7 @@ Note that if $i=1$ we can determine $p$ by requiring that the maximum of the res
 \end{equation}
 Also note that for $i=2$ $\hat{r}^{(2)}_p(\lambda) = 0 < \epsilon$ for all eigenvalues $\lambda \in [a,b]$.
 
-Next, $\hat{r}^{(i)}_p$ in $[c,d]$ is bounded by its maximum value within $[a,b]$ multiplied by the polynomial that is the fastest growing polynomial in $\mathcal{P}_{p}$ outside- and bounded below 1 within $[a,b]$. This polynomial is again the (transformed) Chebyshev polynomial $C_{p}\left(\frac{2x - b - a}{b - a}\right)$. Therefore,
+Next, $\hat{r}^{(i)}_p$ in $[c,d]$ is bounded by its maximum value within $[a,b]$ multiplied by the polynomial that is the fastest growing polynomial in $\mathcal{P}_{p}$ outside- and bounded below 1 within $[a,b]$. This polynomial is again the (transformed, but unscaled) Chebyshev polynomial $C_{p}\left(\frac{2x - b - a}{b - a}\right)$. Therefore,
 \begin{equation*}
     \max_{\lambda \in [c,d]} |\hat{r}^{(i)}_p(\lambda)| \leq \eta_i C_{p}\left(\frac{2d - b - a}{b + a}\right),
 \end{equation*}
@@ -216,7 +216,7 @@ Equation \ref{eq:performance_ratio_uniform_expansion} shows that the uniform (mi
 \]
 Only for small $\kappa_l = \frac{\kappa}{\kappa_r}$ does the first order term become significant. Additionally, \cref{eq:performance_ratio_uniform_expansion} shows that for increasing $\kappa_r$ we expect a decreasing minimum performance. We also find that the new bound $m_2(\kappa,\kappa_l,\kappa_r)$ is not absolutely sharper than the classical bound $m_1(\kappa)$. In fact, based on the terms in the expansion of \cref{eq:performance_ratio_uniform_expansion} we can say that
 \begin{equation}
-    P^{(1)}_{\text{uniform}}(\kappa_l, \kappa_r) \lesssim P_{\text{uniform}}(\kappa_l, \kappa_r) \lesssim P^{(0)}_{\text{uniform}}(\kappa_r),
+    P^{(1)}_{\text{uniform}}(\kappa_l, \kappa_r) \lesssim P_{\text{uniform}}(\kappa_l, \kappa_r) \lesssim P^{(0)}_{\text{uniform}}(\kappa_r) < 1,
     \label{eq:performance_ratio_no_improvement_bounds}
 \end{equation}
 
@@ -235,7 +235,7 @@ At this point we neglect the last term in \cref{eq:threshold_inequality}. Doing 
     P \geq 1 - \mathcal{O}\left(\sqrt{\frac{\kappa_r}{\kappa_l}}\log_{\frac{2}{\epsilon}}\left(\frac{4\kappa}{\kappa_l}\right)\right) = P_{\text{threshold}},
     \label{eq:approximate_performance_ratio_threshold}
 \end{equation}
-which is a good approximation as long as $\kappa_l \geq \kappa \gg 1$. Next to simplifying \cref{eq:threshold_inequality}, this reduces the number of variables. Indeed, by introducing a new parameter for the \textit{spectral width} $s = \frac{\kappa}{\kappa_l}$, dropping the last term in \cref{eq:threshold_inequality} and setting $c_r = \frac{2}{\sqrt{\kappa_r}}$ we can write
+which is a good approximation as long as $\kappa_l \geq \kappa_r \gg 1$. Next to simplifying \cref{eq:threshold_inequality}, this reduces the number of variables. Indeed, by introducing a new parameter for the \textit{spectral width} $s = \frac{\kappa}{\kappa_l}$, dropping the last term in \cref{eq:threshold_inequality} and setting $c_r = \frac{2}{\sqrt{\kappa_r}}$ we can write
 \begin{equation}
     c_r\sqrt{s} \geq \ln\left(4s\right) + c_r.
     \label{eq:threshold_inequality_s}
@@ -297,7 +297,7 @@ The performance ratio is now given by
     P_{\text{tail-cluster}}(\kappa, \kappa_l, \kappa_r, p) = \frac{\sqrt{\frac{\kappa}{\kappa_r}}\ln\left(\frac{2}{\epsilon}\right)}{p\ln\left(\frac{4\kappa}{\kappa_l}\right)} - \mathcal{O}\left(\sqrt{\frac{\kappa}{\kappa_r}}\frac{\ln\left(\frac{2}{\epsilon}\right) + \frac{2p}{\sqrt{\kappa_r}}}{p^2\ln\left(\frac{4\kappa}{\kappa_l}\right)^2}\right), \quad \text{for } p \geq \left\lceil\log_{\frac{4\kappa}{\kappa_l}}\left(\frac{2}{\epsilon}\right)\right\rceil.
     \label{eq:performance_ratio_tail_cluster}
 \end{equation}
-Equation \ref{eq:performance_ratio_tail_cluster} shows that
+Equation (\ref{eq:performance_ratio_tail_cluster}) shows that
 \[
     P_{\text{tail-cluster}}(\kappa, \kappa_l, \kappa_r, p) \longrightarrow \frac{1}{\ln(4\kappa_r)} \approx P^{(0)}_{\text{uniform}}(\kappa_r) \text{ as } p \to \left\lfloor\frac{\sqrt{\kappa_l}}{2}\ln{\frac{2}{\epsilon}} + 1 \right\rfloor \text{ and } \kappa \to \kappa_l\kappa_r,
 \]
@@ -306,7 +306,7 @@ that is, the minimum performance of the tail-cluster bound reduces to the leadin
     p \leq \left\lfloor\sqrt{\frac{\kappa}{\kappa_r}}\log_{\frac{4\kappa}{\kappa_l}}\left(\frac{2}{\epsilon}\right)\right\rfloor.
     \label{eq:tail_cluster_bound_sparsity_condition}
 \end{equation}
-Equation \ref{eq:tail_cluster_bound_sparsity_condition} can be interpreted as a \textit{sparsity condition} on the tail cluster, i.e. the tail cluster must be sparse enough to ensure that the performance ratio is larger than $1$.
+Equation (\ref{eq:tail_cluster_bound_sparsity_condition}) can be interpreted as a \textit{sparsity condition} on the tail cluster, i.e. the tail cluster must be sparse enough to ensure that the performance ratio is larger than $1$.
 
 Finally, we found that the tail-cluster bound is sharper than the classical bound if the following conditions on $p$ hold
 \begin{equation}
@@ -318,22 +318,18 @@ The left-hand side inequality of \cref{eq:tail_cluster_bound_condition} ensures 
 \section{Generalization to multiple clusters}\label{sec:multiple_clusters}
 The technique outlined in \cref{sec:cg_sharpened_convrate} starts at the left most cluster $[a,b]$, finds the Chebyshev degree $p_1=p$ satisfying \cref{eq:chebyshev_degree_p}, moves to the neighboring cluster $[c,d]$ and finds the Chebyshev degree $p_2 = m_2 - p$ satisfying \cref{eq:relative_error_bound_mp}. Rewriting \cref{eq:relative_error_bound_mp} gives the following equation for $p_2$:
 \begin{equation}
-    \frac{1}{C_{p_2}\left(\frac{d+c}{d-c}\right)} \leq \frac{\epsilon}{{C}^{(1)}_{p_1}(d)} = \epsilon_2,
+    \frac{1}{C_{p_2}\left(\frac{d+c}{d-c}\right)} \leq \frac{\epsilon}{\hat{C}^{(1)}_{p_1}(d)} = \epsilon_2,
     \label{eq:chebyshev_degree_p_prime}
 \end{equation}
-where
-\[
-    C^{(1)}_{p_1}(x) = C_{p_1}\left(\frac{b + a - 2x}{b - a}\right) /C_{p_1}\left(\frac{b+a}{b-a}\right),
-\]
-is the Chebyshev polynomial corresponding to the first cluster.
+where $C^{(1)}_{p_1}(x)$ is the (transformed) Chebyshev polynomial from \cref{def:scaled_chebyshev_polynomial} corresponding to the first cluster.
 
 Suppose there is a third cluster to the right of $[c,d]$, i.e. $[e,f]$. We can repeat the process and find the Chebyshev degree $p_3$ satisfying a similar equation as \cref{eq:chebyshev_degree_p_prime} for the third cluster.
 \[
-    \frac{1}{C_{p_3}\left(\frac{f+e}{f-e}\right)} \leq \frac{\epsilon}{C^{(1)}_{p_1}(f)C^{(2)}_{p_2}(f)} = \epsilon_3,
+    \frac{1}{C_{p_3}\left(\frac{f+e}{f-e}\right)} \leq \frac{\epsilon}{\hat{C}^{(1)}_{p_1}(f)\hat{C}^{(2)}_{p_2}(f)} = \epsilon_3,
 \]
 This leads to the general equation for the Chebyshev degree $p_i$ of the $i^{\text{th}}$ cluster $[a_i, b_i]$
 \begin{equation}
-    \frac{1}{C_{p_i}\left(\frac{b_i + a_i}{b_i - a_i}\right)} \leq \frac{\epsilon}{\prod_{j=1}^{i-1} C^{(j)}_{p_j}(b_i)} = \epsilon_i.
+    \frac{1}{C_{p_i}\left(\frac{b_i + a_i}{b_i - a_i}\right)} \leq \frac{\epsilon}{\prod_{j=1}^{i-1} \hat{C}^{(j)}_{p_j}(b_i)} = \epsilon_i.
     \label{eq:chebyshev_degree_p_i}
 \end{equation}
 An eigenvalue spectrum of this kind is visualized in \cref{fig:multiple_eigenvalue_clusters}.
@@ -344,17 +340,17 @@ An eigenvalue spectrum of this kind is visualized in \cref{fig:multiple_eigenval
     \label{fig:multiple_eigenvalue_clusters}
 \end{figure}
 
-The Chebyshev polynomials $C_p$ grow rapidly outside the interval $[-1,1]$ \cite[Section 4]{cg_sharpened_convrate_Axelsson1976}. Therefore, it can be cumbersome for a computer to evaluate the product of the $C^{(j)}_{p_j}(b_i)$ terms in the denominator of \cref{eq:chebyshev_degree_p_i}, as it might result in floating-point number overflow. Instead, we first apply \cref{eq:chebyshev_polynomial_bound} and introduce the cluster condition numbers $\kappa_i = \frac{b_i}{a_i}$, where $i$ is the index of the cluster. We can then rewrite \cref{eq:chebyshev_degree_p_i} using \cref{eq:chebyshev_polynomial_approximation} as follows
+The Chebyshev polynomials $C_p$ grow rapidly outside the interval $[-1,1]$ \cite[Section 4]{cg_sharpened_convrate_Axelsson1976}. Therefore, it can be cumbersome for a computer to evaluate the product of the $\hat{C}^{(j)}_{p_j}(b_i)$ terms in the denominator of \cref{eq:chebyshev_degree_p_i}. Instead, we first apply \cref{eq:chebyshev_polynomial_bound} and introduce the cluster condition numbers $\kappa_i = \frac{b_i}{a_i}$, where $i$ is the index of the cluster. We can then rewrite \cref{eq:chebyshev_degree_p_i} using \cref{eq:chebyshev_polynomial_approximation} as follows
 \begin{equation*}
     p_i  =  \left\lceil\ln{\frac{\epsilon_i}{2}} / \ln{\frac{\sqrt{\kappa_i} - 1}{\sqrt{\kappa_i} + 1}}\right\rceil, \\
 \end{equation*}
 and
 \begin{align*}
-    \ln{\frac{\epsilon_i}{2}} & = \ln{\frac{\epsilon}{2}} - \sum_{j=1}^{i-1} \ln{C^{(j)}_{p_j}(b_i)}. \\
+    \ln{\frac{\epsilon_i}{2}} & = \ln{\frac{\epsilon}{2}} - \sum_{j=1}^{i-1} \ln{\hat{C}^{(j)}_{p_j}(b_i)}. \\
 \end{align*}
 Let $z^{(i,j)}_1 = \frac{b_j + a_j - 2b_i}{b_j - a_j}$ and $z^{(j)}_2 = \frac{b_j + a_j}{b_j - a_j}$ then
 \begin{equation*}
-    \ln{C^{(j)}_{p_j}(b_i)} = \ln{C_{p_j}(z^{(i,j)}_1)} - \ln{C_{p_j}(z^{(j)}_2)}.
+    \ln{\hat{C}^{(j)}_{p_j}(b_i)} = \ln{C_{p_j}(z^{(i,j)}_1)} - \ln{C_{p_j}(z^{(j)}_2)}.
 \end{equation*}
 We have, using the approximations in \cref{eq:chebyshev_polynomial_approximation}
 \begin{equation}
@@ -378,7 +374,7 @@ with $\kappa_i$ the $i^{\text{th}}$ cluster condition number, and substituting t
         & = \left\lceil\log_{f_i}{\frac{\epsilon}{2}} - \sum_{j=1}^{i-1} p_j\left(\log_{f_i}{\zeta^{(i,j)}_1} - \log_{f_i}{\zeta^{(j)}_2} \right)\right\rceil \\
         & = \left\lceil\log_{f_i}{\frac{\epsilon}{2}} - \sum_{j=1}^{i-1} p_j\log_{f_i}\left(\frac{\zeta^{(i,j)}_1}{\zeta^{(j)}_2}\right)\right\rceil
 \end{align*}
-Note that in general $f_i < 1$ and $\zeta^{(i,j)}_1 > \zeta^{(j)}_2$. Therefore, term $\log_{f_i}{\left(\frac{\zeta^{(i,j)}_1}{\zeta^{(j)}_2}\right)} < 0$. So we multiply this term by $-1$ and obtain
+Note that in general $f_i < 1$ and $\zeta^{(i,j)}_1 > \zeta^{(j)}_2$. Therefore, the term $\log_{f_i}{\left(\frac{\zeta^{(i,j)}_1}{\zeta^{(j)}_2}\right)} < 0$. So we multiply this term by $-1$ and obtain
 \begin{equation}
     p_i \leq \left\lceil\log_{f_i}{\frac{\epsilon}{2}} + \sum_{j=1}^{i-1} p_j\log_{f_i}\left(\frac{\zeta^{(j)}_2}{\zeta^{(i,j)}_1}\right)\right\rceil
     \label{eq:chebyshev_degree_p_i_explicit}
@@ -411,7 +407,7 @@ The polynomial $r_t(x)$ is indeed the natural choice for polynomials of the tail
 \end{equation}
 Now, consider the global residual polynomial $r(x)$ defined as
 \begin{equation}
-    r(x) = \prod_{j} r_{t_j}(x) \prod_{i=1}^{N_{\text{clusters}}} C^{(i)}_{p_i}(x)= \prod_{\lambda\in\Lambda_{t}} \left(1 - \frac{x}{\lambda}\right)\prod_{i=1}^{N_{\text{clusters}}} C^{(i)}_{p_i}(x) = r_t(x)\prod_{i=1}^{N_{\text{clusters}}} C^{(i)}_{p_i}(x), 
+    r(x) = \prod_{j} r_{t_j}(x) \prod_{i=1}^{N_{\text{clusters}}} \hat{C}^{(i)}_{p_i}(x)= \prod_{\lambda\in\Lambda_{t}} \left(1 - \frac{x}{\lambda}\right)\prod_{i=1}^{N_{\text{clusters}}} \hat{C}^{(i)}_{p_i}(x) = r_t(x)\prod_{i=1}^{N_{\text{clusters}}} \hat{C}^{(i)}_{p_i}(x),
     \label{eq:residual_polynomial_tail_clusters_global}
 \end{equation}
 where $\Lambda_{t} = \cup_{j} \Lambda_{t_j}$. Hence, we recover $r_t(x)$ from \cref{eq:residual_polynomial_tail_clusters} and see that is a natural generalization.
@@ -461,7 +457,7 @@ We summarize the techniques outlined in this section in \cref{alg:generalized_cg
 \end{algorithm}
 
 \section{Algorithms for sharpened CG iteration bounds}\label{sec:cg_iteration_bound_algorithm}
-In this section we combine the findings of \cref{sec:performance_ratio,sec:tail_cluster_bound_performance,sec:multiple_clusters} to derive two flexible algorithms for determining a sharpened CG bound, \cref{alg:multi_cluster_cg_bound,alg:multi_tail_cluster_cg_bound}. The main goal of the algorithms in this section is to partition a given eigenspectrum in such a way such that the resulting set of clusters and possibly tail eigenvalues can be fed into \cref{alg:generalized_cg_bound} to obtain CG iteration bounds $m_{N_{\text{cluster}}}$ and $m_{N_{\text{tail-cluster}}}$. Moreover, to ensure that $m_{N_{\text{cluster}}} < m_1$ and $m_{N_{\text{tail-cluster}}} < m_1$ the partitioning of the eigenspectrum is done such that the resulting clusters satisfy the performance conditions derived in \cref{sec:performance_threshold,sec:tail_cluster_bound_performance}, respectively.
+In this section we combine the findings of \cref{sec:performance_ratio,sec:tail_cluster_bound_performance,sec:multiple_clusters} to derive two flexible algorithms for determining a sharpened CG bound, \cref{alg:multi_cluster_cg_bound,alg:multi_tail_cluster_cg_bound}. The main goal of the algorithms in this section is to partition a given eigenspectrum in such a way that the resulting set of clusters and possibly tail eigenvalues can be fed into \cref{alg:generalized_cg_bound} to obtain CG iteration bounds $m_{N_{\text{cluster}}}$ and $m_{N_{\text{tail-cluster}}}$. Moreover, to ensure that $m_{N_{\text{cluster}}} < m_1$ and $m_{N_{\text{tail-cluster}}} < m_1$ the partitioning of the eigenspectrum is done such that the resulting clusters satisfy the performance conditions derived in \cref{sec:performance_threshold,sec:tail_cluster_bound_performance}, respectively.
 
 \subsection{Multi-cluster CG iteration bound}\label{sec:partition_eigenspectrum}
 We start by exclusively partitioning a spectrum into clusters, that is we do not look for possible tail eigenvalues. Later in \cref{sec:partition_eigenspectrum_tail} we will see how to extend the algorithms we derive to the incorporate clusters of tail eigenvalues. 
@@ -519,7 +515,7 @@ Recursive application of \cref{alg:split_eigenspectrum} with stopping criterion 
 \end{algorithm}
 Note that \cref{alg:partition_eigenspectrum} returns at a minimum a set containing only the last index $K^*= \langle n \rangle$, if the threshold condition is not satisfied for any split. Additionally, the value $k^*$ is added (element-wise) to the result of the right-hand recursion in line 8 of \cref{alg:partition_eigenspectrum}. This is to ensure that the resulting set of indices $K^*$ contains the correct, global indices of the eigenvalues in the spectrum, as the right-hand recursion only returns indices relative to the right-hand side of the split.
 
-Finally, we can combine the partitioning from \cref{alg:partition_eigenspectrum} with the Chebyshev degree calculation from \cref{alg:generalized_cg_bound} to obtain the sharpened CG bound \cref{alg:multi_cluster_cg_bound}. It is important to realize that partitioning done by \cref{alg:partition_eigenspectrum} can also produce clusters consisting of a single eigenvalue, i.e. $[a_i, b_i] = [\lambda_i, \lambda_i]$. Clusters of this kind automatically satisfy the sparsity condition in \cref{eq:tail_cluster_bound_sparsity_condition} for any $\kappa\geq1$, $\kappa_l,\kappa_r<\kappa$ and $\epsilon\leq\frac{1}{2}$. Therefore, these single eigenvalue clusters belong to the set of tail eigenvalues $\Lambda_t$. Even though we did not aim to find tail eigenvalues, we are forced to accept their existence in this case. Not merely because single eigenvalue clusters satisfy the sparsity condition, but also because the Chebyshev polynomial $C^{(i)}_{p_i}$ corresponding to a single eigenvalue cluster is not well-defined.
+Finally, we can combine the partitioning from \cref{alg:partition_eigenspectrum} with the Chebyshev degree calculation from \cref{alg:generalized_cg_bound} to obtain the sharpened CG bound \cref{alg:multi_cluster_cg_bound}. It is important to realize that partitioning done by \cref{alg:partition_eigenspectrum} can also produce clusters consisting of a single eigenvalue, i.e. $[a_i, b_i] = [\lambda_i, \lambda_i]$. Clusters of this kind automatically satisfy the sparsity condition in \cref{eq:tail_cluster_bound_sparsity_condition} for any $\kappa\geq1$, $\kappa_l,\kappa_r<\kappa$ and $\epsilon\leq\frac{1}{2}$. Therefore, these single eigenvalue clusters belong to the set of tail eigenvalues $\Lambda_t$. Even though we did not aim to find tail eigenvalues, we are forced to accept their existence in this case. Not merely because single eigenvalue clusters satisfy the sparsity condition, but also because the Chebyshev polynomial $\hat{C}^{(i)}_{p_i}$ corresponding to a single eigenvalue cluster is not well-defined.
 \begin{algorithm}[H]
     \caption{$\operatorname{MultiClusterCGIterationBound}(\sigma, \epsilon)$}
     \begin{algorithmic}[1]
