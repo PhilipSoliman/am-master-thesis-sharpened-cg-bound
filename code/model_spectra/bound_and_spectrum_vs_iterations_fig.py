@@ -44,7 +44,7 @@ N_ITERATIONS = 300  # for RGDSW left cluster stabilizes around 1200 iterations
 # spectrum plot
 SPECTRUM_PLOT_FREQ = 5
 low_colour = "#b7b7b7"  # CustomColors.SOFTSKY.value # "#e2e4fb"
-high_colour = CustomColors.SKY.value  # "#405FE5"
+high_colour = "#808080"  # grey
 cmap = mcolors.LinearSegmentedColormap.from_list(
     "custom_gradient", [low_colour, high_colour]
 )
