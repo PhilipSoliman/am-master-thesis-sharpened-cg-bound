@@ -1,6 +1,10 @@
 from manim import *
-class DefaultTemplate(Scene):
+from manim_slides import Slide
+
+class DefaultTemplate(Slide):
     def construct(self):
+        self.next_slide(loop=True)  # Start looping
+
         circle = Circle()  # create a circle
         circle.set_fill(PINK, opacity=0.5)  # set color and transparency
 

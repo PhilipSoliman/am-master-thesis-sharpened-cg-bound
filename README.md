@@ -6,7 +6,7 @@ This section outlines the setup process for the project, including the installat
 
 ### Requirements
 Check that you have the following 
-- `python` (3.10 or higher)
+- `python` 3.10
 - Full [TeXLive](https://www.tug.org/texlive/windows.html) installation. On Linux this can be done using the following command:
 ```bash
 apt-get install texlive-full

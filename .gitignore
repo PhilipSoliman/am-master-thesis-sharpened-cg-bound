@@ -43,5 +43,5 @@ data/*/*.vtk
 logs/
 
 # manim
-**/*.mp4
-**/partial_movie_file_list.txt
+defense/manimations/media
+defense/manimations/slides
