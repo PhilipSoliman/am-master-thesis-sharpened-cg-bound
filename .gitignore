@@ -41,3 +41,7 @@ data/*/*.vtk
 
 # ignore log folder
 logs/
+
+# manim
+**/*.mp4
+**/partial_movie_file_list.txt
