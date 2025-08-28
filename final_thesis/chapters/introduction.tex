@@ -11,6 +11,9 @@ In this thesis we focus on a simple scalar diffusion problem. Let $\Omega\subset
     \end{equation}
 \end{fancyprob}
 
+In \cref{tab:high_contrast_examples} we give an overview of some real-world applications that can be modeled using \cref{prob:elliptic_problem}. These applications span a wide range of fields, including electronics, hydrogeology, biomechanics, materials science, and energy.
+\input{../../tables/applications.tex}
+
 The first step in solving \cref{prob:elliptic_problem} is to reformulate the problem in a way that reduces the regularity constraint on the solution $u\in H^2(\Omega)$ and not requiring to $\nabla\cdot\left(\mathcal{C}\nabla u\right)$ to exist pointwise. This leads to the weak formulation of the problem, which is obtained by multiplying \cref{eq:elliptic_problem} with a test function $v\in H^1_0(\Omega)$ and integrating over $\Omega$. The weak formulation is given by
 \begin{fancyprob}{High-contrast scalar elliptic problem: weak formulation}{elliptic_problem_weak}
     Let $u_D\in H^1(\partial\Omega)$ be a Dirichlet boundary condition. Find $u\in V = \{u\in H^1(\Omega) | u_{\delta \Omega} = u_D\}$ such that $\forall v \in H^1_0(\Omega)$
