@@ -1,0 +1,48 @@
+\begin{frame}[label=results]{Structure: Results}
+    \frametitle{Structure}
+    \begin{itemize}
+        \item Research Questions
+        \item Background \& Literature
+        \item {\color{tud grapefruit}Preliminary Results}
+        \item Outlook
+    \end{itemize}
+\end{frame}
+
+\footerinfootnotesfalse
+\begin{frame}[label=results,fragile]{Results: Multi-cluster}
+    \frametitle{Preliminary Results}
+    \framesubtitle{Generalization to multiple clusters}
+    \only<1-2>{%
+        \begin{figure}
+            \centering
+            \input{../tikz/multiple_eigenvalue_clusters.tex}
+        \end{figure}
+    }
+    \only<2>{%
+        Building on the work of \citeauthor{cg_sharpened_convrate_Axelsson1976} we can imagine $r_{\bar{m}} = \hat{r}_{p_1}\hat{r}_{p_2}\dots\hat{r}_{p_n}\in\mathcal{P}_{\bar{m}}$ with
+        \begin{equation*}
+            p_i \leq \left\lceil\log_{f_i}{\frac{\epsilon}{2}} + \sum_{j=1}^{i-1} p_j\log_{f_i}{\frac{\zeta^{(j)}_2}{\zeta^{(i,j)}_1}} \right\rceil \quad \text{and} \quad f_i =\frac{\sqrt{\kappa_i}-1}{\sqrt{\kappa_i}+1}.
+        \end{equation*}
+        Sharpened bound given by
+        \begin{equation*}
+            \bar{m} = \sum_{i=1}^{n} p_i.
+        \end{equation*}
+    }
+    \only<3>{%
+        \begin{figure}
+            \centering
+            \includegraphics[width=0.8\textwidth]{sharpened_bound_2_clusters.png}
+        \end{figure}
+    }
+    \only<4>{%
+        \begin{figure}
+            \centering
+            \includegraphics[width=0.8\textwidth]{sharpened_bound_3_clusters.png}
+        \end{figure}
+    }
+\end{frame}
+
+\begin{frame}[label=results,fragile]{Results: Demo}
+    \frametitle{Preliminary Results}
+    \framesubtitle{Demo}
+\end{frame}

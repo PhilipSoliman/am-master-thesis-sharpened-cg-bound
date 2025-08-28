@@ -1,0 +1,36 @@
+\usepackage{datetime2}
+
+% change the date format to "Month Year"
+\makeatletter
+\newcommand{\monthyeardate}{%
+  \DTMenglishmonthname{\@dtm@month}, \@dtm@year
+}
+\makeatother
+
+% figures and graphics
+\usepackage{float}
+\usepackage{graphicx}
+\usepackage{ifthen}
+
+% captions
+\usepackage[labelfont=bf,justification=centering,footnotesize]{caption} 
+
+% algrorithms
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{algorithmicx}
+
+% section specific compilation
+\includeonlyframes{%
+  title,%
+  opening,%
+  toc,%
+  questions,%
+  background,%
+  literature,%
+  results,%
+  outlook%
+}
+
+% extra colors
+\definecolor{chapter}{HTML}{945357} % Deep Red
