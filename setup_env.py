@@ -92,6 +92,20 @@ def setup_vscode_configs():
             json.dump(tasks, f, indent=4)
         print(f"✅ Merged VSCode tasks at {tasks_dest}")
 
+    # Merge extensions
+    extensions = {}
+    if os.path.exists(os.path.join(vscode_dir, "extensions.json")):
+        with open(os.path.join(vscode_dir, "extensions.json"), "r", encoding="utf-8") as f:
+            try:
+                extensions = json.load(f)
+            except Exception:
+                extensions = {}
+    if "extensions" in config:
+        extensions = merge_dicts(extensions, config["extensions"])
+        with open(os.path.join(vscode_dir, "extensions.json"), "w", encoding="utf-8") as f:
+            json.dump(extensions, f, indent=4)
+        print(f"✅ Merged VSCode extensions at {os.path.join(vscode_dir, 'extensions.json')}")
+
 def activate_environment():
     print()
     subprocess.run(
