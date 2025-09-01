@@ -1,4 +1,4 @@
-from manim import *
+from custom_manim import *
 from manim.opengl import *
 
 
@@ -63,7 +63,7 @@ class NewtonIteration(Scene):
         if symbol == pyglet_key.I:
             x, y = self.axes.point_to_coords(self.cursor_dot.get_center())
             # newton
-            x_new = x - self.f(x) / derivative(self.f, x, atol=1e-6)
+            x_new = x - self.f(x) / derivative(self.f, x, tolerances={"atol": 1e-6}).df
             curve_point = self.cursor_dot.get_center()
             axes_point = self.axes.c2p(x_new, 0)
             tangent = Line(
@@ -78,4 +78,5 @@ class NewtonIteration(Scene):
                 self.cursor_dot.animate.move_to(self.axes.c2p(x_new, self.f(x_new))),
                 FadeOut(tangent),
             )
+        return super().on_key_press(symbol, modifiers)
         return super().on_key_press(symbol, modifiers)

@@ -1,0 +1,74 @@
+{
+    "settings": {
+        "actionButtons": {
+            "commands": [
+                {
+                    "name": "Render Manim (Interactive)",
+                    "color": "purple",
+                    "command": "${workspaceFolder}/.venv/Scripts/python.exe -m manim -qm -p --renderer=opengl --fullscreen ${file}",
+                    "singleInstance": true,
+                    "cwd": "${workspaceFolder}/defense/manimations"
+                },
+                {
+                    "name": "Present Manim (Slides)",
+                    "color": "blue",
+                    "command": "workbench.action.tasks.runTask",
+                    "args": [
+                        "Present Manim Slides"
+                    ],
+                    "singleInstance": true,
+                    "cwd": "${workspaceFolder}/defense/manimations",
+                    "useVsCodeApi": true
+                }
+            ]
+        },
+        "manim-sideview.commandLineArgs": "--renderer=opengl --write_to_movie --quality=p --use_projection_fill_shaders --use_projection_stroke_shaders",
+        "manim-sideview.runOnSave": false
+    },
+    "tasks": {
+        "version": "2.0.0",
+        "tasks": [
+            {
+                "label": "Render Manim Slides",
+                "type": "shell",
+                "command": "${workspaceFolder}\\.venv\\Scripts\\manim-slides",
+                "problemMatcher": [],
+                "options": {
+                    "cwd": "${workspaceFolder}\\${relativeFileDirname}"
+                },
+                "args": [
+                    "render",
+                    "--GL",
+                    "${file}",
+                    "${fileBasenameNoExtension}"
+                ]
+            },
+            {
+                "label": "Convert Manim Slides",
+                "type": "shell",
+                "command": "${workspaceFolder}\\.venv\\Scripts\\manim-slides",
+                "options": {
+                    "cwd": "${workspaceFolder}\\${relativeFileDirname}"
+                },
+                "args": [
+                    "convert",
+                    "--one-file",
+                    "--to=html",
+                    "--open",
+                    "-cassets_dir=${workspaceFolder}\\defense\\manimations\\assets",
+                    "${fileBasenameNoExtension}",
+                    "presentations\\${fileBasenameNoExtension}.html"
+                ],
+                "problemMatcher": []
+            },
+            {
+                "label": "Present Manim Slides",
+                "dependsOn": [
+                    "Render Manim Slides",
+                    "Convert Manim Slides"
+                ],
+                "dependsOrder": "sequence"
+            }
+        ]
+    }
+}
