@@ -1,7 +1,11 @@
 from manimlib import *
 from manim_slides import Slide
+FPS = 30
+QUALITY = (1920,1080) # 4k = (3840,2160)
+manim_config.camera.fps = FPS
+manim_config.camera.resolution = QUALITY
 
-class main(Slide):
+class slides_example(Slide):
     def construct(self):
         circle = Circle(radius=3, color=BLUE)
         dot = Dot()

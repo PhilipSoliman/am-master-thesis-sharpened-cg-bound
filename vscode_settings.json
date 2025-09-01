@@ -102,9 +102,10 @@
                     "--one-file",
                     "--to=html",
                     "--open",
+                    "-ctitle=Slides: ${fileBasenameNoExtension}",
                     "-cassets_dir=${workspaceFolder}\\defense\\manimations\\assets",
                     "${fileBasenameNoExtension}",
-                    "presentations\\${fileBasenameNoExtension}.html"
+                    "builds\\${fileBasenameNoExtension}.html"
                 ],
                 "problemMatcher": []
             },
