@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import gridspec
 
-from hcmsfem.cli import CLI_ARGS
+from hcmsfem.cli import get_cli_args
 from hcmsfem.plot_utils import (
     CustomColors,
     mpl_graph_plot_style,
@@ -11,6 +11,8 @@ from hcmsfem.plot_utils import (
     set_mpl_style,
 )
 from hcmsfem.solvers import CustomCG, generalized_cg_iteration_bound
+
+CLI_ARGS = get_cli_args()
 
 # constants
 EIGV_SAMPLE_RANGE = (

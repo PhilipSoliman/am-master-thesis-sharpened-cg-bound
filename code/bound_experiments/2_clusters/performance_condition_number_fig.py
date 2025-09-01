@@ -4,14 +4,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 from tqdm import tqdm
 
-from hcmsfem.cli import CLI_ARGS
+from hcmsfem.cli import get_cli_args
 from hcmsfem.plot_utils import save_latex_figure
 from hcmsfem.solvers import multi_cluster_cg_iteration_bound
 
 ###################
 # CONSTANT INPUTS #
 ###################
-# ARGS = get_cli_args()
+CLI_ARGS = get_cli_args()
 
 # plot
 FIGWIDTH = 5

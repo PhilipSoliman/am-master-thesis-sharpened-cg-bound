@@ -12,7 +12,7 @@ from approximate_spectra import (
     get_spectrum_save_path,
 )
 
-from hcmsfem.cli import CLI_ARGS
+from hcmsfem.cli import get_cli_args
 from hcmsfem.logger import LOGGER
 from hcmsfem.plot_utils import save_latex_figure, set_mpl_cycler
 from hcmsfem.preconditioners import (
@@ -26,6 +26,8 @@ from hcmsfem.solvers import (
     multi_cluster_cg_iteration_bound,
     multi_tail_cluster_cg_iteration_bound,
 )
+
+CLI_ARGS = get_cli_args()
 
 # define coefficient functions to use
 COEF_FUNCS = [

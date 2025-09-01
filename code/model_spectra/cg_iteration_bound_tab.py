@@ -17,10 +17,13 @@ from sharpened_bound_vs_iterations import (
 )
 
 from hcmsfem import LOGGER
-from hcmsfem.cli import CLI_ARGS
+from hcmsfem.cli import get_cli_args
 from hcmsfem.plot_utils import CustomColors
 from hcmsfem.problems import CoefFunc
 from hcmsfem.root import get_venv_root
+
+CLI_ARGS = get_cli_args()
+
 
 # save directory for the table
 SAVE_DIR = get_venv_root() / "tables"

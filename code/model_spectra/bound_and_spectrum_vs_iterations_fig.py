@@ -14,7 +14,7 @@ from sharpened_bound_vs_iterations_fig import (
     style_figure,
 )
 
-from hcmsfem.cli import CLI_ARGS
+from hcmsfem.cli import get_cli_args
 from hcmsfem.eigenvalues import eigs
 from hcmsfem.logger import LOGGER, PROGRESS
 from hcmsfem.meshes import DefaultQuadMeshParams
@@ -34,6 +34,8 @@ from hcmsfem.solvers import (
     partition_eigenspectrum,
     partition_eigenspectrum_tails,
 )
+
+CLI_ARGS = get_cli_args()
 
 # tolerance
 LOG_RTOL = np.log(RTOL)

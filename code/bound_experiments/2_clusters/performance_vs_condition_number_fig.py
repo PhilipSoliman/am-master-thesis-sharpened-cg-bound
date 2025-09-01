@@ -9,13 +9,14 @@ from scipy.optimize import brentq, fsolve, root_scalar
 from scipy.special import lambertw
 from tqdm import tqdm
 
-from hcmsfem.cli import CLI_ARGS
+from hcmsfem.cli import get_cli_args
 from hcmsfem.plot_utils import (
     CUSTOM_COLORS_SIMPLE,
     save_latex_figure,
     set_mpl_cycler,
     set_mpl_style,
 )
+CLI_ARGS = get_cli_args()
 
 set_mpl_style()
 set_mpl_cycler(colors=True, lines=True)

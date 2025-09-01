@@ -11,11 +11,18 @@ from approximate_spectra import (
 )
 from sharpened_bound_vs_iterations import N_ITERATIONS
 
-from hcmsfem.cli import CLI_ARGS, get_cli_args
+from hcmsfem.cli import get_cli_args
 from hcmsfem.logger import LOGGER, PROGRESS
 from hcmsfem.meshes import DefaultQuadMeshParams
-from hcmsfem.plot_utils import save_latex_figure, set_mpl_cycler, set_mpl_style, CustomColors
+from hcmsfem.plot_utils import (
+    CustomColors,
+    save_latex_figure,
+    set_mpl_cycler,
+    set_mpl_style,
+)
 from hcmsfem.solvers import multi_tail_cluster_cg_iteration_bound
+
+CLI_ARGS = get_cli_args()
 
 PLOT_MESHES = [DefaultQuadMeshParams.Nc8, DefaultQuadMeshParams.Nc64]
 SHOW_BOUND_MARKERS = True
@@ -281,4 +288,8 @@ if __name__ == "__main__":
                 preconditioner, meshes=PLOT_MESHES, show_bound_markers=SHOW_BOUND_MARKERS
             )
             figs.append(fig)
-        plt.show()
+            fig, _ = plot_sharpened_bound_vs_iterations(
+                preconditioner, meshes=PLOT_MESHES, show_bound_markers=SHOW_BOUND_MARKERS
+            )
+            figs.append(fig)
+            plt.show()

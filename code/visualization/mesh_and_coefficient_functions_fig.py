@@ -5,11 +5,13 @@ import ngsolve as ngs
 import numpy as np
 
 from hcmsfem.boundary_conditions import HomogeneousDirichlet
-from hcmsfem.cli import CLI_ARGS
+from hcmsfem.cli import get_cli_args
 from hcmsfem.meshes import DefaultQuadMeshParams, TwoLevelMesh
 from hcmsfem.plot_utils import CustomColors, save_latex_figure, set_mpl_style
 from hcmsfem.problem_type import ProblemType
 from hcmsfem.problems import CoefFunc, Problem, SourceFunc
+
+CLI_ARGS = get_cli_args()
 
 FIGWIDTH = 3.0
 FIGHEIGHT = 3.0
