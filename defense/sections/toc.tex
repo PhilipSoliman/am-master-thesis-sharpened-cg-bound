@@ -1,9 +1,29 @@
 \begin{frame}[label=toc]{Structure}
     \frametitle{Structure}
     \begin{itemize}
-        \item Research Questions
-        \item Background \& Literature
-        \item Preliminary Results
-        \item Outlook
+        \item CG method: under the hood
+        \item Classical iteration bound
+        \item Influence of eigenvalue distribution
+        \item High-contrast coefficients: split eigenspectrum
+        \item Two-cluster bound
+        \item Multi-cluster bound
+        \item Partitioning
+        \item Results on sharpness
+        \item Practical estimation of new bounds
     \end{itemize}
 \end{frame}
+
+% \begin{comment}
+% Level 1: Discretisation & intro CG
+%     - FEM discretization $\Omega\rightarrow\mathcal{T}$, $\nabla \rightarrow A$, $u\rightarrow\mathbf{u}$, $f\rightarrow\mathbf{b}$
+%     - Linear system of equations $A\mathbf{u}=\mathbf{b}$
+%     - CG takes in initial guess $\mathbf{u}_0$ and provides updated solution $\mathbf{u}_m$ after $m$ iterations.
+%     - Classical bound $m_1$ (condition number $\kappa(A)$)
+%     - Research showed that $m_1$ can be too pessimistic for high-contrast problems.
+%     - Restate R.Q.: "How do we improve/sharpen the classical bound $m_1$?"
+% Level 2: CG convergence in detail
+%     - CG solution polynomial $q$, given as $\mathbf{u}_m = \mathbf{u}_0 + q(A)\mathbf{r}_0$,
+%     - Spectrum $\sigma(A) = \{\lambda_1, \ldots, \lambda_n\}$
+%     - CG residual polynomial $r(\lambda) = 1 - \lambda q(\lambda)$
+%     - 
+% \end{comment}
