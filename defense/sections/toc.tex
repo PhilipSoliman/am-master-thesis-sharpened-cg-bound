@@ -13,17 +13,24 @@
     \end{itemize}
 \end{frame}
 
-% \begin{comment}
-% Level 1: Discretisation & intro CG
-%     - FEM discretization $\Omega\rightarrow\mathcal{T}$, $\nabla \rightarrow A$, $u\rightarrow\mathbf{u}$, $f\rightarrow\mathbf{b}$
-%     - Linear system of equations $A\mathbf{u}=\mathbf{b}$
-%     - CG takes in initial guess $\mathbf{u}_0$ and provides updated solution $\mathbf{u}_m$ after $m$ iterations.
-%     - Classical bound $m_1$ (condition number $\kappa(A)$)
-%     - Research showed that $m_1$ can be too pessimistic for high-contrast problems.
-%     - Restate R.Q.: "How do we improve/sharpen the classical bound $m_1$?"
-% Level 2: CG convergence in detail
-%     - CG solution polynomial $q$, given as $\mathbf{u}_m = \mathbf{u}_0 + q(A)\mathbf{r}_0$,
-%     - Spectrum $\sigma(A) = \{\lambda_1, \ldots, \lambda_n\}$
-%     - CG residual polynomial $r(\lambda) = 1 - \lambda q(\lambda)$
-%     - 
-% \end{comment}
+\begin{comment}
+Level 1: Discretisation & intro CG
+    - FEM discretization $\Omega\rightarrow\mathcal{T}$, $\nabla \rightarrow A$, $u\rightarrow\mathbf{u}$, $f\rightarrow\mathbf{b}$
+    - Linear system of equations $A\mathbf{u}=\mathbf{b}$
+    - CG takes in initial guess $\mathbf{u}_0$ and provides updated solution $\mathbf{u}_k$ after $k$ iterations.
+    - Classical bound given relative error tolerance $\epsilon_m = \frac{\|\mathbf{e}_m\|_A}{\|\mathbf{e}_0\|_A} \leq \epsilon$ is 
+    $\epsilon_m \leq 2\left(\frac{\sqrt{\kappa} - 1}{\sqrt{\kappa} + 1}\right)^{m} \longrightarrow m \leq \left\lfloor\frac{\sqrt{\kappa}}{2}\ln\left(\frac{2}{\epsilon}\right) + 1\right\rfloor = m_1$
+    - However $m_1$ can be too pessimistic for high-contrast problems.That is, $m \ll m_1$
+    - Restate R.Q.: "How do we improve/sharpen the classical bound $m_1$ for model problem?"
+Level 2: CG convergence in detail
+    - Spectrum $\sigma(A) = \{\lambda_1, \ldots, \lambda_n\}$ and $\kappa(A) = \frac{\lambda_{\max}}{\lambda_{\min}}$
+    - CG solution given as $\mathbf{u}_m = \mathbf{u}_0 + q(A)\mathbf{r}_0$, with polynomial $q$ being the \textit{solution polynomial}.
+    - CG residual polynomial $r(\lambda) = 1 - \lambda q(\lambda)$
+    - Error expression $\epsilon_m = \frac{\|\mathbf{e}_m\|_A}{\|\mathbf{e}_0\|_A} < \min_{r \in \mathcal{P}_{m-1}, r(0) = 1} \max_{\lambda \in \sigma(A)} |r(\lambda)|$
+    - Animation: cg_residual_poly 
+        - Loop through different randomized, clustered spectra, showing r_m for each. 
+        - Show best and worst case scenario's for CG convergence
+    - Restate R.Q.: "How can we find a sharpened CG iteration bound that accounts for the influence of the eigenvalue distribution?"
+Level 3: Two cluster case (Axelsson)
+
+\end{comment}
