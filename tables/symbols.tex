@@ -106,7 +106,7 @@
     $\tilde{\epsilon}$               & Absolute error tolerance.                                                                                   \\
     $m$                              & Number of CG iterations required for convergence.                                                           \\
     $m_1$                            & Classical CG iteration bound based on condition number.                                                     \\
-    $f$                              & CG convergence rate $f = \frac{\sqrt{\kappa} - 1}{\sqrt{\kappa} + 1}$.                                      \\
+    $\gamma$                         & CG convergence rate $\gamma = \frac{\sqrt{\kappa} - 1}{\sqrt{\kappa} + 1}$.                                 \\
 \end{longtable}
 
 % Symbols for the Schwarz Preconditioners
@@ -138,8 +138,8 @@
     $A_i$                 & Local operator on subdomain $\Omega_i$, defined as $A_i = R_i A R_i^T$.                                                          \\
     $R_0$                 & Restriction operator associated with the coarse space.                                                                           \\
     $A_0$                 & Coarse operator defined as $A_0 = R_0^T A R_0$.                                                                                  \\
-    $P_j$                 & Local projection operator associated with subdomain $\Omega_j$.                                                                  \\
-    $P_0$                 & Projection operator for the coarse space.                                                                                        \\
+    $P_j$                 & Local projection operator associated with subdomain $\Omega_j$ (assuming exact solvers).                                                                  \\
+    $P_0$                 & Projection operator for the coarse space (assuming exact solvers).                                                                                        \\
     $P_{ad}$              & Sum of the projection operators, $P_{ad} = \sum_{j=1}^{N_{sub}} P_j$, used in the two-level method.                              \\
     $\kappa(P_{ad})$      & Condition number of the preconditioned system, given by $\frac{\lambda_{\max}}{\lambda_{\min}}$ of $P_{ad}$.                     \\
     $C_0$                 & Constant in stability decomposition for coarse space analysis.                                                                   \\
@@ -240,7 +240,7 @@
     $f_{\text{iter}}$                                  & Fraction parameter for determining $N_{\text{iter}}$.                                                                    \\
     $N_{\text{update}}$                                & Update frequency for eigenvalue convergence detection.                                                                   \\
     $\tau_{\text{extremal}}$                           & Tolerance parameter for extremal eigenvalue convergence.                                                                 \\
-    $m_{\text{estimate}}$                              & Heuristic estimate defined as $m_{\text{estimate}} = \frac{1}{2}(m_{N_{\text{cluster}}} + m_{N_{\text{tail-cluster}}})$. \\
+    $m_{\text{estimate}}$                              & Heuristic estimate defined as $m_{\text{estimate}} = (m_{N_{\text{cluster}}} + m_{N_{\text{tail-cluster}}})/2$. \\
 \end{longtable}
 
 \section*{Abbreviations}
@@ -249,12 +249,12 @@
 \begin{longtable}{c p{10cm}}
     \caption{List of abbreviations and their full meanings.}\label{tab:abbreviations} \\
     \hline
-    \textbf{Abbreviation} & \textbf{Full Meaning}                                     \\
+    \textbf{Abbreviation} & \textbf{Full meaning}                                     \\
     \hline
     \endfirsthead
 
     \hline
-    \textbf{Abbreviation} & \textbf{Full Meaning}                                     \\
+    \textbf{Abbreviation} & \textbf{Full meaning}                                     \\
     \hline
     \endhead
 

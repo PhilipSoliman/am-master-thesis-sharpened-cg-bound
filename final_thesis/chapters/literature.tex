@@ -1,8 +1,8 @@
-\chapter{Related Work}\label{ch:literature}
+\chapter{Related work}\label{ch:literature}
 \section{The spectral gap arising in high-contrast problems}\label{sec:spectral_gap_darcy}
 In \cref{prob:elliptic_problem}, high-contrast $\mathcal{C}(x)$ (e.g., $10^6$ in conductive channels vs.\ $ 10^{-6} $ in barriers) means diffusion concentrates in high-permeability regions, while low-permeability zones resist it. This heterogeneity introduces modes (eigenvectors) corresponding to small eigenvalues on the order of the inverse of the high conductivity, i.e. $\mathcal{O}(10^{-6})$. In fact, the number of these eigenmodes in any (sub)domain is equal to the number of connected conductivity regions \cite{ddp_for_multiscale_flows_in_high_contrast_media_Galvis2010}. High-contrast $\mathcal{C}(x)$ thus splits the eigenspectrum of the stiffness matrix into two parts: a low-frequency and high-frequency part, resulting in a \textit{spectral gap}.
 
-\section{Techniques for high-contrast problems}\label{sec:tailored_coarse_spaces}
+\section{Methods for high-contrast problems}\label{sec:tailored_coarse_spaces}
 The small eigenvalues of the stiffness matrix $A$ in \cref{prob:elliptic_problem} lead to a large condition number $\kappa$, which in turn leads to slow convergence of the CG method through \cref{th:cg_convergence_rate_bound}. Modern techniques effectively shrink the size of the spectral gap or try to (partly) remove the small eigenvalues from the spectrum with the aim of reducing $\kappa$. Below we discuss the use of multiscale solvers and or construct a coarse space that are \textit{robust to high contrast}.
 
 \subsection{MsFEM}

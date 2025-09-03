@@ -232,7 +232,7 @@ Some core properties of \cref{alg:dlanczos} are described in \cref{th:dlanczos_o
   This follows directly from the definition of $T_m$ in \cref{eq:lanczos_tridiagonal} and the definition of the Hessenberg matrix in \cref{def:hessenberg_matrix}.  
 \end{proof}
 
-\subsection{Derivation of CG}
+\subsection{Deriving CG from D-Lanczos}
 From general properties of error projection methods and observations made in the in \cref{alg:dlanczos}, we can derive the CG method. We start by constraining subsequent residuals $r_j$ to be orthogonal. This follows from choosing subspaces $\mathcal{K} = \mathcal{L}$, as in the Arnoldi process. Again, the space $\mathcal{K}$ is spanned by the vectors $\mathbf{v}_m$. Thus setting $\mathbf{v}_1 = \mathbf{r}_0/\|\mathbf{r}_0\|_2$, automatically means subsequent residuals will be orthogonal to each other. Then, as suggested by \cref{th:dlanczos_orthogonality}, we also require that the vectors $p_j$ are $A$-orthogonal to each other. From this point on, we use the term \textit{search direction} to refer to the vectors $p_j$. Next to this we also introduce the CG variables $\alpha_j$ and $\beta_j$, which are the step size and the search direction update, respectively. This results in the following update equations
 \begin{equation}
   \mathbf{u}_{j+1} = \mathbf{u}_j + \alpha_j \mathbf{p}_j,
@@ -276,7 +276,7 @@ which we substitute into the equation for $\beta_j$ to obtain
 \end{equation}
 Finally, \cref{eq:cg_alpha,eq:cg_solution_update,eq:cg_residual_update,eq:cg_beta,eq:cg_search_direction_update} comprise one iteration of the CG method, as shown in \cref{alg:cg}.
 
-\subsection{CG relation to Lanczos}
+\subsection{Relation to D-Lanczos}
 There exist relations between the entries of $T_m$ $\delta_j, \eta_j$ and the CG coefficients $\alpha_j, \beta_j$. Namely, we have
 \begin{equation}
   \delta_{j+1} =
@@ -293,7 +293,7 @@ and
 \end{equation}
 Here we have used the definition of $T_m$ and the fact that the residuals are multiples of the Lanczos vectors $\mathbf{r}_j = \text{scalar} \times \mathbf{v}_j$ \cite[Equation 6.103]{iter_method_saad}.
 
-\section{Blueprint for the Two-level Schwarz preconditioner}\label{sec:schwarz_convergence}
+\section{Derivation of the Two-level Schwarz preconditioner}\label{sec:schwarz_convergence}
 In this section we discuss the general idea behind as well as the construction of robust coarse spaces to be used in conjunction with the One-level Schwarz preconditioner, ultimately leading to a Two-level Schwarz preconditioner. To that end, we first motivate the need for an additional level or coarse space in \fullref{sec:schwarz_motivation} by studying the convergence factor of the original Schwarz method. In \fullref{sec:two_level_ASM_construction} we construct the Schwarz preconditioner with both a Nicolaides coarse space from \cref{eq:schwarz_nicolaides_coarse_space} and one based on the Dirichlet-to-Neumann map from \cref{def:dirichlet_to_neumann_map}. The latter coarse space is constructed using the eigenfunctions corresponding to the smallest $m_j$ eigenvalues resulting from a local eigenproblem in each subdomain $\Omega_j$ defined in \cref{eq:dirichlet_to_neumann_map_eigenproblem}. Finally, in \fullref{sec:two_level_ASM_convergence} bounds for the two full preconditioned systems' condition numbers are provided. All of this can be found in \cite[Sections 5.1-5.5]{schwarz_methods_Dolean_2015}.
 
 \subsection{Motivation}\label{sec:schwarz_motivation}

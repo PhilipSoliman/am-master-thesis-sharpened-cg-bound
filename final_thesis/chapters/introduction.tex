@@ -1,22 +1,22 @@
 \chapter{Introduction}\label{ch:introduction}
 In this thesis we focus on a simple scalar diffusion problem. Let $\Omega\subset\mathbb{R}^d$ be a bounded domain with Lipschitz boundary $\partial\Omega$, $\mathcal{C}\in L^\infty(\Omega)$ be scalar field defined on $\Omega$ such that $0 < \mathcal{C}_{\min} \leq \mathcal{C}(x) \leq \mathcal{C}_{\max} < \infty$ for all $x\in\Omega$ and $f\in L^2(\Omega)$ be a source term, then we define
 \begin{fancyprob}{High-contrast scalar elliptic problem: strong formulation}{elliptic_problem}
-    Let $u_D\in H^2(\partial\Omega)$ be a Dirichlet boundary condition. Find $u\in H^2(\Omega)$ such that
+    Let $u_D\in H^{3/2}(\partial\Omega)$ be a Dirichlet boundary condition. Find $u\in H^2(\Omega)$ such that
     \begin{equation}
         \begin{aligned}
-            -\nabla\cdot\left(\mathcal{C}\nabla u\right) & = f \quad \text{in } \Omega,           \\
-            u                                       & = u_D \quad \text{on } \partial\Omega.
+            -\nabla\cdot\left(\mathcal{C}\nabla u\right) & = f &\text{in } \Omega,           \\
+            u                                       & = u_D &\text{on } \partial\Omega.
         \end{aligned}
         \label{eq:elliptic_problem}
     \end{equation}
 \end{fancyprob}
 
-In \cref{tab:high_contrast_examples} we give an overview of some real-world applications that can be modeled using \cref{prob:elliptic_problem}. These applications span a wide range of fields, including electronics, hydrogeology, biomechanics, materials science, and energy.
+In \cref{tab:high_contrast_examples} we give a non-exhaustive overview of some real-world applications that can be modeled using \cref{prob:elliptic_problem}. These applications span a wide range of fields, including electronics, hydrogeology, biomechanics, materials science, and energy.
 \input{../../tables/applications.tex}
 
-The first step in solving \cref{prob:elliptic_problem} is to reformulate the problem in a way that reduces the regularity constraint on the solution $u\in H^2(\Omega)$ and not requiring to $\nabla\cdot\left(\mathcal{C}\nabla u\right)$ to exist pointwise. This leads to the weak formulation of the problem, which is obtained by multiplying \cref{eq:elliptic_problem} with a test function $v\in H^1_0(\Omega)$ and integrating over $\Omega$. The weak formulation is given by
+The first step in solving \cref{prob:elliptic_problem} is to reformulate the problem in a way that reduces the regularity constraint on the solution $u\in H^2(\Omega)$. This leads to the weak formulation of the problem, which is obtained by multiplying \cref{eq:elliptic_problem} with a test function $v\in H^1_0(\Omega)$ and integrating over $\Omega$. The weak formulation is given by
 \begin{fancyprob}{High-contrast scalar elliptic problem: weak formulation}{elliptic_problem_weak}
-    Let $u_D\in H^1(\partial\Omega)$ be a Dirichlet boundary condition. Find $u\in V = \{u\in H^1(\Omega) | u_{\delta \Omega} = u_D\}$ such that $\forall v \in H^1_0(\Omega)$
+    Let $u_D\in H^{1/2}(\partial\Omega)$ be a Dirichlet boundary condition. Find $u\in V = \{u\in H^1(\Omega) | u_{\delta \Omega} = u_D\}$ such that $\forall v \in H^1_0(\Omega)$
     \begin{equation}
         \label{eq:galerkin}
         \int_\Omega \mathcal{C}\nabla u\cdot\nabla v\,dx = \int_\Omega f v\,dx.
@@ -29,7 +29,7 @@ To solve this problem numerically, we need to discretize the domain $\Omega$ and
 \end{equation*}
 where $n = |\mathcal{N}|$. This leads to the discretized weak formulation
 \begin{fancyprob}{High-contrast scalar elliptic problem: discretized weak formulation}{elliptic_problem_discretized}
-    Let $u_D\in H^1(\partial\Omega)$ be a Dirichlet boundary condition. Find $u_h\in V_h$ such that $\forall v_h \in V_{h,0} = V_h\cap H^1_0(\Omega)$
+    Let $u_D\in H^{1/2}(\partial\Omega)$ be a Dirichlet boundary condition. Find $u_h\in V_h$ such that $\forall v_h \in V_{h,0} = V_h\cap H^1_0(\Omega)$
     \begin{equation}
         a(u_h, v_h) = \int_\Omega \mathcal{C}\nabla u_h\cdot\nabla v_h\,dx = \int_\Omega f v_h \,dx = (f, v_h),
         \label{eq:discretized_problem}
@@ -45,7 +45,7 @@ where $n = |\mathcal{N}|$. This leads to the discretized weak formulation
 \end{fancyprob}
 Note that the bilinear form $a$ in \cref{prob:elliptic_problem_discretized} is coercive, meaning that for all $0\neq w\in H^1_0(\Omega)$ we have
 \begin{equation*}
-  a(w,w) = \int_\Omega \mathcal{C} \nabla w\cdot\nabla w\,dx = \int_\Omega \mathcal{C} |\nabla w|^2\,dx = \mathcal{C}_{\text{min}} \|\nabla w\|_{L_2(\Omega)}^2> \frac{\mathcal{C}_{\text{min}}}{C_p^2}\|\nabla w\|_{H^1_0(\Omega)}^2 \geq 0,
+  a(w,w) = \int_\Omega \mathcal{C} \nabla w\cdot\nabla w\,dx = \mathcal{C}_{\text{min}} \|\nabla w\|_{L_2(\Omega)}^2> \frac{\mathcal{C}_{\text{min}}}{C_p^2}\|\nabla w\|_{H^1_0(\Omega)}^2 \geq 0,
 \end{equation*}
 since $\mathcal{C}_{\text{min}}>0$ and with $C_p$ the Poincaré constant. Moreover, for 
 \[
@@ -83,19 +83,19 @@ The main research question in this work is as follows:
     \par
     How can we sharpen the CG iteration bound for Schwarz-preconditioned high-contrast heterogeneous scalar-elliptic problems beyond the classical condition number-based bound?
 \end{researchq}
-For instance, in \cite{ams_coarse_space_comp_study_Alves2024}, a two-level Schwarz preconditioner with either one of the AMS and GDSW coarse spaces significantly outperforms the same preconditioner with RGDSW coarse space, despite all three preconditioned systems having similar condition numbers. The key differences appear in their spectral gap and cluster width, highlighting the need for further investigation into spectral properties beyond the condition number.
+For instance, in \cite{ams_coarse_space_comp_study_Alves2024}, a two-level Schwarz preconditioner with either one of the AMS and GDSW coarse spaces significantly outperforms the same preconditioner with RGDSW coarse space, despite all three preconditioned systems having similar condition numbers. The preconditioned systems differ in their spectral gap and cluster width, highlighting the need for further investigation into these and possibly more spectral properties other than the condition number.
 
 \begin{subsidiaryq} \label{rq:subsidiaries}
     To answer the main research question, we address the following subsidiary questions:
     \setlength\itemindent{1in}
     \begin{enumerate}[label=\textbf{Q\arabic*}, ref=\textbf{Q\arabic*}, leftmargin=1cm]
-        \item\label{rq:subsidiary:heuristic} Given a certain eigenspectrum, can we construct a bound that is sharper than the classical condition number-based bound?
-        \item\label{rq:subsidiary:measures} How does the number of CG iterations necessary for convergence of high-contrast heterogeneous problems depend on spectral characteristics other than the condition number?
-        \item\label{rq:subsidiary:preconditioners} Can we obtain a priori estimates for the number of iterations necessary for convergence of   a PCG method with Schwarz-like preconditioners?
+        \item\label{rq:subsidiary:heuristic} Given an arbitrary eigenspectrum, can we construct a CG iteration bound that is sharper than the classical condition number-based bound for high-contrast heterogeneous problems?
+        \item\label{rq:subsidiary:measures} How do spectral characteristics other than the condition number influence the sharpened CG iteration bound from \ref{rq:subsidiary:heuristic}?
+        \item\label{rq:subsidiary:preconditioners} Can we obtain a priori estimates of iteration bounds for PCG with Schwarz-like preconditioners such that we can differentiate between the preconditioners studied in \cite{ams_coarse_space_comp_study_Alves2024}?
     \end{enumerate}
 \end{subsidiaryq}
 
-This research has great practical importance for the selection of the most efficient preconditioner for a given high-contrast problem. The condition number does not suffice to differentiate between preconditioners, as outlined in \cite{ams_coarse_space_comp_study_Alves2024}. Thus, having the ability to differentiate preconditioners based on spectral characteristics from, for instance, their approximate eigenspectra would improve the selection process.
+Where \ref{rq:subsidiary:heuristic} concerns mostly the theoretical derivation of a sharper CG iteration bound, \ref{rq:subsidiary:measures} aims to provide a richer understanding of the influence of spectral characteristics other than the condition number on CG's convergence. In particular, with a sharper CG iteration bound for clustered spectra, we can better understand how CG performs on different types of high-contrast problems. Then, answering \ref{rq:subsidiary:preconditioners} has great practical importance for the selection of the most efficient preconditioner for a given high-contrast problem. The condition number does not suffice to differentiate between preconditioners, as outlined in \cite{ams_coarse_space_comp_study_Alves2024}. Thus, having the ability to differentiate preconditioners based on spectral characteristics from, for instance, their approximate eigenspectra would improve the selection process.
 
 On top of that, having sharper bounds for (P)CG methods allows for more efficient allocation of computational resources, as it allows for a more accurate estimate of the number of iterations necessary for convergence. This is particularly important in high-performance computing environments, where the cost of each iteration can be significant.
 

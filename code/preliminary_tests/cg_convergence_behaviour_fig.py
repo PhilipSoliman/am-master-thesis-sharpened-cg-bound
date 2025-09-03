@@ -16,9 +16,10 @@ CLI_ARGS = get_cli_args()
 
 # constants
 FIGWIDTH = 5
+FIGHEIGHT = 3
 LEGEND_HEIGHT = 0.1
 DOMAIN = (0, 20)
-CODOMAIN = (-1, 1)
+CODOMAIN = (-0.6, 1.0)
 ZOOMFIT = True
 RESOLUTION = 1000
 NUMMARKERS = 10
@@ -55,8 +56,7 @@ figratio = (1 + LEGEND_HEIGHT) * codomain_size / domain_size
 cg_poly_x, cg_poly_r, cg_poly_e = custom_cg.cg_polynomial(
     RESOLUTION, domain=DOMAIN, respoly_error=True
 )
-figheight = FIGWIDTH if ZOOMFIT else FIGWIDTH * figratio
-fig, ax = plt.subplots(1, 1, figsize=(FIGWIDTH, figheight))
+fig, ax = plt.subplots(1, 1, figsize=(FIGWIDTH, FIGHEIGHT))
 x_ticks = np.linspace(*DOMAIN, 6)[1:]
 y_ticks = np.linspace(*CODOMAIN, 6)
 mpl_graph_plot_style(

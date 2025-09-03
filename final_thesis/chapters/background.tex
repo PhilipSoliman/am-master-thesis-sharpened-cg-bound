@@ -36,7 +36,7 @@ Error projection methods owe their name to the following central \cref{th:error_
   Given a linear system $A\mathbf{u} = \mathbf{b}$ with $A$ SPD and exact solution $\mathbf{u}^{*}$. Define the errors $\mathbf{e}_0 = \mathbf{u}^{*} - \mathbf{u}_0$ and $\mathbf{e}_{\text{new}} = \mathbf{u}^{*} - \mathbf{u}_{\text{new}}$. Then, an error projection step minimizes the $A$-norm of the error in the affine subspace $\mathbf{u}_0 + \mathcal{K}$.
 \end{fancyth}
 \begin{proof}
-  We have
+  We have \cite{iter_method_saad}
   \begin{align*}
     A\mathbf{e}_{\text{new}} & = A(\mathbf{e}_0 - \mathbf{c})                  \\
                              & = A(\mathbf{u}^{*} - \mathbf{u}_0 - \mathbf{c}) \\
@@ -101,7 +101,7 @@ The dimension of $\mathcal{K}_m(A_0, \mathbf{r}_0)$ is related to the grade of $
 \begin{fancydef}{Grade of a vector}{cg_grade}
   The grade of a vector $\mathbf{v}$ with respect to a matrix $A$ is the lowest degree of the polynomial $q$ such that $q(A)\mathbf{v} = 0$.
 \end{fancydef}
-Consequently,
+Consequently, we can determine the dimension of the Krylov subspace using \cref{th:cg_krylov_subspace}.
 \begin{fancyth}{Dimension of Krylov subspace}{cg_krylov_subspace}
   The Krylov subspace $\mathcal{K}_m$ is of dimension $m$ if and only if the grade $\mu$ of $\mathbf{v}$ with respect to $A$ is not less than $m$ \cite[proposition 6.2]{iter_method_saad},
   \begin{equation*}
@@ -114,7 +114,7 @@ Consequently,
   \end{equation}
 \end{fancyth}
 
-A key property of the Krylov subspace methods is their ability to represent product of polynomials of $A$ by some vector $\mathbf{v} \in \mathbb{R}^n$ in terms of section of $A$ in $\mathcal{K}_m$, see \cref{def:cg_restriction_operator,def:cg_section_operator}. 
+A key property of the Krylov subspace methods is their ability to represent product of polynomials of $A$ by some vector $\mathbf{v} \in \mathbb{R}^n$ in terms of section of $A$ in $\mathcal{K}_m$, see \cref{def:cg_restriction_operator,def:cg_section_operator}.
 \begin{fancydef}{Restriction of an operator}{cg_restriction_operator}
   The action of a matrix $A$ can be thought of as a mapping
   \begin{equation*}
@@ -138,7 +138,7 @@ Finally, we can state the polynomial representation property of the Krylov subsp
   \end{equation*}
   and for any polynomial of degree $\leq m$,
   \begin{equation*}
-    Q_m q(A) \mathbf{v}=q\left(A_m\right) \mathbf{v}
+    Q_m q(A) \mathbf{v}=q\left(A_m\right) \mathbf{v}.
   \end{equation*}
 \end{fancyth}
 
@@ -200,7 +200,7 @@ We say that the CG method \textit{converges} to a user-defined, absolute toleran
 \[
   \|\mathbf{e}_m\|_A \leq \tilde{\epsilon}.
 \]
-Theorem \ref{th:cg_error_bound} allows us to define a criterion based on a \textit{relative tolerance} $\epsilon$, see \cref{def:cg_convergence_criterion}
+Theorem \ref{th:cg_error_bound} allows us to define a criterion based on a \textit{relative tolerance} $\epsilon$; see \cref{def:cg_convergence_criterion}
 \begin{fancydef}{Convergence criterion}{cg_convergence_criterion}
   The CG method is said to have \textit{converged} to a user-defined, relative tolerance $\epsilon$ if
   \begin{equation*}
@@ -275,7 +275,7 @@ In this case, the relative error tolerance $\epsilon$ achieved by the CG method 
   \frac{\|\mathbf{r}_m\|_2}{\|\mathbf{b}\|_2} \leq \frac{\|\mathbf{r}_m\|_2}{\|\mathbf{r}_0\|_2},
 \]
 which means \cref{eq:residual_convergence_criterion_b} is more optimistic than \cref{eq:residual_convergence_criterion_r}, requiring less CG iterations before it is satisfied. However, if we choose a `bad' initial guess such that $\|\mathbf{r}_0\|_2 \geq \|\mathbf{b}\|_2$, then \cref{eq:residual_convergence_criterion_b} is more pessimistic than \cref{eq:residual_convergence_criterion_r} and will require more CG iterations before it is satisfied. For a good (bad) initial guess we therefore achieve a relative error tolerance larger (smaller) than $\frac{\epsilon_b}{\sqrt{\kappa}}$. In regard to the absolute error tolerance $\tilde{\epsilon}$, we can write using \cref{th:rayleigh_quotient_bound} that
-\begin{enumerate}
+\begin{enumerate}[leftmargin=2.5cm]
   \item[\textbf{`bad' initial guess}] $\tilde{\epsilon} \geq \frac{\epsilon_b}{\sqrt{\kappa}}\|\mathbf{e}_0\|_A = \frac{\epsilon_b}{\sqrt{\kappa}}\|\mathbf{r}_0\|_{A^{-1}} \geq \frac{\sqrt{\lambda_{\text{min}}}}{\lambda_{\text{max}}}\epsilon_b\|\mathbf{r}_0\|_2\geq \frac{\sqrt{\lambda_{\text{min}}}}{\lambda_{\text{max}}}\epsilon_b\|\mathbf{b}\|_2$,
   \item[\textbf{`good' initial guess}] $\tilde{\epsilon} \leq \frac{\epsilon_b}{\sqrt{\kappa}}\|\mathbf{e}_0\|_A = \frac{\epsilon_b}{\sqrt{\kappa}}\|\mathbf{r}_0\|_{A^{-1}} \leq \frac{\lambda_{\text{min}}}{\sqrt{\lambda_{\text{max}}}}\epsilon_b\|\mathbf{r}_0\|_2 \leq \frac{\lambda_{\text{min}}}{\sqrt{\lambda_{\text{max}}}}\epsilon_b\|\mathbf{b}\|_2$.
 \end{enumerate}
@@ -312,12 +312,9 @@ Next to convergence criteria based on residuals, we can also try to find a solut
   \end{equation}
   where $\kappa = \frac{\lambda_{\text{max}}}{\lambda_{\text{min}}}$ is the condition number of $A$. Using the approximation from \cref{eq:chebyshev_polynomial_approximation} and setting $\tilde{z} = \frac{\kappa + 1}{\kappa -1}$ we can write
   \begin{align*}
-    \frac{1}{d_m(0)} & = \frac{1}{C_m(\tilde{z})}                                                            \\
-                     & \leq \frac{2}{\left(\tilde{z} + \sqrt{\tilde{z}^2-1}\right)^m}                        \\
-                     & =2\left(\tilde{z} - \sqrt{\tilde{z}^2-1}\right)^m                                     \\
-                     & =2\left(\frac{\kappa + 1 - 2\sqrt{\kappa}}{\kappa - 1}\right)^m                       \\
-                     & =2\left(\frac{(\sqrt{\kappa} - 1)^2}{(\sqrt{\kappa} - 1)(\sqrt{\kappa} + 1)}\right)^m \\
-                     & =2\left(\frac{\sqrt{\kappa} - 1}{\sqrt{\kappa} + 1}\right)^{m}.
+    \frac{1}{d_m(0)} & = \frac{1}{C_m(\tilde{z})} \leq \frac{2}{\left(\tilde{z} + \sqrt{\tilde{z}^2-1}\right)^m}                                                             \\
+                     & =2\left(\tilde{z} - \sqrt{\tilde{z}^2-1}\right)^m =2\left(\frac{\kappa + 1 - 2\sqrt{\kappa}}{\kappa - 1}\right)^m                                     \\
+                     & =2\left(\frac{(\sqrt{\kappa} - 1)^2}{(\sqrt{\kappa} - 1)(\sqrt{\kappa} + 1)}\right)^m =2\left(\frac{\sqrt{\kappa} - 1}{\sqrt{\kappa} + 1}\right)^{m}.
   \end{align*}
   Substituting this into \cref{eq:cg_convergence_rate_uniform} gives us the desired result.
 \end{proof}
@@ -327,10 +324,10 @@ From \cref{th:cg_convergence_rate_bound} and \cref{def:cg_convergence_criterion}
 \end{equation*}
 such that number of iterations $m$ is bounded by
 \begin{equation}
-  m \leq \left\lceil\log_f\left(\frac{\epsilon}{2}\right)\right\rceil = \textrm{int}\left[\log_f\left(\frac{\epsilon}{2}\right) + 1\right],
+  m \leq \left\lceil\log_{\gamma}\left(\frac{\epsilon}{2}\right)\right\rceil = \left\lfloor\log_{\gamma}\left(\frac{\epsilon}{2}\right) + 1\right\rfloor,
   \label{eq:cg_convergence_rate_bound_iterations}
 \end{equation}
-where $f = \frac{\sqrt{\kappa} - 1}{\sqrt{\kappa} + 1} < 1$ is the CG \textit{convergence rate}\footnote{Note that the $\log(f)$ is negative, flipping in the inequality.}. Equation \ref{eq:cg_convergence_rate_bound_iterations} could in principle be used as a stopping criterion, but it is not practical, since we generally do not know the condition number $\kappa$ of $A$ a priori.
+where $\gamma = \frac{\sqrt{\kappa} - 1}{\sqrt{\kappa} + 1} < 1$ is the CG \textit{convergence rate}\footnote{Note that the $\log(\gamma)$ is negative, flipping in the inequality.}. Equation \ref{eq:cg_convergence_rate_bound_iterations} could in principle be used as a stopping criterion, but it is not practical, since we generally do not know the condition number $\kappa$ of $A$ a priori.
 
 The iteration bound given in \cref{eq:cg_convergence_rate_bound_iterations} can be bounded further by using the expansion
 \[
@@ -342,7 +339,7 @@ to write
 \]
 which can be rearranged to give
 \begin{equation}
-    m \leq \left\lceil\frac{\sqrt{\kappa}}{2}\ln\left(\frac{2}{\epsilon}\right)\right\rceil = \left\lfloor\frac{\sqrt{\kappa}}{2}\ln\left(\frac{2}{\epsilon}\right) + 1\right\rfloor = m_1.
+  m \leq \left\lceil\frac{\sqrt{\kappa}}{2}\ln\left(\frac{2}{\epsilon}\right)\right\rceil = \left\lfloor\frac{\sqrt{\kappa}}{2}\ln\left(\frac{2}{\epsilon}\right) + 1\right\rfloor = m_1.
   \label{eq:cg_convergence_rate_bound_iterations_approx}
 \end{equation}
 Equation \ref{eq:cg_convergence_rate_bound_iterations_approx} is the one used in the introduction to discuss CG's complexity.
@@ -439,9 +436,9 @@ which implies
 
 The behavior of the residual polynomials is crucial for understanding the convergence properties of the CG method. In particular, the distribution of the eigenvalues of $A$ significantly affects the convergence rate, as illustrated in \cref{fig:cg_effect_of_eigenvalue_distribution}.
 
-We consider a system $A\mathbf{u}_{\text{test}} = \mathbf{b}_{\text{random}}$ with a known solution $\mathbf{u}_{\text{test}}$ and random load vector $\mathbf{b}_{\text{random}}$. The system size $n=360$ is kept relatively small and the system matrix $A$ is chosen to equal diagonal matrix $D$, making it numerically trivial to determine the exact solution $\mathbf{u}_{\text{test}} = D^{-1}\mathbf{b}_{\text{random}}$. For all plots the lowest and highest eigenvalue in \cref{fig:cg_effect_of_eigenvalue_distribution} are $\lambda_{\text{min}} = 0.1$, $\lambda_{\text{max}} = 0.9$ such that $\kappa = 9$ and $f = \frac{\sqrt{\kappa} - 1}{\sqrt{\kappa} + 1} = \frac{1}{2}$. Furthermore, we use $\mathbf{u}_{0} = \mathbf{0}$, set the relative error tolerance $\epsilon = 10^{-6}$ and use the stopping criterion from \cref{def:cg_convergence_criterion} directly, as $\mathbf{e}_0 = \mathbf{u}_{\text{test}} - \mathbf{u}_{0}$ is known. Alternatively, we could have used the residual stopping criterion from \cref{th:residual_convergence_criterion}, as $\kappa$ is explicitly known in this case. This results in an overall iteration bound from \cref{eq:cg_convergence_rate_bound_iterations} of
+We consider a system $A\mathbf{u}_{\text{test}} = \mathbf{b}_{\text{random}}$ with a known solution $\mathbf{u}_{\text{test}}$ and random load vector $\mathbf{b}_{\text{random}}$. The system size $n=360$ is kept relatively small and the system matrix $A$ is chosen to equal diagonal matrix $D$, making it numerically trivial to determine the exact solution $\mathbf{u}_{\text{test}} = D^{-1}\mathbf{b}_{\text{random}}$. For all plots the lowest and highest eigenvalue in \cref{fig:cg_effect_of_eigenvalue_distribution} are $\lambda_{\text{min}} = 0.1$, $\lambda_{\text{max}} = 0.9$ such that $\kappa = 9$ and $\gamma = \frac{\sqrt{\kappa} - 1}{\sqrt{\kappa} + 1} = \frac{1}{2}$. Furthermore, we use $\mathbf{u}_{0} = \mathbf{0}$, set the relative error tolerance $\epsilon = 10^{-6}$ and use the stopping criterion from \cref{def:cg_convergence_criterion} directly, as $\mathbf{e}_0 = \mathbf{u}_{\text{test}} - \mathbf{u}_{0}$ is known. Alternatively, we could have used the residual stopping criterion from \cref{th:residual_convergence_criterion}, as $\kappa$ is explicitly known in this case. This results in an overall iteration bound from \cref{eq:cg_convergence_rate_bound_iterations} of
 \[
-  m \leq \left\lceil\log_f\left(\frac{10^{-6}}{2}\right)\right\rceil = 21.
+  m \leq \left\lceil\log_{\gamma}\left(\frac{10^{-6}}{2}\right)\right\rceil = 21.
 \]
 Hence, the number of iterations required for convergence depends on the specific clustering of the eigenvalues, as pointed out for example in \cite[Section 2.3]{nonlinear_cg_Kelley_1995}.
 
@@ -458,7 +455,7 @@ The first row in \cref{fig:cg_best_worst_spectra} shows an instance of the super
 \begin{figure}[H]
   \centering
   \includegraphics[width=5in]{cg_convergence_extreme_spectra.pdf}
-  \caption{Best and worst possible spectra for CG convergence. The top row shows the best possible spectrum, where the eigenvalues are tightly clustered on two distinct values. The bottom row shows the worst possible spectrum, where the eigenvalues are evenly distributed across the whole range of the spectrum. The left column shows the eigenvalue distribution with the residual polynomials corresponding to the iteration. The right column shows the ratio of the last and first residual 2-norms versus the iteration number (solid line), as well as relative error tolerance (dashed line). Convergence is achieved at a relative error tolerance of $10^{-6}$. Note that for both spectra $\frac{\|r_m\|_2}{\|r_0\|_2} \leq \frac{10^{-6}}{3}$, in accordance with \cref{th:residual_convergence_criterion}.}
+  \caption{Best and worst possible spectra for CG convergence. Top: eigenvalues tightly clustered on two distinct values (best case). Bottom: eigenvalues evenly distributed across the spectrum (worst case). Left: eigenvalue distribution and corresponding residual polynomials per iteration. Right: ratio $\|r_m\|_2/\|r_0\|_2$ vs. iteration (solid), and relative error tolerance (dashed). Convergence at relative error tolerance $10^{-6}$. For both spectra, $\frac{\|r_m\|_2}{\|r_0\|_2} \leq \frac{10^{-6}}{3}$, as per \cref{th:residual_convergence_criterion}.}
   \label{fig:cg_best_worst_spectra}
 \end{figure}
 
@@ -466,20 +463,20 @@ The first row in \cref{fig:cg_best_worst_spectra} shows an instance of the super
 Suppose $M$ is some SPD preconditioner, then variants of CG can be derived by applying $M$ to the system of equations. The three main approaches are
 \begin{enumerate}[label=\textbf{PCG-\arabic*},ref=\textbf{PCG-type \arabic*},leftmargin=1.25cm]
   \item\label{pcg_type:left} left
-  \begin{align*}
-    M^{-1}A\mathbf{u} & = M^{-1}\mathbf{b} \\
-  \end{align*}
+        \begin{align*}
+          M^{-1}A\mathbf{u} & = M^{-1}\mathbf{b} \\
+        \end{align*}
   \item\label{pcg_type:right} right
-  \begin{align*}
-    AM^{-1}\mathbf{x} & = M^{-1}\mathbf{b}  \\
-    \mathbf{u}        & = M^{-1}\mathbf{x};
-  \end{align*}
+        \begin{align*}
+          AM^{-1}\mathbf{x} & = M^{-1}\mathbf{b}  \\
+          \mathbf{u}        & = M^{-1}\mathbf{x};
+        \end{align*}
   \item\label{pcg_type:symmetric} symmetric or split
-  \begin{align*}
-    M                       & = LL^T              \\
-    L^{-1}AL^{-T}\mathbf{x} & = L^{-1}\mathbf{b}  \\
-    \mathbf{u}              & = L^{-T}\mathbf{x}. \\
-  \end{align*}
+        \begin{align*}
+          M                       & = LL^T              \\
+          L^{-1}AL^{-T}\mathbf{x} & = L^{-1}\mathbf{b}  \\
+          \mathbf{u}              & = L^{-T}\mathbf{x}. \\
+        \end{align*}
 \end{enumerate}
 
 Furthermore, all these variants are mathematically equivalent. Indeed, for the cases \ref{pcg_type:left} and \ref{pcg_type:right}, we can rewrite the CG algorithm using the $M-$ or $M^{-1}-$inner products, respectively. In either case the iterates are the same \cite[Section 9.2]{iter_method_saad}. For instance for the left preconditioned CG, we define $\mathbf{z}_j = M^{-1}\mathbf{r}_j$. Note that $M^{-1}A$ is self-adjoint with respect to the $M-$inner product, that is for $\mathbf{x},\mathbf{y}\in\mathbb{R}^n$ we have
@@ -535,8 +532,8 @@ The content of this section is largely based on chapters 1, 2, 4 and 5 of \cite{
 The original Schwarz method was a way of proving that a Poisson problem on some complex domain $\Omega$ as in \cref{fig:keyhole_domain} has a solution.
 \begin{equation}
   \begin{cases}
-    -\Delta u &= f \quad \text{ in } \Omega, \\
-    u &= 0 \quad \text{ on } \partial \Omega.
+    -\Delta u & = f \quad \text{ in } \Omega,          \\
+    u         & = 0 \quad \text{ on } \partial \Omega.
   \end{cases}
   \label{eq:poisson_problem}
 \end{equation}
@@ -547,7 +544,7 @@ Existence of a solution is proved by splitting up the original complex domain in
     \begin{array}{cc}
       \begin{aligned}
         -\Delta\left(u_1^{n+1}\right) & =f     &  & \text { in } \Omega_1,                                                 \\
-        u_1^{n+1}                     & =0     &  & \text { on } \partial \Omega_1 \cap \partial \Omega, \quad \text{then} \\
+        u_1^{n+1}                     & =0     &  & \text { on } \partial \Omega_1 \cap \partial \Omega, \quad \text{and} \\
         u_1^{n+1}                     & =u_2^n &  & \text { on } \partial \Omega_1 \cap \overline{\Omega_2} ;
       \end{aligned} &
       \begin{aligned}
@@ -559,9 +556,9 @@ Existence of a solution is proved by splitting up the original complex domain in
   \]
 \end{fancydef}
 
-The original Schwarz algorithm is sequential and, thereby does not admit parallelization. However, a related algorithm can be parallelized. The Jacobi Schwarz method is a generalization of the original Schwarz method, where the subproblems are solved simultaneously and subsequently combined into a global solution \cite{og_alternating_schwarz_Lions1990}. In order to combine local solutions into one global solution, an extension operator $E_i$, $i=1,2$ is used. It is defined as
+The original Schwarz algorithm is inherently sequential. That is, it solves the subproblems one after the other, and thereby does not admit parallelization by default. However, a related algorithm can be parallelized. The Jacobi Schwarz method is a generalization of the original Schwarz method, where the subproblems are solved simultaneously and subsequently combined into a global solution \cite{og_alternating_schwarz_Lions1990}. In order to combine local solutions into one global solution, an extension operator $E_i$, $i=1,2$ is used. It is defined as
 \[
-  E_i(v)=v \text { in } \Omega_i, \quad E_i(v)=0 \text { in } \Omega \backslash \Omega_i.
+  E_i(v)=v \text { in } \Omega_i, \quad E_i(v)=0 \text { in } \Omega \backslash \overline{\Omega}_i.
 \]
 Instead of looking for local solutions directly, one can also solve for local corrections stemming from a global residual. This is the additive Schwarz method (ASM). It is defined in algorithm \ref{alg:additive_schwarz}.
 \begin{algorithm}[H]
@@ -582,7 +579,7 @@ The restricted additive Schwarz method (RAS) is similar to ASM, but differs in t
   \chi_i(x)=
   \begin{cases}
     1,      & x \in \Omega_i \setminus \Omega_{3-i},                 \\
-    0,      & x \in \partial \Omega_i \setminus \partial \Omega          \\
+    0,      & x \in \partial \Omega_i \setminus \partial \Omega      \\
     \alpha, & 0 \leq \alpha \leq 1, x \in \Omega_i \cap \Omega_{3-i}
   \end{cases}
 \]
@@ -610,7 +607,7 @@ This section is largely based on Section 1.3.2 of \cite{schwarz_methods_Dolean_2
   \mathcal{N}=\cup_{i=1}^{N_{\text{sub}}} \mathcal{N}_i.
 \]
 
-Furthermore, let $R_i\in\mathbb{R}^{n_i \times n}$, $R_i^T$ and $D_i$ be the discrete versions of the restriction, extension and partition of unity operators, respectively. We have for $U \in \mathbb{R}^{n}$
+Furthermore, let $R_i\in\mathbb{R}^{n_i \times n}$, $R_i^T$ and $D_i$ be the discrete versions of the restriction, extension and partition of unity operators, respectively. The latter $D_i$ is a discretized version of $\chi_i$. We have for $U \in \mathbb{R}^{n}$
 \[
   U = \sum_{i=1}^{\mathcal{N}_{\text{sub}}} R_i^T D_i R_i U.
 \]
@@ -639,17 +636,17 @@ Originally the Schwarz method is a fixed point iteration \cite[Definitions 1.12 
 where $M$ equals, but is not limited to, one of the following matrices;
 \begin{subequations}
   \begin{align}
-    M^{-1}_{\text{ASM}} & = \sum_{i=1}^{N_{\text{sub}}} R_i^T A_i^{-1} R_i, \label{eq:ASM_preconditioner},     \\
+    M^{-1}_{\text{ASM}} & = \sum_{i=1}^{N_{\text{sub}}} R_i^T A_i^{-1} R_i, \label{eq:ASM_preconditioner},    \\
     M^{-1}_{\text{RAS}} & = \sum_{i=1}^{N_{\text{sub}}} R_i^T D_i A_i^{-1} R_i \label{eq:RAS_preconditioner},
   \end{align}
 \end{subequations}
-where the \textit{local operator} $A_i = R_i A R_i^T$ is the restriction of $A$ to the subdomain $\Omega_i$. 
+where the \textit{local operator} $A_i = R_i A R_i^T$ is the restriction of $A$ to the subdomain $\Omega_i$.
 
 Although the original Schwarz method is not a preconditioner but a fixed-point iteration, the ASM and RAS methods define linear operators that can be applied as \ref{pcg_type:left} and \ref{pcg_type:right} preconditioners in Krylov subspace methods such as CG or GMRES, respectively. $M^{-1}_{\text{ASM}}$ is SPD and suitable for CG. $M^{-1}_{\text{RAS}}$ may not be symmetric in general and is typically used with Krylov methods like GMRES.
 
 Optimized Schwarz methods and corresponding preconditioners can also be constructed by including more interface conditions (Robin or Neumann) in the subproblems. One such example is the Optimized Restrictive Additive Schwarz method (ORAS) discussed in \cite[Chapter 2]{schwarz_methods_Dolean_2015}.
 
-\subsection{Two-level additive Schwarz method}\label{sec:schwarz_coarse_space}
+\subsection{Two-level additive Schwarz preconditioner}\label{sec:schwarz_coarse_space}
 From the discussion in \fullref{sec:schwarz_motivation} it is clear that the convergence of the Schwarz method not only depends on the extent of the overlap between various subdomains, but on the frequency components $k$ in \cref{eq:2D_Schwarz_convergence} as well. That is, low frequency modes experience slower convergence. To overcome this, we can perform a Galerkin projection of the error onto a \textit{coarse space} that is spanned by these low frequency modes. By solving
 \[
   \min_{\beta} ||A(\mathbf{u} + R_0^T\beta) - f||^2,
@@ -676,7 +673,7 @@ The coarse space $R_0$ can be constructed in various ways. The classical way is 
 \end{equation}
 Note that the coarse space in \cref{eq:schwarz_nicolaides_coarse_space} has a block-diagonal form, which allows for efficient computation of the coarse operator.
 
-Another way to construct $R_0$ is based on the analysis of the local errors in the Schwarz method. As seen in \cref{sec:schwarz_motivation} the local error in any subdomain produced by the original (one-level) Schwarz method satisfies the homogeneous version of the original problem, i.e. right-hand side $f = 0$. At the interface the local error has a Dirichlet boundary condition that equals the error of the neighboring subdomain. Additionally, the convergence factor, e.g. $\rho_{\text{2D}}$, depends on the frequency of the modes in the local error. In particular, small frequencies appear to have slow convergence. The question thus becomes how to get rid of these small frequency modes in the local errors of all subdomains. 
+Another way to construct $R_0$ is based on the analysis of the local errors in the Schwarz method. As seen in \cref{sec:schwarz_motivation} the local error in any subdomain produced by the original (one-level) Schwarz method satisfies the homogeneous version of the original problem, i.e. right-hand side $f = 0$. At the interface the local error has a Dirichlet boundary condition that equals the error of the neighboring subdomain. Additionally, the convergence factor, e.g. $\rho_{\text{2D}}$, depends on the frequency of the modes in the local error. In particular, small frequencies appear to have slow convergence. The question thus becomes how to get rid of these small frequency modes in the local errors of all subdomains.
 
 One possible answer is the so-called Dirichlet-to-Neumann map \cite[Definition 5.1]{schwarz_methods_Dolean_2015}
 \begin{fancydef}{Dirichlet-to-Neumann map}{dirichlet_to_neumann_map}
@@ -687,9 +684,9 @@ One possible answer is the so-called Dirichlet-to-Neumann map \cite[Definition 5
   where $\partial\Omega_j:=\partial \Omega_j \backslash \partial \Omega$ and $v$ satisfies
   \begin{equation}
     \begin{aligned}
-      -\nabla\cdot\left(\mathcal{C}\nabla v\right) & =0            & \text { in } \Omega_j,                               \\
-      v                                            & =u_{\partial\Omega_j} & \text { on } \partial\Omega_j,                               \\
-      v                                            & =0            & \text { on } \partial \Omega_j \cap \partial \Omega.
+      -\nabla\cdot\left(\mathcal{C}\nabla v\right) & =0                    & \text { in } \Omega_j,                               \\
+      v                                            & =u_{\partial\Omega_j} & \text { on } \partial\Omega_j,                       \\
+      v                                            & =0                    & \text { on } \partial \Omega_j \cap \partial \Omega.
     \end{aligned}
     \label{eq:dirichlet_to_neumann_map_subproblem}
   \end{equation}
@@ -711,12 +708,12 @@ Then, using that $v=u_{\partial\Omega_j}$ on $\partial\Omega_j$ we get that $\fr
   \label{eq:dirichlet_to_neumann_map_eigenproblem}
 \end{equation}
 
-In \fullref{sec:two_level_ASM_construction} the full construction of the coarse space $R_0$ is detailed, including the use of the Dirichlet-to-Neumann map to identify and eliminate low-frequency modes in the local errors. Then, in \fullref{sec:two_level_ASM_convergence} the convergence properties of the two-level additive Schwarz method are discussed. By combining and simplifying the \cref{eq:two_level_ASM_condition_number,eq:c0_nicolaides,eq:c0_local_eigenfunctions}, we obtain
+In \fullref{sec:two_level_ASM_construction} the full construction of the coarse space $R_0$ is detailed, including the use of the Dirichlet-to-Neumann map to identify and eliminate low-frequency modes in the local errors. Then, in \fullref{sec:two_level_ASM_convergence} the convergence properties of the two-level additive Schwarz method are discussed. By combining and simplifying the \cref{eq:two_level_ASM_condition_number,eq:c0_nicolaides,eq:c0_local_eigenfunctions}, we obtain \cite[Theorems 5.16 and 5.17]{schwarz_methods_Dolean_2015}
 \begin{subequations}
   \begin{align}
-    \kappa(M^{-1}_{\text{ASM,2,\text{Nico}}}A) \lesssim C \left(\frac{\mathcal{C}_{\text{max}}}{\mathcal{C}_{\text{min}}}\right)\left(C' + \frac{H}{\delta}\right). 
-    \label{eq:two_level_ASM_condition_bound_Nico}\\
-    \kappa(M^{-1}_{\text{ASM,2,\text{DtN}}}A) \lesssim C \left(\frac{\mathcal{C}_{\text{max}}}{\mathcal{C}_{\text{min}}}\right)\left(C' + \frac{1}{\lambda_c\delta}\right), 
+    \kappa(M^{-1}_{\text{ASM,2,\text{Nico}}}A) \lesssim C \left(\frac{\mathcal{C}_{\text{max}}}{\mathcal{C}_{\text{min}}}\right)\left(C' + \frac{H}{\delta}\right).
+    \label{eq:two_level_ASM_condition_bound_Nico} \\
+    \kappa(M^{-1}_{\text{ASM,2,\text{DtN}}}A) \lesssim C \left(\frac{\mathcal{C}_{\text{max}}}{\mathcal{C}_{\text{min}}}\right)\left(C' + \frac{1}{\lambda_c\delta}\right),
     \label{eq:two_level_ASM_condition_bound_DtN}
   \end{align}
 \end{subequations}
@@ -728,4 +725,4 @@ Additionally, the bounds in \cref{eq:two_level_ASM_condition_bound_Nico,eq:two_l
 
 Fortunately, the bound in \cref{eq:two_level_ASM_condition_bound_DtN} contains the reciprocal of the cut-off eigenvalue $\lambda_c$, which can help mitigate the effects of high contrast, result in a lower condition number and faster convergence of PCG than for the Nicolaides coarse space. In this case, the two-level additive Schwarz method with the Dirichlet-to-Neumann coarse space is defined to be robust with respect to the contrast of the coefficient function $\mathcal{C}$, as the condition number does not depend on the contrast.
 
-However, in most cases it is not possible to select $\lambda_c$ such that the contrast fully cancels in the condition number bound. As a consequence, the preconditioned system maintains a large condition number and its spectrum contains a spectral gap. The convergence of these kinds of systems is the main concern of this thesis. 
+However, in most cases it is not possible to select $\lambda_c$ such that the contrast fully cancels in the condition number bound. As a consequence, the preconditioned system maintains a large condition number and its spectrum contains a spectral gap. The convergence of these kinds of systems is the main concern of this thesis.
