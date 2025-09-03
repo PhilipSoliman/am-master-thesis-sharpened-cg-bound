@@ -1,0 +1,17 @@
+\begin{frame}[label=cg_convergence]{How Does CG Converge}
+    \frametitle{How Does CG Converge?}
+    \framesubtitle{The Role of Eigenvalues}
+        \begin{itemize}
+            \item<1-> When discussing eigenvalues, a simple visual or analogy could help non-mathematicians.
+            \item<2-> Spectrum $\sigma(A) = \{\lambda_1, \ldots, \lambda_n\}$ and $\kappa(A) = \frac{\lambda_{\max}}{\lambda_{\min}}$
+            \item<3-> CG solution given as $\mathbf{u}_m = \mathbf{u}_0 + q(A)\mathbf{r}_0$, with polynomial $q$ being the \textit{solution polynomial}.
+            \item<4-> CG residual polynomial $r(\lambda) = 1 - \lambda q(\lambda)$
+            \item<5-> Error expression $\epsilon_m = \frac{\|\mathbf{e}_m\|_A}{\|\mathbf{e}_0\|_A} < \min_{r \in \mathcal{P}_{m-1}, r(0) = 1} \max_{\lambda \in \sigma(A)} |r(\lambda)|$
+            \item<6-> Animation: cg$\_$residual$\_$poly
+                  \begin{itemize}
+                      \item<6-> Loop through different randomized, clustered spectra, showing $r_m$ for each.
+                      \item<6-> Show best and worst case scenario's for CG convergence
+                  \end{itemize}
+            \item<7-> Restate R.Q.: "How can we construct an CG iteration bound that accounts for the influence of the eigenvalue distribution?"
+        \end{itemize}
+\end{frame}

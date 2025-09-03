@@ -1,0 +1,10 @@
+\begin{frame}[label=intro_cg]{Introducing CG}
+    \frametitle{Introducing CG}
+    \framesubtitle{}
+        \begin{itemize}
+            \item<1-> CG takes in initial guess $\mathbf{u}_0$ and provides updated solution $\mathbf{u}_k$ after $k$ iterations.
+            \item<2-> Classical bound given relative error tolerance $\epsilon_m = \frac{\|\mathbf{e}_m\|_A}{\|\mathbf{e}_0\|_A} \leq \epsilon$ is $\epsilon_m \leq 2\left(\frac{\sqrt{\kappa} - 1}{\sqrt{\kappa} + 1}\right)^{m} \longrightarrow m \leq \left\lfloor\frac{\sqrt{\kappa}}{2}\ln\left(\frac{2}{\epsilon}\right) + 1\right\rfloor = m_1(\kappa)$
+            \item<3-> However $m_1$ can be too pessimistic for high-contrast problems. That is, $m \ll m_1$
+            \item<4-> Restate R.Q.: "How do we improve/sharpen the classical bound $m_1$ for model problem?"
+        \end{itemize}
+\end{frame}

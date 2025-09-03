@@ -1,0 +1,13 @@
+\begin{frame}[label=multi_cluster]{Multi-Cluster Spectra}
+    \frametitle{Multi-Cluster Spectra}
+    \framesubtitle{}
+        \begin{itemize}
+            \item<1-> Depending on coefficient function and preconditioned systems we can have any number of clusters.
+            \item<2-> Extend Axelsson idea: $r(\lambda) = \hat{C}^{(1)}_{p_1}\hat{C}^{(2)}_{p_2}\ldots\hat{C}^{(k)}_{p_k} = \prod_{i=1}^{k} \hat{C}^{(i)}_{p_i}$
+            \item<3-> Multi-cluster bound: $p_i \leq \left\lceil\log_{f_i}{\frac{\epsilon}{2}} + \sum_{j=1}^{i-1} p_j\log_{f_i}\left(\frac{\zeta^{(j)}_2}{\zeta^{(i,j)}_1}\right)\right\rceil$ and $m_{N_{\text{cluster}}} = \sum_{i=1}^{N_{\text{cluster}}} p_i$, depends on the extremal eigenvalues of \textit{each cluster}
+            \item<4-> We need a way of partitioning a given spectrum $\sigma(A)$ into $N_{\text{cluster}}$ clusters.
+            \item<5-> Idea: simple, we split at the largest (relative) gap between subsequent eigenvalues, check if the two resulting clusters would give a sharper bound than just one uniform cluster, that is $m_2(\kappa, \kappa_l, \kappa_r) < m_1(\kappa)$. If so, we split the clusters and repeat the process for each created cluster. If not, we stop partitioning. In the process we keep track of all the extremal eigenvalues. After partitioning, we calculate $m_{N_{\text{cluster}}}$.
+            \item<6-> Animation: cluster\_partitioning, visualize above partitioning and subsequent calculation $m_{N_{\text{cluster}}}$.
+            \item<7-> Restate R.Q.: "How much sharper is $m_{N_{\text{cluster}}}$ compared to $m_1(\kappa)$ for our model problem?"
+        \end{itemize}
+\end{frame}

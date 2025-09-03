@@ -1,0 +1,13 @@
+\begin{frame}[label=preconditioning]{Preconditioning}
+    \frametitle{Preconditioning}
+    \framesubtitle{Taming High-Contrast Problems}
+        \begin{itemize}
+            \item<1-> Why do we want to account for eigenvalue distribution? (practical motivation)
+            \item<2-> High-contrast $C$ leads to spectral gap and $\kappa(A)\gg1$
+            \item<3-> Clarify what "preconditioning" means in practical terms (e.g., analogy to making a problem easier to solve).
+            \item<4-> Mathematically: transform $A\mathbf{u}=\mathbf{b}$ into $M^{-1}A\mathbf{u}=M^{-1}\mathbf{b}$, with preconditioner $M$. This leads to a reduced spectral gap and lower conditioner number. Then, apply CG as usual (now called Preconditioned CG or PCG)
+            \item<5-> Show Filipe \& Alexander's Research: they used three kinds of preconditioners $M_1, M_2, M_3$ and all had similar conditioner numbers and thereby similar upper bounds for their iteration number, $m_1(\kappa)$.
+            \item<6-> However, on a sample problem PCG with $M_1,M_2$ needed significantly less iterations than PCG with $M_3$.
+            \item<7-> Restate R.Q.: "How can we construct a CG iteration bound that can distinguish between different preconditioners with similar conditioner numbers?"
+        \end{itemize}
+\end{frame}

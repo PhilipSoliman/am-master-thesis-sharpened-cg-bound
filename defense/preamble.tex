@@ -28,12 +28,25 @@
   title,%
   opening,%
   toc,%
-  % questions,%
-  % background,%
-  % literature,%
-  % results,%
-  % outlook%
+  intro_cg,%
+  cg_convergence,%
+  preconditioning,%
+  two_clusters,%
+  multi_cluster,%
+  sharpness,%
+  early_bounds,%
+  conclusion
 }
 
 % extra colors
 \definecolor{chapter}{HTML}{945357} % Deep Red
+
+% smaller font size in itemize env
+\let\olditemize\itemize
+\let\endolditemize\enditemize
+\renewenvironment{itemize}{%
+    \olditemize
+    \fontsize{9}{9}\selectfont
+}{%
+    \endolditemize
+}

@@ -1,0 +1,11 @@
+\begin{frame}[label=early_bounds]{New Bounds in Practice}
+    \frametitle{New Bounds in Practice:}
+    \framesubtitle{Using Ritz Values}
+        \begin{itemize}
+            \item<1-> Problem: computing $m_{N_{\text{cluster}}}$ requires a good estimate of $\sigma(M_i^{-1}A)$.
+            \item<2-> Luckily, PCG gives us exactly that, every iteration it produces a set of so-called Ritz values that is `close' to the true eigenvalue distribution. In particular, at the $k^{\text{th}}$ iteration, we get a set of $k$ Ritz values that we can use as an approximation of the full spectrum $\sigma(M_i^{-1}A)$.
+            \item<3-> Second experiment, we use the Ritz values from the PCG iterations to compute $m_{N_{\text{cluster}}}$ and $m_1(\kappa)$ for our model problem and observe how good of an upper bound for $m$ we can obtain within the first 300 iterations.
+            \item<4-> Results: For PCG with preconditioners $M_1, M_2$ (fast converging) $m_{N_{\text{cluster}}}$ gives sharp upper bounds for $m$ in all cases. However, for PCG with $M_3$ (slow converging) $m_{N_{\text{cluster}}}$ underestimates $m$ in some cases. This is because the Ritz values do not yet capture the full spectrum well enough within 300 iterations.
+            \item<5-> Animation: ritz\_value\_migration
+        \end{itemize}
+\end{frame}

@@ -17,6 +17,7 @@
 %\usepackage{MnSymbol,wasysym}
 \usepackage{qrcode}
 \usepackage[utf8]{inputenc}
+\usepackage{lastpage}
 
 % BIB SETTINGS
 \usepackage[

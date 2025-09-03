@@ -1,0 +1,10 @@
+\begin{frame}[label=sharpness]{How Sharp Are the New Bounds?}
+    \frametitle{How Sharp Are the New Bounds?}
+    \framesubtitle{}
+        \begin{itemize}
+            \item<1-> We implement the model problem with the two coefficient functions that Filipe and Alexander used and solve them using PCG with preconditioners $M_1, M_2, M_3$.
+            \item<2-> First experiment: For each $\sigma(M_i^{-1}A)$, we compute $m_{N_{\text{cluster}}}$ and $m_1(\kappa)$ for comparison. As well as, $m_{N_{\text{tail-cluster}}}$, a variant of $m_{N_{\text{cluster}}}$ that can take in clusters as well as individual eigenvalues.
+            \item<3-> Results: the new bounds are incredibly sharp as they are anywhere from 2 to 4 times as big as $m$. For comparison, $m_1$ is anywhere from 100 to 1000 times bigger than $m$, where the difference increases for spectra with larger spectral gaps
+            \item<4-> Restate R.Q.: "How can we compute $m_{N_{\text{cluster}}}$ for our model problem in practice?"
+        \end{itemize}
+\end{frame}

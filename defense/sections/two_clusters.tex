@@ -1,0 +1,15 @@
+\begin{frame}[label=two_clusters]{Towards Sharper Iteration Bounds}
+    \frametitle{Towards Sharper Iteration Bounds}
+    \framesubtitle{The Two-clusters case}
+        \fontsize{8}{8}\selectfont
+        \begin{itemize}
+            \item<1-> Recap: $\epsilon_m < \min_{r \in \mathcal{P}_{m-1}, r(0) = 1} \max_{\lambda \in \sigma(A)} |r(\lambda)| \leq \epsilon$
+            \item<2-> Head-on strategy for a bound: try to find an $m^{\text{th}}$-order polynomial that satisfies the min-max problem.
+            \item<3-> Classical bound invokes: optimal Chebyshev polynomial $r(\lambda) = \hat{C}_m$, under the assumption of a uniform interval of eigenvalues $\sigma(A) = [\lambda_{\min}, \lambda_{\max}]$ (inaccurate!).
+            \item<4-> Simplest non-trivial case (one spectral gap): two disjoint clusters
+            \item<5-> Axelsson, assume two uniform intervals and invoke $r(\lambda) = \hat{C}_{p}\hat{C}_{p-m}$
+            \item<6-> Resulting two-cluster bound $m_2(\kappa, \kappa_l, \kappa_r)=\left\lfloor\frac{\sqrt{\kappa_r}}{2} \ln (2 / \epsilon)+\left(1+\frac{\sqrt{\kappa_r}}{2} \ln \left(\frac{4\kappa}{\kappa_l}\right)\right) p\right\rfloor$
+            \item<7-> Restate R.Q.: "How can we construct an CG iteration bound that accounts for the influence of the eigenvalue distribution for general spectra?"
+            \item<8-> Note: The transition from classical bounds to multi-cluster bounds could be made more explicit—perhaps with a summary slide or visual.
+        \end{itemize}
+\end{frame}

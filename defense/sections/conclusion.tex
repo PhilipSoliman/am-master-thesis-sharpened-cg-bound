@@ -1,0 +1,14 @@
+\begin{frame}[label=conclusion]{Conclusion}
+    \frametitle{Conclusion}
+    \framesubtitle{Key Takeaways \& Future Directions}
+    \begin{itemize}
+        \item<1> The main goal of this thesis was to sharpen the CG iteration bound for high-contrast heterogeneous scalar-elliptic problems beyond the classical condition number-based bound. The derived multi-cluster and tail-cluster bounds offer a more nuanced and accurate picture of convergence behavior than the classical condition number-based bound, able to distinguish between preconditioners effectively.
+        \item<2> Though the utility of these bounds for early estimation depends on the specific coefficient function and preconditioner used.
+        \item<3> Future work:
+        \begin{itemize}
+            \item Should focus on applying the new bounds to a wider range of problems, including those with more complex high-contrast coefficients, finer mesh discretizations, different preconditioners, and other types of PDEs.
+            \item Research into the \textit{a priori} estimation of the key spectral characteristics ($\kappa_l, \kappa_r, s$) is crucial to circumvent the dependency of the new bounds on the slowly converging Ritz values.
+        \end{itemize}
+        \item<4> Closer: "Today we learned to not judge a preconditioner by its conditioner number. Instead, we learned to look at the richness contained within the preconditioned spectrum... today, we truly went \textit{beyond condition number}."
+    \end{itemize}
+\end{frame}
