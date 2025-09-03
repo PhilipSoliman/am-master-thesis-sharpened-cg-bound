@@ -15,22 +15,61 @@
 
 \begin{comment}
 Level 1: Discretisation & intro CG
-    - FEM discretization $\Omega\rightarrow\mathcal{T}$, $\nabla \rightarrow A$, $u\rightarrow\mathbf{u}$, $f\rightarrow\mathbf{b}$
-    - Linear system of equations $A\mathbf{u}=\mathbf{b}$
-    - CG takes in initial guess $\mathbf{u}_0$ and provides updated solution $\mathbf{u}_k$ after $k$ iterations.
-    - Classical bound given relative error tolerance $\epsilon_m = \frac{\|\mathbf{e}_m\|_A}{\|\mathbf{e}_0\|_A} \leq \epsilon$ is 
-    $\epsilon_m \leq 2\left(\frac{\sqrt{\kappa} - 1}{\sqrt{\kappa} + 1}\right)^{m} \longrightarrow m \leq \left\lfloor\frac{\sqrt{\kappa}}{2}\ln\left(\frac{2}{\epsilon}\right) + 1\right\rfloor = m_1$
-    - However $m_1$ can be too pessimistic for high-contrast problems.That is, $m \ll m_1$
-    - Restate R.Q.: "How do we improve/sharpen the classical bound $m_1$ for model problem?"
+- FEM discretization $\Omega\rightarrow\mathcal{T}$, $\nabla \rightarrow A$, $u\rightarrow\mathbf{u}$, $f\rightarrow\mathbf{b}$
+- Linear system of equations $A\mathbf{u}=\mathbf{b}$
+- CG takes in initial guess $\mathbf{u}_0$ and provides updated solution $\mathbf{u}_k$ after $k$ iterations.
+- Classical bound given relative error tolerance $\epsilon_m = \frac{\|\mathbf{e}_m\|_A}{\|\mathbf{e}_0\|_A} \leq \epsilon$ is
+$\epsilon_m \leq 2\left(\frac{\sqrt{\kappa} - 1}{\sqrt{\kappa} + 1}\right)^{m} \longrightarrow m \leq \left\lfloor\frac{\sqrt{\kappa}}{2}\ln\left(\frac{2}{\epsilon}\right) + 1\right\rfloor = m_1(\kappa)$
+- However $m_1$ can be too pessimistic for high-contrast problems. That is, $m \ll m_1$
+- Restate R.Q.: "How do we improve/sharpen the classical bound $m_1$ for model problem?"
 Level 2: CG convergence in detail
-    - Spectrum $\sigma(A) = \{\lambda_1, \ldots, \lambda_n\}$ and $\kappa(A) = \frac{\lambda_{\max}}{\lambda_{\min}}$
-    - CG solution given as $\mathbf{u}_m = \mathbf{u}_0 + q(A)\mathbf{r}_0$, with polynomial $q$ being the \textit{solution polynomial}.
-    - CG residual polynomial $r(\lambda) = 1 - \lambda q(\lambda)$
-    - Error expression $\epsilon_m = \frac{\|\mathbf{e}_m\|_A}{\|\mathbf{e}_0\|_A} < \min_{r \in \mathcal{P}_{m-1}, r(0) = 1} \max_{\lambda \in \sigma(A)} |r(\lambda)|$
-    - Animation: cg_residual_poly 
-        - Loop through different randomized, clustered spectra, showing r_m for each. 
-        - Show best and worst case scenario's for CG convergence
-    - Restate R.Q.: "How can we find a sharpened CG iteration bound that accounts for the influence of the eigenvalue distribution?"
-Level 3: Two cluster case (Axelsson)
-
+- Spectrum $\sigma(A) = \{\lambda_1, \ldots, \lambda_n\}$ and $\kappa(A) = \frac{\lambda_{\max}}{\lambda_{\min}}$
+- CG solution given as $\mathbf{u}_m = \mathbf{u}_0 + q(A)\mathbf{r}_0$, with polynomial $q$ being the \textit{solution polynomial}.
+- CG residual polynomial $r(\lambda) = 1 - \lambda q(\lambda)$
+- Error expression $\epsilon_m = \frac{\|\mathbf{e}_m\|_A}{\|\mathbf{e}_0\|_A} < \min_{r \in \mathcal{P}_{m-1}, r(0) = 1} \max_{\lambda \in \sigma(A)} |r(\lambda)|$
+- Animation: cg_residual_poly
+- Loop through different randomized, clustered spectra, showing r_m for each.
+- Show best and worst case scenario's for CG convergence
+- Restate R.Q.: "How can we construct an CG iteration bound that accounts for the influence of the eigenvalue distribution?"
+Level 3: Preconditioning
+- Why do we want to account for eigenvalue distribution? (practical motivation)
+- High-contrast $C$ leads to spectral gap and $\kappa(A)\gg1$
+- Preconditioning: transform $A\mathbf{u}=\mathbf{b}$ into $M^{-1}A\mathbf{u}=M^{-1}\mathbf{b}$, with preconditioner $M$. This leads to a reduced spectral gap and lower conditioner number. Then, apply CG as usual (now called Preconditioned CG or PCG)
+- Show Filipe & Alexander's Research: they used three kinds of preconditioners $M_1, M_2, M_3$ and all had similar conditioner numbers and thereby similar upper bounds for their iteration number, $m_1(\kappa)$.
+- However, on a sample problem PCG with $M_1,M_2$ needed significantly less iterations than PCG with $M_3$.
+- Restate R.Q.: "How can we construct a CG iteration bound that can distinguish between different preconditioners with similar conditioner numbers?"
+Level 4: First steps towards a sharpened bound
+- Recap: $\epsilon_m < \min_{r \in \mathcal{P}_{m-1}, r(0) = 1} \max_{\lambda \in \sigma(A)} |r(\lambda)| \leq \epsilon$
+- Head-on strategy for a bound: try to find an $m^{\text{th}}$-order polynomial that satisfies the min-max problem.
+- Classical bound invokes: optimal Chebyshev polynomial $r(\lambda) = \hat{C}_m$, under the assumption of a uniform interval of eigenvalues $\sigma(A) = [\lambda_{\min}, \lambda_{\max}]$ (inaccurate!).
+- Simplest non-trivial case (one spectral gap): two disjoint clusters
+- Axelsson, assume two uniform intervals and invoke $r(\lambda) = \hat{C}_{p}\hat{C}_{p-m}$
+- Resulting two-cluster bound $m_2(\kappa, \kappa_l, \kappa_r)=\left\lfloor\frac{\sqrt{\kappa_r}}{2} \ln (2 / \epsilon)+\left(1+\frac{\sqrt{\kappa_r}}{2} \ln \left(\frac{4\kappa}{\kappa_l}\right)\right) p\right\rfloor$
+- Restate R.Q.: "How can we construct an CG iteration bound that accounts for the influence of the eigenvalue distribution for general spectra?"
+Level 5: Generalization to multiple clusters & partitioning
+- Depending on coefficient function and preconditioned systems we can have any number of clusters.
+- Extend Axelsson idea: $r(\lambda) = \hat{C}^{(1)}_{p_1}\hat{C}^{(2)}_{p_2}\ldots\hat{C}^{(k)}_{p_k} = \prod_{i=1}^{k} \hat{C}^{(i)}_{p_i}$
+- Multi-cluster bound: $p_i \leq \left\lceil\log_{f_i}{\frac{\epsilon}{2}} + \sum_{j=1}^{i-1} p_j\log_{f_i}\left(\frac{\zeta^{(j)}_2}{\zeta^{(i,j)}_1}\right)\right\rceil$ and $m_{N_{\text{cluster}}} = \sum_{i=1}^{N_{\text{cluster}}} p_i$, depends on the extremal eigenvalues of \textit{each cluster}
+- We need a way of partitioning a given spectrum $\sigma(A)$ into $N_{\text{cluster}}$ clusters.
+- Idea: simple, we split at the largest (relative) gap between subsequent eigenvalues, check if the two resulting clusters would give a sharper bound than just one uniform cluster, that is $m_2(\kappa, \kappa_l, \kappa_r) < m_1(\kappa)$. If so, we split the clusters and repeat the process for each created cluster. If not, we stop partitioning. In the process we keep track of all the extremal eigenvalues. After partitioning, we calculate $m_{N_{\text{cluster}}}$.
+- Animation: cluster_partitioning, visualize above partitioning and subsequent calculation $m_{N_{\text{cluster}}}$.
+- Restate R.Q.: "How much sharper is $m_{N_{\text{cluster}}}$ compared to $m_1(\kappa)$ for our model problem?"
+Level 6: Results on sharpness
+- We implement the model problem with the two coefficient functions that Filipe and Alexander used and solve them using PCG with preconditioners $M_1, M_2, M_3$.
+- First experiment: For each $\sigma(M_i^{-1}A)$, we compute $m_{N_{\text{cluster}}}$ and $m_1(\kappa)$ for comparison. As well as, $m_{N_{\text{tail-cluster}}}$, a variant of $m_{N_{\text{cluster}}}$ that can take in clusters as well as individual eigenvalues.
+- Results: the new bounds are incredibly sharp as they are anywhere from 2 to 4 times as big as $m$. For comparison, $m_1$ is anywhere from 100 to 1000 times bigger than $m$, where the difference increases for spectra with larger spectral gaps
+- Restate R.Q.: "How can we compute $m_{N_{\text{cluster}}}$ for our model problem in practice?"
+Level 7: Practical estimation of new bounds
+- Problem: computing $m_{N_{\text{cluster}}}$ requires a good estimate of $\sigma(M_i^{-1}A)$.
+- Luckily, PCG gives us exactly that, every iteration it produces a set of so-called Ritz values that is `close' to the true eigenvalue distribution. In particular, at the $k^{\text{th}}$ iteration, we get a set of $k$ Ritz values that we can use as an approximation of the full spectrum $\sigma(M_i^{-1}A)$.
+- Second experiment, we use the Ritz values from the PCG iterations to compute $m_{N_{\text{cluster}}}$ and $m_1(\kappa)$ for our model problem and observe how good of an upper bound for $m$ we can obtain within the first 300 iterations.
+- Results: For PCG with preconditioners $M_1, M_2$ (fast converging) $m_{N_{\text{cluster}}}$ gives sharp upper bounds for $m$ in all cases. However, for PCG with $M_3$ (slow converging) $m_{N_{\text{cluster}}}$ underestimates $m$ in some cases. This is because the Ritz values do not yet capture the full spectrum well enough within 300 iterations.
+- Animation: ritz_value_migration
+Level 8: Conclusion
+- The main goal of this thesis was to sharpen the CG iteration bound for high-contrast heterogeneous scalar-elliptic problems beyond the classical condition number-based bound. The derived multi-cluster and tail-cluster bounds offer a more nuanced and accurate picture of convergence behavior than the classical condition number-based bound, able to distinguish between preconditioners effectively.
+- Though the utility of these bounds for early estimation depends on the specific coefficient function and preconditioner used.
+- Future work:
+- Should focus on applying the new bounds to a wider range of problems, including those with more complex high-contrast coefficients, finer mesh discretizations, different preconditioners, and other types of PDEs.
+- research into the \textit{a priori}  estimation of the key spectral characteristics ($\kappa_l, \kappa_r, s$) is crucial to circumvent the dependency of the new bounds on the slowly converging Ritz values
+- Closer: "Today we learned to not judge a preconditioner by its conditioner number. Instead, we learned to look at the richness contained within the preconditioned spectrum... today, we truly went \textit{beyond condition number}."
 \end{comment}
