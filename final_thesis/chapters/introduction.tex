@@ -16,7 +16,7 @@ In \cref{tab:high_contrast_examples} we give a non-exhaustive overview of some r
 
 The first step in solving \cref{prob:elliptic_problem} is to reformulate the problem in a way that reduces the regularity constraint on the solution $u\in H^2(\Omega)$. This leads to the weak formulation of the problem, which is obtained by multiplying \cref{eq:elliptic_problem} with a test function $v\in H^1_0(\Omega)$ and integrating over $\Omega$. The weak formulation is given by
 \begin{fancyprob}{High-contrast scalar elliptic problem: weak formulation}{elliptic_problem_weak}
-    Let $u_D\in H^{1/2}(\partial\Omega)$ be a Dirichlet boundary condition. Find $u\in V = \{u\in H^1(\Omega) | u_{\delta \Omega} = u_D\}$ such that $\forall v \in H^1_0(\Omega)$
+    Let $u_D\in H^{1/2}(\partial\Omega)$ be a Dirichlet boundary condition. Find $u\in V = \{u\in H^1(\Omega) | u_{\partial \Omega} = u_D\}$ such that $\forall v \in H^1_0(\Omega)$
     \begin{equation}
         \label{eq:galerkin}
         \int_\Omega \mathcal{C}\nabla u\cdot\nabla v\,dx = \int_\Omega f v\,dx.

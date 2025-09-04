@@ -199,7 +199,7 @@ def plot_spectra(tail: bool) -> plt.Figure:
 
             # preconditioner names
             ax.set_yticks(
-                range(len(spectra)), list(spectra.keys()), fontsize=FONTSIZE, fontweight="bold", rotation=45
+                range(len(spectra)), list(spectra.keys()), fontsize=FONTSIZE-2, fontweight="bold", rotation=45
             )
             ax.set_ylim(-0.5, len(spectra) - 1 + 0.5)
 
@@ -217,7 +217,7 @@ def plot_spectra(tail: bool) -> plt.Figure:
             ax2.set_yticks(range(len(cond_numbers)))
             ax2.set_yticklabels(
                 [format_cond(c) if not np.isnan(c) else "n/a" for c in cond_numbers],
-                fontsize=FONTSIZE, rotation=-45
+                fontsize=FONTSIZE-2, rotation=-45
             )
 
             # iteration counts
@@ -265,7 +265,7 @@ def plot_spectra(tail: bool) -> plt.Figure:
         )
 
     # tight layout for the figure
-    fig.tight_layout(pad=1.3)
+    fig.tight_layout(pad=1.3, h_pad=0.4, w_pad=0.1)
 
     return fig
 

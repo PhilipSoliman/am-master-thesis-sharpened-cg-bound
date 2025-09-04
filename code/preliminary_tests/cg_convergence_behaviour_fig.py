@@ -95,6 +95,7 @@ ax.legend(
     ncol=len(cg_poly_r) - 1,
     mode="expand",
     bbox_to_anchor=(0, -0.1, 1, 0.1),
+    frameon=False,
 )
 plt.tight_layout()
 if CLI_ARGS.generate_output:

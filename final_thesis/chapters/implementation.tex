@@ -11,7 +11,7 @@ The \textit{fine} and \textit{coarse} meshes $Q_h, Q_H$ for $H=1/4$ are shown in
 \begin{figure}[H]
     \centering
     \includegraphics{mesh_and_coefficient_functions_meshes_and_domains.pdf}
-    \caption{Plot of the conforming fine and coarse meshes $Q_h$ and $Q_H$ for $H=1/4$ (\textbf{left}) and some of the overlapping subdomains $\Omega_i$ (\textbf{right}).}
+    \caption{Plot of the conforming fine and coarse meshes $Q_h$ and $Q_H$ for $H=1/4$ (\textbf{left}) and some of the overlapping subdomains $\Omega_i$ with overlap $\delta = 2h$ (\textbf{right}).}
     \label{fig:mesh_4}
 \end{figure}
 Next, we construct a FE space $V_h$ from first order Legendre polynomials $\phi_i$ associated to each internal fine mesh vertex $v^h_i$ in $Q_h$ and locally defined on all quadrilateral elements $q_j$ sharing $v^h_i$. That is
@@ -35,7 +35,7 @@ We implement a \ref{pcg_type:left} method to solve the linear system arising fro
 \[
     M^{-1} = R_0^T A_0^{-1} R_0 + \sum_{i=1}^{N_{\text{sub}}} R_i^T A_i^{-1} R_i,
 \]
-where $R_i$ is the \textit{restriction operator} to and $A_i = R_i^T A R_i$ is the \textit{local operator} on $\Omega_i \ \forall i \geq 1$. Also, $N_{\text{sub}} = (1/H)^2$, or simply the number of coarse mesh elements in $Q_H$. Similarly, the \textit{coarse restriction} operator $R_0$ and corresponding \textit{coarse operator} $A_0 = R_0^T A R_0$ are constructed as discussed in \cref{sec:tailored_coarse_spaces}. We construct $R_0$ for the GDSW, RGDSW, and AMS coarse spaces, resulting in the following two-level overlapping Schwarz preconditioners
+where $R_i$ is the \textit{restriction operator} to and $A_i = R_i^T A R_i$ is the \textit{local operator} on $\Omega_i \ \forall i \geq 1$. Also, $N_{\text{sub}} = (1/H)^2$, or simply the number of coarse mesh elements in $Q_H$. Similarly, the \textit{coarse restriction} operator $R_0$ and corresponding \textit{coarse operator} $A_0 = R_0^T A R_0$ are constructed as discussed in \cref{sec:tailored_coarse_spaces}. We construct $R_0$ for the GDSW, RGDSW, and AMS coarse spaces, resulting in the following set of two-level overlapping Schwarz preconditioners
 \begin{equation}
     \mathcal{M}^{-1} =  \left\{M^{-1}_{\text{2-OAS-GDSW}}, M^{-1}_{\text{2-OAS-RGDSW}}, M^{-1}_{\text{2-OAS-AMS}}\right\}.
     \label{eq:preconditioners}

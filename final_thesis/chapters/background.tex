@@ -448,13 +448,13 @@ The first row in \cref{fig:cg_best_worst_spectra} shows an instance of the super
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=5in]{effect_of_eigenvalue_distribution.pdf}
+  \includegraphics{effect_of_eigenvalue_distribution.pdf}
   \caption{Plots of the last three CG residual polynomials for different eigenvalue distributions. $n_c$ indicates the number of clusters and $\sigma$ is the width of the cluster. The size of the system $N$ and the condition number $\kappa(A)$ are kept constant. $m$ indicates the number of iterations required for convergence.}
   \label{fig:cg_effect_of_eigenvalue_distribution}
 \end{figure}
 \begin{figure}[H]
   \centering
-  \includegraphics[width=5in]{cg_convergence_extreme_spectra.pdf}
+  \includegraphics{cg_convergence_extreme_spectra.pdf}
   \caption{Best and worst possible spectra for CG convergence. Top: eigenvalues tightly clustered on two distinct values (best case). Bottom: eigenvalues evenly distributed across the spectrum (worst case). Left: eigenvalue distribution and corresponding residual polynomials per iteration. Right: ratio $\|r_m\|_2/\|r_0\|_2$ vs. iteration (solid), and relative error tolerance (dashed). Convergence at relative error tolerance $10^{-6}$. For both spectra, $\frac{\|r_m\|_2}{\|r_0\|_2} \leq \frac{10^{-6}}{3}$, as per \cref{th:residual_convergence_criterion}.}
   \label{fig:cg_best_worst_spectra}
 \end{figure}

@@ -11,13 +11,11 @@ The multiscale finite element method (MsFEM), as presented in \cite{og_msfem_Hou
 As we have seen \cref{sec:schwarz_coarse_space}, we can also construct preconditioners for the purpose of dealing with high-contrast $\mathcal{C}$. That is, we construct the traditional FEM basis functions as in \cref{prob:elliptic_problem_discretized}, decompose the domain into subdomains $\Omega_i$ and define coarse and local operators $A_0, A_i$ as in \cref{eq:ASM_preconditioner_coarse,eq:RAS_preconditioner_coarse}. The basis functions constructed using MsFEM can then be used for the construction of the coarse space $R_0$, akin to how the coarse space is constructed; based on the eigenmodes of the $\operatorname{DtN}$ in \cref{ASM_coarse_space:local_eigenfunctions}.
 
 In \cite{msfem_coarse_space_Graham_2007,msfem_for_darcy_Efendiev2011} a separation of scales with conforming fine and coarse triangulations, denoted as $\mathcal{T}_h$ and $\mathcal{T}_H$ is introduced and resulting coarse basis functions are required to satisfy five key assumptions (C1-C5) in \cite[Section 2.2]{msfem_coarse_space_Graham_2007}. The coarse bases are constructed by homogeneous version of the system problem \cref{eq:elliptic_problem} on a coarse grid element $K\in\mathcal{T}_H$.
-\begin{equation}
-    \begin{aligned}
-        -\nabla\cdot(\mathcal{C} \nabla \phi^e_{c,i}) & = 0,                   & \forall \mathbf{x} \in K,                             \\
-        \phi^e_{c,i}(\mathbf{x})                      & = \mu^e_i(\mathbf{x}), & \forall \mathbf{x} \in e, \ \forall e \in \partial K,
-    \end{aligned}
+\begin{alignat}{3}
+    -\nabla\cdot(\mathcal{C} \nabla \phi^e_{c,i}) & = 0,                   & \quad & \forall \mathbf{x} \in K,                             \\
+    \phi^e_{c,i}(\mathbf{x})                      & = \mu^e_i(\mathbf{x}), & \quad & \forall \mathbf{x} \in e, \ \forall e \in \partial K,
     \label{eq:msfem_coarse_basis}
-\end{equation}
+\end{alignat}
 where $e$ is an edge of the coarse grid element $K$. The boundary conditions, $\mu^e_i(\mathbf{x})$ on edge $e\in K$, for this problem should satisfy conditions M1-M4 \cite[Section 4]{msfem_coarse_space_Graham_2007} and are chosen to be either a linear interpolation of the nodal values of $\mathcal{C}$, denoted as $\mathcal{C}^e$, or a harmonic extension thereof on the coarse grid element $K$. The latter satisfies
 \begin{equation}
     \mu^e_i(\mathbf{x}) = \left(\int_e \mathcal{C}^e ds\right)^{-1}\int_e^x \mathcal{C}^e ds, \quad \forall \mathbf{x} \in e,
@@ -87,9 +85,7 @@ The authors show that the convergence rate strongly depends on the eigenvalue di
 
 Third, in \cite{cg_superlinear_Beckermann2001} the authors provide a proof of CG's superlinear convergence. This proof is fundamentally different from the polynomial-based strategy that is used in the work of \cite{cg_sharpened_convrate_Axelsson1976}, in that this proof is based in the field of \textit{logarithmic potential theory} (LPT). LPT is used to solve the minimization problem in \cref{th:cg_convergence_rate_bound} using a strategy that is akin to how charges distribute themselves over a conductor, the interested reader is referred to \cite{from_potential_theory_to_matrix_iterations_in_six_steps_Driscoll1998}.
 
-In their analysis of superlinear convergence, \citeauthor{cg_superlinear_Beckermann2001} use concepts from logarithmic potential theory. Their framework begins by modeling the eigenvalues of a family of matrices not as discrete points, but as a continuous distribution, or measure, $\sigma$ on a compact set $S$. The core of their proof recasts the polynomial minimization problem from \cref{th:cg_error_bound} into an equivalent problem in potential theory.
-
-This involves finding a special probability measure, $\mu_t$, that minimizes the logarithmic energy
+In their analysis of superlinear convergence, \citeauthor{cg_superlinear_Beckermann2001} use concepts from logarithmic potential theory. Their framework begins by modeling the eigenvalues of a family of matrices not as discrete points, but as a continuous distribution, or measure, $\sigma$ on a compact set $S$. The core of their proof recasts the polynomial minimization problem from \cref{th:cg_error_bound} into an equivalent problem in potential theory. This involves finding a special probability measure, $\mu_t$, that minimizes the logarithmic energy
 \[
     I(\mu) = \int \int \log \frac{1}{|\lambda-\lambda'|} d\mu(\lambda') d\mu(\lambda)
 \]

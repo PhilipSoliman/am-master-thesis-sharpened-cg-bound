@@ -72,14 +72,14 @@ MESHES = [
 # coef_funcs to plot
 COEF_FUNCS = [CoefFunc.EDGE_SLABS_AROUND_VERTICES_INCLUSIONS]
 
-FIGHEIGHT = 2
+FIGHEIGHT = 3
 
 # legend
 LEGEND_SIZE = 1.5
 FONTSIZE = 10
 
 # plot
-PADDING = 0.1
+PADDING = dict(hspace=0.1, left=0.12, right=0.97, top=0.9, bottom=0)
 
 
 def plot_bound_and_spectrum(PRECONDITIONER) -> plt.Figure:
@@ -103,7 +103,6 @@ def plot_bound_and_spectrum(PRECONDITIONER) -> plt.Figure:
             FIGHEIGHT * len(COEF_FUNCS),
             LEGEND_SIZE,
         ],
-        hspace=0.15,
     )
     axs = []
     for i in range(2 * len(COEF_FUNCS)):
@@ -118,7 +117,7 @@ def plot_bound_and_spectrum(PRECONDITIONER) -> plt.Figure:
     legend_ax.axis("off")
 
     # Further tighten layout between subplots and minimize edge padding
-    fig.subplots_adjust(hspace=0.1, left=0.12, right=0.97, top=0.9, bottom=0)
+    fig.subplots_adjust(**PADDING)
 
     # main plot loop
     for i, mesh_params in enumerate(MESHES):

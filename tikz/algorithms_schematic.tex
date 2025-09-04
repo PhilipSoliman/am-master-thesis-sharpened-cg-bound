@@ -1,0 +1,50 @@
+\begin{tikzpicture}[
+        node distance=1.5cm and 1.5cm,
+        box/.style={rectangle, draw=white, rounded corners, fill=title, minimum width=3.5cm, minimum height=1cm, font=\small, align=center},
+        subbox/.style={rectangle, draw=white, rounded corners, fill=commentcolor, minimum width=3cm, minimum height=0.8cm, font=\small, align=center},
+        arrow/.style={->, thick},
+        label/.style={font=\footnotesize, midway, left, fill=bgcolor, opacity=0.4, rounded corners, inner sep=1pt},
+    ]
+
+    % Main algorithms
+    \draw (0,0) node[box] (multi_cluster) {$\operatorname{MultiClusterCGIterationBound}$\\(\cref{alg:multi_cluster_cg_bound})};
+    \node[box, right=of multi_cluster] (multi_tail_cluster) {$\operatorname{MultiTailClusterCGIterationBound}$\\(\cref{alg:multi_tail_cluster_cg_bound})};
+
+    % Sub-algorithms
+    \node[subbox, above=of multi_cluster] (partition) {$\operatorname{PartitionEigenspectrum}$\\(\cref{alg:partition_eigenspectrum})};
+    \node[subbox, above=of multi_tail_cluster] (partition_tails) {$\operatorname{PartitionEigenspectrumTails}$\\(\cref{alg:partition_eigenspectrum_tails})};
+    \node[subbox, above=of multi_cluster, above of=partition, xshift=3.0cm] (split) {$\operatorname{SplitEigenspectrum}$\\(\cref{alg:split_eigenspectrum})};
+    \node[subbox, below=of multi_cluster, xshift=3.0cm] (generalized) {$\operatorname{GeneralizedCGIterationBound}$\\(\cref{alg:generalized_cg_bound})};
+
+    % Inputs
+    \node[draw, rounded corners, fill=subtitle, minimum width=2.5cm, minimum height=0.7cm, above=of split] (input) {Sorted eigenvalues $\sigma$, $\epsilon$};
+    \draw[arrow] (input) -- (split);
+
+    % Arrows for MultiCluster
+    \draw[arrow] (split) -- node[label] {Uses \cref{th:two_cluster_performance_threshold}} (partition);
+    \draw[arrow] (partition) -- node[label] {partition indices $K^*$} (multi_cluster);
+    \draw[arrow] (multi_cluster) -- node[label] {clusters, $\Lambda_t$} (generalized);
+
+    % Arrows for MultiTailCluster
+    \draw[arrow] (split) -- node[label] {Uses \cref{th:tail_cluster_performance_condition}} (partition_tails);
+    \draw[arrow] (partition_tails) -- node[label] {partition indices $K^*$, $\Lambda_t$, $I_t$} (multi_tail_cluster);
+    \draw[arrow] (multi_tail_cluster) -- node[label] {clusters, $\Lambda_t$} (generalized);
+
+    % Output
+    \node[draw, fill=stringcolor, minimum width=2.5cm, minimum height=0.7cm, below=of generalized] (output) {Sharpened CG bound $m_N$};
+
+    \draw[arrow] (generalized) -- (output);
+
+    % Recursion box
+    \draw[thick,dotted] ($(partition.south west)+(-0.5,4.0)$) rectangle ($(partition_tails.south east)+(0.5,-0.15)$);
+
+    % Legend
+    \node[draw, rounded corners, fill=white, font=\footnotesize, right=of output, yshift=0.5cm] (legend) {
+        \begin{tabular}{ll}
+            \textbf{Dotted box} & Recursion \\
+            \textbf{Opaque, rounded box} & Input \\
+            \textbf{Sharp, golden box} & Output \\
+        \end{tabular}
+    };
+
+\end{tikzpicture}

@@ -96,5 +96,6 @@
   labelsep = 2pt
 }
 
-
-\newcommand{\fullref}[1]{\cref{#1} \nameref{#1}}
+% edit cref names
+\newcommand{\fullref}[1]{\cref{#1} \nameref{#1}} % full reference (number + name)
+\let\cref\Cref % capitalize crall crefs
