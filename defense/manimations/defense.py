@@ -193,14 +193,7 @@ class defense(Slide):
         )
         self.tu_delft_logo.set_z_index(10)  # make sure logo is always on top
 
-        # self.tex_template.add_to_preamble(
-        #     r"""
-        # \usepackage{siunitx}
-        # \usepackage{amsmath}
-        # \usepackage[colorlinks=true, urlcolor=blue]{hyperref}
-        # """
-        # )
-        # strong formulation
+        # equations
         self.strong_equation = (
             r"\begin{equation*}"
             r"\begin{aligned}"
@@ -361,25 +354,6 @@ class defense(Slide):
         self.slide_number = new_slide_number
 
         self.next_slide(notes=notes)
-
-    # Optional: Video playback function
-    # def play_video(file):
-    #     cap = cv2.VideoCapture(file)
-    #     flag = True
-
-    #     while flag:
-    #         flag, frame = cap.read()
-    #         fps = cap.get(cv2.CAP_PROP_FPS)
-    #         delay = 1 / fps
-
-    #         if flag:
-    #             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    #             frame_img = ImageMobject(frame, *args, **kwargs)
-    #             self.add(frame_img)
-    #             self.wait(delay)
-    #             self.remove(frame_img)
-
-    #     cap.release()
 
     @staticmethod
     def paragraph(
@@ -599,7 +573,9 @@ class defense(Slide):
             images_vg.append(bbox)
         images_vg = always_redraw(VGroup, *images_vg)
         high_contrast_brace = always_redraw(Brace, images_vg, direction=DOWN)
-        high_contrast_label = always_redraw(TexText, "High-contrast", font_size=1.5 * CONTENT_FONT_SIZE)
+        high_contrast_label = always_redraw(
+            TexText, "High-contrast", font_size=1.5 * CONTENT_FONT_SIZE
+        )
         always(high_contrast_label.next_to, high_contrast_brace, DOWN, buff=0.1)
         self.play(
             Write(high_contrast_brace),
@@ -765,7 +741,9 @@ class defense(Slide):
         self.slide_contents = images + bboxes + [linear_system_text, cg_stuff]
 
         # move everything up
-        self.update_slide(new_contents=main_question, subtitle="Main Research Question", notes="")
+        self.update_slide(
+            new_contents=main_question, subtitle="Main Research Question", notes=""
+        )
         self.slide_contents = [main_question]
 
     def toc(self):
@@ -882,3 +860,23 @@ class defense(Slide):
         # self.level_8_conclusion()
         # self.backup()
         self.references()
+
+    # TODO: miscellaneous
+    # Optional: Video playback function
+    # def play_video(file):
+    #     cap = cv2.VideoCapture(file)
+    #     flag = True
+
+    #     while flag:
+    #         flag, frame = cap.read()
+    #         fps = cap.get(cv2.CAP_PROP_FPS)
+    #         delay = 1 / fps
+
+    #         if flag:
+    #             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    #             frame_img = ImageMobject(frame, *args, **kwargs)
+    #             self.add(frame_img)
+    #             self.wait(delay)
+    #             self.remove(frame_img)
+
+    #     cap.release()
