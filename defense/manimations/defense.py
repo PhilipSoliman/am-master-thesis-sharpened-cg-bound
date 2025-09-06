@@ -1,6 +1,8 @@
 # NOTE the structure and functionality of this script and its main class `defense` are
 # adopted from https://github.com/jeertmans/jeertmans.github.io/blob/main/_slides/2023-12-07-confirmation/main.py
 # next to that of course the manim_slides documentation https://manim-slides.readthedocs.io/en/latest/
+from enum import Enum
+
 from manimlib import *
 
 pass
@@ -15,8 +17,8 @@ from hcmsfem.plot_utils import CustomColors
 from hcmsfem.root import get_venv_root
 
 # Manim render settings
-FPS = 30
-QUALITY = (1920, 1080)  # 4k = (3840,2160)
+FPS = 24
+QUALITY = (1280, 720)  # 4k = (3840,2160), hd = (1920,1080),  720p = (1280,720)
 manim_config.camera.fps = FPS
 manim_config.camera.resolution = QUALITY
 manim_config.background_color = WHITE
@@ -44,6 +46,13 @@ class TexText(TexText):
             + additional_preamble
         )
         super().__init__(*args, additional_preamble=additional_preamble, **kwargs)
+
+
+# tex alignment
+class ALIGN(Enum):
+    LEFT = 1
+    RIGHT = 2
+    CENTER = 3
 
 
 # affiliation table
@@ -191,6 +200,29 @@ class defense(Slide):
         # \usepackage[colorlinks=true, urlcolor=blue]{hyperref}
         # """
         # )
+        # strong formulation
+        self.strong_equation = (
+            r"\begin{equation*}"
+            r"\begin{aligned}"
+            r"-\nabla\cdot\left(\mathcal{C}\nabla u\right) & = f &\text{in } \Omega,\\"
+            r"u& = u_D &\text{on } \partial\Omega"
+            r"\end{aligned}"
+            r"\end{equation*}"
+        )
+
+        self.weak_equation = (
+            r"\begin{equation*}"
+            r"\begin{aligned}"
+            r"a(u, v) = \int_\Omega \mathcal{C}\nabla u\cdot\nabla v\,dx = \int_\Omega f v\,dx = (f,v)"
+            r"\end{aligned}"
+            r"\end{equation*}"
+        )
+
+        self.fem_formulation = (
+            r"\begin{equation*}"
+            r"A\mathbf{u} = \mathbf{b}, \quad A_{ij} = a(\phi_i, \phi_j), \ b_i = (f, \phi_i) \quad \forall i,j\in\mathcal{N},"
+            r"\end{equation*}"
+        )
 
     # utility functions
     def update_slide_number(self):
@@ -203,12 +235,13 @@ class defense(Slide):
         title_animations = []
 
         # construct new title
-        new_title = (
-            TexText(title, font_size=TITLE_FONT_SIZE)
-            .move_to(self.slide_title)
-            .align_to(self.slide_title, LEFT)
-        )
-        title_animations.append(ReplacementTransform(self.slide_title, new_title))
+        if title is not None:
+            new_title = (
+                TexText(title, font_size=TITLE_FONT_SIZE)
+                .move_to(self.slide_title)
+                .align_to(self.slide_title, LEFT)
+            )
+            title_animations.append(ReplacementTransform(self.slide_title, new_title))
 
         # check for new subtitle
         if subtitle is not None and self.slide_subtitle_visible:
@@ -234,15 +267,19 @@ class defense(Slide):
             title_animations.append(self.slide_subtitle.animate.set_opacity(0))
             self.slide_subtitle_visible = False
 
-        return title_animations, new_title, new_subtitle if subtitle else None
+        return (
+            title_animations,
+            new_title if title else self.slide_title,
+            new_subtitle if subtitle else None,
+        )
 
     def update_slide(
         self,
-        title,
+        title=None,
         subtitle=None,
         new_contents: list[Mobject] = [],
         transition_time: float = 0.75,
-        notes: str = None,
+        notes: str = "",
     ):
         """
         Update the slide with new new_contents. If clean_up is True, remove all existing new_contents from the slide.
@@ -289,7 +326,7 @@ class defense(Slide):
         # go to next slide
         self.next_slide(notes=notes)
 
-    def update_slide_contents(self, new_contents: list[Mobject], notes: str = None):
+    def update_slide_contents(self, new_contents: list[Mobject], notes: str = ""):
         """
         Update the slide with new new_contents, without changing title or slide number.
         """
@@ -311,9 +348,6 @@ class defense(Slide):
             m.animate.move_to(m.get_center() - np.array([FRAME_WIDTH, 0, 0]))
             for m in new_contents
         ]
-
-        # Remove old content from slide
-        wipe_animation += [FadeOut(m) for m in self.slide_contents]
 
         # update slide number
         slide_number_update, new_slide_number = self.update_slide_number()
@@ -349,21 +383,42 @@ class defense(Slide):
 
     @staticmethod
     def paragraph(
-        *strs, alignment=LEFT, direction=DOWN, width=0.5 * FRAME_WIDTH, **kwargs
+        *strs,
+        alignment: ALIGN = ALIGN.LEFT,
+        direction=DOWN,
+        width=0.5 * FRAME_WIDTH,
+        **kwargs,
     ):
+        # output list of TexText mobjects
         texts = []
+
+        # determine alignment for tex
+        if alignment == ALIGN.CENTER:
+            tex_alignment = R"\centering"
+            alignment = None
+        if alignment == ALIGN.LEFT:
+            tex_alignment = R"\raggedright"
+            alignment = LEFT
+        elif alignment == ALIGN.RIGHT:
+            tex_alignment = R"\raggedleft"
+            alignment = RIGHT
+
+        # create TexText mobjects
         for s in strs:
-            print(s)
+            print(s)  # print for debugging
             texts.append(
                 TexText(
                     f"\\begin{{minipage}}{{{width}in}}{{{s}}}\\end{{minipage}}",
-                    alignment=R"\raggedright",
+                    alignment=tex_alignment,
                     **kwargs,
                 )
             )
+
+        # arrange mobjects in specified direction
         texts = VGroup(*texts).arrange(direction)
 
-        if len(strs) > 1:
+        # align all mobjects to the first one
+        if len(strs) > 1 and alignment is not None:
             for text in texts[1:]:
                 text.align_to(texts[0], direction=alignment)
 
@@ -544,11 +599,11 @@ class defense(Slide):
             images_vg.append(bbox)
         images_vg = always_redraw(VGroup, *images_vg)
         high_contrast_brace = always_redraw(Brace, images_vg, direction=DOWN)
-        high_contrast_label = always_redraw(TexText, "High-contrast")
+        high_contrast_label = always_redraw(TexText, "High-contrast", font_size=1.5 * CONTENT_FONT_SIZE)
         always(high_contrast_label.next_to, high_contrast_brace, DOWN, buff=0.1)
         self.play(
-            ShowCreation(high_contrast_brace),
-            ShowCreation(high_contrast_label),
+            Write(high_contrast_brace),
+            Write(high_contrast_label),
             run_time=1.0,
         )
         self.next_slide(notes="They all involve high-contrast!")
@@ -568,10 +623,150 @@ class defense(Slide):
         )
         self.next_slide(notes="This leads us to the model problem...")
 
-        # model problem
+        # slide: model problem
+        model_problem = defense.paragraph(
+            r"Let $u_D\in H^{3/2}(\partial\Omega)$, $f\in L^2(\Omega)$, $\mathcal{C}\in L^\infty(\Omega)$. Find $u\in H^2(\Omega)$ such that"
+            + self.strong_equation,
+            width=0.2 * FRAME_WIDTH,
+            font_size=CONTENT_FONT_SIZE,
+            alignment=ALIGN.CENTER,
+        ).next_to(images_vg, RIGHT, buff=1.0)
+        self.play(Write(model_problem), run_time=1.0)
+        self.next_slide(
+            notes="We want to find the solution u. To do so we discretize..."
+        )
 
-        # collect remaining slide contents
-        self.slide_contents = images + bboxes
+        # slide: variational formulation & discretization
+        self.play(
+            model_problem.animate.shift(1.5 * UP),
+            run_time=0.5,
+        )
+        model_problem_weak = defense.paragraph(
+            r"Let $u_D\in H^{1/2}(\partial\Omega)$, $f\in L^2(\Omega)$, $\mathcal{C}\in L^\infty(\Omega)$. Find $u\in \{u\in H^1(\Omega) | u_{\partial \Omega} = u_D\}$ such that $\forall v \in H^1_0(\Omega)$"
+            + self.weak_equation,
+            width=0.2 * FRAME_WIDTH,
+            font_size=CONTENT_FONT_SIZE,
+            alignment=ALIGN.CENTER,
+        ).move_to(model_problem)
+        self.play(
+            ReplacementTransform(model_problem[0], model_problem_weak[0]),
+            run_time=1.0,
+        )
+        domain_width = 0.25 * FRAME_WIDTH
+        domain = Rectangle(
+            width=domain_width, height=domain_width, color=WHITE
+        ).next_to(model_problem_weak, 0.2 * DOWN, buff=1.0)
+        domain_label = TexText(r"$\Omega$", font_size=CONTENT_FONT_SIZE).move_to(
+            domain.get_center()
+        )
+        self.play(
+            Write(domain),
+            Write(domain_label),
+            run_time=1.0,
+        )
+        num_boxes_per_side = 5
+        grid_size = domain_width / num_boxes_per_side
+        grid_lines = NumberPlane(
+            x_range=[0, domain_width, grid_size],
+            y_range=[0, domain_width, grid_size],
+            width=domain_width,
+            height=domain_width,
+            background_line_style={
+                "stroke_color": WHITE,
+                "stroke_width": 1,
+                "stroke_opacity": 1.0,
+            },
+        ).next_to(model_problem_weak, 0.2 * DOWN, buff=1.0)
+        self.play(ShowCreation(grid_lines), run_time=1.0)
+
+        # slide: FEM formulation
+        self.next_slide(notes="Through FEM")
+        fem_formulation = defense.paragraph(
+            r"FEM basis $V_h = \text{span}\{\phi_i\}_{i=1}^{n}$" + self.fem_formulation,
+            width=0.2 * FRAME_WIDTH,
+            font_size=CONTENT_FONT_SIZE,
+            alignment=ALIGN.CENTER,
+        ).move_to(model_problem_weak)
+        self.play(
+            ReplacementTransform(model_problem_weak[0], fem_formulation[0]),
+            run_time=1.0,
+        )
+        self.next_slide(notes="we get a linear system..")
+        linear_system_text = TexText(
+            r"\begin{equation*}A\mathbf{u}=\mathbf{b}\end{equation*}",
+            font_size=2.0 * CONTENT_FONT_SIZE,
+        ).move_to(fem_formulation.get_center())
+        self.play(
+            FadeOut(domain),
+            FadeOut(domain_label),
+            FadeOut(grid_lines),
+            ReplacementTransform(fem_formulation[0], linear_system_text),
+            run_time=1.0,
+        )
+
+        # slide: CG
+        self.next_slide(notes="We solve this system using Conjugate Gradient method...")
+        arrow = Arrow(
+            start=ORIGIN,
+            end=DOWN,
+            buff=0.0,
+            stroke_width=2,
+            color=WHITE,
+        ).next_to(linear_system_text, DOWN, buff=0.5)
+        cg_text = defense.paragraph(
+            "Conjugate Gradient (CG) Method",
+            font_size=1.5 * CONTENT_FONT_SIZE,
+            alignment=ALIGN.CENTER,
+            width=0.2 * FRAME_WIDTH,
+        ).next_to(arrow, DOWN, buff=0.5)
+        self.play(Write(arrow), Write(cg_text), run_time=1.0)
+        succesive_approximations = VGroup()
+        num_approximations = 5
+        for i in range(num_approximations):
+            approx = TexText(
+                f"$\\mathbf{{u}}_{{{i}}}$,",
+                font_size=1.5 * CONTENT_FONT_SIZE,
+            )
+            succesive_approximations.add(approx)
+        succesive_approximations.add(TexText("...", font_size=1.5 * CONTENT_FONT_SIZE))
+        succesive_approximations.arrange(RIGHT, buff=0.5)
+        succesive_approximations.next_to(cg_text, DOWN, buff=0.5)
+        approximations_brace = Brace(succesive_approximations, DOWN)
+        approximations_label = TexText(
+            "Successive Approximations", font_size=1.5 * CONTENT_FONT_SIZE
+        )
+        approximations_label.next_to(approximations_brace, DOWN)
+        self.play(
+            Write(succesive_approximations),
+            Write(approximations_brace),
+            Write(approximations_label),
+            run_time=1.0,
+        )
+        cg_stuff = VGroup(
+            cg_text,
+            arrow,
+            succesive_approximations,
+            approximations_brace,
+            approximations_label,
+        )
+
+        # slide: main research question
+        self.next_slide(notes="But how fast does CG converge? Main Research Question.")
+        main_question = defense.paragraph(
+            "\\textit{How can we improve existing bounds on the total number of necessary CG approximations?}",
+            font_size=2.0 * CONTENT_FONT_SIZE,
+            alignment=ALIGN.CENTER,
+            t2c={
+                "improve": CustomColors.RED.value,
+                "necessary": CustomColors.RED.value,
+            },
+            width=0.22 * FRAME_WIDTH,
+        )
+        self.slide_contents = images + bboxes + [linear_system_text, cg_stuff]
+
+        # move everything up
+        self.update_slide(new_contents=main_question, subtitle="Main Research Question", notes="")
+        self.slide_contents = [main_question]
 
     def toc(self):
         item = Item()
@@ -585,6 +780,7 @@ class defense(Slide):
             + f"\\\\{item}. New Bounds in Practice: Using Ritz Values"
             + f"\\\\{item}. Conclusion: Key Takeaways \& Future Directions",
             font_size=CONTENT_FONT_SIZE,
+            alignment=ALIGN.LEFT,
         ).align_to(self.slide_title, LEFT)
         self.update_slide("Contents", new_contents=contents, notes="Table of Contents")
         self.slide_contents = [contents]
@@ -647,31 +843,35 @@ class defense(Slide):
     def references(self):
         refs = list(CITED_REFERENCES.values())
         chunk_size = 6
-        for i in range(0, len(refs), chunk_size):
-            refs_text = [f"{ref}" for ref in refs[i : i + chunk_size]]
+        chunks = (len(refs) + chunk_size - 1) // chunk_size  # ceiling division
+        for c in range(0, chunks):
+            start = c * chunk_size
+            end = min((c + 1) * chunk_size, len(refs))
+            refs_text = [f"{ref}" for ref in refs[start:end]]
             refs_mobj = (
                 defense.paragraph(
                     *refs_text,
                     font_size=FOOTNOTE_FONT_SIZE,
                     additional_preamble="\\usepackage{hyperref}",
-                    alignment=LEFT,
+                    alignment=ALIGN.LEFT,
                     width=0.6 * FRAME_WIDTH,
                 )
                 .next_to(self.slide_title, DOWN, buff=0.5)
                 .align_to(self.slide_title, LEFT)
             )
             self.update_slide(
-                f"References ({i+1}-{min(i+chunk_size, len(refs))})",
+                f"References ({start+1}-{end})",
                 new_contents=refs_mobj,
                 notes="References",
             )
+            self.slide_constents = [refs_mobj]
 
     # full construct
     def construct(self):
         # self.wait_time_between_slides = 0.10
-        self.title_slide()
+        # self.title_slide()
         self.level_0_opening()
-        self.toc()
+        # self.toc()
         # self.level_1_intro_cg()
         # self.level_2_cg_convergence()
         # self.level_3_preconditioning()
