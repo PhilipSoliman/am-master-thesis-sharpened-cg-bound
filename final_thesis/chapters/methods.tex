@@ -389,13 +389,17 @@ Note that in general $\gamma_i < 1$ and $\zeta^{(i,j)}_1 > \zeta^{(j)}_2$. There
     p_i \leq \left\lceil\log_{\gamma_i}{\frac{\epsilon}{2}} + \sum_{j=1}^{i-1} p_j\log_{\gamma_i}\left(\frac{\zeta^{(j)}_2}{\zeta^{(i,j)}_1}\right)\right\rceil
     \label{eq:chebyshev_degree_p_i_explicit}
 \end{equation}
-Evidently, adding more clusters to the left of the interval $[a_i,b_i]$ increases the degree $p_i$ of the Chebyshev polynomial. Next to this, \cref{eq:chebyshev_degree_p_i_explicit} reduces to the classical CG iteration bound \cref{eq:cg_convergence_rate_bound_iterations} for a single cluster when $i = N_{\text{clusters}} = 1$.
+Evidently, adding more clusters to the left of the interval $[a_i,b_i]$ increases the degree $p_i$ of the Chebyshev polynomial. Next to this, \cref{eq:chebyshev_degree_p_i_explicit} reduces to the classical CG iteration bound \cref{eq:cg_convergence_rate_bound_iterations} for a single cluster when $i = N_{\text{cluster}} = 1$.
 
-Equation \ref{eq:chebyshev_degree_p_i_explicit} gives us a way to calculate the Chebyshev degree $p_i$ of the $i^{\text{th}}$ cluster $[a_i,b_i]$ in terms of the Chebyshev degrees of the previous clusters. To obtain a bound on the number of iterations for the CG method we sum the Chebyshev degrees of all the clusters
-\begin{equation}
-    m_{N_{\text{clusters}}} = \sum_{i=1}^{N_{\text{clusters}}} p_i
-    \label{eq:cg_iteration_bound_multiple_clusters}
-\end{equation}
+Equation \ref{eq:chebyshev_degree_p_i_explicit} gives us a way to calculate the Chebyshev degree $p_i$ of the $i^{\text{th}}$ cluster $[a_i,b_i]$ in terms of the Chebyshev degrees of the previous clusters. To obtain a bound on the number of iterations for the CG method we sum the Chebyshev degrees of all the clusters. This leads to the \cref{th:cg_multi_cluster_iteration_bound}.
+\begin{fancyth}{Multiple cluster CG iteration bound $m_{N_{\text{cluster}}}$}{cg_multi_cluster_iteration_bound}
+    Given an SPD matrix $A \in \mathbb{R}^{n \times n}$ with eigenspectrum as shown in \cref{fig:multiple_eigenvalue_clusters} consisting of $N_{\text{cluster}}$ clusters, the number of CG iterations $m$ required for convergence to a tolerance $\epsilon$ is bounded by
+    \begin{equation}
+        m_{N_{\text{cluster}}} = \sum_{i=1}^{N_{\text{cluster}}} p_i
+        \label{eq:cg_iteration_bound_multiple_clusters}
+    \end{equation}
+    where the Chebyshev degrees $p_i$ satisfy the inequality from \cref{eq:chebyshev_degree_p_i_explicit}.
+\end{fancyth}
 
 \subsection{Multiple tail clusters}\label{sec:cg_single_eigenvalue_tail_clusters}
 We have not yet generalized to an eigenvalue spectrum consisting of multiple tail clusters. Moreover, the most general eigenvalue spectrum can consist of any combination of \textit{regular} and tail clusters, as shown in \cref{fig:general_spectrum}.
@@ -417,7 +421,7 @@ The polynomial $r_t(x)$ is indeed the natural choice for polynomials of the tail
 \end{equation}
 Now, consider the global residual polynomial $r(x)$ defined as
 \begin{equation}
-    r(x) = \prod_{j} r_{t_j}(x) \prod_{i=1}^{N_{\text{clusters}}} \hat{C}^{(i)}_{p_i}(x)= \prod_{\lambda\in\Lambda_{t}} \left(1 - \frac{x}{\lambda}\right)\prod_{i=1}^{N_{\text{clusters}}} \hat{C}^{(i)}_{p_i}(x) = r_t(x)\prod_{i=1}^{N_{\text{clusters}}} \hat{C}^{(i)}_{p_i}(x),
+    r(x) = \prod_{j} r_{t_j}(x) \prod_{i=1}^{N_{\text{cluster}}} \hat{C}^{(i)}_{p_i}(x)= \prod_{\lambda\in\Lambda_{t}} \left(1 - \frac{x}{\lambda}\right)\prod_{i=1}^{N_{\text{cluster}}} \hat{C}^{(i)}_{p_i}(x) = r_t(x)\prod_{i=1}^{N_{\text{cluster}}} \hat{C}^{(i)}_{p_i}(x),
     \label{eq:residual_polynomial_tail_clusters_global}
 \end{equation}
 where $\Lambda_{t} = \cup_{j} \Lambda_{t_j}$. Hence, we recover $r_t(x)$ from \cref{eq:residual_polynomial_tail_clusters} and see that is a natural generalization.
@@ -426,24 +430,29 @@ The degree of $r_{t}$ is equal to the number of eigenvalues in $\Lambda_{t}$, wh
 \begin{equation}
     p_i \leq \left\lceil\log_{\gamma_i}{\frac{\epsilon}{2}} + \sum_{j=1}^{i-1} p_j\log_{\gamma_i}{\frac{\zeta^{(j)}_2}{\zeta^{(i,j)}_1}} - \sum_{\lambda\in\Lambda_{t}}
     \log_{\gamma_i}\left|1-\frac{h_i}{\lambda}\right|\right\rceil,
+    \label{eq:chebyshev_degree_p_i_explicit_tail_clusters}
 \end{equation}
 where
 \[
     h_i = \arg\max_{x\in[a_i,b_i]} \left|r_{t}(x)\right|,
 \]
 that is, we make the approximation that the maximum of the tail residual polynomial $r_{t}$ on the $i^{\text{th}}$ cluster is attained at one of that cluster's endpoints. For instance, in the case that the $i^{\text{th}}$ cluster lies fully to the right of all tail eigenvalues, that is $a_i > \max\{\lambda : \lambda \in \Lambda_{t}\}$, we have $h_i = b_i$. Finally, we can combine \cref{eq:chebyshev_degree_p_i_explicit}
-and \cref{eq:cg_iteration_bound_multiple_clusters} as
-\begin{equation}
-    m_N = N_{t} + \sum_{i=1}^{N_{\text{clusters}}} p_i.
-    \label{eq:cg_iteration_bound_multiple_clusters_s}
-\end{equation}
+and \cref{eq:cg_iteration_bound_multiple_clusters} to obtain \cref{th:cg_multi_tail_cluster_iteration_bound}.
+\begin{fancyth}{Tail-cluster CG iteration bound $m_{N_{\text{tail-cluster}}}$}{cg_multi_tail_cluster_iteration_bound}
+    Given an SPD matrix $A \in \mathbb{R}^{n \times n}$ with eigenspectrum consisting of $N_{\text{cluster}}$ clusters and a set of tail eigenvalues $\Lambda_{t}$, the number of CG iterations $m$ required for convergence to a tolerance $\epsilon$ is bounded by
+    \begin{equation}
+        m_{N_{\text{tail-cluster}}} = N_{t} + \sum_{i=1}^{N_{\text{cluster}}} p_i.
+        \label{eq:cg_iteration_bound_multiple_clusters_s}
+    \end{equation}
+    where $N_{t} = |\Lambda_{t}|$ and the Chebyshev degrees $p_i$ satisfy the inequality from \cref{eq:chebyshev_degree_p_i_explicit_tail_clusters}.
+\end{fancyth}
 
 \subsection{Computation of the generalized CG bound}\label{sec:cg_multi_cluster_bound_algorithm}
 We summarize the techniques outlined in this section in \cref{alg:generalized_cg_bound}. This algorithm takes a set of clusters, a possibly empty set of tail eigenvalues $\Lambda_t$ and a relative error tolerance $\epsilon$ as input and returns the generalized multi-tail-cluster CG iteration bound $m_N$. The algorithm iterates over all clusters, calculating the Chebyshev degree $p_i$ for each cluster based on the previous clusters' degrees and the relative error tolerance. It also treats tail eigenvalues as discussed in \cref{sec:cg_single_eigenvalue_tail_clusters}. Finally, it sums up all the Chebyshev degrees and the contribution from the tail eigenvalues to obtain the multi-cluster CG bound.
 \begin{algorithm}[H]
     \caption{$\operatorname{GeneralizedCGIterationBound}(\text{clusters}, \Lambda_t, \epsilon)$}
     \begin{algorithmic}[1]
-        \State \textbf{Input:} Sorted set $\text{clusters} = \langle[a_1, b_1], [a_2, b_2], \ldots, [a_{N_{\text{clusters}}}, b_{N_{\text{clusters}}}]\rangle$, a set of tail eigenvalues $\Lambda_t$ and relative error tolerance $\epsilon$
+        \State \textbf{Input:} Sorted set $\text{clusters} = \langle[a_1, b_1], [a_2, b_2], \ldots, [a_{N_{\text{cluster}}}, b_{N_{\text{cluster}}}]\rangle$, a set of tail eigenvalues $\Lambda_t$ and relative error tolerance $\epsilon$
         \State \textbf{Output:} Generalized multi-tail-cluster CG iteration bound $m_N$
         \State Initialize $N_{t} \gets |\Lambda_{t}|$, $P \gets \emptyset$
         \State Construct the residual polynomial $\ln|r_{t}|(x) = \sum_{\lambda\in\Lambda_{t}} \ln\left|1 - \frac{x}{\lambda}\right|$
@@ -460,7 +469,7 @@ We summarize the techniques outlined in this section in \cref{alg:generalized_cg
         \State $p_i \gets \left\lceil\log_{\gamma_i}\left(\frac{\epsilon_i}{2}\right)\right\rceil$
         \State $P \gets P \cup \langle p_i \rangle$
         \EndFor
-        \State $m_{N} \gets N_{t} + \sum_{i=1}^{N_{\text{clusters}}} P[i]$
+        \State $m_{N} \gets N_{t} + \sum_{i=1}^{N_{\text{cluster}}} P[i]$
         \State \Return $m_{N}$
     \end{algorithmic}
     \label{alg:generalized_cg_bound}
@@ -505,7 +514,7 @@ Recursive application of \cref{alg:split_eigenspectrum} with stopping criterion 
     \caption{$\operatorname{PartitionEigenspectrum}(\sigma)$}
     \begin{algorithmic}[1]
         \State \textbf{Input:} Sorted eigenvalues $\sigma = \langle\lambda_1, \lambda_2, \ldots, \lambda_n\rangle$
-        \State \textbf{Output:} Sorted partition indices $K^* = \langle k^*_1, k^*_2, \ldots, k^*_{N_{\text{clusters}}-1}, n\rangle$
+        \State \textbf{Output:} Sorted partition indices $K^* = \langle k^*_1, k^*_2, \ldots, k^*_{N_{\text{cluster}}-1}, n\rangle$
         \If{$\sigma = \emptyset$}
             \State \Return $\emptyset$
         \ElsIf{$|\sigma| = n \leq 2$}
@@ -558,7 +567,7 @@ and the sparsity condition from \cref{eq:tail_cluster_bound_sparsity_condition}.
     \caption{$\operatorname{PartitionEigenspectrumTails}(\sigma, \Lambda_t\gets\emptyset, I_t\gets\emptyset, \text{offset}\gets1)$}
     \begin{algorithmic}[1]
         \State \textbf{Input:} Sorted eigenvalues $\sigma = \langle\lambda_1, \lambda_2, \ldots, \lambda_n\rangle$, preinitialized set of tail eigenvalues $\Lambda_t$, preinitialized set of tail cluster start indices $I_t$ and an offset for the tail indices equal to 1
-        \State \textbf{Output:} Sorted partition indices $K^* = \langle k^*_1, k^*_2, \ldots, k^*_{N_{\text{clusters}}-1}, n\rangle$, updated set of tail eigenvalues $\Lambda_t$ and updated set of tail cluster start indices $I_t$
+        \State \textbf{Output:} Sorted partition indices $K^* = \langle k^*_1, k^*_2, \ldots, k^*_{N_{\text{cluster}}-1}, n\rangle$, updated set of tail eigenvalues $\Lambda_t$ and updated set of tail cluster start indices $I_t$
         \If{$\sigma = \emptyset$}
             \State \Return $\emptyset$
         \ElsIf{$|\sigma| = n = 1$}

@@ -38,8 +38,8 @@ Substituting this into the template for the error projection methods given in \c
   \end{algorithmic}
 \end{algorithm}
 
-Note that a stopping criterion can be derived from the residual vector $\mathbf{r}_m = \mathbf{b} - A\mathbf{u}_m$. Theorem \ref{th:arnoldi_residual} gives a way of calculating the size of the residual vector.
-\begin{APPfancyth}{Arnoldi residual \cite[Proposition 6.7]{iter_method_saad}}{arnoldi_residual}
+Note that a stopping criterion can be derived from the residual vector $\mathbf{r}_m = \mathbf{b} - A\mathbf{u}_m$. Theorem \ref{th:arnoldi_residual} gives a way of calculating the size of the residual vector \cite[Proposition 6.7]{iter_method_saad}.
+\begin{APPfancyth}{Arnoldi residual}{arnoldi_residual}
   The residual vector $\mathbf{r}_m = \mathbf{b} - A\mathbf{u}_m$ satisfies
   \begin{equation}
     \|r_m\|_2 = h_{m+1,m}|\mathbf{e}^T_m \mathbf{c}|,

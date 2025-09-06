@@ -17,16 +17,18 @@
     \node[subbox, below=of multi_cluster, xshift=3.0cm] (generalized) {$\operatorname{GeneralizedCGIterationBound}$\\(\cref{alg:generalized_cg_bound})};
 
     % Inputs
-    \node[draw, rounded corners, fill=subtitle, minimum width=2.5cm, minimum height=0.7cm, above=of split] (input) {Sorted eigenvalues $\sigma$, $\epsilon$};
+    \node[draw, rounded corners, fill=subtitle, minimum width=2.5cm, minimum height=0.7cm, above=of split] (input) {Sorted eigenvalues $\sigma$, rel. error tolerance $\epsilon$};
     \draw[arrow] (input) -- (split);
 
     % Arrows for MultiCluster
     \draw[arrow] (split) -- node[label] {Uses \cref{th:two_cluster_performance_threshold}} (partition);
+    \draw[arrow] (partition) -- (split); % recursion
     \draw[arrow] (partition) -- node[label] {partition indices $K^*$} (multi_cluster);
     \draw[arrow] (multi_cluster) -- node[label] {clusters, $\Lambda_t$} (generalized);
 
     % Arrows for MultiTailCluster
     \draw[arrow] (split) -- node[label] {Uses \cref{th:tail_cluster_performance_condition}} (partition_tails);
+    \draw[arrow] (partition_tails) -- (split); % recursion
     \draw[arrow] (partition_tails) -- node[label] {partition indices $K^*$, $\Lambda_t$, $I_t$} (multi_tail_cluster);
     \draw[arrow] (multi_tail_cluster) -- node[label] {clusters, $\Lambda_t$} (generalized);
 
@@ -41,9 +43,9 @@
     % Legend
     \node[draw, rounded corners, fill=white, font=\footnotesize, right=of output, yshift=0.5cm] (legend) {
         \begin{tabular}{ll}
-            \textbf{Dotted box} & Recursion \\
-            \textbf{Opaque, rounded box} & Input \\
-            \textbf{Sharp, golden box} & Output \\
+            \textbf{Dotted rectangle}    & Recursion \\
+            \textbf{Rounded, opaque box} & Input     \\
+            \textbf{Sharp, golden box}   & Output    \\
         \end{tabular}
     };
 
