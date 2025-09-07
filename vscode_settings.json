@@ -10,11 +10,22 @@
                     "cwd": "${workspaceFolder}/defense/manimations"
                 },
                 {
-                    "name": "Present Manim (Slides)",
+                    "name": "Render+Convert Manim (Slides)",
                     "color": "blue",
                     "command": "workbench.action.tasks.runTask",
                     "args": [
-                        "Present Manim Slides"
+                        "Render+Convert Manim Slides"
+                    ],
+                    "singleInstance": true,
+                    "cwd": "${workspaceFolder}/defense/manimations",
+                    "useVsCodeApi": true
+                },
+                {
+                    "name": "Render Manim Slides (LAST)",
+                    "color": "blue",
+                    "command": "workbench.action.tasks.runTask",
+                    "args": [
+                        "Render Manim Slides (LAST)"
                     ],
                     "singleInstance": true,
                     "cwd": "${workspaceFolder}/defense/manimations",
@@ -111,12 +122,28 @@
                 "problemMatcher": []
             },
             {
-                "label": "Present Manim Slides",
+                "label": "Render+Convert Manim Slides",
                 "dependsOn": [
                     "Render Manim Slides",
                     "Convert Manim Slides"
                 ],
                 "dependsOrder": "sequence"
+            },
+            {
+                "label": "Render Manim Slides (LAST)",
+                "type": "shell",
+                "command": "${workspaceFolder}\\.venv\\Scripts\\manim-slides",
+                "problemMatcher": [],
+                "options": {
+                    "cwd": "${workspaceFolder}\\${relativeFileDirname}"
+                },
+                "args": [
+                    "render",
+                    "--GL",
+                    "-s",
+                    "${file}",
+                    "${fileBasenameNoExtension}"
+                ]
             }
         ]
     },
