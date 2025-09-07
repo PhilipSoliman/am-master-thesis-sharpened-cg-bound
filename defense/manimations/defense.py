@@ -15,6 +15,7 @@ from manim_slides import Slide
 os.environ["NO_HCMSFEM_CLI_ARGS"] = ""
 from hcmsfem.plot_utils import CustomColors
 from hcmsfem.root import get_venv_root
+from hcmsfem.solvers import CustomCG, classic_cg_iteration_bound
 
 # Manim render settings
 FPS = 24
@@ -160,6 +161,75 @@ def cite(ref_key):
         data = REFERENCES[ref_key]
         CITED_REFERENCES[ref_key] = Reference(**data)
     return CITED_REFERENCES[ref_key].short_cite()
+
+
+# global functions
+
+
+def generate_spectra(
+    eigenvalue_range: tuple[float, float],
+    cluster_width_limits: tuple[float, float],
+    num_clusters: int,
+    num_spectra: int,
+    problem_size: int,
+    rng: np.random.Generator,
+) -> tuple[list[np.ndarray], list[np.ndarray]]:
+    spectra = []
+    matrices = []
+    n_interior_eigenvalues = problem_size - 2  # reserving 2 for min and max eigenvalues
+    for _ in range(num_spectra):
+        n_interior_eigenvalues = (
+            problem_size - 2
+        )  # reserving 2 for min and max eigenvalues
+        clusters = []
+        for i in range(num_clusters):
+            # determine number of eigenvalues in this cluster
+            if i < num_clusters - 1:
+                n_cluster_eigenvalues = int(n_interior_eigenvalues * rng.random(1))
+            else:
+                n_cluster_eigenvalues = n_interior_eigenvalues
+
+            # construct cluster
+            cluster_width = rng.uniform(*cluster_width_limits)
+            min_eig = eigenvalue_range[0] + cluster_width
+            max_eig = eigenvalue_range[1] - cluster_width
+            cluster_center = rng.uniform(min_eig, max_eig)
+            cluster = np.random.normal(
+                cluster_center, cluster_width / 8, size=n_cluster_eigenvalues
+            )
+
+            # store cluster and update remaining number of eigenvalues
+            clusters.append(cluster)
+            n_interior_eigenvalues -= n_cluster_eigenvalues
+
+        # construct spectrum
+        spectrum = np.sort(
+            np.concatenate(([eigenvalue_range[0]], *clusters, [eigenvalue_range[1]]))
+        )
+
+        # store spectra and associated diagonal matrices
+        spectra.append(spectrum)
+        matrices.append(np.diag(spectrum))
+    return spectra, matrices
+
+
+def generate_cg_residual_polys(
+    spectra: list[np.ndarray],
+    diagonal_matrices: list[np.ndarray],
+    problem_size: int,
+    rhs: np.ndarray,
+    x0: np.ndarray,
+) -> list[np.poly1d]:
+    residual_polys = []
+    for spectrum, matrix in zip(spectra, diagonal_matrices):
+        cg = CustomCG(matrix, rhs, x0, tol=1e-8, maxiter=problem_size)
+        x_exact = rhs / spectrum
+        _, _ = cg.solve(x_exact=x_exact)
+        cg.residual_polynomials()
+        coeffs = cg.residual_polynomials_coefficients[-1]
+        rp = np.poly1d(coeffs)
+        residual_polys.append(rp)
+    return residual_polys
 
 
 class defense(Slide):
@@ -1388,7 +1458,7 @@ class defense(Slide):
         cg_residual = TexText(
             r"$r_m(A) = I - Aq_m(A)$",
             font_size=2.0 * CONTENT_FONT_SIZE,
-            t2c={r"r_m(A)": CustomColors.RED.value, r"q_m(A)": CustomColors.GOLD.value},
+            t2c={r"r_m": CustomColors.RED.value, r"q_m": CustomColors.GOLD.value},
         ).next_to(cg_rectangle_and_text, RIGHT, buff=1.0)
         cg_residual_text = TexText(
             r"Residual Polynomial",
@@ -1454,10 +1524,6 @@ class defense(Slide):
             .move_to(ORIGIN)
             .shift(1.5 * LEFT)
         )
-        cg_error_bound_text_uniform = TexText(
-            "Classical CG Error Bound",
-            font_size=2.0 * CONTENT_FONT_SIZE,
-        ).next_to(cg_error_bound_uniform, UP, buff=0.5)
         m_1_text = TexText(
             r"$m_1\left(\frac{\lambda_{\max}}{\lambda_{\min}}\right)$",
             font_size=2.0 * CONTENT_FONT_SIZE,
@@ -1465,13 +1531,20 @@ class defense(Slide):
                 r"\lambda_{\max}": CustomColors.SKY.value,
                 r"\lambda_{\min}": CustomColors.SKY.value,
             },
-        ).next_to(cg_error_bound_uniform, RIGHT, buff=1.0)
-        arrow = Arrow(
+        )
+        always(m_1_text.next_to, cg_error_bound_uniform, RIGHT, buff=1.0)
+        arrow = always_redraw(
+            Arrow,
             start=cg_error_bound_uniform.get_right(),
             end=m_1_text.get_left(),
             buff=0.2,
             color=WHITE,
         )
+        full_classical_bound = VGroup(cg_error_bound_uniform, m_1_text)
+        cg_error_bound_text_uniform = TexText(
+            "Classical CG Error Bound",
+            font_size=2.0 * CONTENT_FONT_SIZE,
+        ).next_to(full_classical_bound, UP, buff=0.5)
         self.play(
             FadeOut(brace),
             FadeOut(cg_residual_and_spectrum),
@@ -1481,8 +1554,340 @@ class defense(Slide):
             Write(m_1_text),
             run_time=2 * self.RUN_TIME,
         )
+        self.next_slide(
+            notes="which can recover the classical bound by assuming a uniform distribution of eigenvalues...",
+        )
 
-        # slide: TODO input manimation
+        # slide: cg spetra and polynomials
+        domain = (0.0, 1.01, 0.2)
+        domain_range = domain[1] - domain[0]
+        codomain = (-1.0, 1.01, 0.5)
+        codomain_range = codomain[1] - codomain[0]
+        height = 0.5 * FRAME_HEIGHT
+        width = 0.7 * FRAME_WIDTH
+        num_points = 100
+        spectra_transition_time = 1.5
+
+        # initiate spectra
+        num_spectra = 10
+        num_clusters = 3
+        eigv_sample_range = (
+            0.1,
+            1.0,
+        )
+        problem_size = 300
+        solve_precision = 1e-8
+        rng = np.random.default_rng(95)
+        rhs = rng.random(problem_size)
+        x0 = np.zeros(problem_size)
+        axes = Axes(
+            x_range=domain,
+            y_range=codomain,
+            height=height,
+            width=width,
+            axis_config={
+                "stroke_color": WHITE,
+                "stroke_width": 2,
+                "include_tip": True,
+            },
+        )
+        self.x_label = Tex(r"\lambda").move_to(
+            axes.c2p(domain[1] + 0.1 * domain_range, codomain[0] + 0.5 * codomain_range)
+        )
+        self.y_label = Tex(r"r(\lambda)").move_to(
+            axes.c2p(domain[0] - 0.15 * domain_range, 0.8 * codomain[1])
+        )
+        l_min_label = (
+            TexText(
+                r"$\lambda_{\min}$", t2c={r"\lambda_{\min}": CustomColors.SKY.value}
+            )
+            .move_to(
+                axes.c2p(eigv_sample_range[0], codomain[0] + 0.35 * codomain_range)
+            )
+            .set_z_index(10)
+        )
+        l_max_label = (
+            TexText(
+                r"$\lambda_{\max}$", t2c={r"\lambda_{\max}": CustomColors.SKY.value}
+            )
+            .move_to(
+                axes.c2p(eigv_sample_range[1], codomain[0] + 0.35 * codomain_range)
+            )
+            .set_z_index(10)
+        )
+        axes.add_coordinate_labels(
+            font_size=20,
+            num_decimal_places=1,
+        )
+        classical_bound_val = classic_cg_iteration_bound(
+            eigv_sample_range[1] / eigv_sample_range[0], np.log(solve_precision)
+        )
+        self.play(
+            FadeOut(cg_error_bound_text_uniform),
+            FadeOut(arrow),
+            full_classical_bound.animate.to_edge(DOWN).shift(0.5 * UP),
+            ShowCreation(axes),
+            ShowCreation(self.x_label),
+            ShowCreation(self.y_label),
+            ShowCreation(l_min_label),
+            ShowCreation(l_max_label),
+            run_time=2 * self.RUN_TIME,
+        )
+        cg_error_bound_uniform_short = (
+            (
+                TexText(
+                    r"$\underset{r\in\mathcal{P}_m,\ r(0)=1}{\min} \ \underset{\lambda \in [\lambda_{\min}, \lambda_{\max}]}{\max}|r(\lambda)|$",
+                    font_size=2.0 * CONTENT_FONT_SIZE,
+                    t2c={
+                        r"r": CustomColors.RED.value,
+                        r"\lambda_{\min}, \lambda_{\max}": CustomColors.SKY.value,
+                    },
+                )
+            )
+            .move_to(cg_error_bound_uniform.get_center())
+            .set_z_index(10)
+        )
+        self.play(
+            ReplacementTransform(cg_error_bound_uniform, cg_error_bound_uniform_short),
+            run_time=0.5 * self.RUN_TIME,
+        )
+        m_1_text.clear_updaters()
+        always(m_1_text.next_to, cg_error_bound_uniform_short, RIGHT, buff=1.0)
+        m_1_text.set_z_index(10)
+        arrow2 = always_redraw(
+            Arrow,
+            start=cg_error_bound_uniform_short.get_right(),
+            end=m_1_text.get_left(),
+            buff=0.2,
+            color=WHITE,
+        ).set_z_index(10)
+        self.play(
+            cg_error_bound_uniform_short.animate.align_to(cg_error_bound_uniform, LEFT),
+            Write(arrow2),
+            run_time=0.5 * self.RUN_TIME,
+        )
+
+        # generate spectra and polynomials for two clusters
+        spectra, matrices = generate_spectra(
+            eigv_sample_range,
+            (1e-2, 0.2),
+            num_clusters=num_clusters,
+            num_spectra=num_spectra,
+            problem_size=problem_size,
+            rng=rng,
+        )
+        cg_residual_polys = generate_cg_residual_polys(
+            spectra, matrices, problem_size, rhs, x0
+        )
+
+        # plot the first spectrum and its residual polynomial
+        self.plot_spectrum_and_poly(
+            axes,
+            spectra[0],
+            cg_residual_polys[0],
+            domain,
+            domain_range,
+            codomain,
+            num_points,
+            spectra_transition_time,
+            classical_bound_val,
+        )
+
+        # slide: loop through spectra and polys
+        super().next_slide(loop=True, notes="We can now look at different spectra...")
+        for spectrum, cg_residual_poly in zip(spectra[1:], cg_residual_polys[1:]):
+            self.plot_spectrum_and_poly(
+                axes,
+                spectrum,
+                cg_residual_poly,
+                domain,
+                domain_range,
+                codomain,
+                num_points,
+                spectra_transition_time,
+                classical_bound_val,
+            )
+        self.plot_spectrum_and_poly(
+            axes,
+            spectra[0],
+            cg_residual_polys[0],
+            domain,
+            domain_range,
+            codomain,
+            num_points,
+            spectra_transition_time,
+            classical_bound_val,
+        )
+        super().next_slide(loop=False, notes="...Lets look at a uniform spectrum now.")
+
+        # slide: uniform spectrum
+        uniform_spectrum = np.linspace(
+            eigv_sample_range[0], eigv_sample_range[1], problem_size
+        )
+        uniform_cg_residual_poly = generate_cg_residual_polys(
+            [uniform_spectrum],
+            [np.diag(uniform_spectrum)],
+            problem_size,
+            rhs,
+            x0,
+        )[0]
+        self.plot_spectrum_and_poly(
+            axes,
+            uniform_spectrum,
+            uniform_cg_residual_poly,
+            domain,
+            domain_range,
+            codomain,
+            num_points,
+            spectra_transition_time,
+            classical_bound_val,
+        )
+        self.next_slide(
+            notes="For a uniform spectrum, the classical bound is sharp.",
+        )
+
+        # slide: split spectrum
+        half_1 = problem_size // 2
+        half_2 = problem_size - half_1
+        split_spectrum = np.concatenate(
+            [
+                np.ones(half_1) * eigv_sample_range[0],
+                np.ones(half_2) * eigv_sample_range[1],
+            ]
+        )
+        split_cg_residual_poly = generate_cg_residual_polys(
+            [split_spectrum],
+            [np.diag(split_spectrum)],
+            problem_size,
+            rhs,
+            x0,
+        )[0]
+        self.plot_spectrum_and_poly(
+            axes,
+            split_spectrum,
+            split_cg_residual_poly,
+            domain,
+            domain_range,
+            codomain,
+            num_points,
+            spectra_transition_time,
+            classical_bound_val,
+        )
+        self.next_slide(
+            notes="For a split spectrum, the classical bound is pessimistic.",
+        )
+
+        # slide: restate research question
+        arrow2.clear_updaters()
+        self.slide_contents = [
+            axes,
+            self.x_label,
+            self.y_label,
+            l_min_label,
+            l_max_label,
+            self.cg_residual_poly_graph,
+            self.spectrum_group,
+            self.y_label,
+            self.degree_tex,
+            cg_error_bound_uniform_short,
+            arrow2,
+        ]
+        old_research_question = defense.paragraph(
+            "\\textit{How can we sharpen the classical CG iteration bound $m_1$ on the total number of necessary CG approximations for high-contrast problems?}",
+            font_size=2.0 * CONTENT_FONT_SIZE,
+            alignment=ALIGN.CENTER,
+            width=0.22 * FRAME_WIDTH,
+        )
+        self.update_slide(
+            new_contents=[old_research_question],
+            subtitle="Research Question (Revisited)",
+            notes="Revisiting the research question in light of the new findings.",
+        )
+
+        # slide: new research question
+        new_research_question = defense.paragraph(
+            "\\textit{How can we sharpen the classical CG iteration bound $m_1$ on the total number of necessary CG approximations through exploiting the full spectrum of A?}",
+            t2c={
+                "full spectrum of A": CustomColors.GOLD.value,
+            },
+            font_size=2.0 * CONTENT_FONT_SIZE,
+            alignment=ALIGN.CENTER,
+            width=0.22 * FRAME_WIDTH,
+        )
+        self.play(
+            ReplacementTransform(old_research_question, new_research_question),
+            run_time=self.RUN_TIME,
+        )
+        self.next_slide(notes="This leads to the refined research question.")
+        self.slide_contents = [new_research_question]
+
+    def plot_spectrum_and_poly(
+        self,
+        axes,
+        spectrum: np.ndarray,
+        cg_residual_poly: np.poly1d,
+        domain: tuple,
+        domain_range: float,
+        codomain: tuple,
+        num_points: int,
+        spectra_transition_time: float,
+        classical_bound_val: int,
+    ):
+        # create dots from spectrum
+        spectrum_dots = [
+            Dot(
+                axes.c2p(eig, 0),
+                fill_color=CustomColors.SKY.value,
+                radius=DEFAULT_DOT_RADIUS,
+            )
+            for eig in spectrum
+        ]
+        spectrum_group = VGroup(*spectrum_dots)
+
+        # create graph from cg_residual_poly
+        cg_residual_poly_graph = axes.get_graph(
+            lambda x: cg_residual_poly(x),
+            x_range=(domain[0], domain[1], domain[1] / num_points),
+            color=CustomColors.GOLD.value,
+        )
+
+        # get degree of polynomial (= number of CG iterations)
+        degree = cg_residual_poly.coefficients.shape[0] - 1
+        y_label = axes.get_y_axis_label(f"r_{{{degree}}}(\\lambda)").move_to(
+            self.y_label.get_center()
+        )
+
+        # add degree in seperate texbox
+        degree_tex = Tex(
+            f"m = {degree} \leq m_1 = {classical_bound_val}",
+            font_size=2.0 * CONTENT_FONT_SIZE,
+        )
+        degree_tex.move_to(axes.c2p(domain[0] + 0.5 * domain_range, 0.9 * codomain[1]))
+
+        if not hasattr(self, "cg_residual_poly_graph"):
+            self.play(
+                FadeIn(cg_residual_poly_graph, scale=0.5),
+                FadeIn(spectrum_group, scale=0.5),
+                ReplacementTransform(self.y_label, y_label),
+                FadeIn(degree_tex, scale=0.5),
+                run_time=spectra_transition_time,
+            )
+        else:
+            self.play(
+                ReplacementTransform(
+                    self.cg_residual_poly_graph, cg_residual_poly_graph
+                ),
+                ReplacementTransform(self.spectrum_group, spectrum_group),
+                ReplacementTransform(self.y_label, y_label),
+                ReplacementTransform(self.degree_tex, degree_tex),
+                run_time=spectra_transition_time,
+            )
+
+        # update mobjects
+        self.cg_residual_poly_graph = cg_residual_poly_graph
+        self.spectrum_group = spectrum_group
+        self.y_label = y_label
+        self.degree_tex = degree_tex
 
     def level_3_preconditioning(self):
         self.update_slide(
@@ -1587,4 +1992,5 @@ class defense(Slide):
     #             self.wait(delay)
     #             self.remove(frame_img)
 
+    #     cap.release()
     #     cap.release()

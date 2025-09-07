@@ -13,8 +13,8 @@ from manimlib import *
 from manimlib.config import manim_config
 
 # Manim render settings
-FPS = 60
-QUALITY = (1920, 1080)  # 4k = (3840,2160)
+FPS = 30
+QUALITY = (1280, 720)  # HD = (1920, 1080)  # 4k = (3840,2160)
 manim_config.camera.fps = FPS
 manim_config.camera.resolution = QUALITY
 
@@ -26,18 +26,17 @@ CODOMAIN_RANGE = CODOMAIN[1] - CODOMAIN[0]
 HEIGHT = 7
 WIDTH = 10
 NUM_POINTS = 100
-X_VALUES = np.linspace(DOMAIN[0], DOMAIN[1], NUM_POINTS)
 SPECTRA_TRANSITION_TIME = 1.5
 
 # initiate spectra
-NUM_SPECTRA = 15
+NUM_SPECTRA = 6
 NUM_CLUSTERS = 3
 EIGV_SAMPLE_RANGE = (
     0.01,
     1.0,
 )
 PROBLEM_SIZE = 300
-RNG = np.random.default_rng(42)
+RNG = np.random.default_rng(95)  # 42
 RHS = RNG.random(PROBLEM_SIZE)
 X0 = np.zeros(PROBLEM_SIZE)
 
@@ -118,7 +117,9 @@ class cg_residual_poly(Slide):
             },
         )
         self.x_label = Tex(r"\lambda").move_to(
-            self.axes.c2p(DOMAIN[1] + 0.1 * DOMAIN_RANGE, CODOMAIN[0] + 0.5 * CODOMAIN_RANGE)
+            self.axes.c2p(
+                DOMAIN[1] + 0.1 * DOMAIN_RANGE, CODOMAIN[0] + 0.5 * CODOMAIN_RANGE
+            )
         )
         self.y_label = Tex(r"r(\lambda)").move_to(
             self.axes.c2p(DOMAIN[0] - 0.15 * DOMAIN_RANGE, 0.8 * CODOMAIN[1])
