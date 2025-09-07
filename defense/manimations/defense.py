@@ -18,7 +18,7 @@ from hcmsfem.root import get_venv_root
 from hcmsfem.solvers import CustomCG, classic_cg_iteration_bound
 
 # Manim render settings
-FPS = 24
+FPS = 30
 
 
 class QUALITY(Enum):
@@ -31,7 +31,7 @@ class QUALITY(Enum):
 
 
 manim_config.camera.fps = FPS
-manim_config.camera.resolution = QUALITY.P480.value
+manim_config.camera.resolution = QUALITY.HD.value
 manim_config.background_color = WHITE
 manim_config.directories.raster_images = (get_venv_root() / "images").as_posix()
 manim_config.camera.background_color = CustomColors.NAVY.value
@@ -255,7 +255,7 @@ class defense(Slide):
         self.DR = Dot().to_corner(DR).get_center()
 
         # Mutable variables
-        self.counter = 1
+        self.counter = 0
         self.slide_number = Integer(1).set_color(WHITE).to_corner(DR)
         self.slide_title = Text("Contents", font_size=TITLE_FONT_SIZE).to_corner(UL)
         self.slide_subtitle = Text(
@@ -514,7 +514,7 @@ class defense(Slide):
         self.play(FadeIn(cover), FadeIn(rectangle), run_time=0.5)
 
         # Title slide
-        self.next_slide(notes="title slide")
+        super().next_slide(notes="title slide")
         title = TexText(
             "Sharpened CG Iteration Bound for High-contrast Heterogeneous Scalar Elliptic PDEs",
             font_size=0.8 * TITLE_FONT_SIZE,
@@ -549,7 +549,7 @@ class defense(Slide):
             cover,
             VGroup(rectangle, title, subtitle, author, master_thesis, affiliation),
         ]
-        self.next_slide()
+        super().next_slide()
 
     def level_0_opening(self):
         image_height = 0.6 * FRAME_HEIGHT
@@ -858,8 +858,9 @@ class defense(Slide):
             + f"\\\\{item}. How Sharp Are the New Bounds?"
             + f"\\\\{item}. New Bounds in Practice: Using Ritz Values"
             + f"\\\\{item}. Conclusion: Key Takeaways \& Future Directions",
-            font_size=CONTENT_FONT_SIZE,
+            font_size=1.5 * CONTENT_FONT_SIZE,
             alignment=ALIGN.LEFT,
+            width=0.22 * FRAME_WIDTH,
         ).align_to(self.slide_title, LEFT)
         self.update_slide("Contents", new_contents=contents, notes="Table of Contents")
         self.slide_contents = [contents]
@@ -1082,7 +1083,9 @@ class defense(Slide):
         self.next_slide(notes="with errors decreasing as j increases.")
 
         # slide: CG classical error bound
-        citation = cite("iter_method_saad").next_to(self.slide_number, RIGHT, buff=0.2)
+        citation = cite("iter_method_saad").next_to(
+            self.slide_title, RIGHT, buff=0.2
+        )
         classical_error_bound = TexText(
             r"$\epsilon_m \leq 2\left(\frac{\sqrt{\kappa(A)}-1}{\sqrt{\kappa(A)}+1}\right)^m$",
             font_size=2.0 * CONTENT_FONT_SIZE,
@@ -1123,6 +1126,7 @@ class defense(Slide):
             font_size=2.0 * CONTENT_FONT_SIZE,
         ).move_to(classical_error_bound_text.get_center())
         self.play(
+            FadeOut(citation),
             ReplacementTransform(classical_error_bound, classical_iteration_bound),
             ReplacementTransform(
                 classical_error_bound_text, classical_iteration_bound_text
@@ -1214,13 +1218,12 @@ class defense(Slide):
             notes="So we update our research question.",
         )
         new_main_question = defense.paragraph(
-            "\\textit{How can we sharpen the classical CG iteration bound $m_1$ for high-contrast problems?}",
+            "\\textit{How can we construct a sharp CG iteration bound for high-contrast problems?}",
             font_size=2.0 * CONTENT_FONT_SIZE,
             alignment=ALIGN.CENTER,
             t2c={
                 "high-contrast": CustomColors.GOLD.value,
-                "sharpen": CustomColors.GOLD.value,
-                "m_1": CustomColors.GOLD.value,
+                "sharp": CustomColors.GOLD.value,
             },
             width=0.22 * FRAME_WIDTH,
         )
@@ -1795,7 +1798,7 @@ class defense(Slide):
             arrow2,
         ]
         old_research_question = defense.paragraph(
-            "\\textit{How can we sharpen the classical CG iteration bound $m_1$ on the total number of necessary CG approximations for high-contrast problems?}",
+            "\\textit{How can we construct a sharp CG iteration bound for high-contrast problems?}",
             font_size=2.0 * CONTENT_FONT_SIZE,
             alignment=ALIGN.CENTER,
             width=0.22 * FRAME_WIDTH,
@@ -1808,7 +1811,7 @@ class defense(Slide):
 
         # slide: new research question
         new_research_question = defense.paragraph(
-            "\\textit{How can we sharpen the classical CG iteration bound $m_1$ for high-contrast problems using the full spectrum of A?}",
+            "\\textit{How can we construct a sharp CG iteration bound for high-contrast problems using the full spectrum of A?}",
             t2c={
                 "full spectrum of A": CustomColors.GOLD.value,
             },
@@ -1932,14 +1935,14 @@ class defense(Slide):
             m_1,
             m,
         )
-        always(high_contrast_issue.arrange, RIGHT, buff=0.5)
-        always(high_contrast_issue.move_to, ORIGIN)
         self.update_slide(
             "Preconditioning",
             new_contents=[high_contrast_issue],
             subtitle="Taming High-Contrast Problems",
             notes="Recap: High-contrast leads to",
         )
+        always(high_contrast_issue.arrange, RIGHT, buff=0.5)
+        always(high_contrast_issue.move_to, ORIGIN)
 
         # slide: continued
         self.play(
@@ -2035,9 +2038,9 @@ class defense(Slide):
             m_1,
             m_sharp,
         ]
-        coefficient_function_image = ImageMobject(
-            "coefficient_functions"
-        ).stretch_to_fit_height(0.6 * FRAME_HEIGHT)
+        coefficient_function_image = ImageMobject("coefficient_functions").set_height(
+            0.6 * FRAME_HEIGHT
+        )
         citations = [
             cite("ams_coarse_space_comp_study_Alves2024"),
             cite("ams_framework_Wang2014"),
@@ -2213,7 +2216,9 @@ class defense(Slide):
         M_2_legend.target.scale(2.0)
         M_2_legend.background_rectangle.generate_target()
         M_2_legend.background_rectangle.target.stretch_to_fit_width(1.3)
-        M_2_legend.background_rectangle.target.stretch_to_fit_height(legend.get_height())
+        M_2_legend.background_rectangle.target.stretch_to_fit_height(
+            legend.get_height()
+        )
         self.play(
             MoveToTarget(M_2_legend),
             MoveToTarget(M_2_legend.background_rectangle),
@@ -2243,10 +2248,9 @@ class defense(Slide):
 
         # slide: new research question
         new_research_question = defense.paragraph(
-            "\\textit{How can we sharpen the classical CG iteration bound $m_1$ for high-contrast problems using the full spectrum of A and the preconditioner M?}",
+            "\\textit{How can we construct a sharp CG iteration bound for high-contrast problems using the full spectrum of A, such that it can distinguish between $M_1,M_2,M_3$?}",
             t2c={
-                "full spectrum of A": CustomColors.GOLD.value,
-                "preconditioner M": CustomColors.GOLD.value,
+                "can distinguish between $M_1,M_2,M_3$": CustomColors.GOLD.value,
             },
             font_size=2.0 * CONTENT_FONT_SIZE,
             alignment=ALIGN.CENTER,
@@ -2314,27 +2318,27 @@ class defense(Slide):
             )
             self.update_slide(
                 f"References ({start+1}-{end})",
-                new_contents=refs_mobj,
+                new_contents=[refs_mobj],
                 notes="References",
             )
-            self.slide_constents = [refs_mobj]
+            self.slide_contents = [refs_mobj]
 
     # full construct
     def construct(self):
         # self.wait_time_between_slides = 0.10
-        # self.title_slide()
-        # self.level_0_opening()
-        # self.toc()
-        # self.level_1_intro_cg()
-        # self.level_2_cg_convergence()
+        self.title_slide()
+        self.level_0_opening()
+        self.toc()
+        self.level_1_intro_cg()
+        self.level_2_cg_convergence()
         self.level_3_preconditioning()
-        # self.level_4_two_clusters()
+        self.level_4_two_clusters()
         # self.level_5_multi_clusters()
         # self.level_6_sharpness()
         # self.level_7_early_bounds()
         # self.level_8_conclusion()
         # self.backup()
-        # self.references()
+        self.references()
 
     # TODO: miscellaneous
     # Optional: Video playback function
