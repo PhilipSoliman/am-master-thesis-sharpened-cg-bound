@@ -1082,6 +1082,7 @@ class defense(Slide):
         self.next_slide(notes="with errors decreasing as j increases.")
 
         # slide: CG classical error bound
+        citation = cite("iter_method_saad").next_to(self.slide_number, RIGHT, buff=0.2)
         classical_error_bound = TexText(
             r"$\epsilon_m \leq 2\left(\frac{\sqrt{\kappa(A)}-1}{\sqrt{\kappa(A)}+1}\right)^m$",
             font_size=2.0 * CONTENT_FONT_SIZE,
@@ -1094,6 +1095,7 @@ class defense(Slide):
             "Classical CG Error Bound", font_size=2.0 * CONTENT_FONT_SIZE
         ).next_to(classical_error_bound_box, UP, buff=0.5)
         self.play(
+            Write(citation),
             ReplacementTransform(succesive_errors, classical_error_bound),
             Write(classical_error_bound_box),
             Write(classical_error_bound_text),
@@ -1212,7 +1214,7 @@ class defense(Slide):
             notes="So we update our research question.",
         )
         new_main_question = defense.paragraph(
-            "\\textit{How can we sharpen the classical CG iteration bound $m_1$ on the total number of necessary CG approximations for high-contrast problems?}",
+            "\\textit{How can we sharpen the classical CG iteration bound $m_1$ for high-contrast problems?}",
             font_size=2.0 * CONTENT_FONT_SIZE,
             alignment=ALIGN.CENTER,
             t2c={
@@ -1806,7 +1808,7 @@ class defense(Slide):
 
         # slide: new research question
         new_research_question = defense.paragraph(
-            "\\textit{How can we sharpen the classical CG iteration bound $m_1$ on the total number of necessary CG approximations using the full spectrum of A?}",
+            "\\textit{How can we sharpen the classical CG iteration bound $m_1$ for high-contrast problems using the full spectrum of A?}",
             t2c={
                 "full spectrum of A": CustomColors.GOLD.value,
             },
@@ -1890,11 +1892,371 @@ class defense(Slide):
         self.degree_tex = degree_tex
 
     def level_3_preconditioning(self):
+        # slide: recap high-contrast leading to pessimistic bounds
+        high_contrast_text = TexText(
+            "High-contrast $\mathcal{C}$",
+            font_size=2.0 * CONTENT_FONT_SIZE,
+        )
+        arrow_hc_to_kappa = Arrow(
+            start=ORIGIN,
+            end=0.5 * RIGHT,
+            buff=0.0,
+            color=WHITE,
+        )
+        condition_number = TexText(
+            "$\kappa(A)$",
+            font_size=2.0 * CONTENT_FONT_SIZE,
+            t2c={r"\kappa": CustomColors.RED.value},
+        )
+        arrow_to_m_1 = Arrow(
+            start=ORIGIN,
+            end=0.5 * RIGHT,
+            buff=0.0,
+            color=WHITE,
+        ).set_opacity(0)
+        m_1 = TexText(
+            "$m_1(\kappa)$",
+            font_size=2.0 * CONTENT_FONT_SIZE,
+            t2c={r"\kappa": CustomColors.RED.value},
+        ).set_opacity(0)
+        m = TexText(
+            "$\gg m$",
+            font_size=2.0 * CONTENT_FONT_SIZE,
+        ).set_opacity(0)
+        high_contrast_issue = always_redraw(
+            VGroup,
+            high_contrast_text,
+            arrow_hc_to_kappa,
+            condition_number,
+            arrow_to_m_1,
+            m_1,
+            m,
+        )
+        always(high_contrast_issue.arrange, RIGHT, buff=0.5)
+        always(high_contrast_issue.move_to, ORIGIN)
         self.update_slide(
             "Preconditioning",
+            new_contents=[high_contrast_issue],
             subtitle="Taming High-Contrast Problems",
-            notes="Explain (motivation for) preconditioning",
+            notes="Recap: High-contrast leads to",
         )
+
+        # slide: continued
+        self.play(
+            condition_number.animate.scale(2.0),
+            arrow_to_m_1.animate.set_opacity(1),
+            m_1.animate.set_opacity(1).scale(2.0),
+            m.animate.set_opacity(1),
+            run_time=2 * self.RUN_TIME,
+        )
+        self.next_slide(
+            notes="high values for kappa and thus pessimistic bound m_1 on m.",
+        )
+
+        # slide: preconditioned system
+        preconditioner = TexText(
+            r"Preconditioner: $M \approx A$",
+            font_size=2.0 * CONTENT_FONT_SIZE,
+            t2c={
+                r"Preoconditioner": CustomColors.GOLD.value,
+                r"M": CustomColors.GOLD.value,
+            },
+        ).next_to(high_contrast_issue, UP, buff=1.0)
+        system = TexText(
+            r"$A\mathbf{u} = \mathbf{b}$",
+            font_size=2.0 * CONTENT_FONT_SIZE,
+        ).next_to(high_contrast_issue, DOWN, buff=1.0)
+        preconditioned_system = TexText(
+            r"$M^{-1}A\mathbf{u} = M^{-1}\mathbf{b}$",
+            t2c={r"M": CustomColors.GOLD.value},
+            font_size=2.0 * CONTENT_FONT_SIZE,
+        ).move_to(system.get_center())
+        self.play(Write(system), Write(preconditioner), run_time=2 * self.RUN_TIME)
+        self.play(
+            ReplacementTransform(system, preconditioned_system), run_time=self.RUN_TIME
+        )
+        self.next_slide(
+            notes="The problem of large condition numbers can be mitigated by using preconditioning. We transform the system...",
+        )
+
+        # slide: condition number of preconditioned system
+        conditioner_number_center = condition_number.get_center()
+        preconditioned_condition_number = TexText(
+            r"$\kappa(M^{-1}A)$",
+            font_size=2.0 * CONTENT_FONT_SIZE,
+            t2c={r"\kappa": CustomColors.RED.value, r"M": CustomColors.GOLD.value},
+        ).scale(2.0)
+        self.play(
+            FadeOut(preconditioner),
+            FadeOutToPoint(preconditioned_system, conditioner_number_center),
+            ReplacementTransform(condition_number, preconditioned_condition_number),
+            run_time=2 * self.RUN_TIME,
+        )
+        high_contrast_issue2 = VGroup(
+            high_contrast_text,
+            arrow_hc_to_kappa,
+            preconditioned_condition_number,
+            arrow_to_m_1,
+            m_1,
+            m,
+        )
+        high_contrast_issue2.arrange(RIGHT, buff=0.5)
+        high_contrast_issue2.move_to(ORIGIN)
+        high_contrast_issue.align_to(high_contrast_issue2.get_center())
+        high_contrast_issue2.add_updater(
+            lambda m: m.arrange(RIGHT, buff=0.5).move_to(ORIGIN)
+        )
+        self.play(
+            ReplacementTransform(high_contrast_issue, high_contrast_issue2),
+            run_time=self.RUN_TIME,
+        )
+        self.play(
+            preconditioned_condition_number.animate.scale(0.5),
+            m_1.animate.scale(0.5),
+            run_time=self.RUN_TIME,
+        )
+        m_sharp = TexText(
+            r"$ \geq m$",
+            font_size=2.0 * CONTENT_FONT_SIZE,
+            t2c={r"\kappa": CustomColors.RED.value},
+        ).move_to(m.get_center())
+        self.play(ReplacementTransform(m, m_sharp), run_time=self.RUN_TIME)
+        self.next_slide(
+            notes="and hope that the preconditioned system has a smaller condition number.",
+        )
+
+        # slide: high coefficient functions from Filipe and Alexander
+        high_contrast_issue2.clear_updaters()
+        self.slide_contents = [
+            high_contrast_text,
+            arrow_hc_to_kappa,
+            preconditioned_condition_number,
+            arrow_to_m_1,
+            m_1,
+            m_sharp,
+        ]
+        coefficient_function_image = ImageMobject(
+            "coefficient_functions"
+        ).stretch_to_fit_height(0.6 * FRAME_HEIGHT)
+        citations = [
+            cite("ams_coarse_space_comp_study_Alves2024"),
+            cite("ams_framework_Wang2014"),
+            cite("gdsw_coarse_space_Dohrmann2008"),
+            cite("rgdsw_coarse_space_Dohrmann2017"),
+        ]
+        for i, c in enumerate(citations):
+            c.next_to(self.slide_subtitle, RIGHT, buff=0.1).shift(i * 0.3 * RIGHT)
+        self.update_slide(
+            subtitle="Taming High-Contrast Problems",
+            new_contents=[coefficient_function_image, citations[0]],
+            notes="Lets look at two specific examples of coefficient functions.",
+        )
+
+        # slide: introduce three preconditioners
+        M_1 = TexText(
+            r"$M_{\text{2-OAS-GDSW}}$",
+            font_size=1.5 * CONTENT_FONT_SIZE,
+        )
+        M_2 = TexText(
+            r"$M_{\text{2-OAS-RGDSW}}$",
+            font_size=1.5 * CONTENT_FONT_SIZE,
+        )
+        M_3 = TexText(
+            r"$M_{\text{2-OAS-AMS}}$",
+            font_size=1.5 * CONTENT_FONT_SIZE,
+        )
+        for i, M in enumerate([M_1, M_2, M_3]):
+            M.next_to(coefficient_function_image, DOWN, buff=0).shift(
+                (i - 1) * 3.0 * RIGHT
+            )
+        self.play(
+            Write(M_1),
+            Write(M_2),
+            Write(M_3),
+            *[Write(citation) for citation in citations[1:]],
+            run_time=2 * self.RUN_TIME,
+        )
+        self.next_slide(
+            notes="We consider three different preconditioners for these problems...",
+        )
+
+        # slide: simplify labels
+        M_1_simple = TexText(
+            r"$M_1$",
+            font_size=1.5 * CONTENT_FONT_SIZE,
+        )
+        M_2_simple = TexText(
+            r"$M_2$",
+            font_size=1.5 * CONTENT_FONT_SIZE,
+        )
+        M_3_simple = TexText(
+            r"$M_3$",
+            font_size=1.5 * CONTENT_FONT_SIZE,
+        )
+        for i, M in enumerate([M_1_simple, M_2_simple, M_3_simple]):
+            M.next_to(coefficient_function_image, DOWN, buff=0).shift(
+                (i - 1) * 1.0 * RIGHT
+            )
+        self.play(
+            ReplacementTransform(M_1, M_1_simple),
+            ReplacementTransform(M_2, M_2_simple),
+            ReplacementTransform(M_3, M_3_simple),
+            run_time=self.RUN_TIME,
+        )
+        self.next_slide(notes="which we will refer to as M1, M2, and M3.")
+
+        # slide: all preconditioners had similar condition numbers
+        M_2_kappa = TexText(
+            r"$\sim\kappa(M_2^{-1}A)\sim$",
+            font_size=1.5 * CONTENT_FONT_SIZE,
+        )
+        M_1_kappa = TexText(
+            r"$\kappa(M_1^{-1}A)$",
+            font_size=1.5 * CONTENT_FONT_SIZE,
+        ).next_to(M_2_kappa, LEFT, buff=0.1)
+        M_3_kappa = TexText(
+            r"$\kappa(M_3^{-1}A)$",
+            font_size=1.5 * CONTENT_FONT_SIZE,
+        ).next_to(M_2_kappa, RIGHT, buff=0.1)
+        self.play(
+            *[FadeOut(citation) for citation in citations],
+            FadeOut(coefficient_function_image),
+            ReplacementTransform(M_1_simple, M_1_kappa),
+            ReplacementTransform(M_2_simple, M_2_kappa),
+            ReplacementTransform(M_3_simple, M_3_kappa),
+            run_time=2 * self.RUN_TIME,
+        )
+        self.next_slide(
+            notes="All three preconditioners resulted in similar condition numbers...",
+        )
+
+        # slide: results from study
+        vertex_func_results = (
+            ImageMobject("cg_iterations_coefficient_vertex_Alves")
+            .stretch_to_fit_width(0.4 * FRAME_WIDTH)
+            .align_to(self.slide_subtitle, LEFT)
+            .shift(0.9 * RIGHT)
+        )
+        edge_func_results = (
+            ImageMobject("cg_iterations_coefficient_edges_Alves")
+            .stretch_to_fit_width(0.4 * FRAME_WIDTH)
+            .next_to(vertex_func_results, RIGHT, buff=0.2)
+        )
+        vertex_func_plot = [
+            vertex_func_results,
+            TexText(
+                r"$\mathcal{C}_{\text{3layer, vert}}$",
+                font_size=CONTENT_FONT_SIZE,
+            ).next_to(vertex_func_results, UP, buff=0.2),
+            TexText(
+                "Problem Size",
+                font_size=CONTENT_FONT_SIZE,
+            ).next_to(vertex_func_results, DOWN, buff=0.2),
+            TexText("Iterations", font_size=CONTENT_FONT_SIZE)
+            .rotate(90 * DEGREES)
+            .next_to(vertex_func_results, LEFT, buff=0.2),
+        ]
+        edge_func_plot = [
+            edge_func_results,
+            TexText(
+                r"$\mathcal{C}_{\text{3layer, edge}}$",
+                font_size=CONTENT_FONT_SIZE,
+            ).next_to(edge_func_results, UP, buff=0.2),
+        ]
+        legend = (
+            ImageMobject("method_legend_Alves")
+            .stretch_to_fit_height(0.05 * FRAME_HEIGHT)
+            .stretch_to_fit_width(0.4 * FRAME_WIDTH)
+            .to_edge(DOWN)
+            .shift(0.5 * UP)
+        )
+        M_1_legend = TexText(
+            r"$M_1$",
+            font_size=1.5 * CONTENT_FONT_SIZE,
+        )
+        M_2_legend = TexText(
+            r"$M_2$",
+            font_size=1.5 * CONTENT_FONT_SIZE,
+        )
+        M_3_legend = TexText(
+            r"$M_3$",
+            font_size=1.5 * CONTENT_FONT_SIZE,
+        )
+        for i, M in enumerate([M_1_legend, M_2_legend, M_3_legend]):
+            M.add_background_rectangle()
+            M.background_rectangle.set_fill(opacity=1.0, color=CustomColors.NAVY.value)
+            M.background_rectangle.stretch_to_fit_width(1.3)
+            M.background_rectangle.stretch_to_fit_height(legend.get_height())
+            M.background_rectangle.set_stroke(opacity=0.0)
+            M.move_to(legend.get_center()).align_to(legend, LEFT).shift(
+                [0.7, 0, 0] + i * 2.0 * RIGHT
+            )
+
+        self.play(
+            FadeOut(M_1_kappa),
+            FadeOut(M_2_kappa),
+            FadeOut(M_3_kappa),
+            *[FadeIn(mobj) for mobj in vertex_func_plot],
+            *[FadeIn(mobj) for mobj in edge_func_plot],
+            FadeIn(legend),
+            FadeIn(M_1_legend),
+            FadeIn(M_2_legend),
+            FadeIn(M_3_legend),
+            run_time=2 * self.RUN_TIME,
+        )
+        self.next_slide(
+            notes="However the number of CG iterations varied significantly..."
+        )
+
+        # slide: M_2 (RGDSW) took more iterations
+        M_2_legend.generate_target()
+        M_2_legend.target.scale(2.0)
+        M_2_legend.background_rectangle.generate_target()
+        M_2_legend.background_rectangle.target.stretch_to_fit_width(1.3)
+        M_2_legend.background_rectangle.target.stretch_to_fit_height(legend.get_height())
+        self.play(
+            MoveToTarget(M_2_legend),
+            MoveToTarget(M_2_legend.background_rectangle),
+            run_time=self.RUN_TIME,
+        )
+        self.next_slide(
+            notes="with M2 (RGDSW) consistently taking more iterations.",
+        )
+
+        # slide: restate research question
+        self.slide_contents = (
+            vertex_func_plot
+            + edge_func_plot
+            + [legend, M_1_legend, M_2_legend, M_3_legend]
+        )
+        old_research_question = defense.paragraph(
+            "\\textit{How can we sharpen the classical CG iteration bound $m_1$ for high-contrast problems using the full spectrum of A?}",
+            font_size=2.0 * CONTENT_FONT_SIZE,
+            alignment=ALIGN.CENTER,
+            width=0.22 * FRAME_WIDTH,
+        )
+        self.update_slide(
+            new_contents=[old_research_question],
+            subtitle="Research Question (Revisited)",
+            notes="Revisiting the research question in light of the new findings.",
+        )
+
+        # slide: new research question
+        new_research_question = defense.paragraph(
+            "\\textit{How can we sharpen the classical CG iteration bound $m_1$ for high-contrast problems using the full spectrum of A and the preconditioner M?}",
+            t2c={
+                "full spectrum of A": CustomColors.GOLD.value,
+                "preconditioner M": CustomColors.GOLD.value,
+            },
+            font_size=2.0 * CONTENT_FONT_SIZE,
+            alignment=ALIGN.CENTER,
+            width=0.22 * FRAME_WIDTH,
+        )
+        self.play(
+            ReplacementTransform(old_research_question, new_research_question),
+            run_time=self.RUN_TIME,
+        )
+        self.slide_contents = [new_research_question]
 
     def level_4_two_clusters(self):
         self.update_slide(
@@ -1964,15 +2326,15 @@ class defense(Slide):
         # self.level_0_opening()
         # self.toc()
         # self.level_1_intro_cg()
-        self.level_2_cg_convergence()
-        # self.level_3_preconditioning()
+        # self.level_2_cg_convergence()
+        self.level_3_preconditioning()
         # self.level_4_two_clusters()
         # self.level_5_multi_clusters()
         # self.level_6_sharpness()
         # self.level_7_early_bounds()
         # self.level_8_conclusion()
         # self.backup()
-        self.references()
+        # self.references()
 
     # TODO: miscellaneous
     # Optional: Video playback function
