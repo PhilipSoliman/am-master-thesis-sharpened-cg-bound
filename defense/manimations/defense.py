@@ -860,7 +860,7 @@ class defense(Slide):
             + f"\\\\{item}. Conclusion: Key Takeaways \& Future Directions",
             font_size=1.5 * CONTENT_FONT_SIZE,
             alignment=ALIGN.LEFT,
-            width=0.22 * FRAME_WIDTH,
+            width=0.3 * FRAME_WIDTH,
         ).align_to(self.slide_title, LEFT)
         self.update_slide("Contents", new_contents=contents, notes="Table of Contents")
         self.slide_contents = [contents]
@@ -1935,15 +1935,14 @@ class defense(Slide):
             m_1,
             m,
         )
+        always(high_contrast_issue.arrange, RIGHT, buff=0.5)
         self.update_slide(
             "Preconditioning",
             new_contents=[high_contrast_issue],
             subtitle="Taming High-Contrast Problems",
             notes="Recap: High-contrast leads to",
         )
-        always(high_contrast_issue.arrange, RIGHT, buff=0.5)
         always(high_contrast_issue.move_to, ORIGIN)
-
         # slide: continued
         self.play(
             condition_number.animate.scale(2.0),
@@ -2162,7 +2161,7 @@ class defense(Slide):
         edge_func_plot = [
             edge_func_results,
             TexText(
-                r"$\mathcal{C}_{\text{3layer, edge}}$",
+                r"$\mathcal{C}_{\text{edge slabs, around vertices}}$",
                 font_size=CONTENT_FONT_SIZE,
             ).next_to(edge_func_results, UP, buff=0.2),
         ]
@@ -2260,6 +2259,7 @@ class defense(Slide):
             ReplacementTransform(old_research_question, new_research_question),
             run_time=self.RUN_TIME,
         )
+        self.next_slide(notes="This leads to the refined research question.")
         self.slide_contents = [new_research_question]
 
     def level_4_two_clusters(self):
