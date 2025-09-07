@@ -1806,7 +1806,7 @@ class defense(Slide):
 
         # slide: new research question
         new_research_question = defense.paragraph(
-            "\\textit{How can we sharpen the classical CG iteration bound $m_1$ on the total number of necessary CG approximations through exploiting the full spectrum of A?}",
+            "\\textit{How can we sharpen the classical CG iteration bound $m_1$ on the total number of necessary CG approximations using the full spectrum of A?}",
             t2c={
                 "full spectrum of A": CustomColors.GOLD.value,
             },
