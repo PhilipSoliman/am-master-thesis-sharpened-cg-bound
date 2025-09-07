@@ -1442,14 +1442,18 @@ class defense(Slide):
         # slide: CG recovering classical bound
         cg_error_bound.clear_updaters()
         cg_error_bound_text.clear_updaters()
-        cg_error_bound_uniform = TexText(
-            r"$\epsilon_m \leq \underset{r\in\mathcal{P}_m,\ r(0)=1}{\min} \ \underset{\lambda \in [\lambda_{\min}, \lambda_{\max}]}{\max}|r(\lambda)|$",
-            font_size=2.0 * CONTENT_FONT_SIZE,
-            t2c={
-                r"r": CustomColors.RED.value,
-                r"\lambda_{\min}, \lambda_{\max}": CustomColors.SKY.value,
-            },
-        ).move_to(ORIGIN)
+        cg_error_bound_uniform = (
+            TexText(
+                r"$\epsilon_m \leq \underset{r\in\mathcal{P}_m,\ r(0)=1}{\min} \ \underset{\lambda \in [\lambda_{\min}, \lambda_{\max}]}{\max}|r(\lambda)|$",
+                font_size=2.0 * CONTENT_FONT_SIZE,
+                t2c={
+                    r"r": CustomColors.RED.value,
+                    r"\lambda_{\min}, \lambda_{\max}": CustomColors.SKY.value,
+                },
+            )
+            .move_to(ORIGIN)
+            .shift(1.5 * LEFT)
+        )
         cg_error_bound_text_uniform = TexText(
             "Classical CG Error Bound",
             font_size=2.0 * CONTENT_FONT_SIZE,
@@ -1457,12 +1461,15 @@ class defense(Slide):
         m_1_text = TexText(
             r"$m_1\left(\frac{\lambda_{\max}}{\lambda_{\min}}\right)$",
             font_size=2.0 * CONTENT_FONT_SIZE,
-            t2c={r"\kappa": CustomColors.RED.value},
+            t2c={
+                r"\lambda_{\max}": CustomColors.SKY.value,
+                r"\lambda_{\min}": CustomColors.SKY.value,
+            },
         ).next_to(cg_error_bound_uniform, RIGHT, buff=1.0)
         arrow = Arrow(
             start=cg_error_bound_uniform.get_right(),
             end=m_1_text.get_left(),
-            buff=0.1,
+            buff=0.2,
             color=WHITE,
         )
         self.play(
@@ -1472,7 +1479,7 @@ class defense(Slide):
             ReplacementTransform(cg_error_bound_text, cg_error_bound_text_uniform),
             Write(arrow),
             Write(m_1_text),
-            run_time=2*self.RUN_TIME,
+            run_time=2 * self.RUN_TIME,
         )
 
         # slide: TODO input manimation
