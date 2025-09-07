@@ -242,11 +242,11 @@ class defense(Slide):
         )
 
     # utility functions
-    def next_slide(self, notes: str = ""):
+    def next_slide(self, **kwargs):
         slide_number_update, new_slide_number = self.update_slide_number()
         self.play(slide_number_update)
         self.slide_number = new_slide_number
-        super().next_slide(notes=notes)
+        super().next_slide(**kwargs)
 
     def update_slide_number(self):
         self.counter += 1
@@ -303,6 +303,7 @@ class defense(Slide):
         new_contents: list[Mobject] = [],
         transition_time: float = 0.75,
         notes: str = "",
+        **kwargs,
     ):
         """
         Update the slide with new new_contents. If clean_up is True, remove all existing new_contents from the slide.
@@ -347,9 +348,11 @@ class defense(Slide):
         self.slide_number = new_slide_number
 
         # go to next slide
-        super().next_slide(notes=notes)
+        super().next_slide(notes=notes, **kwargs)
 
-    def update_slide_contents(self, new_contents: list[Mobject], notes: str = ""):
+    def update_slide_contents(
+        self, new_contents: list[Mobject], notes: str = "", **kwargs
+    ):
         """
         Update the slide with new new_contents, without changing title or slide number.
         """
@@ -382,7 +385,7 @@ class defense(Slide):
         self.slide_constents = []
         self.slide_number = new_slide_number
 
-        self.next_slide(notes=notes)
+        super().next_slide(notes=notes, **kwargs)
 
     @staticmethod
     def paragraph(
@@ -1100,7 +1103,12 @@ class defense(Slide):
             "...due to high-contrast in $\mathcal{C}$.",
             font_size=2.0 * CONTENT_FONT_SIZE,
         ).next_to(cg_iteration_bound_simplified, DOWN, buff=0.5)
-        always(high_contrast_text.next_to, cg_iteration_bound_simplified_box, DOWN, buff=0.5)
+        always(
+            high_contrast_text.next_to,
+            cg_iteration_bound_simplified_box,
+            DOWN,
+            buff=0.5,
+        )
         always(high_contrast_text.set_color, CustomColors.RED.value)
         m_text_new.move_to(m_text.get_center() - [0.5, 0, 0])
         self.play(
@@ -1152,11 +1160,322 @@ class defense(Slide):
         self.slide_contents = [new_main_question]
 
     def level_2_cg_convergence(self):
+        linear_system_text = TexText(
+            r"\begin{equation*}A\mathbf{u}=\mathbf{b}\end{equation*}",
+            font_size=2.0 * CONTENT_FONT_SIZE,
+        )
         self.update_slide(
             "How Does CG Converge?",
+            new_contents=[linear_system_text],
             subtitle="The Role of Eigenvalues",
             notes="Explain CGs dependence on eigenvalues",
         )
+
+        plot_resolution = 0.01
+        freq_1, ampl_1, phas_1 = 3 * 2 * PI, 0.5, 0.1 * PI
+        freq_2, ampl_2, phas_2 = 9 * 2 * PI, 2.5, 0.2 * PI
+        freq_3, ampl_3, phas_3 = 15 * 2 * PI, 1.0, 0.3 * PI
+        sin_1 = lambda x, t: ampl_1 * np.sin(freq_1 * (t - x + phas_1))
+        sin_2 = lambda x, t: ampl_2 * np.sin(freq_2 * (t - x + phas_2))
+        sin_3 = lambda x, t: ampl_3 * np.sin(freq_3 * (t - x + phas_3))
+        speaker_img = (
+            ImageMobject("speaker")
+            .stretch_to_fit_width(0.2 * FRAME_WIDTH)
+            .align_to(self.slide_subtitle, LEFT)
+        )
+
+        def composite_sine_wave(t):
+            composite_sine_wave_f = lambda x: sin_1(x, t) + sin_2(x, t) + sin_3(x, t)
+            return (
+                FunctionGraph(
+                    composite_sine_wave_f,
+                    x_range=[0, 1, plot_resolution],
+                    color=WHITE,
+                )
+                .stretch_to_fit_width(0.7 * FRAME_WIDTH)
+                .stretch_to_fit_height(0.5 * FRAME_HEIGHT)
+                .next_to(speaker_img, RIGHT, buff=0)
+            )
+
+        plot = composite_sine_wave(0)
+        tracker = ValueTracker(0)
+        plot.add_updater(lambda m: m.become(composite_sine_wave(tracker.get_value())))
+
+        # slide: see A as a Sine Wave
+        self.play(
+            ReplacementTransform(linear_system_text, plot),
+            FadeIn(speaker_img),
+            run_time=self.RUN_TIME,
+        )
+        self.update_slide(
+            subtitle="The Role of Eigenvalues: Sound Example",
+            notes="We can view the matrix A as a signal...",
+        )
+
+        # slide: moving sine wave
+        super().next_slide(notes="That is travelling...", loop=True)
+        T = 2 * PI / freq_1
+        slow_factor = 5
+        self.play(
+            tracker.animate.set_value(T), run_time=slow_factor * T, rate_func=linear
+        )
+
+        # slide: decomposition
+        super().next_slide(
+            notes="We can decompose this signal into its frequency components...",
+            loop=True,
+        )
+        max_ampl = max(ampl_1, ampl_2, ampl_3)
+        num_cycles = 3
+        T = num_cycles * 2 * PI / freq_1
+
+        def wave_1(t):
+            wave_1_f = lambda x: sin_1(x, t)
+            return (
+                FunctionGraph(
+                    wave_1_f,
+                    x_range=[0, 1, plot_resolution],
+                )
+                .stretch_to_fit_width(0.7 * FRAME_WIDTH)
+                .next_to(speaker_img, RIGHT, buff=0)
+                .shift(0.2 * FRAME_HEIGHT * UP)
+                .stretch_to_fit_height(0.15 * FRAME_HEIGHT * ampl_1 / max_ampl)
+                .set_color(CustomColors.RED.value)
+            )
+
+        def wave_2(t):
+            wave_2_f = lambda x: sin_2(x, t)
+            return (
+                FunctionGraph(
+                    wave_2_f,
+                    x_range=[0, 1, plot_resolution],
+                )
+                .stretch_to_fit_width(0.7 * FRAME_WIDTH)
+                .next_to(speaker_img, RIGHT, buff=0)
+                .stretch_to_fit_height(0.15 * FRAME_HEIGHT * ampl_2 / max_ampl)
+                .set_color(CustomColors.GOLD.value)
+            )
+
+        def wave_3(t):
+            wave_3_f = lambda x: sin_3(x, t)
+            return (
+                FunctionGraph(
+                    wave_3_f,
+                    x_range=[0, 1, plot_resolution],
+                    color=CustomColors.BLUE.value,
+                )
+                .stretch_to_fit_width(0.7 * FRAME_WIDTH)
+                .next_to(speaker_img, RIGHT, buff=0)
+                .shift(0.2 * FRAME_HEIGHT * DOWN)
+                .stretch_to_fit_height(0.15 * FRAME_HEIGHT * ampl_3 / max_ampl)
+                .set_color(CustomColors.BLUE.value)
+            )
+
+        new_tracker = ValueTracker(0)
+        wave_1_plot = wave_1(0).move_to(plot.get_center()).set_stroke(opacity=0)
+        wave_2_plot = wave_2(0).move_to(plot.get_center()).set_stroke(opacity=0)
+        wave_3_plot = wave_3(0).move_to(plot.get_center()).set_stroke(opacity=0)
+        wave_1_plot.generate_target()
+        wave_1_plot.target.move_to(wave_1(0).get_center())
+        wave_1_plot.target.set_stroke(opacity=1)
+        wave_2_plot.generate_target()
+        wave_2_plot.target.move_to(wave_2(0).get_center())
+        wave_2_plot.target.set_stroke(opacity=1)
+        wave_3_plot.generate_target()
+        wave_3_plot.target.move_to(wave_3(0).get_center())
+        wave_3_plot.target.set_stroke(opacity=1)
+        plot.clear_updaters()
+        self.play(
+            FadeOut(plot),
+            MoveToTarget(wave_1_plot),
+            MoveToTarget(wave_2_plot),
+            MoveToTarget(wave_3_plot),
+            run_time=self.RUN_TIME,
+        )
+        wave_1_plot.add_updater(lambda m: m.become(wave_1(new_tracker.get_value())))
+        wave_2_plot.add_updater(lambda m: m.become(wave_2(new_tracker.get_value())))
+        wave_3_plot.add_updater(lambda m: m.become(wave_3(new_tracker.get_value())))
+        self.play(
+            new_tracker.animate.set_value(T), run_time=slow_factor * T, rate_func=linear
+        )
+        super().next_slide(notes="")
+
+        # slide: return to linear system
+        linear_system_text = TexText(
+            r"\begin{equation*}A\mathbf{u}=\mathbf{b}\end{equation*}",
+            font_size=2.0 * CONTENT_FONT_SIZE,
+        )
+        self.slide_contents = [speaker_img, wave_1_plot, wave_2_plot, wave_3_plot]
+        self.update_slide(
+            subtitle="The Role of Eigenvalues",
+            new_contents=[linear_system_text],
+            notes="Returning to our original system...",
+        )
+
+        # slide: eigenvalues of A
+        spectrum_A = TexText(
+            r"$\sigma(A) = \{\lambda_1, \lambda_2, \ldots, \lambda_n\}$",
+            font_size=2.0 * CONTENT_FONT_SIZE,
+            t2c={
+                r"\lambda_1": CustomColors.RED.value,
+                r"\lambda_2": CustomColors.GOLD.value,
+                r"\lambda_n": CustomColors.BLUE.value,
+            },
+        ).move_to(linear_system_text.get_center())
+        condition_number_text = TexText(
+            r"$\kappa(A) = \frac{\lambda_{\text{max}}}{\lambda_{\text{min}}}$",
+            font_size=2.0 * CONTENT_FONT_SIZE,
+        )
+        always(condition_number_text.next_to, spectrum_A, DOWN, buff=0.5)
+        self.play(
+            ReplacementTransform(linear_system_text, spectrum_A),
+            Write(condition_number_text, lag_ratio=0.5),
+            run_time=2 * self.RUN_TIME,
+        )
+        self.next_slide(
+            notes="We can do a similar decomposition of A resulting in its eigenvalues or spectrum...",
+        )
+
+        # slide: CG solution polynmomial
+        spectrum_A.generate_target()
+        spectrum_A.target.next_to(self.slide_subtitle, DOWN, buff=0.5).align_to(
+            self.slide_subtitle, LEFT
+        )
+        cg_rectangle_and_text = VGroup(
+            Rectangle(
+                width=3.0,
+                height=1.0,
+                color=WHITE,
+            ),
+            TexText(
+                "CG",
+                font_size=2.0 * CONTENT_FONT_SIZE,
+            ),
+        )
+        always(cg_rectangle_and_text.next_to, condition_number_text, DOWN, buff=0.5)
+        self.play(
+            MoveToTarget(spectrum_A),
+            Write(cg_rectangle_and_text),
+            run_time=2 * self.RUN_TIME,
+        )
+        cg_solution = TexText(
+            r"$\mathbf{u}_m = \mathbf{u}_0 + q_m(A)\mathbf{r}_0$",
+            font_size=2.0 * CONTENT_FONT_SIZE,
+            t2c={r"q_m(A)": CustomColors.GOLD.value},
+        ).next_to(cg_rectangle_and_text, RIGHT, buff=1.0)
+        cg_solution_text = TexText(
+            r"Solution Polynomial",
+            font_size=2.0 * CONTENT_FONT_SIZE,
+            color=CustomColors.GOLD.value,
+        ).next_to(cg_solution, UP, buff=0.5)
+        arrow = Arrow(
+            start=cg_rectangle_and_text.get_right(),
+            end=cg_solution.get_left(),
+            buff=0.1,
+            color=WHITE,
+        )
+        self.play(
+            Write(arrow),
+            Write(cg_solution),
+            Write(cg_solution_text),
+            run_time=2 * self.RUN_TIME,
+        )
+        self.next_slide(
+            notes="Why is this important? To see this, we look at the CG solution polynomial..."
+        )
+
+        # slide: CG residual polynomial
+        cg_residual = TexText(
+            r"$r_m(A) = I - Aq_m(A)$",
+            font_size=2.0 * CONTENT_FONT_SIZE,
+            t2c={r"r_m(A)": CustomColors.RED.value, r"q_m(A)": CustomColors.GOLD.value},
+        ).next_to(cg_rectangle_and_text, RIGHT, buff=1.0)
+        cg_residual_text = TexText(
+            r"Residual Polynomial",
+            font_size=2.0 * CONTENT_FONT_SIZE,
+            color=CustomColors.RED.value,
+        ).next_to(cg_residual, UP, buff=0.5)
+        self.play(
+            ReplacementTransform(cg_solution, cg_residual),
+            ReplacementTransform(cg_solution_text, cg_residual_text),
+        )
+        self.next_slide(notes="Which is related to the residual polynomial...")
+
+        # slide: General CG error bound
+        cg_residual.generate_target()
+        cg_residual.target.next_to(condition_number_text, DOWN, buff=0.5).align_to(
+            self.slide_subtitle, LEFT
+        )
+        cg_residual_and_spectrum = VGroup(
+            spectrum_A, condition_number_text, cg_residual
+        )
+        brace = Brace(cg_residual_and_spectrum, RIGHT, buff=0.1)
+        always(brace.next_to, cg_residual_and_spectrum, RIGHT, buff=0.1)
+        cg_error_bound = TexText(
+            r"$\epsilon_m \leq \underset{r\in\mathcal{P}_m,\ r(0)=1}{\min} \ \underset{\lambda \in \sigma(A)}{\max}|r(\lambda)|$",
+            font_size=2.0 * CONTENT_FONT_SIZE,
+            t2c={
+                r"r": CustomColors.RED.value,
+                r"\sigma(A)": CustomColors.SKY.value,
+            },
+        )
+        always(cg_error_bound.next_to, brace, RIGHT, buff=0.1)
+        cg_error_bound_text = TexText(
+            "General CG Error Bound",
+            font_size=2.0 * CONTENT_FONT_SIZE,
+        )
+        always(cg_error_bound_text.next_to, cg_error_bound, UP, buff=0.5)
+        self.play(
+            FadeOut(cg_residual_text),
+            FadeOut(cg_rectangle_and_text),
+            FadeOut(arrow),
+            MoveToTarget(cg_residual),
+            Write(brace),
+            Write(cg_error_bound),
+            Write(cg_error_bound_text),
+            run_time=2 * self.RUN_TIME,
+        )
+        self.next_slide(
+            notes="The CG error can be bounded in terms of the residual polynomial..."
+        )
+
+        # slide: CG recovering classical bound
+        cg_error_bound.clear_updaters()
+        cg_error_bound_text.clear_updaters()
+        cg_error_bound_uniform = TexText(
+            r"$\epsilon_m \leq \underset{r\in\mathcal{P}_m,\ r(0)=1}{\min} \ \underset{\lambda \in [\lambda_{\min}, \lambda_{\max}]}{\max}|r(\lambda)|$",
+            font_size=2.0 * CONTENT_FONT_SIZE,
+            t2c={
+                r"r": CustomColors.RED.value,
+                r"\lambda_{\min}, \lambda_{\max}": CustomColors.SKY.value,
+            },
+        ).move_to(ORIGIN)
+        cg_error_bound_text_uniform = TexText(
+            "Classical CG Error Bound",
+            font_size=2.0 * CONTENT_FONT_SIZE,
+        ).next_to(cg_error_bound_uniform, UP, buff=0.5)
+        m_1_text = TexText(
+            r"$m_1\left(\frac{\lambda_{\max}}{\lambda_{\min}}\right)$",
+            font_size=2.0 * CONTENT_FONT_SIZE,
+            t2c={r"\kappa": CustomColors.RED.value},
+        ).next_to(cg_error_bound_uniform, RIGHT, buff=1.0)
+        arrow = Arrow(
+            start=cg_error_bound_uniform.get_right(),
+            end=m_1_text.get_left(),
+            buff=0.1,
+            color=WHITE,
+        )
+        self.play(
+            FadeOut(brace),
+            FadeOut(cg_residual_and_spectrum),
+            ReplacementTransform(cg_error_bound, cg_error_bound_uniform),
+            ReplacementTransform(cg_error_bound_text, cg_error_bound_text_uniform),
+            Write(arrow),
+            Write(m_1_text),
+            run_time=2*self.RUN_TIME,
+        )
+
+        # slide: TODO input manimation
 
     def level_3_preconditioning(self):
         self.update_slide(
@@ -1232,8 +1551,8 @@ class defense(Slide):
         # self.title_slide()
         # self.level_0_opening()
         # self.toc()
-        self.level_1_intro_cg()
-        # self.level_2_cg_convergence()
+        # self.level_1_intro_cg()
+        self.level_2_cg_convergence()
         # self.level_3_preconditioning()
         # self.level_4_two_clusters()
         # self.level_5_multi_clusters()
