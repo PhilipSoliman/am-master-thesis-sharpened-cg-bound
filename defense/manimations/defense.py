@@ -2940,7 +2940,7 @@ class defense(Slide):
         always(label_i.next_to, arrow_i, DOWN + LEFT, buff=0.0)
         always(label_ip1.next_to, arrow_ip1, DOWN + RIGHT, buff=0.0)
 
-        def eig_dot_updater(mobj: Mobject, dt: float):
+        def eig_dot_color_updater(mobj: Mobject, dt: float):
             index = get_index()
             if (
                 mobj == spectrum_for_partitioning_eigs[index]
@@ -2950,7 +2950,7 @@ class defense(Slide):
             return mobj
 
         for eig_dot in spectrum_for_partitioning_eigs:
-            eig_dot.add_updater(lambda m, dt: eig_dot_updater(m, dt))
+            eig_dot.add_updater(lambda m, dt: eig_dot_color_updater(m, dt))
 
         curr_k = 1
         max_gap = 0
@@ -2985,8 +2985,6 @@ class defense(Slide):
 
         # slide: go to largest gap
         center_of_gap = (spectrum_for_partitioning_eigs[curr_k].get_center() + spectrum_for_partitioning_eigs[curr_k + 1].get_center())/2
-        for eig_dot in spectrum_for_partitioning_eigs:
-            eig_dot.clear_updater(eig_dot_updater)
         spectrum_arrow.generate_target()
         spectrum_arrow.target.move_to(center_of_gap)
         arrow_i.clear_updaters()
@@ -2996,6 +2994,15 @@ class defense(Slide):
         index_i_cp.clear_updaters()
         index_ip1_cp.clear_updaters()
         largest_gap_curr_val.clear_updaters()
+        for eig_dot in spectrum_for_partitioning_eigs:
+            eig_dot.remove_updater(eig_dot.get_updaters()[-1])
+        # arrow_i.suspend_updating()
+        # arrow_ip1.suspend_updating()
+        # index_i.suspend_updating()
+        # index_ip1.suspend_updating()
+        # index_i_cp.suspend_updating()
+        # index_ip1_cp.suspend_updating()
+        # largest_gap_curr_val.suspend_updating()
         arrow_i.generate_target()
         arrow_i.target.set_points_by_ends(
             start = spectrum_for_partitioning_eigs[curr_k].get_center() - (1.0 * UP + 0.1 * RIGHT),
