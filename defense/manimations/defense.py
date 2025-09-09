@@ -1,6 +1,7 @@
 # NOTE the structure and functionality of this script and its main class `defense` are
 # adopted from https://github.com/jeertmans/jeertmans.github.io/blob/main/_slides/2023-12-07-confirmation/main.py
 # next to that of course the manim_slides documentation https://manim-slides.readthedocs.io/en/latest/
+import itertools
 from enum import Enum
 
 from manimlib import *
@@ -18,7 +19,7 @@ from hcmsfem.root import get_venv_root
 from hcmsfem.solvers import CustomCG, classic_cg_iteration_bound
 
 # Manim render settings
-FPS = 30
+FPS = 24
 
 
 class QUALITY(Enum):
@@ -31,7 +32,7 @@ class QUALITY(Enum):
 
 
 manim_config.camera.fps = FPS
-manim_config.camera.resolution = QUALITY.HD.value
+manim_config.camera.resolution = QUALITY.P480.value
 manim_config.background_color = WHITE
 manim_config.directories.raster_images = (get_venv_root() / "images").as_posix()
 manim_config.camera.background_color = CustomColors.NAVY.value
@@ -42,6 +43,14 @@ TITLE_FONT_SIZE = 48
 CONTENT_FONT_SIZE = 0.6 * TITLE_FONT_SIZE
 SOURCE_FONT_SIZE = 0.2 * TITLE_FONT_SIZE
 FOOTNOTE_FONT_SIZE = 0.75 * CONTENT_FONT_SIZE
+
+
+# TODO: margin settings
+class MARGINS(Enum):
+    LEFT = 0.05 * FRAME_WIDTH
+    RIGHT = 0.05 * FRAME_WIDTH
+    TOP = 0.05 * FRAME_HEIGHT
+    BOTTOM = 0.1 * FRAME_HEIGHT
 
 
 # custom tex environment
@@ -312,9 +321,9 @@ class defense(Slide):
         )
 
     # utility functions
-    def next_slide(self, **kwargs):
+    def next_slide(self, additional_animations: list[Animation] = [], **kwargs):
         slide_number_update, new_slide_number = self.update_slide_number()
-        self.play(slide_number_update)
+        self.play(slide_number_update, *additional_animations, run_time=self.RUN_TIME)
         self.slide_number = new_slide_number
         super().next_slide(**kwargs)
 
@@ -373,6 +382,7 @@ class defense(Slide):
         new_contents: list[Mobject] = [],
         transition_time: float = 0.75,
         notes: str = "",
+        additional_animations: list[Animation] = [],
         **kwargs,
     ):
         """
@@ -407,6 +417,7 @@ class defense(Slide):
             *title_update,
             slide_number_update,
             *wipe_animation,
+            *additional_animations,
             run_time=transition_time,
         )
 
@@ -1083,9 +1094,7 @@ class defense(Slide):
         self.next_slide(notes="with errors decreasing as j increases.")
 
         # slide: CG classical error bound
-        citation = cite("iter_method_saad").next_to(
-            self.slide_title, RIGHT, buff=0.2
-        )
+        citation = cite("iter_method_saad").next_to(self.slide_title, RIGHT, buff=0.2)
         classical_error_bound = TexText(
             r"$\epsilon_m \leq 2\left(\frac{\sqrt{\kappa(A)}-1}{\sqrt{\kappa(A)}+1}\right)^m$",
             font_size=2.0 * CONTENT_FONT_SIZE,
@@ -2263,11 +2272,636 @@ class defense(Slide):
         self.slide_contents = [new_research_question]
 
     def level_4_two_clusters(self):
+        # slide: classical general CG error bound
+        cg_error_bound_uniform = TexText(
+            r"$\epsilon_m \leq \underset{r\in\mathcal{P}_m,\ r(0)=1}{\min} \ \underset{\lambda \in [\lambda_{\min}, \lambda_{\max}]}{\max}|r(\lambda)|$",
+            font_size=2.0 * CONTENT_FONT_SIZE,
+            t2c={
+                r"\lambda_{\min}, \lambda_{\max}": CustomColors.SKY.value,
+            },
+        )
         self.update_slide(
             "Towards Sharper Iteration Bounds",
-            subtitle="Two-Cluster Spectra",
-            notes="Explain two-cluster bound from Axelsson",
+            subtitle="Strategy for Deriving CG Iteration Bound",
+            new_contents=[cg_error_bound_uniform],
+            notes="We recap the classical CG error bound...",
         )
+
+        # slide: Chebyshev polynomial
+        text1 = TexText(
+            "We can proof that the classical CG error bound's min-max problem",
+            font_size=CONTENT_FONT_SIZE,
+            t2c={r"min-max": CustomColors.RED.value},
+        ).shift(UP)
+        cg_error_bound_uniform_short = TexText(
+            r"$\underset{r\in\mathcal{P}_m,\ r(0)=1}{\min} \ \underset{\lambda \in [\lambda_{\min}, \lambda_{\max}]}{\max}|r(\lambda)|$",
+            font_size=2.0 * CONTENT_FONT_SIZE,
+            t2c={
+                r"\min": CustomColors.RED.value,
+                r"\max": CustomColors.RED.value,
+                r"\lambda_{\min}, \lambda_{\max}": CustomColors.SKY.value,
+            },
+        )
+        text2 = TexText(
+            r"is solved by a \textit{Chebyshev polynomial}.",
+            font_size=CONTENT_FONT_SIZE,
+            t2c={r"\textit{Chebyshev polynomial}": CustomColors.GOLD.value},
+        ).shift(DOWN)
+        chebyshev_poly = TexText(
+            r"\begin{equation*}"
+            r"    C_m(x) = \frac{1}{2}\left(\left(x + \sqrt{x^2 - 1}\right)^m + \left(x - \sqrt{x^2 - 1}\right)^m\right)"
+            r"\end{equation*}",
+            font_size=CONTENT_FONT_SIZE,
+            t2c={r"C_m": CustomColors.GOLD.value},
+        ).next_to(text2, DOWN, buff=0.5)
+        self.play(
+            Write(text1),
+            ReplacementTransform(cg_error_bound_uniform, cg_error_bound_uniform_short),
+            Write(text2),
+            Write(chebyshev_poly),
+            run_time=self.RUN_TIME,
+        )
+        self.next_slide(
+            notes="which can be solved using the Chebyshev polynomial...",
+        )
+
+        # slide: transformed chebyshev polynomial
+        trans_chebyshev_poly = TexText(
+            r"\begin{equation*}"
+            r"r(\lambda) = \hat{C}_m(\lambda) = \frac{C_m\left(\frac{2\lambda - (\lambda_{\min} + \lambda_{\max})}{\lambda_{\max} - \lambda_{\min}}\right)}{C_m\left(\frac{\lambda_{\min} + \lambda_{\max}}{\lambda_{\max} - \lambda_{\min}}\right)}"
+            r"\end{equation*}",
+            font_size=CONTENT_FONT_SIZE,
+            t2c={
+                r"\hat{C}_m": CustomColors.GOLD.value,
+                r"\lambda_{\min}": CustomColors.SKY.value,
+                r"\lambda_{\max}": CustomColors.SKY.value,
+            },
+        ).move_to(chebyshev_poly.get_center())
+        text3 = TexText(
+            r"is solved by a \textit{scaled} Chebyshev polynomial",
+            font_size=CONTENT_FONT_SIZE,
+            t2c={r"\textit{scaled} Chebyshev polynomial": CustomColors.GOLD.value},
+        ).shift(DOWN)
+        self.play(
+            ReplacementTransform(text2, text3),
+            ReplacementTransform(chebyshev_poly, trans_chebyshev_poly),
+        )
+        self.next_slide(
+            notes="actually, a scaled Chebyshev polynomial...",
+        )
+
+        # slide: reintroduce general CG error bound
+        text4 = TexText(
+            "But what if we want to solve the min-max problem over the full spectrum of A?",
+            font_size=CONTENT_FONT_SIZE,
+            t2c={
+                "spectrum of A": CustomColors.SKY.value,
+                "min-max problem": CustomColors.RED.value,
+            },
+        ).shift(UP)
+        cg_error_bound = TexText(
+            r"$\underset{r\in\mathcal{P}_m,\ r(0)=1}{\min} \ \underset{\lambda \in \sigma(A)}{\max}|r(\lambda)|$",
+            font_size=2.0 * CONTENT_FONT_SIZE,
+            t2c={
+                r"\sigma(A)": CustomColors.SKY.value,
+                r"\min": CustomColors.RED.value,
+                r"\max": CustomColors.RED.value,
+            },
+        )
+        text5 = TexText(
+            "Can we still use $\hat{C}_m$?",
+            font_size=CONTENT_FONT_SIZE,
+        ).shift(DOWN)
+        self.play(
+            ReplacementTransform(text1, text4),
+            ReplacementTransform(cg_error_bound_uniform_short, cg_error_bound),
+            FadeOut(text3),
+            FadeOut(trans_chebyshev_poly),
+            FadeIn(text5),
+            run_time=self.RUN_TIME,
+        )
+        self.next_slide(notes="But what if we reintroduce the full spectrum of A?")
+
+        # slide: two clusters spectrum
+        self.slide_contents = [
+            text4,
+            cg_error_bound,
+            text5,
+        ]
+        a = 0.1
+        b = 0.2
+        c = 0.6
+        d = 0.9
+        two_cluster_spectrum = self.generate_clustered_spectrum(
+            [(a, b), (c, d)],
+            ["a", "b", "c", "d"],
+        )
+        two_cluster_spectrum_copy = two_cluster_spectrum.copy()
+        spectrum_label = Tex(
+            r"\sigma(A) = [a,b] \cup [c,d]",
+            font_size=CONTENT_FONT_SIZE,
+            t2c={r"\sigma(A)": CustomColors.SKY.value},
+        )
+        always(spectrum_label.next_to, two_cluster_spectrum, UP, buff=0.5)
+        self.update_slide(
+            subtitle="Simplest, Non-Trivial Case: Two-Cluster Spectra",
+            additional_animations=[Write(two_cluster_spectrum), Write(spectrum_label)],
+            notes="we consider the simplest, non-trivial case of two-cluster spectra.",
+        )
+
+        # slide: how can we solve the min-max problem?
+        text_minmax = TexText(
+            "How can we solve the min-max problem?",
+            t2c={"min-max": CustomColors.RED.value},
+            font_size=CONTENT_FONT_SIZE,
+        ).next_to(two_cluster_spectrum, DOWN, buff=0.5)
+        self.play(
+            Write(text_minmax),
+            run_time=self.RUN_TIME,
+        )
+        self.next_slide(
+            notes="How can we solve the min-max problem in this case?",
+        )
+
+        # slide: composite Chebyshev polynomial
+        text_axelsson = TexText(
+            "We simply use the product of two scaled Chebyshev polynomials!",
+            font_size=CONTENT_FONT_SIZE,
+            t2c={"two scaled Chebyshev polynomials": CustomColors.GOLD.value},
+        ).next_to(two_cluster_spectrum, DOWN, buff=0.5)
+        citation = cite("cg_sharpened_convrate_Axelsson1976").next_to(
+            text_axelsson, RIGHT, buff=0.1
+        )
+        left_chebyshev = Tex(
+            r"\hat{C}_{p}^{[a,b]}(\lambda)",
+            font_size=CONTENT_FONT_SIZE,
+            t2c={
+                r"p": CustomColors.GOLD.value,
+                r"a": CustomColors.SKY.value,
+                r"b": CustomColors.SKY.value,
+            },
+        )
+        f_always(
+            left_chebyshev.move_to,
+            lambda: two_cluster_spectrum.get_left()
+            + [(a + b) / 2 * two_cluster_spectrum.get_width(), 0.5, 0],
+        )
+        right_chebyshev = Tex(
+            r"\hat{C}_{p-m}^{[c,d]}(\lambda)",
+            font_size=CONTENT_FONT_SIZE,
+            t2c={
+                r"p-m": CustomColors.GOLD.value,
+                r"c": CustomColors.SKY.value,
+                r"d": CustomColors.SKY.value,
+            },
+        )
+        f_always(
+            right_chebyshev.move_to,
+            lambda: two_cluster_spectrum.get_left()
+            + [(c + d) / 2 * two_cluster_spectrum.get_width(), 0.5, 0],
+        )
+        composite_chebyshev_poly = Tex(
+            r"r(\lambda) \approx \hat{C}_{p}^{[a,b]}(\lambda) \cdot \hat{C}_{p-m}^{[c,d]}(\lambda) \in \mathcal{P}_m",
+            font_size=CONTENT_FONT_SIZE,
+            t2c={
+                r"\hat{C}_{m - p}": CustomColors.GOLD.value,
+                r"\hat{C}_{m}": CustomColors.GOLD.value,
+                r"a": CustomColors.SKY.value,
+                r"b": CustomColors.SKY.value,
+                r"c": CustomColors.SKY.value,
+                r"d": CustomColors.SKY.value,
+            },
+        ).next_to(text_axelsson, DOWN, buff=0.5)
+        self.next_slide(
+            notes="We use the product of two scaled Chebyshev polynomials.",
+            additional_animations=[
+                ReplacementTransform(text_minmax, text_axelsson),
+                Write(citation),
+                Write(composite_chebyshev_poly),
+                Write(left_chebyshev),
+                Write(right_chebyshev),
+            ],
+        )
+
+        # slide: two-cluster CG iteration bound
+        text_two_cluster = TexText(
+            "This leads to the two-cluster CG iteration bound from Axelsson (1976)",
+            font_size=CONTENT_FONT_SIZE,
+            t2c={r"two-cluster CG iteration bound": CustomColors.GOLD.value},
+        )
+        two_cluster_cg_bound = TexText(
+            r"\["
+            r"m \leq m_2(a,b,c,d) = \left\lfloor\frac{1}{2}\sqrt{\frac{d}{c}}\ln\left(\frac{2}{\epsilon}\right) + \left(1+\frac{1}{2}\sqrt{\frac{d}{c}}\ln\left(\frac{4 d}{b}\right)\right) p(a,b)\right\rfloor"
+            r"\]",
+            font_size=CONTENT_FONT_SIZE,
+            t2c={
+                r"m_2": CustomColors.GOLD.value,
+                r"a": CustomColors.SKY.value,
+                r"b": CustomColors.SKY.value,
+                r"c": CustomColors.SKY.value,
+                r"d": CustomColors.SKY.value,
+            },
+        ).shift(DOWN)
+        self.update_slide(
+            subtitle="Two-Cluster CG Iteration Bound",
+            additional_animations=[
+                two_cluster_spectrum.animate.shift(UP),
+                Write(text_two_cluster),
+                Write(two_cluster_cg_bound),
+                FadeOut(text_axelsson),
+                FadeOut(citation),
+                FadeOut(composite_chebyshev_poly),
+            ],
+            notes="This leads to the two-cluster CG iteration bound from Axelsson (1976).",
+        )
+
+        # slide: but why stop at two clusters?
+        text_why_stop = TexText(
+            "But why stop at two clusters? We can extend this to multi-cluster spectra!",
+            font_size=CONTENT_FONT_SIZE,
+            t2c={r"multi-cluster spectra": CustomColors.GOLD.value},
+        ).move_to(two_cluster_spectrum.get_center())
+        a_1 = 0.1
+        b_1 = 0.15
+        a_2 = 0.24
+        b_2 = 0.3
+        a_3 = 0.35
+        b_3 = 0.7
+        a_4 = 0.75
+        b_4 = 0.99
+        multi_cluster_spectrum = self.generate_clustered_spectrum(
+            [(a_1, b_1), (a_2, b_2), (a_3, b_3), (a_4, b_4)],
+            ["a_1", "b_1", "a_2", "b_2", "a_3", "b_3", "a_4", "b_4"],
+        )
+        cg_general_residual_poly = Tex(
+            r"r(\lambda) \approx \hat{C}_{p_1}^{[a_1,b_1]}(\lambda) \cdot \hat{C}_{p_2}^{[a_2,b_2]}(\lambda) \cdot \hat{C}_{p_3}^{[a_3,b_3]}(\lambda) \cdot \hat{C}_{p_4}^{[a_4,b_4]}(\lambda) \in \mathcal{P}_m",
+            font_size=CONTENT_FONT_SIZE,
+        ).next_to(multi_cluster_spectrum, DOWN, buff=1.0)
+        self.update_slide(
+            subtitle="Multi-Cluster Spectra",
+            additional_animations=[
+                ReplacementTransform(text_two_cluster, text_why_stop),
+                ReplacementTransform(two_cluster_spectrum, multi_cluster_spectrum),
+                Write(cg_general_residual_poly),
+                FadeOut(two_cluster_cg_bound),
+                FadeOut(spectrum_label),
+                FadeOut(left_chebyshev),
+                FadeOut(right_chebyshev),
+            ],
+            notes="But why stop at two clusters?",
+        )
+
+        # slide: multi-cluster CG animation
+        super().next_slide(
+            notes="We actually want to develop the most general bound...", loop=True
+        )
+        # NOTE: using updaters
+        # self.now = self.time
+        # multi_cluster_spectrum.add_updater(
+        #     lambda m, dt: self.multi_cluster_spectrum_updater(
+        #         m, dt, update_frequency=2.0
+        #     )
+        # )
+        # self.play(multi_cluster_spectrum.animate.scale(1.0), run_time=10.0)
+        # NOTE: explicitly generating multiple random spectra
+        num_spectra = 5
+        spectra, res_polys = self.generate_multiple_random_spectra(num_spectra)
+        all_spectra = [
+            multi_cluster_spectrum,
+            *spectra,
+        ]
+        all_res_polys = [
+            cg_general_residual_poly,
+            *res_polys,
+        ]
+        og_spectrum = multi_cluster_spectrum.copy()
+        og_respoly = cg_general_residual_poly.copy()
+        for curr_spectrum, new_spectrum, curr_poly, new_poly in zip(
+            all_spectra[:-1], all_spectra[1:], all_res_polys[:-1], all_res_polys[1:]
+        ):
+            self.play(
+                ReplacementTransform(curr_poly, new_poly),
+                ReplacementTransform(curr_spectrum, new_spectrum),
+                run_time=3.0 * self.RUN_TIME,
+            )
+        self.play(
+            ReplacementTransform(new_poly, og_respoly),
+            ReplacementTransform(new_spectrum, og_spectrum),
+            run_time=3.0 * self.RUN_TIME,
+        )
+        super().next_slide()
+
+        # slide: general cg iteration bound
+        text_result = TexText(
+            "This leads to the most \\textit{general CG iteration bound}.",
+            font_size=CONTENT_FONT_SIZE,
+            t2c={"\\textit{general CG iteration bound}": CustomColors.GOLD.value},
+        ).move_to(text_why_stop.get_center())
+        multi_cluster_cg_bound = TexText(
+            r"\begin{equation*}"
+            r"  m_{N_{\text{cluster}}} = \sum_{i=1}^{N_{\text{cluster}}} p_i"
+            r"\end{equation*}",
+            font_size=CONTENT_FONT_SIZE,
+            t2c={
+                r"m_{N_{\text{cluster}}}": CustomColors.GOLD.value,
+                r"p_i": CustomColors.RED.value,
+            },
+        )
+        text_where = TexText(
+            "where the \\textit{Chebyshev degrees} $p_i$, and \\textit{cluster factors} $\gamma_i$ satisfy",
+            font_size=CONTENT_FONT_SIZE,
+            t2c={
+                "\\textit{Chebyshev degrees} $p_i$": CustomColors.RED.value,
+                "\\textit{cluster factors} $\gamma_i$": CustomColors.RED.value,
+            },
+        ).next_to(multi_cluster_cg_bound, DOWN, buff=0.5)
+        p_i_equation = TexText(
+            r"\begin{equation*}"
+            r"  p_i \leq \left\lceil\log_{\gamma_i}{\frac{\epsilon}{2}} + \sum_{j=1}^{i-1} p_j\log_{\gamma_i}\left(\frac{\zeta^{(j)}_2(a_j, b_j)}{\zeta^{(i,j)}_1(a_j, b_j, b_i)}\right)\right\rceil"
+            r"\end{equation*}",
+            font_size=CONTENT_FONT_SIZE,
+            t2c={
+                "p_i": CustomColors.RED.value,
+                r"\gamma_i": CustomColors.RED.value,
+                r"a_j": CustomColors.SKY.value,
+                r"b_j": CustomColors.SKY.value,
+                r"b_i": CustomColors.SKY.value,
+            },
+        )
+        gamma_i_equation = TexText(
+            r"\begin{equation*}"
+            r"\gamma_i = \frac{\sqrt{b_i} - \sqrt{a_i}}{\sqrt{b_i} + \sqrt{a_i}}, \quad i=1,\ldots,N_{\text{cluster}}"
+            r"\end{equation*}",
+            font_size=CONTENT_FONT_SIZE,
+            t2c={
+                r"\gamma_i": CustomColors.RED.value,
+                "b_i": CustomColors.SKY.value,
+                "a_i": CustomColors.SKY.value,
+            },
+        )
+        sub_equations = (
+            VGroup(p_i_equation, gamma_i_equation)
+            .arrange(RIGHT, buff=0.5)
+            .next_to(text_where, DOWN, buff=0.5)
+        )
+        og_spectrum_backup = og_spectrum.copy()
+        self.update_slide(
+            subtitle="General CG Iteration Bound",
+            notes="leading to the most general CG iteration bound.",
+            additional_animations=[
+                ReplacementTransform(text_why_stop, text_result),
+                FadeOut(og_spectrum),
+                FadeOut(og_respoly),
+                Write(multi_cluster_cg_bound),
+                Write(text_where),
+                Write(sub_equations),
+            ],
+        )
+
+        # slide: general CG iteration bound as a function of clusters
+        multi_cluster_cg_bound_simple = TexText(
+            r"\[" r"m_{N_{\text{cluster}}}(\text{clusters})" r"\]",
+            font_size=2.0 * CONTENT_FONT_SIZE,
+            t2c={
+                r"m_{N_{\text{cluster}}}": CustomColors.GOLD.value,
+                r"\text{clusters}": CustomColors.RED.value,
+            },
+        ).move_to(multi_cluster_cg_bound.get_center())
+        og_spectrum_backup.next_to(multi_cluster_cg_bound_simple, DOWN, buff=0.5)
+        bars_and_labels = og_spectrum_backup[-16:]
+        for label in bars_and_labels:  # get the cluster labels
+            label.set_color(CustomColors.RED.value)
+        self.update_slide(
+            subtitle="General CG Iteration Bound",
+            notes="This is a simplified view of the general CG iteration bound.",
+            additional_animations=[
+                ReplacementTransform(
+                    multi_cluster_cg_bound, multi_cluster_cg_bound_simple
+                ),
+                FadeInFromPoint(
+                    og_spectrum_backup, multi_cluster_cg_bound_simple.get_center()
+                ),
+                FadeOut(text_where),
+                FadeOut(sub_equations),
+                FadeOut(text_result),
+            ],
+        )
+
+        # slide: but how do we get from spectrum of A to clusters?
+        text_how_to_get_clusters = TexText(
+            "But how do we get from the spectrum of A to a set of clusters?",
+            font_size=CONTENT_FONT_SIZE,
+            t2c={
+                "spectrum of A": CustomColors.SKY.value,
+                "clusters": CustomColors.RED.value,
+            },
+        ).next_to(multi_cluster_cg_bound_simple, UP, buff=0.3)
+        for bar_label in bars_and_labels:
+            bar_label.generate_target()
+            bar_label.target.shift(0.5 * DOWN)
+        og_spectrum_pure = og_spectrum_backup[:-16]
+        for mobj in og_spectrum_pure:
+            mobj.generate_target()
+            mobj.target.shift(0.5 * UP)
+        self.next_slide(
+            notes="But how do we get from the spectrum of A to a set of clusters?",
+            subtitle="How to Get From Spectrum to Clusters",
+            additional_animations=[
+                ReplacementTransform(
+                    multi_cluster_cg_bound_simple, text_how_to_get_clusters
+                ),
+                *[MoveToTarget(bar_label) for bar_label in bars_and_labels],
+                *[MoveToTarget(mobj) for mobj in og_spectrum_pure],
+            ],
+        )
+
+        # slide: paritioning algorithm
+        text_partitioning = TexText(
+            "Let's try to do this for the simplest case of a two-cluster spectrum.",
+            font_size=CONTENT_FONT_SIZE,
+        )
+        self.next_slide(
+            subtitle="Partitioning: two-cluster case",
+            additional_animations=[
+                ReplacementTransform(text_how_to_get_clusters, text_partitioning),
+                ReplacementTransform(
+                    og_spectrum_backup,
+                    two_cluster_spectrum_copy.next_to(
+                        text_partitioning, DOWN, buff=0.5
+                    ),
+                ),
+            ],
+        )
+
+        # slide: two-cluster partitioning setup
+        text_algorithm = TexText(
+            "We start by assuming no knowledge of the cluster boundaries and then find the largest relative gap in the spectrum.",
+            font_size=CONTENT_FONT_SIZE,
+            t2c={"largest relative gap": CustomColors.RED.value},
+        ).move_to(text_partitioning.get_center())
+        spectrum_arrow = two_cluster_spectrum_copy[0]
+        spectrum_arrow.generate_target()
+        spectrum_arrow.target.stretch_to_fit_width(FRAME_WIDTH)
+        spectrum_arrow.target.align_to(ORIGIN, LEFT)
+        two_cluster_spectrum_eigs = two_cluster_spectrum_copy[2:-8]
+        two_cluster_spectrum_bars_labels = two_cluster_spectrum_copy[-8:]
+        self.update_slide(
+            additional_animations=[
+                ReplacementTransform(text_partitioning, text_algorithm),
+                MoveToTarget(spectrum_arrow),
+                FadeOut(two_cluster_spectrum_bars_labels),
+            ],
+            notes="We start by assuming no knowledge of the cluster boundaries...",
+            transition_time=2 * self.RUN_TIME,
+        )
+
+        # slide: partitioning animation
+        # self.start = self.time
+        # sim_time = 10.0  # seconds
+        # zoom_time = 2.0  # seconds
+        # zoom_time_fraction = zoom_time / sim_time
+        # zoom_amount = 2.0  # zoom factor
+        # offset = 0.5 * LEFT
+        # def spectrum_arrow_updater(spectrum_arrow: Mobject, dt):
+        #     time = self.time - self.start
+        #     fraction = min(time / sim_time, 1.0)
+        #     if fraction >= 0 and fraction < zoom_time_fraction: # zoom in on the left
+        #         spectrum_arrow.scale(1 + zoom_amount * fraction/zoom_time_fraction)
+        #         dx = ORIGIN + offset - spectrum_arrow.get_left()
+        #         spectrum_arrow.move_to(spectrum_arrow.get_center() + dx)
+        #     elif fraction >= zoom_time_fraction and fraction < 2 * zoom_time_fraction:
+        #         pass
+        #     elif fraction > sim_time - zoom_time and fraction <= sim_time: # zoom out to the right
+        #         spectrum_arrow.scale(1 + zoom_amount * (1 - (fraction - (sim_time - zoom_time))/zoom_time))
+        #         dx = ORIGIN - offset - spectrum_arrow.get_right()
+        #         spectrum_arrow.move_to(spectrum_arrow.get_center() + dx)
+        #     return spectrum_arrow
+        # spectrum_arrow.add_updater(lambda m, dt: spectrum_arrow_updater(m, dt))
+
+    def generate_clustered_spectrum(
+        self,
+        clusters: list[tuple[float, float]],
+        cluster_labels: list[str],
+        arrow_length: float = 7.0,
+        resolution: int = 150,
+        dot_size: float = 0.7 * DEFAULT_DOT_RADIUS,
+        bar_buff: float = 0.01,
+    ) -> VGroup:
+        arrow = Arrow(
+            start=ORIGIN,
+            end=arrow_length * RIGHT,
+            buff=0.0,
+            color=WHITE,
+            stroke_width=0.5,
+        ).move_to(ORIGIN)
+        arrow_start = arrow.get_start()
+        arrow_length = arrow.get_length()
+        cluster_eigs = []
+        for cluster in clusters:
+            num_eigs = int(resolution * (cluster[1] - cluster[0]))
+            for eig in np.linspace(cluster[0], cluster[1], num_eigs):
+                eig_dot = Dot(
+                    arrow_start + [eig * arrow_length, 0, 0],
+                    fill_color=CustomColors.SKY.value,
+                    radius=dot_size,
+                )
+                # add updaters so that the arrow can be moved around
+                f_always(
+                    eig_dot.move_to,
+                    lambda: arrow.get_start() + [eig * arrow.get_length(), 0, 0],
+                )
+                always(eig_dot.set_fill, CustomColors.SKY.value)
+                always(eig_dot.scale, dot_size)
+                cluster_eigs.append(eig_dot)
+        cluster_bars = []
+        for x, y in clusters:
+            line1 = Line(
+                start=arrow_start + [x * arrow_length - bar_buff, -0.1, 0],
+                end=arrow_start + [x * arrow_length - bar_buff, 0.1, 0],
+                color=WHITE,
+            )
+            f_always(
+                line1.move_to,
+                lambda: arrow.get_start() + [x * arrow.get_length() - bar_buff, 0, 0],
+            )
+            always(line1.set_color, WHITE)
+            line2 = Line(
+                start=arrow_start + [y * arrow_length + bar_buff, -0.1, 0],
+                end=arrow_start + [y * arrow_length + bar_buff, 0.1, 0],
+                color=WHITE,
+            )
+            f_always(
+                line2.move_to,
+                lambda: arrow.get_start() + [y * arrow.get_length() + bar_buff, 0, 0],
+            )
+            always(line2.set_color, WHITE)
+            cluster_bars.extend([line1, line2])
+        cluster_bar_labels = []
+        for bars, label in zip(cluster_bars, cluster_labels):
+            label = (
+                Tex(label, font_size=CONTENT_FONT_SIZE)
+                .next_to(bars, DOWN, buff=0.1)
+                .align_to(arrow.get_center() + 0.4 * DOWN, DOWN)
+            )
+            always(label.next_to, bars, DOWN, buff=0.1)
+            always(label.align_to, arrow.get_center() + 0.4 * DOWN, DOWN)
+            cluster_bar_labels.append(label)
+        lambda_label = Tex(
+            r"\lambda",
+            font_size=CONTENT_FONT_SIZE,
+        ).next_to(arrow, RIGHT, buff=0.1)
+        always(lambda_label.next_to, arrow, RIGHT, buff=0.1)
+        return VGroup(
+            arrow,
+            lambda_label,
+            *cluster_eigs,
+            *cluster_bars,
+            *cluster_bar_labels,
+        )
+
+    def generate_multiple_random_spectra(
+        self,
+        num_spectra,
+        min_clusters: int = 2,
+        max_clusters: int = 4,
+        rng: np.random.Generator = np.random.default_rng(42),
+    ) -> tuple[list[VGroup], list[manimlib.Tex]]:
+        spectra = []
+        res_polys = []
+        for _ in range(num_spectra):
+            num_cluster_ends = rng.choice(
+                [2 * i for i in range(min_clusters, max_clusters + 1)]
+            )
+            ends = np.sort(rng.random(size=num_cluster_ends))
+            clusters = [(ends[i], ends[i + 1]) for i in range(0, len(ends), 2)]
+            labels = [
+                f"a_{i//2+1}" if i % 2 == 0 else f"b_{i//2+1}" for i in range(len(ends))
+            ]
+            spectra.append(self.generate_clustered_spectrum(clusters, labels))
+            res_polys.append(
+                Tex(
+                    f"r(\lambda) \\approx \prod_{{i=1}}^{{{len(clusters)}}} \hat{{C}}_{{p_i}}^{{[a_i,b_i]}}(\lambda) \in \mathcal{{P}}_m",
+                    font_size=CONTENT_FONT_SIZE,
+                ).next_to(spectra[-1], DOWN, buff=0.3)
+            )
+        return spectra, res_polys
+
+    def multi_cluster_spectrum_updater(
+        self, spectrum: VGroup, dt, update_frequency: float = 0.5
+    ) -> VGroup:
+        tolerance = 1 / FPS  # Allowable tolerance based on frame rate
+        dt = self.time - self.now
+        if abs((dt % update_frequency)) <= tolerance:
+            num_cluster_ends = random.choice([4, 6, 8, 10, 12])
+            ends = np.sort(np.random.sample(size=num_cluster_ends))
+            clusters = [(ends[i], ends[i + 1]) for i in range(0, len(ends), 2)]
+            labels = [
+                f"a_{i//2+1}" if i % 2 == 0 else f"b_{i//2+1}" for i in range(len(ends))
+            ]
+            new_spectrum = self.generate_clustered_spectrum(clusters, labels)
+            spectrum.clear()
+            spectrum += new_spectrum
+        return spectrum
 
     def level_5_multi_clusters(self):
         self.update_slide(
@@ -2326,19 +2960,19 @@ class defense(Slide):
     # full construct
     def construct(self):
         # self.wait_time_between_slides = 0.10
-        self.title_slide()
-        self.level_0_opening()
-        self.toc()
-        self.level_1_intro_cg()
-        self.level_2_cg_convergence()
-        self.level_3_preconditioning()
+        # self.title_slide()
+        # self.level_0_opening()
+        # self.toc()
+        # self.level_1_intro_cg()
+        # self.level_2_cg_convergence()
+        # self.level_3_preconditioning()
         self.level_4_two_clusters()
         # self.level_5_multi_clusters()
         # self.level_6_sharpness()
         # self.level_7_early_bounds()
         # self.level_8_conclusion()
         # self.backup()
-        self.references()
+        # self.references()
 
     # TODO: miscellaneous
     # Optional: Video playback function
