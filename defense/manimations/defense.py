@@ -2864,6 +2864,7 @@ class defense(Slide):
             Tex(r"=", font_size=CONTENT_FONT_SIZE),
             largest_gap_curr_val,
         )
+
         def label_i_updater(mobj: Mobject, dt: float):
             mobj.next_to(arrow_i, DOWN + LEFT, buff=0.0)
             return mobj
@@ -2934,6 +2935,7 @@ class defense(Slide):
             index = get_index()
             mobj.set_value(index + 1)
             return mobj
+
         always(index_i.next_to, label_i, 0.5 * DOWN + RIGHT, buff=0.05)
         index_i.add_updater(lambda m, dt: decimal_updater_i(m, dt))
 
@@ -2941,6 +2943,7 @@ class defense(Slide):
             index = get_index()
             mobj.set_value(index + 2)
             return mobj
+
         always(index_ip1.next_to, label_ip1, 0.5 * DOWN + RIGHT, buff=0.05)
         index_ip1.add_updater(lambda m, dt: decimal_updater_ip1(m, dt))
 
@@ -2948,6 +2951,7 @@ class defense(Slide):
             index = get_index()
             mobj.set_value(index + 1)
             return mobj
+
         always(index_i_cp.next_to, label_i_cp, 0.5 * DOWN + RIGHT, buff=0.05)
         index_i_cp.add_updater(lambda m, dt: decimal_updater_i_cp(m, dt))
 
@@ -2956,6 +2960,7 @@ class defense(Slide):
             mobj.next_to(label_ip1_cp, 0.5 * DOWN + RIGHT, buff=0.05)
             mobj.set_value(index + 2)
             return mobj
+
         always(index_ip1_cp.next_to, label_ip1_cp, 0.5 * DOWN + RIGHT, buff=0.05)
         index_ip1_cp.add_updater(lambda m, dt: decimal_updater_ip1_cp(m, dt))
 
@@ -2999,7 +3004,7 @@ class defense(Slide):
         self.play(
             spectrum_arrow.animate.align_to(ORIGIN, RIGHT),
             run_time=sim_time,
-            rate_func=linear
+            rate_func=linear,
         )
         super().next_slide()
 
@@ -3040,17 +3045,21 @@ class defense(Slide):
 
         arrow_ip1.add_updater(lambda m, dt: arrow_ip1_updater_final(m, dt))
 
-        step_2 = TexText(
-            r"Step.2 Check performance condition. Let $\kappa_l = \frac{\lambda_{k^*}}{\lambda_1}$, $\kappa_r = \frac{\lambda_{k^*}}{\lambda_2}$, and $W_{-1}(\cdot)$ be the Lambert W function. Then $m_{2} < m_1$ if" 
-            r"\[\kappa \geq 4\kappa_l\kappa_r W_{-1}\left(-\frac{1}{2\sqrt{\kappa_r}\exp\left(\frac{1}{\sqrt{\kappa_r}}\right)}\right)^2.\]",
-            font_size=CONTENT_FONT_SIZE,
-            t2c={r"T_{\kappa}(\kappa_l, \kappa_r)": CustomColors.GOLD.value},
-        ).next_to(spectrum_arrow, UP, buff=0.2).shift(-spectrum_arrow.get_center()[0]*RIGHT)
+        step_2 = (
+            TexText(
+                r"Step.2 Check performance condition. Let $\kappa_l = \frac{\lambda_{k^*}}{\lambda_1}$, $\kappa_r = \frac{\lambda_{k^*}}{\lambda_2}$, and $W_{-1}(\cdot)$ be the Lambert W function. Then $m_{2} < m_1$ if"
+                r"\[\kappa \geq 4\kappa_l\kappa_r W_{-1}\left(-\frac{1}{2\sqrt{\kappa_r}\exp\left(\frac{1}{\sqrt{\kappa_r}}\right)}\right)^2.\]",
+                font_size=CONTENT_FONT_SIZE,
+                t2c={r"T_{\kappa}(\kappa_l, \kappa_r)": CustomColors.GOLD.value},
+            )
+            .next_to(spectrum_arrow, UP, buff=0.2)
+            .shift(-spectrum_arrow.get_center()[0] * RIGHT)
+        )
         self.update_slide(
             additional_animations=[
                 MoveToTarget(spectrum_arrow),
                 largest_gap_curr_val.animate.set_value(max_gap),
-                step_1.animate.next_to(step_2, 0.5*UP),
+                step_1.animate.next_to(step_2, 0.5 * UP),
                 Write(step_2),
                 index_i.animate.set_value(curr_k + 1),
                 index_ip1.animate.set_value(curr_k + 2),
@@ -3089,7 +3098,7 @@ class defense(Slide):
                 FadeOut(index_ip1),
                 FadeOut(index_i_cp),
                 FadeOut(index_ip1_cp),
-                FadeOut(text_curr_relative_gap)
+                FadeOut(text_curr_relative_gap),
             ],
             notes="If this condition is satisfied, we perform recursion on the two partitions.",
         )
@@ -3107,8 +3116,8 @@ class defense(Slide):
             DOWN,
             buff=0.1,
         )
-        label_left = brace_left.get_text(
-            "Left Partition", font_size=0.8 * CONTENT_FONT_SIZE
+        label_left = always_redraw(
+            brace_left.get_text, "Left Partition", font_size=0.8 * CONTENT_FONT_SIZE
         )
         brace_right = always_redraw(
             Brace,
@@ -3116,8 +3125,8 @@ class defense(Slide):
             DOWN,
             buff=0.1,
         )
-        label_right = brace_right.get_text(
-            "Right Partition", font_size=0.8 * CONTENT_FONT_SIZE
+        label_right = always_redraw(
+            brace_right.get_text, "Right Partition", font_size=0.8 * CONTENT_FONT_SIZE
         )
         self.play(
             Write(brace_left),
@@ -3126,15 +3135,14 @@ class defense(Slide):
             Write(label_right),
             run_time=2.0 * self.RUN_TIME,
         )
-        d_left_cluster = left_cluster.get_center() - spectrum_arrow.get_center()
         spectrum_arrow.generate_target()
-        spectrum_arrow.target.shift(d_left_cluster[0] * RIGHT)
+        spectrum_arrow.add_updater(
+            lambda m: m.shift(-left_cluster.get_center()[0] * RIGHT)
+        )
         spectrum_arrow.target.stretch_to_fit_width(FRAME_WIDTH)
         self.update_slide(
             subtitle="Partitioning: Recursion",
-            additional_animations=[
-                MoveToTarget(spectrum_arrow)
-            ],
+            additional_animations=[MoveToTarget(spectrum_arrow)],
             notes="This results in two partitions.",
         )
 
