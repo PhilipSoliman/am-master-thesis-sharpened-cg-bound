@@ -2724,11 +2724,13 @@ class defense(Slide):
             font_size=CONTENT_FONT_SIZE,
         )
         num_clusters = 3
+        arrow_length = 7
         spectrum_for_partitioning = self.generate_clustered_spectrum(
             [(0.1, 0.25), (0.6, 0.7), (0.75, 0.95)],
             ["a_1", "b_1", "a_2", "b_2", "a_3", "b_3"],
             randomize=True,
-            resolution=100
+            resolution=100,
+            arrow_length=arrow_length,
         )
         spectrum_for_partitioning[0].next_to(text_partitioning, DOWN, buff=0.5)
         self.next_slide(
@@ -2751,7 +2753,9 @@ class defense(Slide):
         spectrum_arrow.target.stretch_to_fit_width(FRAME_WIDTH)
         spectrum_arrow.target.align_to(ORIGIN, LEFT)
         spectrum_arrow.target.shift(LEFT)
-        spectrum_for_partitioning_eigs = spectrum_for_partitioning[2 : -4 * num_clusters]
+        spectrum_for_partitioning_eigs = spectrum_for_partitioning[
+            2 : -4 * num_clusters
+        ]
         spectrum_for_partitioning_bars_labels = spectrum_for_partitioning[
             -4 * num_clusters :
         ]
@@ -2759,7 +2763,10 @@ class defense(Slide):
             additional_animations=[
                 ReplacementTransform(text_partitioning, text_algorithm),
                 MoveToTarget(spectrum_arrow),
-                *[FadeOut(bar_label) for bar_label in spectrum_for_partitioning_bars_labels],
+                *[
+                    FadeOut(bar_label)
+                    for bar_label in spectrum_for_partitioning_bars_labels
+                ],
             ],
             notes="We start by assuming no knowledge of the cluster boundaries...",
             transition_time=2 * self.RUN_TIME,
@@ -2791,10 +2798,12 @@ class defense(Slide):
             text_algorithm.get_center()
         )
         l1 = (
-            spectrum_for_partitioning_eigs[0].get_center()[0] - spectrum_arrow.get_start()[0]
+            spectrum_for_partitioning_eigs[0].get_center()[0]
+            - spectrum_arrow.get_start()[0]
         )
         l2 = (
-            spectrum_for_partitioning_eigs[1].get_center()[0] - spectrum_arrow.get_start()[0]
+            spectrum_for_partitioning_eigs[1].get_center()[0]
+            - spectrum_arrow.get_start()[0]
         )
         relative_gap = l2 / l1
         largest_gap_curr_val = DecimalNumber(
@@ -2855,6 +2864,17 @@ class defense(Slide):
             Tex(r"=", font_size=CONTENT_FONT_SIZE),
             largest_gap_curr_val,
         )
+        def label_i_updater(mobj: Mobject, dt: float):
+            mobj.next_to(arrow_i, DOWN + LEFT, buff=0.0)
+            return mobj
+
+        label_i.add_updater(lambda m, dt: label_i_updater(m, dt))
+
+        def label_ip1_updater(mobj: Mobject, dt: float):
+            mobj.next_to(arrow_ip1, DOWN + RIGHT, buff=0.0)
+            return mobj
+
+        label_ip1.add_updater(lambda m, dt: label_ip1_updater(m, dt))
         always(text_curr_relative_gap.arrange, RIGHT, buff=0.3)
         always(text_curr_relative_gap.next_to, arrow_ip1, RIGHT, buff=0.5)
         self.update_slide(
@@ -2866,8 +2886,12 @@ class defense(Slide):
                 Write(lambda_ip1_arrow_label),
                 Write(index_i),
                 Write(index_ip1),
-                spectrum_for_partitioning_eigs[0].animate.set_fill(CustomColors.GOLD.value),
-                spectrum_for_partitioning_eigs[1].animate.set_fill(CustomColors.GOLD.value),
+                spectrum_for_partitioning_eigs[0].animate.set_fill(
+                    CustomColors.GOLD.value
+                ),
+                spectrum_for_partitioning_eigs[1].animate.set_fill(
+                    CustomColors.GOLD.value
+                ),
                 ReplacementTransform(text_algorithm, step_1),
                 Write(text_curr_relative_gap),
                 Write(index_i_cp),
@@ -2908,26 +2932,23 @@ class defense(Slide):
 
         def decimal_updater_i(mobj: Mobject, dt: float):
             index = get_index()
-            mobj.next_to(label_i, 0.5 * DOWN + RIGHT, buff=0.05)
             mobj.set_value(index + 1)
             return mobj
-
+        always(index_i.next_to, label_i, 0.5 * DOWN + RIGHT, buff=0.05)
         index_i.add_updater(lambda m, dt: decimal_updater_i(m, dt))
 
         def decimal_updater_ip1(mobj: Mobject, dt: float):
             index = get_index()
-            mobj.next_to(label_ip1, 0.5 * DOWN + RIGHT, buff=0.05)
             mobj.set_value(index + 2)
             return mobj
-
+        always(index_ip1.next_to, label_ip1, 0.5 * DOWN + RIGHT, buff=0.05)
         index_ip1.add_updater(lambda m, dt: decimal_updater_ip1(m, dt))
 
         def decimal_updater_i_cp(mobj: Mobject, dt: float):
             index = get_index()
-            mobj.next_to(label_i_cp, 0.5 * DOWN + RIGHT, buff=0.05)
             mobj.set_value(index + 1)
             return mobj
-
+        always(index_i_cp.next_to, label_i_cp, 0.5 * DOWN + RIGHT, buff=0.05)
         index_i_cp.add_updater(lambda m, dt: decimal_updater_i_cp(m, dt))
 
         def decimal_updater_ip1_cp(mobj: Mobject, dt: float):
@@ -2935,10 +2956,8 @@ class defense(Slide):
             mobj.next_to(label_ip1_cp, 0.5 * DOWN + RIGHT, buff=0.05)
             mobj.set_value(index + 2)
             return mobj
-
+        always(index_ip1_cp.next_to, label_ip1_cp, 0.5 * DOWN + RIGHT, buff=0.05)
         index_ip1_cp.add_updater(lambda m, dt: decimal_updater_ip1_cp(m, dt))
-        always(label_i.next_to, arrow_i, DOWN + LEFT, buff=0.0)
-        always(label_ip1.next_to, arrow_ip1, DOWN + RIGHT, buff=0.0)
 
         def eig_dot_color_updater(mobj: Mobject, dt: float):
             index = get_index()
@@ -2976,70 +2995,147 @@ class defense(Slide):
         largest_gap_curr_val.add_updater(
             lambda m, dt: decimal_updater_relative_gap(m, dt)
         )
-        text_curr_k.add_updater(lambda m, dt: m.set_value(curr_k))
+        text_curr_k.add_updater(lambda m, dt: m.set_value(curr_k + 1))
         self.play(
             spectrum_arrow.animate.align_to(ORIGIN, RIGHT),
             run_time=sim_time,
+            rate_func=linear
         )
         super().next_slide()
 
         # slide: go to largest gap
-        center_of_gap = (spectrum_for_partitioning_eigs[curr_k].get_center() + spectrum_for_partitioning_eigs[curr_k + 1].get_center())/2
+        arrow_i.remove_updater(arrow_i.get_updaters()[-1])
+        arrow_ip1.remove_updater(arrow_ip1.get_updaters()[-1])
+        index_i.remove_updater(index_i.get_updaters()[-1])
+        index_ip1.remove_updater(index_ip1.get_updaters()[-1])
+        index_i_cp.remove_updater(index_i_cp.get_updaters()[-1])
+        index_ip1_cp.remove_updater(index_ip1_cp.get_updaters()[-1])
+        largest_gap_curr_val.remove_updater(largest_gap_curr_val.get_updaters()[-1])
+        for eig_dot in spectrum_for_partitioning_eigs:
+            eig_dot.remove_updater(eig_dot.get_updaters()[-1])
+        center_of_gap = (
+            spectrum_for_partitioning_eigs[curr_k].get_center()
+            + spectrum_for_partitioning_eigs[curr_k + 1].get_center()
+        ) / 2
         spectrum_arrow.generate_target()
-        spectrum_arrow.target.move_to(center_of_gap)
-        arrow_i.clear_updaters()
-        arrow_ip1.clear_updaters()
+        spectrum_arrow.target.shift(-center_of_gap[0] * RIGHT)
+
+        def arrow_i_updater_final(mobj: manimlib.Arrow, dt: float):
+            mobj.set_points_by_ends(
+                spectrum_for_partitioning_eigs[curr_k].get_center()
+                - (1.0 * UP + 0.1 * RIGHT),
+                spectrum_for_partitioning_eigs[curr_k].get_center(),
+            )
+            return mobj
+
+        arrow_i.add_updater(lambda m, dt: arrow_i_updater_final(m, dt))
+
+        def arrow_ip1_updater_final(mobj: manimlib.Arrow, dt: float):
+            mobj.set_points_by_ends(
+                spectrum_for_partitioning_eigs[curr_k + 1].get_center()
+                - (1.0 * UP + 0.1 * LEFT),
+                spectrum_for_partitioning_eigs[curr_k + 1].get_center(),
+            )
+            return mobj
+
+        arrow_ip1.add_updater(lambda m, dt: arrow_ip1_updater_final(m, dt))
+
+        step_2 = TexText(
+            r"Step.2 Check performance condition. Let $\kappa_l = \frac{\lambda_{k^*}}{\lambda_1}$, $\kappa_r = \frac{\lambda_{k^*}}{\lambda_2}$, and $W_{-1}(\cdot)$ be the Lambert W function. Then $m_{2} < m_1$ if" 
+            r"\[\kappa \geq 4\kappa_l\kappa_r W_{-1}\left(-\frac{1}{2\sqrt{\kappa_r}\exp\left(\frac{1}{\sqrt{\kappa_r}}\right)}\right)^2.\]",
+            font_size=CONTENT_FONT_SIZE,
+            t2c={r"T_{\kappa}(\kappa_l, \kappa_r)": CustomColors.GOLD.value},
+        ).next_to(spectrum_arrow, UP, buff=0.2).shift(-spectrum_arrow.get_center()[0]*RIGHT)
+        self.update_slide(
+            additional_animations=[
+                MoveToTarget(spectrum_arrow),
+                largest_gap_curr_val.animate.set_value(max_gap),
+                step_1.animate.next_to(step_2, 0.5*UP),
+                Write(step_2),
+                index_i.animate.set_value(curr_k + 1),
+                index_ip1.animate.set_value(curr_k + 2),
+                index_i_cp.animate.set_value(curr_k + 1),
+                index_ip1_cp.animate.set_value(curr_k + 2),
+            ],
+            subtitle="Partitioning: Performance Threshold",
+            notes="we find the largest relative gap in the spectrum.",
+        )
+
+        # slide: two-cluster partitioning result
+        step_3 = TexText(
+            "Step.3 If this condition is satisfied, we perform recursion on the two partitions.",
+            font_size=CONTENT_FONT_SIZE,
+            t2c={"recursion": CustomColors.GOLD.value},
+        ).next_to(step_2, DOWN, buff=0.5)
+        lambda_i_arrow_label.clear_updaters()
+        lambda_ip1_arrow_label.clear_updaters()
         index_i.clear_updaters()
         index_ip1.clear_updaters()
         index_i_cp.clear_updaters()
         index_ip1_cp.clear_updaters()
         largest_gap_curr_val.clear_updaters()
-        for eig_dot in spectrum_for_partitioning_eigs:
-            eig_dot.remove_updater(eig_dot.get_updaters()[-1])
-        # arrow_i.suspend_updating()
-        # arrow_ip1.suspend_updating()
-        # index_i.suspend_updating()
-        # index_ip1.suspend_updating()
-        # index_i_cp.suspend_updating()
-        # index_ip1_cp.suspend_updating()
-        # largest_gap_curr_val.suspend_updating()
-        arrow_i.generate_target()
-        arrow_i.target.set_points_by_ends(
-            start = spectrum_for_partitioning_eigs[curr_k].get_center() - (1.0 * UP + 0.1 * RIGHT),
-            end = spectrum_for_partitioning_eigs[curr_k].get_center()
-        )
-        arrow_ip1.generate_target()
-        arrow_ip1.target.set_points_by_ends(
-            start = spectrum_for_partitioning_eigs[curr_k + 1].get_center() - (1.0 * UP + 0.1 * LEFT),
-            end = spectrum_for_partitioning_eigs[curr_k + 1].get_center()
-        )
-        index_i.generate_target()
-        index_i.target.next_to(label_i, 0.5 * DOWN + RIGHT, buff=0.05)
-        index_i.target.set_value(curr_k + 1)
-        index_ip1.generate_target()
-        index_ip1.target.next_to(label_ip1, 0.5 * DOWN + RIGHT, buff=0.05)
-        index_ip1.target.set_value(curr_k + 2)
-        index_i_cp.generate_target()
-        index_i_cp.target.next_to(label_i_cp, 0.5 * DOWN + RIGHT, buff=0.05)
-        index_i_cp.target.set_value(curr_k + 1)
-        index_ip1_cp.generate_target()
-        index_ip1_cp.target.next_to(label_ip1_cp, 0.5 * DOWN + RIGHT, buff=0.05)
-        index_ip1_cp.target.set_value(curr_k + 2)
-        largest_gap_curr_val.generate_target()
-        largest_gap_curr_val.target.set_value(max_gap)
-        self.update_slide(
+        spectrum_arrow.generate_target()
+        spectrum_arrow.target.move_to(ORIGIN)
+        spectrum_arrow.target.scale(arrow_length / spectrum_arrow.get_length())
+        spectrum_arrow.target.next_to(step_3, DOWN, buff=0.5)
+        self.next_slide(
+            subtitle="Partitioning: Recursion",
             additional_animations=[
                 MoveToTarget(spectrum_arrow),
-                MoveToTarget(arrow_i),
-                MoveToTarget(arrow_ip1),
-                MoveToTarget(index_i),
-                MoveToTarget(index_ip1),
-                MoveToTarget(index_i_cp),
-                MoveToTarget(index_ip1_cp),
-                MoveToTarget(largest_gap_curr_val)
+                Write(step_3),
+                FadeOut(lambda_i_arrow_label),
+                FadeOut(lambda_ip1_arrow_label),
+                FadeOut(index_i),
+                FadeOut(index_ip1),
+                FadeOut(index_i_cp),
+                FadeOut(index_ip1_cp),
+                FadeOut(text_curr_relative_gap)
             ],
-            subtitle="Partitioning: Performance Threshold",
-            notes="we find the largest relative gap in the spectrum.",
+            notes="If this condition is satisfied, we perform recursion on the two partitions.",
+        )
+
+        # slide: show partitions & recursion
+        left_cluster = VGroup(
+            *spectrum_for_partitioning_eigs[: curr_k + 1],
+        )
+        right_cluster = VGroup(
+            *spectrum_for_partitioning_eigs[curr_k + 1 :],
+        )
+        brace_left = always_redraw(
+            Brace,
+            left_cluster,
+            DOWN,
+            buff=0.1,
+        )
+        label_left = brace_left.get_text(
+            "Left Partition", font_size=0.8 * CONTENT_FONT_SIZE
+        )
+        brace_right = always_redraw(
+            Brace,
+            right_cluster,
+            DOWN,
+            buff=0.1,
+        )
+        label_right = brace_right.get_text(
+            "Right Partition", font_size=0.8 * CONTENT_FONT_SIZE
+        )
+        self.play(
+            Write(brace_left),
+            Write(label_left),
+            Write(brace_right),
+            Write(label_right),
+            run_time=2.0 * self.RUN_TIME,
+        )
+        d_left_cluster = left_cluster.get_center() - spectrum_arrow.get_center()
+        spectrum_arrow.generate_target()
+        spectrum_arrow.target.shift(d_left_cluster[0] * RIGHT)
+        spectrum_arrow.target.stretch_to_fit_width(FRAME_WIDTH)
+        self.update_slide(
+            subtitle="Partitioning: Recursion",
+            additional_animations=[
+                MoveToTarget(spectrum_arrow)
+            ],
+            notes="This results in two partitions.",
         )
 
     def generate_clustered_spectrum(
