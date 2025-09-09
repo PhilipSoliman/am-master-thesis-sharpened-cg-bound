@@ -2718,22 +2718,25 @@ class defense(Slide):
             ],
         )
 
-        # slide: paritioning algorithm
+        # slide: partitioning algorithm
         text_partitioning = TexText(
-            "Let's try to do this for the simplest case of a two-cluster spectrum.",
+            "Let's try to do this for a sample spectrum.",
             font_size=CONTENT_FONT_SIZE,
         )
-        two_cluster_spectrum_2 = self.generate_clustered_spectrum(
-            [(a, b), (c, d)],
-            ["a", "b", "c", "d"],
+        num_clusters = 3
+        spectrum_for_partitioning = self.generate_clustered_spectrum(
+            [(0.1, 0.25), (0.6, 0.7), (0.75, 0.95)],
+            ["a_1", "b_1", "a_2", "b_2", "a_3", "b_3"],
+            randomize=True,
+            resolution=100
         )
-        two_cluster_spectrum_2[0].next_to(text_partitioning, DOWN, buff=0.5)
+        spectrum_for_partitioning[0].next_to(text_partitioning, DOWN, buff=0.5)
         self.next_slide(
             subtitle="Partitioning: two-cluster case",
             additional_animations=[
                 ReplacementTransform(text_how_to_get_clusters, text_partitioning),
                 FadeOut(og_spectrum_backup),
-                FadeIn(two_cluster_spectrum_2),
+                FadeIn(spectrum_for_partitioning),
             ],
         )
 
@@ -2743,13 +2746,15 @@ class defense(Slide):
             font_size=CONTENT_FONT_SIZE,
             t2c={"largest relative gap": CustomColors.RED.value},
         ).move_to(text_partitioning.get_center())
-        spectrum_arrow = two_cluster_spectrum_2[0]
+        spectrum_arrow = spectrum_for_partitioning[0]
         spectrum_arrow.generate_target()
         spectrum_arrow.target.stretch_to_fit_width(FRAME_WIDTH)
         spectrum_arrow.target.align_to(ORIGIN, LEFT)
         spectrum_arrow.target.shift(LEFT)
-        two_cluster_spectrum_eigs = two_cluster_spectrum_2[2:-8]
-        two_cluster_spectrum_bars_labels = two_cluster_spectrum_2[-8:]
+        two_cluster_spectrum_eigs = spectrum_for_partitioning[2 : -2 * num_clusters]
+        two_cluster_spectrum_bars_labels = spectrum_for_partitioning[
+            -2 * num_clusters :
+        ]
         self.update_slide(
             additional_animations=[
                 ReplacementTransform(text_partitioning, text_algorithm),
@@ -2766,7 +2771,7 @@ class defense(Slide):
             "Step.1 Find index of largest relative gap: ",
             font_size=CONTENT_FONT_SIZE,
             t2c={"index": CustomColors.RED.value},
-        ).move_to(text_algorithm.get_center())
+        )
         text_largest_gap_eq = Tex(
             r"k^* = \max_i \left\{\frac{\lambda_{i+1}}{\lambda_i}\right\} =",
             font_size=CONTENT_FONT_SIZE,
@@ -2782,6 +2787,9 @@ class defense(Slide):
             color=CustomColors.RED.value,
             num_decimal_places=0,
         ).next_to(text_largest_gap_eq, RIGHT, buff=0.1)
+        step_1 = VGroup(text_largest_gap, text_largest_gap_eq, text_curr_k).move_to(
+            text_algorithm.get_center()
+        )
         l1 = (
             two_cluster_spectrum_eigs[0].get_center()[0] - spectrum_arrow.get_start()[0]
         )
@@ -2860,12 +2868,10 @@ class defense(Slide):
                 Write(index_ip1),
                 two_cluster_spectrum_eigs[0].animate.set_fill(CustomColors.GOLD.value),
                 two_cluster_spectrum_eigs[1].animate.set_fill(CustomColors.GOLD.value),
-                ReplacementTransform(text_algorithm, text_largest_gap),
-                Write(text_largest_gap_eq),
+                ReplacementTransform(text_algorithm, step_1),
                 Write(text_curr_relative_gap),
                 Write(index_i_cp),
                 Write(index_ip1_cp),
-                Write(text_curr_k),
             ],
         )
 
@@ -2974,7 +2980,7 @@ class defense(Slide):
         self.play(
             spectrum_arrow.animate.align_to(ORIGIN, RIGHT),
             run_time=sim_time,
-            rate_func=linear,
+            # rate_func=linear,
         )
         super().next_slide()
 
@@ -2986,6 +2992,7 @@ class defense(Slide):
         resolution: int = 150,
         dot_size: float = 0.7 * DEFAULT_DOT_RADIUS,
         bar_buff: float = 0.01,
+        randomize: bool = False,
     ) -> VGroup:
         arrow = Arrow(
             start=ORIGIN,
@@ -3010,8 +3017,15 @@ class defense(Slide):
             return mobj
 
         for cluster in clusters:
-            num_eigs = int(resolution * (cluster[1] - cluster[0]))
-            for eig in np.linspace(cluster[0], cluster[1], num_eigs):
+            if not randomize:
+                num_eigs = int(resolution * (cluster[1] - cluster[0]))
+                eigs = np.linspace(cluster[0], cluster[1], num_eigs)
+            else:
+                num_eigs = int(
+                    resolution * (cluster[1] - cluster[0]) * np.random.uniform(0.8, 1.2)
+                )
+                eigs = np.sort(np.random.uniform(cluster[0], cluster[1], size=num_eigs))
+            for eig in eigs:
                 eig_dot = Dot(
                     arrow.get_start() + [eig * arrow.get_length(), 0, 0],
                     fill_color=CustomColors.SKY.value,
@@ -3077,6 +3091,7 @@ class defense(Slide):
         min_clusters: int = 2,
         max_clusters: int = 4,
         rng: np.random.Generator = np.random.default_rng(42),
+        randomize: bool = False,
     ) -> tuple[list[VGroup], list[manimlib.Tex]]:
         spectra = []
         res_polys = []
@@ -3089,7 +3104,9 @@ class defense(Slide):
             labels = [
                 f"a_{i//2+1}" if i % 2 == 0 else f"b_{i//2+1}" for i in range(len(ends))
             ]
-            spectra.append(self.generate_clustered_spectrum(clusters, labels))
+            spectra.append(
+                self.generate_clustered_spectrum(clusters, labels, randomize=randomize)
+            )
             res_polys.append(
                 Tex(
                     f"r(\lambda) \\approx \prod_{{i=1}}^{{{len(clusters)}}} \hat{{C}}_{{p_i}}^{{[a_i,b_i]}}(\lambda) \in \mathcal{{P}}_m",
