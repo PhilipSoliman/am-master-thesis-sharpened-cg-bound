@@ -2758,27 +2758,225 @@ class defense(Slide):
             ],
             notes="We start by assuming no knowledge of the cluster boundaries...",
             transition_time=2 * self.RUN_TIME,
+            subtitle="Partitioning: two-cluster case",
         )
 
-        # slide: partitioning animation
-        # self.start = self.time
-        # sim_time = 10.0  # seconds
-        # offset = 0.5 * LEFT
-        # def spectrum_arrow_updater(spectrum_arrow: Mobject, dt):
-        #     time = self.time - self.start
-        #     fraction = min(time / sim_time, 1.0)
-        #     if fraction >= 0 and fraction < zoom_time_fraction: # zoom in on the left
-        #         spectrum_arrow.scale(1 + zoom_amount * fraction/zoom_time_fraction)
-        #         dx = ORIGIN + offset - spectrum_arrow.get_left()
-        #         spectrum_arrow.move_to(spectrum_arrow.get_center() + dx)
-        #     elif fraction >= zoom_time_fraction and fraction < 2 * zoom_time_fraction:
-        #         pass
-        #     elif fraction > sim_time - zoom_time and fraction <= sim_time: # zoom out to the right
-        #         spectrum_arrow.scale(1 + zoom_amount * (1 - (fraction - (sim_time - zoom_time))/zoom_time))
-        #         dx = ORIGIN - offset - spectrum_arrow.get_right()
-        #         spectrum_arrow.move_to(spectrum_arrow.get_center() + dx)
-        #     return spectrum_arrow
-        # spectrum_arrow.add_updater(lambda m, dt: spectrum_arrow_updater(m, dt))
+        # slide: partitioning animation (start)
+        text_largest_gap = TexText(
+            "Step.1 Find index of largest relative gap: ",
+            font_size=CONTENT_FONT_SIZE,
+            t2c={"index": CustomColors.RED.value},
+        ).move_to(text_algorithm.get_center())
+        text_largest_gap_eq = Tex(
+            r"k^* = \max_i \left\{\frac{\lambda_{i+1}}{\lambda_i}\right\} =",
+            font_size=CONTENT_FONT_SIZE,
+            t2c={
+                r"k^*": CustomColors.RED.value,
+                r"\lambda_i": CustomColors.GOLD.value,
+                r"\lambda_{i+1}": CustomColors.GOLD.value,
+            },
+        ).next_to(text_largest_gap, RIGHT, buff=0.1)
+        text_curr_k = DecimalNumber(
+            1,
+            font_size=CONTENT_FONT_SIZE,
+            color=CustomColors.RED.value,
+            num_decimal_places=0,
+        ).next_to(text_largest_gap_eq, RIGHT, buff=0.1)
+        l1 = (
+            two_cluster_spectrum_eigs[0].get_center()[0] - spectrum_arrow.get_start()[0]
+        )
+        l2 = (
+            two_cluster_spectrum_eigs[1].get_center()[0] - spectrum_arrow.get_start()[0]
+        )
+        relative_gap = l2 / l1
+        largest_gap_curr_val = DecimalNumber(
+            relative_gap,
+            font_size=CONTENT_FONT_SIZE,
+            num_decimal_places=2,
+        )
+        lambda_i_arrow_label = VGroup(
+            arrow_i := Arrow(
+                start=two_cluster_spectrum_eigs[0].get_center()
+                - (1.0 * UP + 0.1 * RIGHT),
+                end=two_cluster_spectrum_eigs[0].get_center(),
+                buff=0.0,
+                fill_color=CustomColors.GOLD.value,
+            ),
+            label_i := Tex(
+                r"\lambda",
+                font_size=CONTENT_FONT_SIZE,
+                t2c={r"\lambda": CustomColors.GOLD.value},
+            ).next_to(arrow_i, DOWN + LEFT, buff=0.0),
+        )
+        lambda_ip1_arrow_label = VGroup(
+            arrow_ip1 := Arrow(
+                start=two_cluster_spectrum_eigs[1].get_center()
+                - (1.0 * UP + 0.1 * LEFT),
+                end=two_cluster_spectrum_eigs[1].get_center(),
+                buff=0.0,
+                fill_color=CustomColors.GOLD.value,
+            ),
+            label_ip1 := Tex(
+                r"\lambda",
+                font_size=CONTENT_FONT_SIZE,
+                t2c={r"\lambda": CustomColors.GOLD.value},
+            ).next_to(arrow_ip1, DOWN + RIGHT, buff=0.0),
+        )
+        index_i = DecimalNumber(
+            1,
+            font_size=0.5 * CONTENT_FONT_SIZE,
+            color=CustomColors.GOLD.value,
+            num_decimal_places=0,
+        ).next_to(label_i, 0.5 * DOWN + RIGHT, buff=0.05)
+        index_ip1 = DecimalNumber(
+            2,
+            font_size=0.5 * CONTENT_FONT_SIZE,
+            color=CustomColors.GOLD.value,
+            num_decimal_places=0,
+        ).next_to(label_ip1, 0.5 * DOWN + RIGHT, buff=0.05)
+        label_i_cp = label_i.copy()
+        index_i_cp = index_i.copy()
+        always(index_i_cp.next_to, label_i_cp, 0.5 * DOWN + RIGHT, buff=0.05)
+        label_ip1_cp = label_ip1.copy()
+        index_ip1_cp = index_ip1.copy()
+        always(index_ip1_cp.next_to, label_ip1_cp, 0.5 * DOWN + RIGHT, buff=0.05)
+        text_curr_relative_gap = VGroup(
+            label_i_cp,
+            TexText(r" /", font_size=CONTENT_FONT_SIZE),
+            label_ip1_cp,
+            Tex(r"=", font_size=CONTENT_FONT_SIZE),
+            largest_gap_curr_val,
+        )
+        always(text_curr_relative_gap.arrange, RIGHT, buff=0.3)
+        always(text_curr_relative_gap.next_to, arrow_ip1, RIGHT, buff=0.5)
+        self.update_slide(
+            notes="we find the largest relative gap in the spectrum...",
+            loop=True,
+            subtitle="Partitioning: two-cluster case",
+            additional_animations=[
+                Write(lambda_i_arrow_label),
+                Write(lambda_ip1_arrow_label),
+                Write(index_i),
+                Write(index_ip1),
+                two_cluster_spectrum_eigs[0].animate.set_fill(CustomColors.GOLD.value),
+                two_cluster_spectrum_eigs[1].animate.set_fill(CustomColors.GOLD.value),
+                ReplacementTransform(text_algorithm, text_largest_gap),
+                Write(text_largest_gap_eq),
+                Write(text_curr_relative_gap),
+                Write(index_i_cp),
+                Write(index_ip1_cp),
+                Write(text_curr_k),
+            ],
+        )
+
+        # slide: partitioning animation (run)
+        super().next_slide(loop=True)
+        iteration_time = 0.2  # seconds
+        sim_time = (len(two_cluster_spectrum_eigs) - 2) * iteration_time
+        self.start = self.time
+
+        def get_index():
+            return int(np.floor((self.time - self.start) / iteration_time))
+
+        def arrow_i_updater(mobj: manimlib.Arrow, dt: float):
+            index = get_index()
+            mobj.set_points_by_ends(
+                two_cluster_spectrum_eigs[index].get_center()
+                - (1.0 * UP + 0.1 * RIGHT),
+                two_cluster_spectrum_eigs[index].get_center(),
+            )
+            return mobj
+
+        arrow_i.add_updater(lambda m, dt: arrow_i_updater(m, dt))
+
+        def arrow_ip1_updater(mobj: manimlib.Arrow, dt: float):
+            index = get_index()
+            mobj.set_points_by_ends(
+                two_cluster_spectrum_eigs[index + 1].get_center()
+                - (1.0 * UP + 0.1 * LEFT),
+                two_cluster_spectrum_eigs[index + 1].get_center(),
+            )
+            return mobj
+
+        arrow_ip1.add_updater(lambda m, dt: arrow_ip1_updater(m, dt))
+
+        def decimal_updater_i(mobj: Mobject, dt: float):
+            index = get_index()
+            mobj.next_to(label_i, 0.5 * DOWN + RIGHT, buff=0.05)
+            mobj.set_value(index + 1)
+            return mobj
+
+        index_i.add_updater(lambda m, dt: decimal_updater_i(m, dt))
+
+        def decimal_updater_ip1(mobj: Mobject, dt: float):
+            index = get_index()
+            mobj.next_to(label_ip1, 0.5 * DOWN + RIGHT, buff=0.05)
+            mobj.set_value(index + 2)
+            return mobj
+
+        index_ip1.add_updater(lambda m, dt: decimal_updater_ip1(m, dt))
+
+        def decimal_updater_i_cp(mobj: Mobject, dt: float):
+            index = get_index()
+            mobj.next_to(label_i_cp, 0.5 * DOWN + RIGHT, buff=0.05)
+            mobj.set_value(index + 1)
+            return mobj
+
+        index_i_cp.add_updater(lambda m, dt: decimal_updater_i_cp(m, dt))
+
+        def decimal_updater_ip1_cp(mobj: Mobject, dt: float):
+            index = get_index()
+            mobj.next_to(label_ip1_cp, 0.5 * DOWN + RIGHT, buff=0.05)
+            mobj.set_value(index + 2)
+            return mobj
+
+        index_ip1_cp.add_updater(lambda m, dt: decimal_updater_ip1_cp(m, dt))
+        always(label_i.next_to, arrow_i, DOWN + LEFT, buff=0.0)
+        always(label_ip1.next_to, arrow_ip1, DOWN + RIGHT, buff=0.0)
+
+        def eig_dot_updater(mobj: Mobject, dt: float):
+            index = get_index()
+            if (
+                mobj == two_cluster_spectrum_eigs[index]
+                or mobj == two_cluster_spectrum_eigs[index + 1]
+            ):
+                mobj.set_fill(CustomColors.GOLD.value)
+            return mobj
+
+        for eig_dot in two_cluster_spectrum_eigs:
+            eig_dot.add_updater(lambda m, dt: eig_dot_updater(m, dt))
+
+        curr_k = 1
+        max_gap = 0
+
+        def decimal_updater_relative_gap(mobj: Mobject, dt: float):
+            nonlocal max_gap, curr_k
+            index = get_index()
+            l1 = (
+                two_cluster_spectrum_eigs[index].get_center()[0]
+                - spectrum_arrow.get_start()[0]
+            )
+            l2 = (
+                two_cluster_spectrum_eigs[index + 1].get_center()[0]
+                - spectrum_arrow.get_start()[0]
+            )
+            relative_gap = l2 / l1
+            if max_gap < relative_gap:
+                max_gap = relative_gap
+                curr_k = index
+            mobj.set_value(relative_gap)
+            return mobj
+
+        largest_gap_curr_val.add_updater(
+            lambda m, dt: decimal_updater_relative_gap(m, dt)
+        )
+        text_curr_k.add_updater(lambda m, dt: m.set_value(curr_k))
+        self.play(
+            spectrum_arrow.animate.align_to(ORIGIN, RIGHT),
+            run_time=sim_time,
+            rate_func=linear,
+        )
+        super().next_slide()
 
     def generate_clustered_spectrum(
         self,
