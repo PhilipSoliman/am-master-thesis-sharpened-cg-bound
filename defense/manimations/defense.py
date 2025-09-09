@@ -2751,15 +2751,15 @@ class defense(Slide):
         spectrum_arrow.target.stretch_to_fit_width(FRAME_WIDTH)
         spectrum_arrow.target.align_to(ORIGIN, LEFT)
         spectrum_arrow.target.shift(LEFT)
-        two_cluster_spectrum_eigs = spectrum_for_partitioning[2 : -2 * num_clusters]
+        two_cluster_spectrum_eigs = spectrum_for_partitioning[2 : -4 * num_clusters]
         two_cluster_spectrum_bars_labels = spectrum_for_partitioning[
-            -2 * num_clusters :
+            -4 * num_clusters :
         ]
         self.update_slide(
             additional_animations=[
                 ReplacementTransform(text_partitioning, text_algorithm),
                 MoveToTarget(spectrum_arrow),
-                FadeOut(two_cluster_spectrum_bars_labels),
+                *[FadeOut(bar_label) for bar_label in two_cluster_spectrum_bars_labels],
             ],
             notes="We start by assuming no knowledge of the cluster boundaries...",
             transition_time=2 * self.RUN_TIME,
@@ -2773,7 +2773,7 @@ class defense(Slide):
             t2c={"index": CustomColors.RED.value},
         )
         text_largest_gap_eq = Tex(
-            r"k^* = \max_i \left\{\frac{\lambda_{i+1}}{\lambda_i}\right\} =",
+            r"k^* = \max_i \left\{\frac{\lambda_{i+1}}{\lambda_i}, i=1,\ldots,n\right\} =",
             font_size=CONTENT_FONT_SIZE,
             t2c={
                 r"k^*": CustomColors.RED.value,
@@ -2849,9 +2849,9 @@ class defense(Slide):
         index_ip1_cp = index_ip1.copy()
         always(index_ip1_cp.next_to, label_ip1_cp, 0.5 * DOWN + RIGHT, buff=0.05)
         text_curr_relative_gap = VGroup(
-            label_i_cp,
-            TexText(r" /", font_size=CONTENT_FONT_SIZE),
             label_ip1_cp,
+            TexText(r"\ /", font_size=CONTENT_FONT_SIZE),
+            label_i_cp,
             Tex(r"=", font_size=CONTENT_FONT_SIZE),
             largest_gap_curr_val,
         )
@@ -2980,7 +2980,6 @@ class defense(Slide):
         self.play(
             spectrum_arrow.animate.align_to(ORIGIN, RIGHT),
             run_time=sim_time,
-            # rate_func=linear,
         )
         super().next_slide()
 
