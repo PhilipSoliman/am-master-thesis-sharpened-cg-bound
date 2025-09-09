@@ -2396,7 +2396,6 @@ class defense(Slide):
             [(a, b), (c, d)],
             ["a", "b", "c", "d"],
         )
-        two_cluster_spectrum_copy = two_cluster_spectrum.copy()
         spectrum_label = Tex(
             r"\sigma(A) = [a,b] \cup [c,d]",
             font_size=CONTENT_FONT_SIZE,
@@ -2505,7 +2504,7 @@ class defense(Slide):
         self.update_slide(
             subtitle="Two-Cluster CG Iteration Bound",
             additional_animations=[
-                two_cluster_spectrum.animate.shift(UP),
+                two_cluster_spectrum[0].animate.shift(UP),
                 Write(text_two_cluster),
                 Write(two_cluster_cg_bound),
                 FadeOut(text_axelsson),
@@ -2537,6 +2536,7 @@ class defense(Slide):
             r"r(\lambda) \approx \hat{C}_{p_1}^{[a_1,b_1]}(\lambda) \cdot \hat{C}_{p_2}^{[a_2,b_2]}(\lambda) \cdot \hat{C}_{p_3}^{[a_3,b_3]}(\lambda) \cdot \hat{C}_{p_4}^{[a_4,b_4]}(\lambda) \in \mathcal{P}_m",
             font_size=CONTENT_FONT_SIZE,
         ).next_to(multi_cluster_spectrum, DOWN, buff=1.0)
+        two_cluster_spectrum.clear_updaters()
         self.update_slide(
             subtitle="Multi-Cluster Spectra",
             additional_animations=[
@@ -2580,13 +2580,15 @@ class defense(Slide):
             all_spectra[:-1], all_spectra[1:], all_res_polys[:-1], all_res_polys[1:]
         ):
             self.play(
+                FadeOut(curr_spectrum),
+                FadeIn(new_spectrum),
                 ReplacementTransform(curr_poly, new_poly),
-                ReplacementTransform(curr_spectrum, new_spectrum),
                 run_time=3.0 * self.RUN_TIME,
             )
         self.play(
+            FadeOut(new_spectrum),
+            FadeIn(og_spectrum),
             ReplacementTransform(new_poly, og_respoly),
-            ReplacementTransform(new_spectrum, og_spectrum),
             run_time=3.0 * self.RUN_TIME,
         )
         super().next_slide()
@@ -2667,6 +2669,7 @@ class defense(Slide):
                 r"\text{clusters}": CustomColors.RED.value,
             },
         ).move_to(multi_cluster_cg_bound.get_center())
+        og_spectrum_backup.clear_updaters()
         og_spectrum_backup.next_to(multi_cluster_cg_bound_simple, DOWN, buff=0.5)
         bars_and_labels = og_spectrum_backup[-16:]
         for label in bars_and_labels:  # get the cluster labels
@@ -2720,16 +2723,17 @@ class defense(Slide):
             "Let's try to do this for the simplest case of a two-cluster spectrum.",
             font_size=CONTENT_FONT_SIZE,
         )
+        two_cluster_spectrum_2 = self.generate_clustered_spectrum(
+            [(a, b), (c, d)],
+            ["a", "b", "c", "d"],
+        )
+        two_cluster_spectrum_2[0].next_to(text_partitioning, DOWN, buff=0.5)
         self.next_slide(
             subtitle="Partitioning: two-cluster case",
             additional_animations=[
                 ReplacementTransform(text_how_to_get_clusters, text_partitioning),
-                ReplacementTransform(
-                    og_spectrum_backup,
-                    two_cluster_spectrum_copy.next_to(
-                        text_partitioning, DOWN, buff=0.5
-                    ),
-                ),
+                FadeOut(og_spectrum_backup),
+                FadeIn(two_cluster_spectrum_2),
             ],
         )
 
@@ -2739,12 +2743,13 @@ class defense(Slide):
             font_size=CONTENT_FONT_SIZE,
             t2c={"largest relative gap": CustomColors.RED.value},
         ).move_to(text_partitioning.get_center())
-        spectrum_arrow = two_cluster_spectrum_copy[0]
+        spectrum_arrow = two_cluster_spectrum_2[0]
         spectrum_arrow.generate_target()
         spectrum_arrow.target.stretch_to_fit_width(FRAME_WIDTH)
         spectrum_arrow.target.align_to(ORIGIN, LEFT)
-        two_cluster_spectrum_eigs = two_cluster_spectrum_copy[2:-8]
-        two_cluster_spectrum_bars_labels = two_cluster_spectrum_copy[-8:]
+        spectrum_arrow.target.shift(LEFT)
+        two_cluster_spectrum_eigs = two_cluster_spectrum_2[2:-8]
+        two_cluster_spectrum_bars_labels = two_cluster_spectrum_2[-8:]
         self.update_slide(
             additional_animations=[
                 ReplacementTransform(text_partitioning, text_algorithm),
@@ -2758,9 +2763,6 @@ class defense(Slide):
         # slide: partitioning animation
         # self.start = self.time
         # sim_time = 10.0  # seconds
-        # zoom_time = 2.0  # seconds
-        # zoom_time_fraction = zoom_time / sim_time
-        # zoom_amount = 2.0  # zoom factor
         # offset = 0.5 * LEFT
         # def spectrum_arrow_updater(spectrum_arrow: Mobject, dt):
         #     time = self.time - self.start
@@ -2792,59 +2794,71 @@ class defense(Slide):
             end=arrow_length * RIGHT,
             buff=0.0,
             color=WHITE,
-            stroke_width=0.5,
         ).move_to(ORIGIN)
-        arrow_start = arrow.get_start()
-        arrow_length = arrow.get_length()
+        always(arrow.set_color, WHITE)
+
+        def arrow_updater(arrow: Mobject):
+            arrow.buff = 0.5
+            arrow.stroke_width = 1
+            return arrow
+
+        arrow.add_updater(lambda m: arrow_updater(m))
         cluster_eigs = []
+
+        def eig_dot_updater(mobj: Mobject, eig):
+            mobj.set_fill(CustomColors.SKY.value)
+            mobj.scale(1)
+            mobj.move_to(arrow.get_start() + [eig * arrow.get_length(), 0, 0])
+            return mobj
+
         for cluster in clusters:
             num_eigs = int(resolution * (cluster[1] - cluster[0]))
             for eig in np.linspace(cluster[0], cluster[1], num_eigs):
                 eig_dot = Dot(
-                    arrow_start + [eig * arrow_length, 0, 0],
+                    arrow.get_start() + [eig * arrow.get_length(), 0, 0],
                     fill_color=CustomColors.SKY.value,
                     radius=dot_size,
                 )
-                # add updaters so that the arrow can be moved around
-                f_always(
-                    eig_dot.move_to,
-                    lambda: arrow.get_start() + [eig * arrow.get_length(), 0, 0],
-                )
-                always(eig_dot.set_fill, CustomColors.SKY.value)
-                always(eig_dot.scale, dot_size)
+                eig_dot.add_updater(lambda mobj, eig=eig: eig_dot_updater(mobj, eig))
                 cluster_eigs.append(eig_dot)
         cluster_bars = []
+
+        def line_updater(line: Mobject, x: float):
+            line.set_color(WHITE)
+            line.put_start_and_end_on(
+                arrow.get_start() + [x * arrow.get_length() - bar_buff, -0.1, 0],
+                arrow.get_start() + [x * arrow.get_length() - bar_buff, 0.1, 0],
+            )
+            return line
+
         for x, y in clusters:
             line1 = Line(
-                start=arrow_start + [x * arrow_length - bar_buff, -0.1, 0],
-                end=arrow_start + [x * arrow_length - bar_buff, 0.1, 0],
+                start=arrow.get_start() + [x * arrow.get_length() - bar_buff, -0.1, 0],
+                end=arrow.get_start() + [x * arrow.get_length() - bar_buff, 0.1, 0],
                 color=WHITE,
             )
-            f_always(
-                line1.move_to,
-                lambda: arrow.get_start() + [x * arrow.get_length() - bar_buff, 0, 0],
-            )
-            always(line1.set_color, WHITE)
+            line1.add_updater(lambda mobj, x=x: line_updater(mobj, x))
             line2 = Line(
-                start=arrow_start + [y * arrow_length + bar_buff, -0.1, 0],
-                end=arrow_start + [y * arrow_length + bar_buff, 0.1, 0],
+                start=arrow.get_start() + [y * arrow.get_length() + bar_buff, -0.1, 0],
+                end=arrow.get_start() + [y * arrow.get_length() + bar_buff, 0.1, 0],
                 color=WHITE,
             )
-            f_always(
-                line2.move_to,
-                lambda: arrow.get_start() + [y * arrow.get_length() + bar_buff, 0, 0],
-            )
-            always(line2.set_color, WHITE)
+            line2.add_updater(lambda mobj, y=y: line_updater(mobj, y))
             cluster_bars.extend([line1, line2])
         cluster_bar_labels = []
-        for bars, label in zip(cluster_bars, cluster_labels):
+
+        def label_updater(label: Mobject, bar: Mobject):
+            label.next_to(bar, DOWN, buff=0.1)
+            label.align_to(arrow.get_center() + 0.4 * DOWN, DOWN)
+            return label
+
+        for bar, label in zip(cluster_bars, cluster_labels):
             label = (
                 Tex(label, font_size=CONTENT_FONT_SIZE)
-                .next_to(bars, DOWN, buff=0.1)
+                .next_to(bar, DOWN, buff=0.1)
                 .align_to(arrow.get_center() + 0.4 * DOWN, DOWN)
             )
-            always(label.next_to, bars, DOWN, buff=0.1)
-            always(label.align_to, arrow.get_center() + 0.4 * DOWN, DOWN)
+            label.add_updater(lambda mobj, bar=bar: label_updater(mobj, bar))
             cluster_bar_labels.append(label)
         lambda_label = Tex(
             r"\lambda",
