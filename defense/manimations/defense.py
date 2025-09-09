@@ -3136,9 +3136,7 @@ class defense(Slide):
             run_time=2.0 * self.RUN_TIME,
         )
         spectrum_arrow.generate_target()
-        spectrum_arrow.add_updater(
-            lambda m: m.shift(-left_cluster.get_center()[0] * RIGHT)
-        )
+        spectrum_arrow.target.align_to(ORIGIN, LEFT)
         spectrum_arrow.target.stretch_to_fit_width(FRAME_WIDTH)
         self.update_slide(
             subtitle="Partitioning: Recursion",
