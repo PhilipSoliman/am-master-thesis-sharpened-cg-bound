@@ -61,9 +61,7 @@ def plot_absolute_performance(
     )
     axs = []
     for i in range(len(COEF_FUNCS)):
-        axs.append(
-            fig.add_subplot(gs[0, i], sharey=None if i == 0 else axs[0])
-        )
+        axs.append(fig.add_subplot(gs[0, i], sharey=None if i == 0 else axs[0]))
     legend_ax = fig.add_subplot(gs[1, :])
     legend_ax.axis("off")
 
@@ -234,8 +232,6 @@ def plot_absolute_performance(
 if __name__ == "__main__":
     for i, ((preconditioner_cls, coarse_space_cls)) in enumerate(PRECONDITIONERS):
         legend = True
-        # if coarse_space_cls == AMSCoarseSpace:
-        #     legend = True
         fig = plot_absolute_performance(
             preconditioner_cls,
             coarse_space_cls,
@@ -244,6 +240,6 @@ if __name__ == "__main__":
         shorthand = f"{preconditioner_cls.SHORT_NAME}-{coarse_space_cls.SHORT_NAME}"
         if CLI_ARGS.generate_output:
             fn = Path(__file__).name.replace("_fig.py", f"_{shorthand}")
-            save_latex_figure(fn, fig)
+            save_latex_figure(fn, fig, save_png=True, no_background=True)
     if CLI_ARGS.show_output:
         plt.show()
