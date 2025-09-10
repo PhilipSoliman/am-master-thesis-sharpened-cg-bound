@@ -18,6 +18,8 @@ from hcmsfem.plot_utils import CustomColors
 from hcmsfem.root import get_venv_root
 from hcmsfem.solvers import CustomCG, classic_cg_iteration_bound
 
+FIGURE_DIR = get_venv_root() / "figures"
+
 # Manim render settings
 FPS = 24
 
@@ -44,6 +46,23 @@ CONTENT_FONT_SIZE = 0.6 * TITLE_FONT_SIZE
 SOURCE_FONT_SIZE = 0.2 * TITLE_FONT_SIZE
 FOOTNOTE_FONT_SIZE = 0.75 * CONTENT_FONT_SIZE
 
+# pgf preamble
+PGF_PREAMBLE = r"""
+\def\mathdefault#1{#1}
+\everymath=\expandafter{\the\everymath\displaystyle}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{siunitx}
+\usepackage{pgf}
+\usepackage{tikz}
+\usepackage{lmodern}
+\usepackage[no-math]{fontspec}
+\setmainfont{Arial}
+\setmathsf{Arial}
+\setmathtt{Arial}
+\setmathrm{Arial}
+\makeatletter\@ifpackageloaded{underscore}{}{\usepackage[strings]{underscore}}\makeatother
+"""
 
 # TODO: margin settings
 class MARGINS(Enum):
@@ -512,6 +531,23 @@ class defense(Slide):
                 text.align_to(texts[0], direction=alignment)
 
         return texts
+
+    # def render_pgf_picture(self, fig_name: str, **kwargs) -> TexText:
+    #     # with open(FIGURE_DIR / f"{fig_name}.tex", "r") as f:
+    #     #     tex = f.read()
+    #     pgf_path = (FIGURE_DIR / f"{fig_name}.pgf").as_posix()
+    #     tex = R"\input{" + pgf_path + "}"
+    #     # Save original function
+    #     import manimlib.utils.tex_file_writing as tex_file_writing
+    #     original_get_tex_config = tex_file_writing.get_tex_config
+    #     # Mask with your function
+    #     tex_file_writing.get_tex_config = lambda s: ("xelatex", PGF_PREAMBLE)
+    #     try:
+    #         out = TexText(tex)
+    #     finally:
+    #         # Restore original function
+    #         tex_file_writing.get_tex_config = original_get_tex_config
+    #     return out
 
     # level constructs
     def title_slide(self):
@@ -2050,7 +2086,12 @@ class defense(Slide):
         ]
         coefficient_function_image = ImageMobject("coefficient_functions").set_height(
             0.6 * FRAME_HEIGHT
-        )
+        ).set_z_index(1)
+        coefficient_rectangle = BackgroundRectangle(
+            coefficient_function_image,
+            color=CustomColors.BLUE.value,
+            buff=0.1,
+        ).set_z_index(1).round_corners(0.1)
         citations = [
             cite("ams_coarse_space_comp_study_Alves2024"),
             cite("ams_framework_Wang2014"),
@@ -2061,7 +2102,7 @@ class defense(Slide):
             c.next_to(self.slide_subtitle, RIGHT, buff=0.1).shift(i * 0.3 * RIGHT)
         self.update_slide(
             subtitle="Taming High-Contrast Problems",
-            new_contents=[coefficient_function_image, citations[0]],
+            new_contents=[coefficient_function_image, citations[0], coefficient_rectangle],
             notes="Lets look at two specific examples of coefficient functions.",
         )
 
@@ -2134,6 +2175,7 @@ class defense(Slide):
         self.play(
             *[FadeOut(citation) for citation in citations],
             FadeOut(coefficient_function_image),
+            FadeOut(coefficient_rectangle),
             ReplacementTransform(M_1_simple, M_1_kappa),
             ReplacementTransform(M_2_simple, M_2_kappa),
             ReplacementTransform(M_3_simple, M_3_kappa),
@@ -3209,7 +3251,6 @@ class defense(Slide):
         width_factor_right_cluster = spectrum_arrow.get_width()/right_cluster.get_width()
         width_factor = width_factor_arrow_length * width_factor_right_cluster
         spectrum_arrow.target.stretch_to_fit_width(
-            width_factor * spectrum_arrow.get_length()
         )
         new_location_right_cluster = spectrum_arrow.get_center() + width_factor * diff_vec
         # new_diff_vec = spectrum_arrow.get_center() - new_location_right_cluster
@@ -3433,29 +3474,24 @@ class defense(Slide):
             spectrum += new_spectrum
         return spectrum
 
-    def level_5_multi_clusters(self):
-        self.update_slide(
-            "Multi-Cluster Spectra",
-            notes="Extension to multi-cluster spectra",
-        )
-
-    def level_6_sharpness(self):
+    def level_5_results(self):
+        ams_results = ImageMobject(
+            "absolute_performance_2-OAS-AMS.png",
+            height=0.6 * FRAME_HEIGHT,
+        ).set_z_index(1)
+        rectangle = BackgroundRectangle(ams_results, buff=0.1, color=CustomColors.BLUE.value, fill_color=CustomColors.BLUE.value).round_corners(0.1).set_opacity(1.0).set_z_index(-1)
         self.update_slide(
             "How Sharp Are the New Bounds?",
             notes="Discuss results on absolute sharpness of the new bounds",
+            additional_animations=[FadeIn(ams_results), FadeIn(rectangle)],
         )
 
-    def level_7_early_bounds(self):
+        super().next_slide()
+
+    def level_6_conclusion(self):
         self.update_slide(
             "Early Bounds",
             notes="Discuss results on using Ritz values to get early bounds",
-        )
-
-    def level_8_conclusion(self):
-        self.update_slide(
-            "Conclusion",
-            subtitle="Key Takeaways & Future Directions",
-            notes="Conclusion and future directions",
         )
 
     def backup(self):
@@ -3496,31 +3532,10 @@ class defense(Slide):
         # self.level_1_intro_cg()
         # self.level_2_cg_convergence()
         # self.level_3_preconditioning()
-        self.level_4_two_clusters()
-        # self.level_5_multi_clusters()
-        # self.level_6_sharpness()
-        # self.level_7_early_bounds()
-        # self.level_8_conclusion()
+        # self.level_4_two_clusters()
+        self.level_5_results()
+        # self.level_6_conclusion()
         # self.backup()
-        # self.references()
-
-    # TODO: miscellaneous
-    # Optional: Video playback function
-    # def play_video(file):
-    #     cap = cv2.VideoCapture(file)
-    #     flag = True
-
-    #     while flag:
-    #         flag, frame = cap.read()
-    #         fps = cap.get(cv2.CAP_PROP_FPS)
-    #         delay = 1 / fps
-
-    #         if flag:
-    #             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    #             frame_img = ImageMobject(frame, *args, **kwargs)
-    #             self.add(frame_img)
-    #             self.wait(delay)
-    #             self.remove(frame_img)
-
-    #     cap.release()
-    #     cap.release()
+        # self.references()        # self.level_6_conclusion()
+        # self.backup()
+        # self.references()        # self.references()        # self.references()        # self.references()
