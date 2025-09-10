@@ -14,18 +14,38 @@ from json import load
 from manim_slides import Slide
 
 os.environ["NO_HCMSFEM_CLI_ARGS"] = ""
+# add to pythonpath
+import sys
+
+from hcmsfem.logger import LOGGER
+from hcmsfem.meshes import DefaultQuadMeshParams
 from hcmsfem.plot_utils import CustomColors
+from hcmsfem.preconditioners import coarse_space
+from hcmsfem.problems import CoefFunc
 from hcmsfem.root import get_venv_root
-from hcmsfem.solvers import CustomCG, classic_cg_iteration_bound
+from hcmsfem.solvers import (
+    CustomCG,
+    classic_cg_iteration_bound,
+    partition_eigenspectrum,
+)
+
+sys.path.append((get_venv_root() / "code" / "model_spectra").as_posix())
+from approximate_spectra import PRECONDITIONERS, get_spectrum_save_path
 
 FIGURE_DIR = get_venv_root() / "figures"
+
+MESHES = DefaultQuadMeshParams
+COEF_FUNCS = [
+    CoefFunc.THREE_LAYER_VERTEX_INCLUSIONS,
+    CoefFunc.EDGE_SLABS_AROUND_VERTICES_INCLUSIONS,
+]
 
 # Manim render settings
 FPS = 24
 
 
 class QUALITY(Enum):
-    FOUR_K = (3840, 2160)
+    FK = (3840, 2160)
     HD = (1920, 1080)
     P720 = (1280, 720)
     P480 = (854, 480)
@@ -34,7 +54,7 @@ class QUALITY(Enum):
 
 
 manim_config.camera.fps = FPS
-manim_config.camera.resolution = QUALITY.P480.value
+manim_config.camera.resolution = QUALITY.FK.value
 manim_config.background_color = WHITE
 manim_config.directories.raster_images = (get_venv_root() / "images").as_posix()
 manim_config.camera.background_color = CustomColors.NAVY.value
@@ -63,6 +83,7 @@ PGF_PREAMBLE = r"""
 \setmathrm{Arial}
 \makeatletter\@ifpackageloaded{underscore}{}{\usepackage[strings]{underscore}}\makeatother
 """
+
 
 # TODO: margin settings
 class MARGINS(Enum):
@@ -439,7 +460,7 @@ class defense(Slide):
             *wipe_animation,
             *additional_animations,
             run_time=transition_time,
-            rate_func=rate_func
+            rate_func=rate_func,
         )
 
         # update new_contents
@@ -2084,14 +2105,21 @@ class defense(Slide):
             m_1,
             m_sharp,
         ]
-        coefficient_function_image = ImageMobject("coefficient_functions").set_height(
-            0.6 * FRAME_HEIGHT
-        ).set_z_index(1)
-        coefficient_rectangle = BackgroundRectangle(
-            coefficient_function_image,
-            color=CustomColors.BLUE.value,
-            buff=0.1,
-        ).set_z_index(1).round_corners(0.1)
+        coefficient_function_image = (
+            ImageMobject("coefficient_functions")
+            .set_height(0.6 * FRAME_HEIGHT)
+            .set_z_index(1)
+        )
+        coefficient_rectangle = (
+            BackgroundRectangle(
+                coefficient_function_image,
+                color=CustomColors.BLUE.value,
+                buff=0.1,
+            )
+            .set_z_index(-1)
+            .round_corners(0.1)
+            .set_opacity(1.0)
+        )
         citations = [
             cite("ams_coarse_space_comp_study_Alves2024"),
             cite("ams_framework_Wang2014"),
@@ -2102,7 +2130,11 @@ class defense(Slide):
             c.next_to(self.slide_subtitle, RIGHT, buff=0.1).shift(i * 0.3 * RIGHT)
         self.update_slide(
             subtitle="Taming High-Contrast Problems",
-            new_contents=[coefficient_function_image, citations[0], coefficient_rectangle],
+            new_contents=[
+                coefficient_function_image,
+                citations[0],
+                coefficient_rectangle,
+            ],
             notes="Lets look at two specific examples of coefficient functions.",
         )
 
@@ -3232,13 +3264,19 @@ class defense(Slide):
         # slide: highlight steps (left partition)
         step_1.generate_target()
         step_1.target.scale(1.2)
-        self.play(MoveToTarget(step_1),run_time=self.RUN_TIME, rate_func=there_and_back)
+        self.play(
+            MoveToTarget(step_1), run_time=self.RUN_TIME, rate_func=there_and_back
+        )
         step_2.generate_target()
         step_2.target.scale(1.2)
-        self.play(MoveToTarget(step_2),run_time=self.RUN_TIME, rate_func=there_and_back)
+        self.play(
+            MoveToTarget(step_2), run_time=self.RUN_TIME, rate_func=there_and_back
+        )
         step_3.generate_target()
         step_3.target.scale(1.2)
-        self.play(MoveToTarget(step_3),run_time=self.RUN_TIME, rate_func=there_and_back)
+        self.play(
+            MoveToTarget(step_3), run_time=self.RUN_TIME, rate_func=there_and_back
+        )
         self.update_slide(
             subtitle="Partitioning: Recursion (Left Partition)",
             notes="This results in two partitions.",
@@ -3248,11 +3286,14 @@ class defense(Slide):
         spectrum_arrow.generate_target()
         diff_vec = right_cluster.get_center() - spectrum_arrow.get_center()
         width_factor_arrow_length = arrow_length / spectrum_arrow.get_width()
-        width_factor_right_cluster = spectrum_arrow.get_width()/right_cluster.get_width()
-        width_factor = width_factor_arrow_length * width_factor_right_cluster
-        spectrum_arrow.target.stretch_to_fit_width(
+        width_factor_right_cluster = (
+            spectrum_arrow.get_width() / right_cluster.get_width()
         )
-        new_location_right_cluster = spectrum_arrow.get_center() + width_factor * diff_vec
+        width_factor = width_factor_arrow_length * width_factor_right_cluster
+        spectrum_arrow.target.stretch_to_fit_width()
+        new_location_right_cluster = (
+            spectrum_arrow.get_center() + width_factor * diff_vec
+        )
         # new_diff_vec = spectrum_arrow.get_center() - new_location_right_cluster
         spectrum_arrow.target.shift(new_location_right_cluster[0] * LEFT)
         self.update_slide(
@@ -3262,17 +3303,23 @@ class defense(Slide):
             ],
             notes="This results in two partitions.",
         )
-        
+
         # slide: highlight steps (right partition)
         step_1.generate_target()
         step_1.target.scale(1.2)
-        self.play(MoveToTarget(step_1),run_time=self.RUN_TIME, rate_func=there_and_back)
+        self.play(
+            MoveToTarget(step_1), run_time=self.RUN_TIME, rate_func=there_and_back
+        )
         step_2.generate_target()
         step_2.target.scale(1.2)
-        self.play(MoveToTarget(step_2),run_time=self.RUN_TIME, rate_func=there_and_back)
+        self.play(
+            MoveToTarget(step_2), run_time=self.RUN_TIME, rate_func=there_and_back
+        )
         step_3.generate_target()
         step_3.target.scale(1.2)
-        self.play(MoveToTarget(step_3),run_time=self.RUN_TIME, rate_func=there_and_back)
+        self.play(
+            MoveToTarget(step_3), run_time=self.RUN_TIME, rate_func=there_and_back
+        )
         self.update_slide(
             subtitle="Partitioning: Recursion (Right Partition)",
             notes="This results in two partitions.",
@@ -3303,12 +3350,12 @@ class defense(Slide):
                 FadeOut(lambda_k_label),
                 FadeOut(lambda_kp1_label),
                 FadeOut(lambda_n_label),
-                Write(step_4)
-            ]
+                Write(step_4),
+            ],
         )
 
         # slide: summary
-        text_summary =TexText(
+        text_summary = TexText(
             "Now let's see how this performs in practice!",
             font_size=CONTENT_FONT_SIZE,
         )
@@ -3319,9 +3366,7 @@ class defense(Slide):
                 FadeOut(step_2),
                 FadeOut(step_3),
                 FadeOut(step_4),
-                Write(
-                    text_summary
-                ),
+                Write(text_summary),
             ],
         )
         self.slide_contents = [text_summary]
@@ -3377,11 +3422,19 @@ class defense(Slide):
                 cluster_eigs.append(eig_dot)
         cluster_bars = []
 
-        def line_updater(line: Mobject, x: float):
+        def line1_updater(line: Mobject, x: float):
             line.set_color(WHITE)
             line.put_start_and_end_on(
                 arrow.get_start() + [x * arrow.get_length() - bar_buff, -0.1, 0],
                 arrow.get_start() + [x * arrow.get_length() - bar_buff, 0.1, 0],
+            )
+            return line
+        
+        def line2_updater(line: Mobject, y: float):
+            line.set_color(WHITE)
+            line.put_start_and_end_on(
+                arrow.get_start() + [y * arrow.get_length() + bar_buff, -0.1, 0],
+                arrow.get_start() + [y * arrow.get_length() + bar_buff, 0.1, 0],
             )
             return line
 
@@ -3391,13 +3444,13 @@ class defense(Slide):
                 end=arrow.get_start() + [x * arrow.get_length() - bar_buff, 0.1, 0],
                 color=WHITE,
             )
-            line1.add_updater(lambda mobj, x=x: line_updater(mobj, x))
+            line1.add_updater(lambda mobj, x=x: line1_updater(mobj, x))
             line2 = Line(
                 start=arrow.get_start() + [y * arrow.get_length() + bar_buff, -0.1, 0],
                 end=arrow.get_start() + [y * arrow.get_length() + bar_buff, 0.1, 0],
                 color=WHITE,
             )
-            line2.add_updater(lambda mobj, y=y: line_updater(mobj, y))
+            line2.add_updater(lambda mobj, y=y: line2_updater(mobj, y))
             cluster_bars.extend([line1, line2])
         cluster_bar_labels = []
 
@@ -3475,18 +3528,429 @@ class defense(Slide):
         return spectrum
 
     def level_5_results(self):
+        # slide: coefficient functions
+        coefficient_functions = (
+            ImageMobject("coefficient_functions")
+            .set_height(0.6 * FRAME_HEIGHT)
+            .set_z_index(1)
+        )
+        rectangle_coefficient_functions = (
+            BackgroundRectangle(
+                coefficient_functions,
+                color=CustomColors.BLUE.value,
+                buff=0.1,
+            )
+            .set_z_index(-1)
+            .round_corners(0.1)
+            .set_opacity(1.0)
+        )
+
+        M_1 = TexText(
+            r"$M_1 = M_{\text{2-OAS-GDSW}}$",
+            font_size=1.0 * CONTENT_FONT_SIZE,
+        )
+        M_2 = TexText(
+            r"$M_2 = M_{\text{2-OAS-RGDSW}}$",
+            font_size=1.0 * CONTENT_FONT_SIZE,
+        )
+        M_3 = TexText(
+            r"$M_3 = M_{\text{2-OAS-AMS}}$",
+            font_size=1.0 * CONTENT_FONT_SIZE,
+        )
+        for i, M in enumerate([M_1, M_2, M_3]):
+            M.next_to(rectangle_coefficient_functions, DOWN, buff=0.1).shift(
+                (i - 1) * 3.0 * RIGHT
+            )
+
+        self.update_slide(
+            "How Sharp Are the New Bounds?",
+            subtitle="Recap of Coefficient Functions",
+            notes="Discuss results on absolute sharpness of the new bounds",
+            additional_animations=[
+                FadeIn(coefficient_functions),
+                FadeIn(rectangle_coefficient_functions),
+                Write(M_1),
+                Write(M_2),
+                Write(M_3),
+            ],
+        )
+
+        # slide: absolute performance (GDSW)
+        gdsw_results = ImageMobject(
+            "absolute_performance_2-OAS-GDSW.png",
+            height=0.6 * FRAME_HEIGHT,
+        ).set_z_index(1)
+        rectangle_gdsw_results = (
+            BackgroundRectangle(
+                gdsw_results,
+                buff=0.1,
+                color=CustomColors.BLUE.value,
+                fill_color=CustomColors.BLUE.value,
+            )
+            .round_corners(0.1)
+            .set_opacity(1.0)
+            .set_z_index(-1)
+        )
+        M_1.generate_target()
+        M_1.target.next_to(rectangle_gdsw_results, DOWN, buff=0.1)
+        M_2.generate_target()
+        M_2.target.set_opacity(0.0)
+        M_3.generate_target()
+        M_3.target.set_opacity(0.0)
+        self.update_slide(
+            subtitle="New iteration bounds for $M_1 = M_{\\text{2-OAS-GDSW}}$",
+            additional_animations=[
+                FadeOut(coefficient_functions),
+                FadeOut(rectangle_coefficient_functions),
+                FadeIn(gdsw_results),
+                FadeIn(rectangle_gdsw_results),
+                MoveToTarget(M_1),
+                MoveToTarget(M_2),
+                MoveToTarget(M_3),
+            ],
+        )
+
+        # slide: absolute performance (RGDSW)
+        rgdsw_results = ImageMobject(
+            "absolute_performance_2-OAS-RGDSW.png",
+            height=0.6 * FRAME_HEIGHT,
+        ).set_z_index(1)
+        rectangle_rgdsw_results = (
+            BackgroundRectangle(
+                rgdsw_results,
+                buff=0.1,
+                color=CustomColors.BLUE.value,
+                fill_color=CustomColors.BLUE.value,
+            )
+            .round_corners(0.1)
+            .set_opacity(1.0)
+            .set_z_index(-1)
+        )
+        M_1.generate_target()
+        M_1.target.set_opacity(0.0)
+        M_2.generate_target()
+        M_2.target.next_to(rectangle_rgdsw_results, DOWN, buff=0.1)
+        M_2.target.set_opacity(1.0)
+        self.update_slide(
+            subtitle="New iteration bounds for $M_2 = M_{\\text{2-OAS-RGDSW}}$",
+            additional_animations=[
+                FadeOut(gdsw_results),
+                FadeOut(rectangle_gdsw_results),
+                FadeIn(rgdsw_results),
+                FadeIn(rectangle_rgdsw_results),
+                MoveToTarget(M_1),
+                MoveToTarget(M_2),
+                MoveToTarget(M_3),
+            ],
+        )
+        # slide: absolute performance (AMS)
         ams_results = ImageMobject(
             "absolute_performance_2-OAS-AMS.png",
             height=0.6 * FRAME_HEIGHT,
         ).set_z_index(1)
-        rectangle = BackgroundRectangle(ams_results, buff=0.1, color=CustomColors.BLUE.value, fill_color=CustomColors.BLUE.value).round_corners(0.1).set_opacity(1.0).set_z_index(-1)
+        rectangle_ams_results = (
+            BackgroundRectangle(
+                ams_results,
+                buff=0.1,
+                color=CustomColors.BLUE.value,
+                fill_color=CustomColors.BLUE.value,
+            )
+            .round_corners(0.1)
+            .set_opacity(1.0)
+            .set_z_index(-1)
+        )
+        M_2.generate_target()
+        M_2.target.set_opacity(0.0)
+        M_3.generate_target()
+        M_3.target.next_to(rectangle_ams_results, DOWN, buff=0.1)
+        M_3.target.set_opacity(1.0)
         self.update_slide(
-            "How Sharp Are the New Bounds?",
-            notes="Discuss results on absolute sharpness of the new bounds",
-            additional_animations=[FadeIn(ams_results), FadeIn(rectangle)],
+            subtitle="New iteration bounds for $M_3 = M_{\\text{2-OAS-AMS}}$",
+            additional_animations=[
+                FadeOut(rgdsw_results),
+                FadeOut(rectangle_rgdsw_results),
+                FadeIn(ams_results),
+                FadeIn(rectangle_ams_results),
+                MoveToTarget(M_1),
+                MoveToTarget(M_2),
+                MoveToTarget(M_3),
+            ],
         )
 
-        super().next_slide()
+        # slide: partitioning output
+        spectra_width = 0.3 * FRAME_WIDTH
+        buffer_width = 2
+        shift_distance = 0.5 * (spectra_width + buffer_width)
+        partitioning_output = self.generate_partitioning_output(spectra_width)
+        coef_1 = TexText(
+            r"$\mathcal{C}_{\text{3layer, vert}}$",
+            font_size=CONTENT_FONT_SIZE,
+        ).shift(shift_distance * LEFT + 1.5 * UP)
+        coef_2 = TexText(
+            r"$\mathcal{C}_{\text{edge slabs, around vertices}}$",
+            font_size=CONTENT_FONT_SIZE,
+        ).move_to(shift_distance * RIGHT + 1.5 * UP)
+
+        all_spectra = {i: VGroup() for i in range(len(MESHES))}
+        labels = [
+            Tex(f"\sigma(M_{i+1}^{{-1}}A)", font_size=CONTENT_FONT_SIZE) for i in range(3)
+        ]
+        for i, _ in enumerate(MESHES):
+            for j, coef_func in enumerate([coef_1, coef_2]):
+                for k, spectrum in enumerate(partitioning_output[i][j]):
+                    offset = (0.5 + k) * DOWN
+                    spectrum.align_to(coef_func, UP)
+                    spectrum.shift(offset).shift(
+                        shift_distance * (LEFT if coef_func == coef_1 else RIGHT)
+                    )
+                    if j == 0:
+                        labels[k].next_to(spectrum, LEFT, buff=0.1)
+                    all_spectra[i].add(spectrum)
+        M_2.generate_target()
+        M_2.target.set_opacity(1.0)
+        M_2.target.next_to(all_spectra[0], DOWN, buff=0.5)
+        M_1.generate_target()
+        M_1.target.set_opacity(1.0)
+        M_1.target.next_to(M_2.target, LEFT, buff=1.0)
+        M_3.generate_target()
+        M_3.target.set_opacity(1.0)
+        M_3.target.next_to(M_2.target, RIGHT, buff=1.0)
+        self.update_slide(
+            subtitle="Partitioning Output",
+            additional_animations=[
+                FadeOut(ams_results),
+                FadeOut(rectangle_ams_results),
+                MoveToTarget(M_1),
+                MoveToTarget(M_2),
+                MoveToTarget(M_3),
+                Write(coef_1),
+                Write(coef_2),
+                Write(all_spectra[0]),  # show only first mesh initially
+                *[Write(label) for label in labels],
+            ],
+            transition_time=2.0*self.RUN_TIME
+        )
+
+    def generate_partitioning_output(self, spectra_width: float) -> dict:
+        out = {}
+        for i, mesh_params in enumerate(MESHES):
+            out[i] = {}
+            for j, coef_func in enumerate(COEF_FUNCS):
+                min_eig = float("inf")
+                max_eig = float("-inf")
+                spectra_list = []
+                cluster_indices_list = []
+                for preconditioner_cls, coarse_space_cls in PRECONDITIONERS:
+                    # Load the eigenvalues from the saved numpy file
+                    fp = get_spectrum_save_path(
+                        mesh_params, coef_func, preconditioner_cls, coarse_space_cls
+                    )
+                    if fp.exists():
+                        eigenvalues = np.load(fp)["eigenvalues"]
+                        spectra_list.append(eigenvalues)
+
+                        # store the split indices for the sharpened bound (except for the last one)
+                        tail_eigs = []
+                        tail_indxs = []
+                        cluster_indices = []
+                        split_idxs = partition_eigenspectrum(eigenvalues)
+                        start = 0
+                        for end in split_idxs:
+                            if start == end:
+                                # cluster_indices.append((start, start))
+                                pass
+                            else:
+                                cluster_indices.append((start, end))
+                            start = end + 1
+                        cluster_indices_list.append(cluster_indices)
+
+                        # keep track of the min and max eigenvalues across all spectra for consistent x_range
+                        _max_eig = np.max(eigenvalues)
+                        _min_eig = np.min(eigenvalues)
+                        max_eig = max(max_eig, _max_eig)
+                        min_eig = min(min_eig, _min_eig)
+                    else:
+                        # Provide a clickable link to the script in the repo using Rich markup with absolute path
+                        approx_path = Path(__file__).parent / "approximate_spectra.py"
+                        LOGGER.error(
+                            f"File %s does not exist. Run '[link=file:{approx_path}]approximate_spectra.py[/link]' first.",
+                            fp,
+                        )
+                        exit()
+                out[i][j] = [
+                    self.generate_spectrum(
+                        eigs,
+                        cluster_indices,
+                        x_range=(min_eig, max_eig),
+                        arrow_length=spectra_width,
+                    )
+                    for eigs, cluster_indices in zip(spectra_list, cluster_indices_list)
+                ]
+        return out
+
+    def generate_spectrum(
+        self,
+        eigs: np.ndarray,
+        cluster_indices: list[tuple[int, int]],
+        arrow_length: float = 7.0,
+        dot_size: float = 0.7 * DEFAULT_DOT_RADIUS,
+        bar_buff: float = 0.01,
+        edge_buffer: float = 0.1,
+        x_range: tuple[float, float] = None,
+    ) -> VGroup:
+        arrow = Arrow(
+            start=ORIGIN,
+            end=arrow_length * RIGHT,
+            buff=0.0,
+            color=WHITE,
+        ).move_to(ORIGIN)
+        always(arrow.set_color, WHITE)
+
+        def arrow_updater(arrow: Mobject):
+            arrow.buff = 0.5
+            arrow.stroke_width = 1
+            return arrow
+
+        arrow.add_updater(lambda m: arrow_updater(m))
+
+        def buffer():
+            return [arrow.get_length() * edge_buffer, 0, 0]
+
+        # eig dots
+        def eig_dot_updater(mobj: Mobject, eig):
+            mobj.set_fill(CustomColors.SKY.value)
+            mobj.scale(1)
+            mobj.move_to(
+                arrow.get_start()
+                + buffer()
+                + [eig * (arrow.get_length() * (1 - 2 * edge_buffer)), 0, 0]
+            )
+            return mobj
+
+        eig_dots = []
+        log_eigs = np.log10(eigs)
+        if x_range is not None:
+            min_eig, max_eig = x_range
+            log_min_eig = np.log10(min_eig)
+            log_max_eig = np.log10(max_eig)
+        else:
+            log_max_eig = np.max(log_eigs)
+            log_min_eig = np.min(log_eigs)
+
+        normalized_eigs = (log_eigs - log_min_eig) / (log_max_eig - log_min_eig)
+        for eig in normalized_eigs:
+            eig_dot = Dot(
+                arrow.get_start()
+                + buffer()
+                + [eig * arrow.get_length()*(1-2*edge_buffer), 0, 0],
+                fill_color=CustomColors.SKY.value,
+                radius=dot_size,
+            )
+            eig_dot.add_updater(lambda mobj, eig=eig: eig_dot_updater(mobj, eig))
+            eig_dots.append(eig_dot)
+
+        # cluster bars
+        def line1_updater(line: Mobject, x: float):
+            line.set_color(WHITE)
+            line.put_start_and_end_on(
+                arrow.get_start()
+                + buffer()
+                + [x * (arrow.get_length()*(1-2*edge_buffer)) - bar_buff*arrow.get_length(), -0.1, 0],
+                arrow.get_start()
+                + buffer()
+                + [x * (arrow.get_length()*(1-2*edge_buffer)) - bar_buff*arrow.get_length(), 0.1, 0],
+            )
+            return line
+        def line2_updater(line: Mobject, y: float):
+            line.set_color(WHITE)
+            line.put_start_and_end_on(
+                arrow.get_start()
+                + buffer()
+                + [y * (arrow.get_length()*(1-2*edge_buffer)) + bar_buff*arrow.get_length(), -0.1, 0],
+                arrow.get_start()
+                + buffer()
+                + [y * (arrow.get_length()*(1-2*edge_buffer)) + bar_buff*arrow.get_length(), 0.1, 0],
+            )
+            return line
+
+        cluster_bars = []
+        for (i1, i2) in cluster_indices:
+            x, y = normalized_eigs[i1], normalized_eigs[i2]
+            line1 = Line(
+                start=arrow.get_start()
+                + buffer()
+                + [x * (arrow.get_length()*(1-2*edge_buffer)) - bar_buff*arrow.get_length(), -0.1, 0],
+                end=arrow.get_start()
+                + buffer()
+                + [x * (arrow.get_length()*(1-2*edge_buffer)) - bar_buff*arrow.get_length(), 0.1, 0],
+                color=WHITE,
+            )
+            line1.add_updater(lambda mobj, x=x: line1_updater(mobj, x))
+            line2 = Line(
+                start=arrow.get_start()
+                + buffer()
+                + [y * (arrow.get_length()*(1-2*edge_buffer)) + bar_buff*arrow.get_length(), -0.1, 0],
+                end=arrow.get_start()
+                + buffer()
+                + [y * (arrow.get_length()*(1-2*edge_buffer)) + bar_buff*arrow.get_length(), 0.1, 0],
+                color=WHITE,
+            )
+            line2.add_updater(lambda mobj, y=y: line2_updater(mobj, y))
+            cluster_bars.extend([line1, line2])
+
+        # cluster bar labels
+        def label_updater(label: Mobject, bar: Mobject):
+            label.next_to(bar, DOWN, buff=0.1)
+            label.align_to(arrow.get_center() + 0.4 * DOWN, DOWN)
+            return label
+
+        def left_label_updater(label: Mobject, bar: Mobject):
+            label.align_to(bar.get_center(), RIGHT)
+            return label
+
+        def right_label_updater(label: Mobject, bar: Mobject):
+            label.align_to(bar.get_center(), LEFT)
+            return label
+
+        cluster_bar_labels = []
+        cluster_labels = [
+            f"a_{i//2+1}" if i % 2 == 0 else f"b_{i//2+1}"
+            for i in range(len(cluster_indices) * 2)
+        ]
+        for i, (bar, label) in enumerate(zip(cluster_bars, cluster_labels)):
+            label = (
+                Tex(label, font_size=CONTENT_FONT_SIZE)
+                .next_to(bar, DOWN, buff=0.1)
+                .align_to(arrow.get_center() + 0.4 * DOWN, DOWN)
+            )
+            label.add_updater(lambda mobj, bar=bar: label_updater(mobj, bar))
+            if i %2 == 0:
+                label.add_updater(lambda mobj, bar=bar: left_label_updater(mobj, bar))
+            else:
+                label.add_updater(lambda mobj, bar=bar: right_label_updater(mobj, bar))
+            cluster_bar_labels.append(label)
+
+        def format_cond(c):
+            if np.isnan(c):
+                return "n/a"
+            mantissa, exp = f"{c:.1e}".split("e")
+            exp = int(exp)
+            if exp == 0:
+                return mantissa
+            return rf"{mantissa} \times 10^{{{exp}}}"
+
+        condition_number = Tex(
+            f"\kappa = {format_cond(np.max(eigs) / np.min(eigs))}",
+            font_size=CONTENT_FONT_SIZE,
+        ).next_to(arrow, RIGHT, buff=0.1)
+        always(condition_number.next_to, arrow, RIGHT, buff=0.1)
+        return VGroup(
+            arrow,
+            condition_number,
+            *eig_dots,
+            *cluster_bars,
+            *cluster_bar_labels,
+        )
 
     def level_6_conclusion(self):
         self.update_slide(
@@ -3534,6 +3998,11 @@ class defense(Slide):
         # self.level_3_preconditioning()
         # self.level_4_two_clusters()
         self.level_5_results()
+        # self.level_6_conclusion()
+        # self.backup()
+        # self.references()        # self.level_6_conclusion()
+        # self.backup()
+        # self.references()        # self.references()        # self.references()        # self.references()        self.level_5_results()
         # self.level_6_conclusion()
         # self.backup()
         # self.references()        # self.level_6_conclusion()
