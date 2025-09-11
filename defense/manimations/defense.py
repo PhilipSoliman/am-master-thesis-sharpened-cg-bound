@@ -454,7 +454,11 @@ class defense(Slide):
             title_animations.append(ReplacementTransform(self.slide_title, new_title))
 
         if index is not None:
-            new_index = TexText(index, font_size=self.slide_number_size).next_to(self.slide_number, DOWN, buff=0.12).align_to(self.RIGHT_MARGIN, RIGHT)
+            new_index = (
+                TexText(index, font_size=self.slide_number_size)
+                .next_to(self.slide_number, DOWN, buff=0.12)
+                .align_to(self.RIGHT_MARGIN, RIGHT)
+            )
             title_animations.append(ReplacementTransform(self.slide_index, new_index))
 
         # check for new subtitle
@@ -1363,7 +1367,7 @@ class defense(Slide):
             new_contents=[linear_system_text],
             subtitle="The Role of Eigenvalues",
             notes="Explain CGs dependence on eigenvalues",
-            index="How Does CG Converge?"
+            index="How Does CG Converge?",
         )
 
         plot_resolution = 0.01
@@ -1401,7 +1405,7 @@ class defense(Slide):
             title="The Role of Eigenvalues",
             subtitle="Sound Example",
             notes="We can view the matrix A as a signal...",
-            additional_animations=[            
+            additional_animations=[
                 ReplacementTransform(linear_system_text, plot),
                 FadeIn(speaker_img),
             ],
@@ -1509,15 +1513,19 @@ class defense(Slide):
         )
 
         # slide: eigenvalues of A
-        spectrum_A = TexText(
-            r"$\sigma(A) = \{\lambda_1, \lambda_2, \ldots, \lambda_n\}$",
-            font_size=2.0 * CONTENT_FONT_SIZE,
-            t2c={
-                r"\lambda_1": CustomColors.RED.value,
-                r"\lambda_2": CustomColors.GOLD.value,
-                r"\lambda_n": CustomColors.BLUE.value,
-            },
-        ).move_to(linear_system_text.get_center()).shift(2*UP)
+        spectrum_A = (
+            TexText(
+                r"$\sigma(A) = \{\lambda_1, \lambda_2, \ldots, \lambda_n\}$",
+                font_size=2.0 * CONTENT_FONT_SIZE,
+                t2c={
+                    r"\lambda_1": CustomColors.RED.value,
+                    r"\lambda_2": CustomColors.GOLD.value,
+                    r"\lambda_n": CustomColors.BLUE.value,
+                },
+            )
+            .move_to(linear_system_text.get_center())
+            .shift(2 * UP)
+        )
         condition_number_text = TexText(
             r"$\kappa(A) = \frac{\lambda_{\text{max}}}{\lambda_{\text{min}}}$",
             font_size=2.0 * CONTENT_FONT_SIZE,
@@ -1530,7 +1538,7 @@ class defense(Slide):
                 ReplacementTransform(linear_system_text, spectrum_A),
                 Write(condition_number_text, lag_ratio=0.5),
             ],
-            transition_time=2*self.RUN_TIME,
+            transition_time=2 * self.RUN_TIME,
         )
 
         # slide: CG solution polynmomial
@@ -1880,7 +1888,7 @@ class defense(Slide):
             notes="For a uniform spectrum, the classical bound is sharp.",
             subtitle="Uniform Spectrum",
             # additional_animations=anims,
-            transition_time=spectra_transition_time
+            transition_time=spectra_transition_time,
         )
 
         # slide: split spectrum
@@ -1909,13 +1917,13 @@ class defense(Slide):
             num_points,
             spectra_transition_time,
             classical_bound_val,
-            return_anims=True
+            return_anims=True,
         )
         self.update_slide(
             notes="For a split spectrum, the classical bound is pessimistic.",
             subtitle="Split Spectrum",
             # additional_animations=anims2,
-            transition_time=spectra_transition_time
+            transition_time=spectra_transition_time,
         )
         # del anims2, anims
 
@@ -2152,7 +2160,8 @@ class defense(Slide):
         ).scale(2.0)
         self.play(
             FadeOut(preconditioner),
-            FadeOutToPoint(preconditioned_system, conditioner_number_center),
+            # FadeOutToPoint(preconditioned_system, conditioner_number_center),
+            FadeOut(preconditioned_system),
             ReplacementTransform(condition_number, preconditioned_condition_number),
             run_time=2 * self.RUN_TIME,
         )
@@ -2276,9 +2285,7 @@ class defense(Slide):
             font_size=1.5 * CONTENT_FONT_SIZE,
         )
         for i, M in enumerate([M_1_simple, M_2_simple, M_3_simple]):
-            M.next_to(coefficient_rectangle, DOWN, buff=0).shift(
-                (i - 1) * 1.0 * RIGHT
-            )
+            M.next_to(coefficient_rectangle, DOWN, buff=0).shift((i - 1) * 1.0 * RIGHT)
         self.update_slide(
             title="Preconditioners for High-Contrast Problems",
             subtitle="Three Tailored Preconditioners",
@@ -2482,7 +2489,7 @@ class defense(Slide):
             subtitle="Clustered Spectra",
             new_contents=[cg_error_bound_uniform],
             notes="We recap the classical CG error bound...",
-            index="Towards a Sharper Iteration Bound"
+            index="Towards a Sharper Iteration Bound",
         )
 
         # slide: Chebyshev polynomial
@@ -2517,7 +2524,9 @@ class defense(Slide):
             subtitle="Chebyshev Polynomial",
             additional_animations=[
                 Write(text1),
-                ReplacementTransform(cg_error_bound_uniform, cg_error_bound_uniform_short),
+                ReplacementTransform(
+                    cg_error_bound_uniform, cg_error_bound_uniform_short
+                ),
                 Write(text2),
                 Write(chebyshev_poly),
             ],
@@ -2625,7 +2634,7 @@ class defense(Slide):
             additional_animations=[
                 Write(text_minmax),
             ],
-            transition_time=self.RUN_TIME,  
+            transition_time=self.RUN_TIME,
         )
 
         # slide: composite Chebyshev polynomial
@@ -2888,9 +2897,10 @@ class defense(Slide):
                 ReplacementTransform(
                     multi_cluster_cg_bound, multi_cluster_cg_bound_simple
                 ),
-                FadeInFromPoint(
-                    og_spectrum_backup, multi_cluster_cg_bound_simple.get_center()
-                ),
+                # FadeInFromPoint(
+                #     og_spectrum_backup, multi_cluster_cg_bound_simple.get_center()
+                # ),
+                FadeIn(og_spectrum_backup),
                 FadeOut(text_where),
                 FadeOut(sub_equations),
                 FadeOut(text_result),
@@ -3117,7 +3127,7 @@ class defense(Slide):
         def get_index():
             return int(np.floor((self.time - self.start) / iteration_time))
 
-        def arrow_i_updater(mobj: manimlib.Arrow, dt: float):
+        def arrow_i_updater(mobj, dt: float):
             index = get_index()
             mobj.set_points_by_ends(
                 spectrum_for_partitioning_eigs[index].get_center()
@@ -3128,7 +3138,7 @@ class defense(Slide):
 
         arrow_i.add_updater(lambda m, dt: arrow_i_updater(m, dt))
 
-        def arrow_ip1_updater(mobj: manimlib.Arrow, dt: float):
+        def arrow_ip1_updater(mobj, dt: float):
             index = get_index()
             mobj.set_points_by_ends(
                 spectrum_for_partitioning_eigs[index + 1].get_center()
@@ -3227,7 +3237,7 @@ class defense(Slide):
         for eig_dot in spectrum_for_partitioning_eigs:
             eig_dot.remove_updater(eig_dot.get_updaters()[-1])
 
-        def arrow_i_updater_final(mobj: manimlib.Arrow, dt: float):
+        def arrow_i_updater_final(mobj, dt: float):
             mobj.set_points_by_ends(
                 spectrum_for_partitioning_eigs[curr_k].get_center()
                 - (1.0 * UP + 0.1 * RIGHT),
@@ -3237,7 +3247,7 @@ class defense(Slide):
 
         arrow_i.add_updater(lambda m, dt: arrow_i_updater_final(m, dt))
 
-        def arrow_ip1_updater_final(mobj: manimlib.Arrow, dt: float):
+        def arrow_ip1_updater_final(mobj, dt: float):
             mobj.set_points_by_ends(
                 spectrum_for_partitioning_eigs[curr_k + 1].get_center()
                 - (1.0 * UP + 0.1 * LEFT),
@@ -3661,7 +3671,7 @@ class defense(Slide):
         max_clusters: int = 4,
         rng: np.random.Generator = np.random.default_rng(42),
         randomize: bool = False,
-    ) -> tuple[list[VGroup], list[manimlib.Tex]]:
+    ) -> tuple[list[VGroup], list]:
         spectra = []
         res_polys = []
         for _ in range(num_spectra):
@@ -3703,7 +3713,7 @@ class defense(Slide):
 
     def level_5_results(self):
         # slide: coefficient functions
-        image_height = (FRAME_HEIGHT - self.BOTTOM_MARGIN - self.TOP_MARGIN)*0.7
+        image_height = (FRAME_HEIGHT - self.BOTTOM_MARGIN - self.TOP_MARGIN) * 0.7
         coefficient_functions = (
             ImageMobject("coefficient_functions")
             .set_height(image_height)
@@ -3748,14 +3758,18 @@ class defense(Slide):
                 Write(M_2),
                 Write(M_3),
             ],
-            index="Sharpness \& Practical Use of New Bound"
+            index="Sharpness \& Practical Use of New Bound",
         )
 
         # slide: absolute performance (GDSW)
-        gdsw_results = ImageMobject(
-            "absolute_performance_2-OAS-GDSW.png",
-            height=image_height,
-        ).set_z_index(1).align_to(self.TOP_MARGIN, UP)
+        gdsw_results = (
+            ImageMobject(
+                "absolute_performance_2-OAS-GDSW.png",
+                height=image_height,
+            )
+            .set_z_index(1)
+            .align_to(self.TOP_MARGIN, UP)
+        )
         rectangle_gdsw_results = (
             BackgroundRectangle(
                 gdsw_results,
@@ -3787,10 +3801,14 @@ class defense(Slide):
         )
 
         # slide: absolute performance (RGDSW)
-        rgdsw_results = ImageMobject(
-            "absolute_performance_2-OAS-RGDSW.png",
-            height=image_height,
-        ).set_z_index(1).align_to(self.TOP_MARGIN, UP)
+        rgdsw_results = (
+            ImageMobject(
+                "absolute_performance_2-OAS-RGDSW.png",
+                height=image_height,
+            )
+            .set_z_index(1)
+            .align_to(self.TOP_MARGIN, UP)
+        )
         rectangle_rgdsw_results = (
             BackgroundRectangle(
                 rgdsw_results,
@@ -3820,10 +3838,14 @@ class defense(Slide):
             ],
         )
         # slide: absolute performance (AMS)
-        ams_results = ImageMobject(
-            "absolute_performance_2-OAS-AMS.png",
-            height=image_height,
-        ).set_z_index(1).align_to(self.TOP_MARGIN, UP)
+        ams_results = (
+            ImageMobject(
+                "absolute_performance_2-OAS-AMS.png",
+                height=image_height,
+            )
+            .set_z_index(1)
+            .align_to(self.TOP_MARGIN, UP)
+        )
         rectangle_ams_results = (
             BackgroundRectangle(
                 ams_results,
@@ -3979,10 +4001,14 @@ class defense(Slide):
             + [f for f in all_spectra.values()]
             + labels
         )
-        ams_ritz_migration = ImageMobject(
-            "bound_and_spectrum_vs_iterations_2-OAS-AMS.png",
-            height=image_height,
-        ).set_z_index(1).align_to(self.TOP_MARGIN, UP)
+        ams_ritz_migration = (
+            ImageMobject(
+                "bound_and_spectrum_vs_iterations_2-OAS-AMS.png",
+                height=image_height,
+            )
+            .set_z_index(1)
+            .align_to(self.TOP_MARGIN, UP)
+        )
         rectangle_ams_ritz_migration = (
             BackgroundRectangle(
                 ams_ritz_migration,
@@ -4019,10 +4045,14 @@ class defense(Slide):
             ams_ritz_migration,
             rectangle_ams_ritz_migration,
         ]
-        rgdsw_ritz_migration = ImageMobject(
-            "bound_and_spectrum_vs_iterations_2-OAS-RGDSW.png",
-            height=image_height,
-        ).set_z_index(1).align_to(self.TOP_MARGIN, UP)
+        rgdsw_ritz_migration = (
+            ImageMobject(
+                "bound_and_spectrum_vs_iterations_2-OAS-RGDSW.png",
+                height=image_height,
+            )
+            .set_z_index(1)
+            .align_to(self.TOP_MARGIN, UP)
+        )
         rectangle_rgdsw_ritz_migration = (
             BackgroundRectangle(
                 rgdsw_ritz_migration,
@@ -4395,7 +4425,7 @@ class defense(Slide):
             "Conclusion",
             notes="Summarize the main points and contributions of the work",
             new_contents=[cover, rectangle],
-            index="Conclusion"
+            index="Conclusion",
         )
         item = Item()
         bullets = VGroup()
@@ -4406,20 +4436,22 @@ class defense(Slide):
                 t2c={"high-contrast": CustomColors.RED.value},
                 width=0.8 * FRAME_WIDTH,
             )
-            .align_to(self.TOP_MARGIN, UP).shift(1.0 * DOWN)
+            .align_to(self.TOP_MARGIN, UP)
+            .shift(1.0 * DOWN)
         )
         bullets.add(bullet_1)
-        background_rect_1 = BackgroundRectangle(
-            bullet_1,
-            color=CustomColors.BLUE.value,
-            buff=0.2,
-            fill_opacity=1.0,
-        ).round_corners(0.1).set_z_index(-1)
+        background_rect_1 = (
+            BackgroundRectangle(
+                bullet_1,
+                color=CustomColors.BLUE.value,
+                buff=0.2,
+                fill_opacity=1.0,
+            )
+            .round_corners(0.1)
+            .set_z_index(-1)
+        )
         self.update_slide(
-            additional_animations=[
-                Write(bullet_1),
-                FadeIn(background_rect_1)
-            ],
+            additional_animations=[Write(bullet_1), FadeIn(background_rect_1)],
             transition_time=self.RUN_TIME,
         )
 
@@ -4428,21 +4460,25 @@ class defense(Slide):
             f"{item}. We developed $m_{{N_{{\\text{{cluster}}}}}}$ building on Axelsson's $m_2$",
             font_size=CONTENT_FONT_SIZE,
             width=0.3 * FRAME_WIDTH,
-            t2c={"$m_{{N_{{\\text{{cluster}}}}}}$": CustomColors.GOLD.value, "$m_2$": CustomColors.SKY.value},
-            alignment=ALIGN.LEFT
+            t2c={
+                "$m_{{N_{{\\text{{cluster}}}}}}$": CustomColors.GOLD.value,
+                "$m_2$": CustomColors.SKY.value,
+            },
+            alignment=ALIGN.LEFT,
         ).next_to(bullet_1, DOWN, buff=0.5)
         bullets.add(bullet_2)
-        background_rect_2 = BackgroundRectangle(
-            bullet_2,
-            color=CustomColors.BLUE.value,
-            buff=0.2,
-            fill_opacity=1.0,
-        ).round_corners(0.1).set_z_index(-1)
+        background_rect_2 = (
+            BackgroundRectangle(
+                bullet_2,
+                color=CustomColors.BLUE.value,
+                buff=0.2,
+                fill_opacity=1.0,
+            )
+            .round_corners(0.1)
+            .set_z_index(-1)
+        )
         self.update_slide(
-            additional_animations=[
-                Write(bullet_2),
-                FadeIn(background_rect_2)
-            ],
+            additional_animations=[Write(bullet_2), FadeIn(background_rect_2)],
             transition_time=self.RUN_TIME,
         )
 
@@ -4452,20 +4488,21 @@ class defense(Slide):
             font_size=CONTENT_FONT_SIZE,
             width=0.3 * FRAME_WIDTH,
             t2c={"10x-1000x": CustomColors.GOLD.value},
-            alignment=ALIGN.LEFT
+            alignment=ALIGN.LEFT,
         ).next_to(bullet_2, DOWN, buff=0.5)
         bullets.add(bullet_3)
-        background_rect_3 = BackgroundRectangle(
-            bullet_3,
-            color=CustomColors.BLUE.value,
-            buff=0.2,
-            fill_opacity=1.0,
-        ).round_corners(0.1).set_z_index(-1)
+        background_rect_3 = (
+            BackgroundRectangle(
+                bullet_3,
+                color=CustomColors.BLUE.value,
+                buff=0.2,
+                fill_opacity=1.0,
+            )
+            .round_corners(0.1)
+            .set_z_index(-1)
+        )
         self.update_slide(
-            additional_animations=[
-                Write(bullet_3),
-                FadeIn(background_rect_3)
-            ],
+            additional_animations=[Write(bullet_3), FadeIn(background_rect_3)],
             transition_time=self.RUN_TIME,
         )
 
@@ -4475,20 +4512,21 @@ class defense(Slide):
             font_size=CONTENT_FONT_SIZE,
             width=0.3 * FRAME_WIDTH,
             t2c={"slowly converging Ritz values": CustomColors.RED.value},
-            alignment=ALIGN.LEFT
+            alignment=ALIGN.LEFT,
         ).next_to(bullet_3, DOWN, buff=0.5)
         bullets.add(bullet_4)
-        background_rect_4 = BackgroundRectangle(
-            bullet_4,
-            color=CustomColors.BLUE.value,
-            buff=0.2,
-            fill_opacity=1.0,
-        ).round_corners(0.1).set_z_index(-1)
+        background_rect_4 = (
+            BackgroundRectangle(
+                bullet_4,
+                color=CustomColors.BLUE.value,
+                buff=0.2,
+                fill_opacity=1.0,
+            )
+            .round_corners(0.1)
+            .set_z_index(-1)
+        )
         self.update_slide(
-            additional_animations=[
-                Write(bullet_4),
-                FadeIn(background_rect_4)
-            ],
+            additional_animations=[Write(bullet_4), FadeIn(background_rect_4)],
             transition_time=self.RUN_TIME,
         )
 
@@ -4496,22 +4534,27 @@ class defense(Slide):
         bullet_5 = defense.paragraph(
             f"{item}. Future work: refine cluster partitioning, improve a priori spectral estimation, and apply bounds to broader problem classes",
             font_size=CONTENT_FONT_SIZE,
-            t2c={"refine": CustomColors.GOLD.value, "a priori spectral estimation": CustomColors.RED.value, "apply bounds to broader problem classes": CustomColors.SKY.value},
+            t2c={
+                "refine": CustomColors.GOLD.value,
+                "a priori spectral estimation": CustomColors.RED.value,
+                "apply bounds to broader problem classes": CustomColors.SKY.value,
+            },
             width=0.3 * FRAME_WIDTH,
-            alignment=ALIGN.LEFT
+            alignment=ALIGN.LEFT,
         ).next_to(bullet_4, DOWN, buff=0.5)
         bullets.add(bullet_5)
-        background_rect_5 = BackgroundRectangle(
-            bullet_5,
-            color=CustomColors.BLUE.value,
-            buff=0.2,
-            fill_opacity=1.0,
-        ).round_corners(0.1).set_z_index(-1)
+        background_rect_5 = (
+            BackgroundRectangle(
+                bullet_5,
+                color=CustomColors.BLUE.value,
+                buff=0.2,
+                fill_opacity=1.0,
+            )
+            .round_corners(0.1)
+            .set_z_index(-1)
+        )
         self.update_slide(
-            additional_animations=[
-                Write(bullet_5),
-                FadeIn(background_rect_5)
-            ],
+            additional_animations=[Write(bullet_5), FadeIn(background_rect_5)],
             transition_time=self.RUN_TIME,
         )
 
