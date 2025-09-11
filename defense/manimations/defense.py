@@ -17,6 +17,7 @@ os.environ["NO_HCMSFEM_CLI_ARGS"] = ""
 # add to pythonpath
 import sys
 
+from hcmsfem.eigenvalues import eigs
 from hcmsfem.logger import LOGGER
 from hcmsfem.meshes import DefaultQuadMeshParams
 from hcmsfem.plot_utils import CustomColors
@@ -26,11 +27,12 @@ from hcmsfem.root import get_venv_root
 from hcmsfem.solvers import (
     CustomCG,
     classic_cg_iteration_bound,
+    multi_cluster_cg_iteration_bound,
     partition_eigenspectrum,
 )
 
 sys.path.append((get_venv_root() / "code" / "model_spectra").as_posix())
-from approximate_spectra import PRECONDITIONERS, get_spectrum_save_path
+from approximate_spectra import PRECONDITIONERS, RTOL, get_spectrum_save_path
 
 FIGURE_DIR = get_venv_root() / "figures"
 
@@ -39,6 +41,8 @@ COEF_FUNCS = [
     CoefFunc.THREE_LAYER_VERTEX_INCLUSIONS,
     CoefFunc.EDGE_SLABS_AROUND_VERTICES_INCLUSIONS,
 ]
+LOG_RTOL = np.log(RTOL)
+N_ITERATIONS = 300
 
 # Manim render settings
 FPS = 24
@@ -54,7 +58,7 @@ class QUALITY(Enum):
 
 
 manim_config.camera.fps = FPS
-manim_config.camera.resolution = QUALITY.FK.value
+manim_config.camera.resolution = QUALITY.P720.value
 manim_config.background_color = WHITE
 manim_config.directories.raster_images = (get_venv_root() / "images").as_posix()
 manim_config.camera.background_color = CustomColors.NAVY.value
@@ -3290,11 +3294,12 @@ class defense(Slide):
             spectrum_arrow.get_width() / right_cluster.get_width()
         )
         width_factor = width_factor_arrow_length * width_factor_right_cluster
-        spectrum_arrow.target.stretch_to_fit_width()
+        spectrum_arrow.target.stretch_to_fit_width(
+            width_factor * spectrum_arrow.get_length()
+        )
         new_location_right_cluster = (
             spectrum_arrow.get_center() + width_factor * diff_vec
         )
-        # new_diff_vec = spectrum_arrow.get_center() - new_location_right_cluster
         spectrum_arrow.target.shift(new_location_right_cluster[0] * LEFT)
         self.update_slide(
             subtitle="Partitioning: Recursion (Right Partition)",
@@ -3429,7 +3434,7 @@ class defense(Slide):
                 arrow.get_start() + [x * arrow.get_length() - bar_buff, 0.1, 0],
             )
             return line
-        
+
         def line2_updater(line: Mobject, y: float):
             line.set_color(WHITE)
             line.put_start_and_end_on(
@@ -3693,7 +3698,8 @@ class defense(Slide):
 
         all_spectra = {i: VGroup() for i in range(len(MESHES))}
         labels = [
-            Tex(f"\sigma(M_{i+1}^{{-1}}A)", font_size=CONTENT_FONT_SIZE) for i in range(3)
+            Tex(f"\sigma(M_{i+1}^{{-1}}A)", font_size=CONTENT_FONT_SIZE)
+            for i in range(3)
         ]
         for i, _ in enumerate(MESHES):
             for j, coef_func in enumerate([coef_1, coef_2]):
@@ -3725,11 +3731,149 @@ class defense(Slide):
                 MoveToTarget(M_3),
                 Write(coef_1),
                 Write(coef_2),
-                Write(all_spectra[0]),  # show only first mesh initially
+                Write(all_spectra[len(MESHES) - 1]),  # show only first mesh initially
                 *[Write(label) for label in labels],
             ],
-            transition_time=2.0*self.RUN_TIME
+            transition_time=2.0 * self.RUN_TIME,
         )
+
+        # # TODO: takes long time to render! Works great tho
+        # # slide: show other meshes
+        # super().next_slide(notes="Show other meshes", loop=True)
+        for spectra in all_spectra.values():
+            spectra.suspend_updating(True)
+            # spectra.set_opacity(0.0)
+        # all_spectra[0].set_opacity(1.0)
+        # for i in [i + 1 for i in range(len(MESHES) - 1)] + [0]:
+        #     all_spectra[i].generate_target()
+        #     all_spectra[i].target.set_opacity(1.0)
+        #     for j in range(len(MESHES)):
+        #         if j != i:
+        #             all_spectra[j].generate_target()
+        #             all_spectra[j].target.set_opacity(0.0)
+        #     self.play(
+        #         *[MoveToTarget(m) for m in all_spectra.values()],
+        #         run_time=2.0 * self.RUN_TIME,
+        #     )
+        # super().next_slide()
+        
+        # # TODO: same thing here, takes long time to render
+        # # slide: show biggest mesh
+        # all_spectra[len(MESHES) - 1].generate_target()
+        # all_spectra[len(MESHES) - 1].target.set_opacity(1.0)
+        # for i in range(len(MESHES) - 1):
+        #     all_spectra[i].generate_target()
+        #     all_spectra[i].target.set_opacity(0.0)
+        # self.update_slide(
+        #     subtitle="Partitioning Output: Largest Problem Size",
+        #     additional_animations=[
+        #         *[MoveToTarget(m) for m in all_spectra.values()],
+        #     ],
+        #     notes="Show the largest mesh",
+        #     transition_time=2.0 * self.RUN_TIME,
+        # )
+
+        # mimick end of above TODO
+        for spectra in all_spectra.values():
+            spectra.suspend_updating(True)
+        all_spectra[len(MESHES) - 1].set_opacity(1.0)
+
+        # slide: zoom-in on GDSW + edge slabs spectrum + axes
+        gdsw_spectrum = all_spectra[len(MESHES) - 1][0]
+        gdsw_spectrum.resume_updating()
+        remaining_spectra = all_spectra[len(MESHES) - 1][1:]
+        # old_state = gdsw_spectrum.save_state(use_deepcopy=True)
+        gdsw_spectrum[0].generate_target()
+        gdsw_spectrum[0].target.stretch_to_fit_width(0.7 * FRAME_WIDTH)
+        gdsw_spectrum[0].target.move_to(ORIGIN)
+        gdsw_spectrum[0].target.shift(2*DOWN)
+        for spectrum in remaining_spectra:
+            spectrum.generate_target()
+            spectrum.target.set_opacity(0.0)
+        axes = Axes(
+            x_range=(0, N_ITERATIONS, N_ITERATIONS//10),
+            y_range=(0, 4, 1),
+            height=0.4*FRAME_HEIGHT,
+            width=0.7*FRAME_WIDTH,
+            axis_config={
+                "stroke_color": CustomColors.RED.value,
+                "stroke_width": 2,
+                "include_tip": True,
+            },
+        ).next_to(gdsw_spectrum[0].target, UP, buff=1.0)
+        x_label = TexText(r"Iteration $i$", font_size=CONTENT_FONT_SIZE).next_to(axes, DOWN, buff=0.5)
+        y_label = Tex(r"m_{N_{\text{cluster}}}", font_size=CONTENT_FONT_SIZE).rotate(90 * DEGREES).next_to(axes, LEFT, buff=0.5)
+
+        axes.get_x_axis().add_numbers(
+            x_values=[i for i in range(0, N_ITERATIONS + 1, N_ITERATIONS // 10)],
+            font_size=0.7 * CONTENT_FONT_SIZE,
+        )
+        for i in range(5):
+            axes.get_y_axis().add(Tex(f"10^{i}", font_size=CONTENT_FONT_SIZE).move_to(axes.c2p(0, i, 0) + 0.4 * LEFT))
+        self.update_slide(
+            subtitle="Early Estimation of Bounds: $M_{\\text{2-OAS-GDSW}}$",
+            additional_animations=[
+                MoveToTarget(gdsw_spectrum[0]),
+                *[MoveToTarget(m) for m in remaining_spectra],
+                FadeOut(coef_1, remover=False),
+                FadeOut(coef_2, remover=False),
+                FadeOut(M_1, remover=False),
+                FadeOut(M_2, remover=False),
+                FadeOut(M_3, remover=False),
+                *[FadeOut(label, remover=False) for label in labels],
+                ShowCreation(axes),
+                ShowCreation(x_label),
+                ShowCreation(y_label),
+            ],
+            notes="Show the largest mesh",
+            transition_time=2.0 * self.RUN_TIME,
+        )
+
+        # slide: ritz value animation
+        ritz_spectra, bounds = self.ritz_value_animation(DefaultQuadMeshParams.Nc64, COEF_FUNCS[1], PRECONDITIONERS[0])
+        gdsw_spectrum.suspend_updating()
+        gdsw_spectrum.set_opacity(0.0)
+        sim_time = 5.0 * self.RUN_TIME
+        update_freq = sim_time / N_ITERATIONS
+        all_dots = VGroup()
+        bound_dot = Dot(
+            axes.c2p(0, bounds[0], 0),
+            color=CustomColors.GOLD.value,
+            radius=0.5 * DEFAULT_DOT_RADIUS,
+        )
+        all_dots.add(bound_dot)
+        for ritz_spectrum in ritz_spectra:
+            ritz_spectrum.set_opacity(0.0)
+        ritz_spectra[0][0].set_opacity(1.0)
+        ritz_spectra[0][0].generate_target()
+        ritz_spectra[0][0].target.stretch_to_fit_width(0.7 * FRAME_WIDTH)
+        ritz_spectra[0][0].target.move_to(gdsw_spectrum[0].get_center())
+        super().next_slide(notes="Show ritz value animation", loop=True)
+        self.play(
+            MoveToTarget(ritz_spectra[0][0]),
+        )
+        for i in range(N_ITERATIONS-1):
+            bound_dot = Dot(
+                axes.c2p(i+1, bounds[i+1], 0),
+                color=CustomColors.GOLD.value,
+                radius=0.5 * DEFAULT_DOT_RADIUS,
+            )
+            all_dots.add(bound_dot)
+            ritz_spectra[i+1][0].generate_target()
+            ritz_spectra[i+1][0].target.stretch_to_fit_width(0.7 * FRAME_WIDTH)
+            ritz_spectra[i+1][0].target.move_to(gdsw_spectrum[0].get_center())
+            ritz_spectra[i+1][0].target.set_opacity(1.0)
+            self.play(
+                FadeIn(bound_dot),
+                MoveToTarget(ritz_spectra[i][0]),
+                MoveToTarget(ritz_spectra[i+1][0]),
+                run_time=update_freq,
+            )
+            ritz_spectra[i].generate_target()
+        super().next_slide()
+        # slide: back to overview
+        # MoveToTarget(gdsw_spectrum)
+
 
     def generate_partitioning_output(self, spectra_width: float) -> dict:
         out = {}
@@ -3750,8 +3894,6 @@ class defense(Slide):
                         spectra_list.append(eigenvalues)
 
                         # store the split indices for the sharpened bound (except for the last one)
-                        tail_eigs = []
-                        tail_indxs = []
                         cluster_indices = []
                         split_idxs = partition_eigenspectrum(eigenvalues)
                         start = 0
@@ -3842,7 +3984,7 @@ class defense(Slide):
             eig_dot = Dot(
                 arrow.get_start()
                 + buffer()
-                + [eig * arrow.get_length()*(1-2*edge_buffer), 0, 0],
+                + [eig * arrow.get_length() * (1 - 2 * edge_buffer), 0, 0],
                 fill_color=CustomColors.SKY.value,
                 radius=dot_size,
             )
@@ -3855,44 +3997,85 @@ class defense(Slide):
             line.put_start_and_end_on(
                 arrow.get_start()
                 + buffer()
-                + [x * (arrow.get_length()*(1-2*edge_buffer)) - bar_buff*arrow.get_length(), -0.1, 0],
+                + [
+                    x * (arrow.get_length() * (1 - 2 * edge_buffer))
+                    - bar_buff * arrow.get_length(),
+                    -0.1,
+                    0,
+                ],
                 arrow.get_start()
                 + buffer()
-                + [x * (arrow.get_length()*(1-2*edge_buffer)) - bar_buff*arrow.get_length(), 0.1, 0],
+                + [
+                    x * (arrow.get_length() * (1 - 2 * edge_buffer))
+                    - bar_buff * arrow.get_length(),
+                    0.1,
+                    0,
+                ],
             )
             return line
+
         def line2_updater(line: Mobject, y: float):
             line.set_color(WHITE)
             line.put_start_and_end_on(
                 arrow.get_start()
                 + buffer()
-                + [y * (arrow.get_length()*(1-2*edge_buffer)) + bar_buff*arrow.get_length(), -0.1, 0],
+                + [
+                    y * (arrow.get_length() * (1 - 2 * edge_buffer))
+                    + bar_buff * arrow.get_length(),
+                    -0.1,
+                    0,
+                ],
                 arrow.get_start()
                 + buffer()
-                + [y * (arrow.get_length()*(1-2*edge_buffer)) + bar_buff*arrow.get_length(), 0.1, 0],
+                + [
+                    y * (arrow.get_length() * (1 - 2 * edge_buffer))
+                    + bar_buff * arrow.get_length(),
+                    0.1,
+                    0,
+                ],
             )
             return line
 
         cluster_bars = []
-        for (i1, i2) in cluster_indices:
+        for i1, i2 in cluster_indices:
             x, y = normalized_eigs[i1], normalized_eigs[i2]
             line1 = Line(
                 start=arrow.get_start()
                 + buffer()
-                + [x * (arrow.get_length()*(1-2*edge_buffer)) - bar_buff*arrow.get_length(), -0.1, 0],
+                + [
+                    x * (arrow.get_length() * (1 - 2 * edge_buffer))
+                    - bar_buff * arrow.get_length(),
+                    -0.1,
+                    0,
+                ],
                 end=arrow.get_start()
                 + buffer()
-                + [x * (arrow.get_length()*(1-2*edge_buffer)) - bar_buff*arrow.get_length(), 0.1, 0],
+                + [
+                    x * (arrow.get_length() * (1 - 2 * edge_buffer))
+                    - bar_buff * arrow.get_length(),
+                    0.1,
+                    0,
+                ],
                 color=WHITE,
             )
             line1.add_updater(lambda mobj, x=x: line1_updater(mobj, x))
             line2 = Line(
                 start=arrow.get_start()
                 + buffer()
-                + [y * (arrow.get_length()*(1-2*edge_buffer)) + bar_buff*arrow.get_length(), -0.1, 0],
+                + [
+                    y * (arrow.get_length() * (1 - 2 * edge_buffer))
+                    + bar_buff * arrow.get_length(),
+                    -0.1,
+                    0,
+                ],
                 end=arrow.get_start()
                 + buffer()
-                + [y * (arrow.get_length()*(1-2*edge_buffer)) + bar_buff*arrow.get_length(), 0.1, 0],
+                + [
+                    y * (arrow.get_length() * (1 - 2 * edge_buffer))
+                    + bar_buff * arrow.get_length(),
+                    0.1,
+                    0,
+                ],
                 color=WHITE,
             )
             line2.add_updater(lambda mobj, y=y: line2_updater(mobj, y))
@@ -3924,7 +4107,7 @@ class defense(Slide):
                 .align_to(arrow.get_center() + 0.4 * DOWN, DOWN)
             )
             label.add_updater(lambda mobj, bar=bar: label_updater(mobj, bar))
-            if i %2 == 0:
+            if i % 2 == 0:
                 label.add_updater(lambda mobj, bar=bar: left_label_updater(mobj, bar))
             else:
                 label.add_updater(lambda mobj, bar=bar: right_label_updater(mobj, bar))
@@ -3951,6 +4134,76 @@ class defense(Slide):
             *cluster_bars,
             *cluster_bar_labels,
         )
+
+    def ritz_value_animation(self, mesh_params, coef_func, preconditioner):
+        fp = get_spectrum_save_path(
+            mesh_params, coef_func, preconditioner[0], preconditioner[1]
+        )
+        spectra = []
+        cluster_list = []
+        min_eig = float("inf")
+        max_eig = float("-inf")
+        if fp.exists():
+            # Load the alpha and beta arrays from the saved numpy file
+            array_zip = np.load(fp)
+            alpha = array_zip["alpha"]
+            beta = array_zip["beta"]
+
+            # loop over CG iterations
+            num_iterations = min(N_ITERATIONS, len(alpha) - 1)
+            niters_multi_cluster = np.zeros(num_iterations, dtype=int)
+            for k in range(num_iterations):
+                # compute Ritz values
+                lanczos_matrix = CustomCG.get_lanczos_matrix_from_coefficients(
+                    alpha[: k + 1], beta[:k]
+                )
+                eigenvalues = eigs(lanczos_matrix)
+                spectra.append(eigenvalues)
+
+                # get max and min eigenvalues for consistent x_range
+                _max_eig = np.max(eigenvalues)
+                _min_eig = np.min(eigenvalues)
+                max_eig = max(max_eig, _max_eig)
+                min_eig = min(min_eig, _min_eig)
+
+                # calculate sharpened bound
+                niter_multi_cluster = multi_cluster_cg_iteration_bound(
+                    eigenvalues, log_rtol=LOG_RTOL, exact_convergence=False
+                )
+                niters_multi_cluster[k] = niter_multi_cluster
+
+                # get clusters
+                split_idxs = partition_eigenspectrum(eigenvalues)
+                start = 0
+                cluster_indices = []
+                for end in split_idxs:
+                    if start == end:
+                        # cluster_indices.append((start, start))
+                        pass
+                    else:
+                        cluster_indices.append((start, end))
+                    start = end + 1
+                cluster_list.append(cluster_indices)
+        else:
+            # Provide a clickable link to the script in the repo using Rich markup with absolute path
+            approx_path = Path(__file__).parent / "approximate_spectra.py"
+            LOGGER.error(
+                f"File %s does not exist. Run '[link=file:{approx_path}]approximate_spectra.py[/link]' first.",
+                fp,
+            )
+            exit()
+
+        # generate spectrum + bound
+        spectrum_mobjs = []
+        for spectrum, clusters in zip(spectra, cluster_list):
+            spectrum_mobjs.append(
+                self.generate_spectrum(
+                    spectrum,
+                    clusters,
+                    x_range=(min_eig, max_eig),
+                )
+            )
+        return spectrum_mobjs, niters_multi_cluster
 
     def level_6_conclusion(self):
         self.update_slide(
@@ -4000,11 +4253,4 @@ class defense(Slide):
         self.level_5_results()
         # self.level_6_conclusion()
         # self.backup()
-        # self.references()        # self.level_6_conclusion()
-        # self.backup()
-        # self.references()        # self.references()        # self.references()        # self.references()        self.level_5_results()
-        # self.level_6_conclusion()
-        # self.backup()
-        # self.references()        # self.level_6_conclusion()
-        # self.backup()
-        # self.references()        # self.references()        # self.references()        # self.references()
+        # self.references()
