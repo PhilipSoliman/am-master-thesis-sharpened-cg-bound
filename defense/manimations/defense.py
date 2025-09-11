@@ -59,7 +59,7 @@ class QUALITY(Enum):
 
 
 manim_config.camera.fps = FPS
-manim_config.camera.resolution = QUALITY.HD.value
+manim_config.camera.resolution = QUALITY.P720.value
 manim_config.background_color = WHITE
 manim_config.directories.raster_images = (get_venv_root() / "images").as_posix()
 manim_config.camera.background_color = CustomColors.NAVY.value
@@ -409,18 +409,19 @@ class defense(Slide):
         self.main_question = VGroup()
         main_rq_text = defense.paragraph(
             "\\textit{How can we determine the total number of necessary CG iterations?}",
-            font_size=self.title_size,
+            font_size=1.25*self.title_size,
             alignment=ALIGN.CENTER,
             t2c={
                 "necessary": CustomColors.RED.value,
                 "iterations": CustomColors.GOLD.value,
             },
-            width=0.22 * FRAME_WIDTH,
+            width=0.5 * FRAME_WIDTH,
         )
         main_rq_background = BackgroundRectangle(
-            main_rq_text, fill_color=CustomColors.GOLD.value, fill_opacity=1.0, buff=0.2).round_corners(0.1)
+            main_rq_text, fill_color=CustomColors.BLUE.value, fill_opacity=1.0, buff=0.2).round_corners(0.1)
         main_rq_background.set_z_index(-1)
-        self.main_question.add(main_rq_background, main_rq_text)
+        dot = Dot(main_rq_background.get_corner(DL), fill_color=CustomColors.GOLD.value, radius=0.1)
+        self.main_question.add(dot, main_rq_background, main_rq_text)
 
     # utility functions
     def next_slide(self, additional_animations: list[Animation] = [], **kwargs):
@@ -850,10 +851,10 @@ class defense(Slide):
             ReplacementTransform(model_problem[0], model_problem_weak[0]),
             run_time=1.0,
         )
-        domain_width = model_problem_weak.get_bottom()[1] - self.BOTTOM_MARGIN[1] - 0.8
+        domain_width = model_problem_weak.get_bottom()[1] - self.BOTTOM_MARGIN[1] - 0.6
         domain = Rectangle(
             width=domain_width, height=domain_width, color=WHITE
-        ).next_to(model_problem_weak, 0.4 * DOWN, buff=0.0)
+        ).next_to(model_problem_weak, DOWN, buff=0.3)
         domain_label = TexText(r"$\Omega$", font_size=CONTENT_FONT_SIZE).move_to(
             domain.get_center()
         )
@@ -874,32 +875,40 @@ class defense(Slide):
                 "stroke_width": 1,
                 "stroke_opacity": 1.0,
             },
-        ).next_to(model_problem_weak, 0.4 * DOWN, buff=0.0)
+        ).next_to(model_problem_weak, DOWN, buff=0.3)
         self.play(ShowCreation(grid_lines), run_time=1.0)
 
         # slide: FEM formulation
-        self.next_slide(notes="Through FEM")
         fem_formulation = defense.paragraph(
             r"FEM basis $V_h = \text{span}\{\phi_i\}_{i=1}^{n}$" + self.fem_formulation,
             width=0.2 * FRAME_WIDTH,
             font_size=CONTENT_FONT_SIZE,
             alignment=ALIGN.CENTER,
         ).move_to(model_problem_weak)
-        self.play(
-            ReplacementTransform(model_problem_weak[0], fem_formulation[0]),
-            run_time=1.0,
+        self.update_slide(
+            notes="we get a linear system..",
+            additional_animations=[
+                ReplacementTransform(model_problem_weak[0], fem_formulation[0]),
+            ],
+            transition_time=self.RUN_TIME
         )
-        self.next_slide(notes="we get a linear system..")
+
+        # slide: linear system
         linear_system_text = TexText(
             r"\begin{equation*}A\mathbf{u}=\mathbf{b}\end{equation*}",
             font_size=2.0 * CONTENT_FONT_SIZE,
         ).move_to(ORIGIN)
-        self.play(
-            FadeOut(domain),
-            FadeOut(domain_label),
-            FadeOut(grid_lines),
-            ReplacementTransform(fem_formulation[0], linear_system_text),
-            run_time=1.0,
+        self.update_slide(
+            notes="we get a linear system..",
+            new_contents=[linear_system_text],
+            subtitle="Discretized Model Problem",
+            additional_animations=[
+                FadeOut(domain),
+                FadeOut(domain_label),
+                FadeOut(grid_lines),
+                ReplacementTransform(fem_formulation[0], linear_system_text),
+            ],
+            transition_time=self.RUN_TIME
         )
     
         # slide: CG schematic
@@ -914,8 +923,9 @@ class defense(Slide):
                 FadeOut(linear_system_text),
             }
         )
-        return
+
         # slide: main research question
+        self.slide_contents = [cg_shematic]
         self.update_slide(
             new_contents=[self.main_question], subtitle="Main Research Question", notes=""
         )
@@ -934,7 +944,7 @@ class defense(Slide):
             alignment=ALIGN.LEFT,
             width=0.3 * FRAME_WIDTH,
         ).align_to(self.slide_title, LEFT)
-        self.update_slide("Contents", new_contents=contents, notes="Table of Contents")
+        self.update_slide("Contents", new_contents=[contents], notes="Table of Contents")
         self.slide_contents = [contents]
 
     def level_1_intro_cg(self):
@@ -944,6 +954,7 @@ class defense(Slide):
         )
         self.update_slide(
             "Introducing CG",
+            index="Introducing CG",
             new_contents=[linear_system_text],
             notes="Explain CG as an iterative method for solving Ax=b",
         )
@@ -959,8 +970,14 @@ class defense(Slide):
             buff=0.1,
             color=WHITE,
         )
-        self.play(Write(initial_guess), Write(arrow), run_time=self.RUN_TIME)
         self.next_slide(notes="We provide an initial guess...")
+        self.update_slide(
+            subtitle="Initial Guess",
+            additional_animations=[
+                Write(initial_guess), Write(arrow),
+            ],
+            run_time=self.RUN_TIME
+        )
 
         # slide: residual
         initial_system = VGroup(linear_system_text, initial_guess, arrow)
@@ -968,16 +985,20 @@ class defense(Slide):
             r"\begin{equation*}\mathbf{r}_0 = \mathbf{b} - A\mathbf{u}_0\end{equation*}",
             font_size=2.0 * CONTENT_FONT_SIZE,
         ).move_to(initial_system.get_center())
-        self.play(
-            ReplacementTransform(initial_system, initial_residual),
-            run_time=self.RUN_TIME,
+        self.update_slide(
+            subtitle="Initial Residual",
+            notes = "which gives an initial residual.",
+            additional_animations=[
+                ReplacementTransform(initial_system, initial_residual),
+            ], 
+            run_time=self.RUN_TIME
+
         )
-        self.next_slide(notes="which gives an initial residual.")
 
         # slide: desired error tolerance + CG black box
         initial_residual.generate_target()
-        initial_residual.target.align_to(self.slide_title, LEFT)
-        initial_residual.target.shift(0.5 * UP)
+        initial_residual.target.align_to(self.LEFT_MARGIN, LEFT)
+        initial_residual.target.shift(UP)
         self.play(
             MoveToTarget(initial_residual),
             run_time=self.RUN_TIME,
@@ -1003,16 +1024,17 @@ class defense(Slide):
             buff=0.1,
             color=WHITE,
         )
-        self.play(
-            Write(error_tol),
-            Write(inputs_brace),
-            Write(arrow2),
-            Write(cg_rectangle),
-            Write(cg_text),
-            run_time=self.RUN_TIME,
-        )
-        self.next_slide(
-            notes="We specify a desired error tolerance and feed everything into CG..."
+        self.update_slide(
+            subtitle="Conjugate Gradient (CG) Method",
+            notes="We specify a desired error tolerance and feed everything into CG...",
+            additional_animations=[
+                Write(error_tol),
+                Write(inputs_brace),
+                Write(arrow2),
+                Write(cg_rectangle),
+                Write(cg_text),
+            ],
+            transition_time=self.RUN_TIME
         )
 
         # slide: cg algorithm
@@ -1020,24 +1042,27 @@ class defense(Slide):
             self.cg_algorithm,
             additional_preamble=r"\usepackage{algorithmic}",
             font_size=2 * CONTENT_FONT_SIZE,
-        )
+        ).shift(0.5 * UP)
         cg_alg_width = cg_algorithm.get_corner(UR)[0] - cg_algorithm.get_corner(DL)[0]
         cg_alg_height = cg_algorithm.get_corner(UR)[1] - cg_algorithm.get_corner(DL)[1]
         cg_rectangle_og = cg_rectangle.copy()
         cg_text_og = cg_text.copy()
         cg_rectangle.generate_target()
-        cg_rectangle.target.move_to(ORIGIN)
+        cg_rectangle.target.move_to(ORIGIN).shift(0.5 * UP)
         cg_rectangle.target.stretch_to_fit_width(cg_alg_width + 0.5)
         cg_rectangle.target.stretch_to_fit_height(cg_alg_height + 0.5)
-        cg_rectangle.target.set_fill(CustomColors.BLUE.value, opacity=1.0)
+        cg_rectangle.target.set_fill(CustomColors.BLUE.value)
+        cg_rectangle.target.set_opacity(1.0)
         inputs_brace_arrow = VGroup(inputs, inputs_brace, arrow2)
-        self.play(
-            MoveToTarget(cg_rectangle),
-            ReplacementTransform(cg_text, cg_algorithm),
-            inputs_brace_arrow.animate.set_opacity(0.4),
-            run_time=self.RUN_TIME,
+        self.update_slide(
+            notes="which runs the following algorithm...",
+            additional_animations=[
+                MoveToTarget(cg_rectangle),
+                ReplacementTransform(cg_text, cg_algorithm),
+                inputs_brace_arrow.animate.set_opacity(0.4),
+            ],
+            subtitle="CG Algorithm",
         )
-        self.next_slide(notes="which runs the following algorithm...")
 
         # slide: highlight inputs in cg algorithm
         cg_algorithm_colored = TexText(
@@ -1051,12 +1076,13 @@ class defense(Slide):
                 r"\epsilon_j": CustomColors.GOLD.value,
             },
         ).move_to(cg_rectangle.get_center())
-        self.play(
-            FadeTransform(cg_algorithm, cg_algorithm_colored),
-            run_time=self.RUN_TIME,
-        )
-        self.next_slide(
-            notes="We recognize the initial residual and error tolerance as inputs. Also note the error at the jth iteration."
+        self.update_slide(
+            notes="We recognize the initial residual and error tolerance as inputs. Also note the error at the jth iteration.",
+            additional_animations=[
+                FadeTransform(cg_algorithm, cg_algorithm_colored),
+            ],
+            transition_time=2 * self.RUN_TIME,
+            subtitle="CG Algorithm: inputs and outputs highlighted",
         )
 
         # slide: CG output
@@ -1088,15 +1114,16 @@ class defense(Slide):
             buff=0.1,
             color=WHITE,
         )
-        self.play(
-            Write(outputs),
-            Write(outputs_brace),
-            Write(arrow3),
-            inputs_brace_arrow.animate.set_opacity(1.0),
-            run_time=self.RUN_TIME,
-        )
-        self.next_slide(
-            notes="CG outputs the jth approximation and the corresponding error."
+        self.update_slide(
+            notes="CG outputs the jth approximation and the corresponding error.",
+            additional_animations=[
+                Write(outputs),
+                Write(outputs_brace),
+                Write(arrow3),
+                inputs_brace_arrow.animate.set_opacity(1.0),
+            ],
+            transition_time=self.RUN_TIME,
+            subtitle="CG Inputs and Outputs",
         )
 
         # slide: CG convergence
@@ -1126,17 +1153,19 @@ class defense(Slide):
         succesive_errors.arrange(RIGHT, buff=0.8)
         succesive_approximations.shift(0.5 * UP)
         succesive_errors.next_to(succesive_approximations, DOWN, buff=0.5)
-        self.play(
-            ReplacementTransform(u_j_text, succesive_approximations),
-            ReplacementTransform(epsilon_j_text, succesive_errors),
-            FadeOut(inputs_brace_arrow),
-            FadeOut(cg_text_og),
-            FadeOut(cg_rectangle_og),
-            FadeOut(outputs_brace),
-            FadeOut(arrow3),
-            run_time=self.RUN_TIME,
+        self.update_slide(
+            subtitle="CG Error Convergence",
+            additional_animations=[
+                ReplacementTransform(u_j_text, succesive_approximations),
+                ReplacementTransform(epsilon_j_text, succesive_errors),
+                FadeOut(inputs_brace_arrow),
+                FadeOut(cg_text_og),
+                FadeOut(cg_rectangle_og),
+                FadeOut(outputs_brace),
+                FadeOut(arrow3),
+            ],
+            transition_time=self.RUN_TIME,
         )
-        self.next_slide(notes="We get succesive approximations and errors...")
 
         # slide: CG error
         max_scale = 3.0
@@ -1147,12 +1176,15 @@ class defense(Slide):
             err.generate_target()
             err.target.scale(min_scale + (max_scale - min_scale) / (2**i))
             err.target.move_to(center_on_origin)
-        self.play(
-            FadeOut(succesive_approximations),
-            *[MoveToTarget(err) for err in succesive_errors],
-            run_time=self.RUN_TIME,
+        self.update_slide(
+            subtitle="CG Error Convergence",
+            additional_animations=[
+                FadeOut(succesive_approximations),
+                *[MoveToTarget(err) for err in succesive_errors],
+            ],
+            transition_time=self.RUN_TIME,
+            notes="with errors decreasing as j increases."
         )
-        self.next_slide(notes="with errors decreasing as j increases.")
 
         # slide: CG classical error bound
         citation = cite("iter_method_saad").next_to(self.slide_title, RIGHT, buff=0.2)
@@ -1167,15 +1199,16 @@ class defense(Slide):
         classical_error_bound_text = TexText(
             "Classical CG Error Bound", font_size=2.0 * CONTENT_FONT_SIZE
         ).next_to(classical_error_bound_box, UP, buff=0.5)
-        self.play(
-            Write(citation),
-            ReplacementTransform(succesive_errors, classical_error_bound),
-            Write(classical_error_bound_box),
-            Write(classical_error_bound_text),
-            run_time=self.RUN_TIME,
-        )
-        self.next_slide(
-            notes="The classical CG error bound relates the error to the condition number kappa(A) and the number of iterations m."
+        self.update_slide(
+            subtitle="CG Error Convergence",
+            notes="The classical CG error bound relates the error to the condition number kappa(A) and the number of iterations m.",
+            additional_animations=[
+                Write(citation),
+                ReplacementTransform(succesive_errors, classical_error_bound),
+                Write(classical_error_bound_box),
+                Write(classical_error_bound_text),
+            ],
+            transition_time=self.RUN_TIME,
         )
 
         # slide: CG classical iteration bound
@@ -1195,18 +1228,19 @@ class defense(Slide):
             "Classical CG Iteration Bound",
             font_size=2.0 * CONTENT_FONT_SIZE,
         ).move_to(classical_error_bound_text.get_center())
-        self.play(
-            FadeOut(citation),
-            ReplacementTransform(classical_error_bound, classical_iteration_bound),
-            ReplacementTransform(
+        self.update_slide(
+            subtitle="CG Iteration Bound",
+            additional_animations=[
+                FadeOut(citation),
+                ReplacementTransform(classical_error_bound, classical_iteration_bound),
+                ReplacementTransform(
                 classical_error_bound_text, classical_iteration_bound_text
-            ),
-            ReplacementTransform(
+                ),
+                ReplacementTransform(
                 classical_error_bound_box, classical_iteration_bound_box
-            ),
-            run_time=self.RUN_TIME,
-        )
-        self.next_slide(
+                ),
+            ],
+            transition_time=self.RUN_TIME,
             notes="From this we can derive a classical iteration bound...",
         )
 
@@ -1257,52 +1291,52 @@ class defense(Slide):
         )
         always(high_contrast_text.set_color, CustomColors.RED.value)
         m_text_new.move_to(m_text.get_center() - [0.5, 0, 0])
-        self.play(
-            MoveToTarget(m_1_text),
-            ReplacementTransform(m_text, m_text_new),
-            Write(high_contrast_text),
-            run_time=2 * self.RUN_TIME,
-        )
-        self.next_slide(
+        self.update_slide(
+            subtitle="CG Iteration Bound (Revised)",
             notes="The problem is that for high-contrast problems, kappa is very large. Leading to very pessimistic bounds on m.",
+            additional_animations=[
+                MoveToTarget(m_1_text),
+                ReplacementTransform(m_text, m_text_new),
+                Write(high_contrast_text),
+            ],
+            transition_time=2 * self.RUN_TIME,
         )
 
         # slide: update research question
-        self.slide_contents = [
-            cg_iteration_bound_simplified,
-            classical_iteration_bound_text,
-            m_text_new,
-        ]
-        previous_main_question = defense.paragraph(
-            "\\textit{How can we determine the total number of necessary CG approximations?}",
-            font_size=2.0 * CONTENT_FONT_SIZE,
+        self.slide_contents = [cg_iteration_bound_simplified, high_contrast_text, m_1_text, m_text_new, classical_iteration_bound_text]
+        self.main_question.shift(UP)
+        addendum = VGroup()
+        addendum_text = defense.paragraph(
+            "+ \\textit{That is sharp for high-contrast problems.}",
+            font_size=self.title_size,
             alignment=ALIGN.CENTER,
             t2c={
                 "necessary": CustomColors.RED.value,
+                "iterations": CustomColors.GOLD.value,
             },
-            width=0.22 * FRAME_WIDTH,
+            width=0.5 * FRAME_WIDTH,
+        ).next_to(self.main_question, DOWN, buff=0.5).shift(0.5*RIGHT)
+        addendum_bgr = BackgroundRectangle(
+            addendum_text, color=CustomColors.GOLD.value, fill_opacity=1.0, buff=0.2).round_corners(0.1)
+        addendum_bgr.set_z_index(-1)
+        arrow = always_redraw(
+            CurvedArrow,
+            self.main_question[0].get_center(), 
+            addendum_bgr.get_left()
         )
+        addendum.add(arrow, addendum_bgr, addendum_text)
         self.update_slide(
-            new_contents=[previous_main_question],
+            notes="This is the main research question of this thesis.",
             subtitle="Research Question (Revised)",
-            notes="So we update our research question.",
+            new_contents=[self.main_question],
+            additional_animations=[
+                FadeIn(addendum, lag_ratio=0.5),
+            ],
+            transition_time=2 * self.RUN_TIME,
         )
-        new_main_question = defense.paragraph(
-            "\\textit{How can we construct a sharp CG iteration bound for high-contrast problems?}",
-            font_size=2.0 * CONTENT_FONT_SIZE,
-            alignment=ALIGN.CENTER,
-            t2c={
-                "high-contrast": CustomColors.GOLD.value,
-                "sharp": CustomColors.GOLD.value,
-            },
-            width=0.22 * FRAME_WIDTH,
-        )
-        self.play(
-            ReplacementTransform(previous_main_question, new_main_question),
-            run_time=2 * self.RUN_TIME,
-        )
-        self.next_slide(notes="This is the main research question of this thesis.")
-        self.slide_contents = [new_main_question]
+        self.main_question.add(addendum)
+
+        self.slide_contents = [self.main_question]
 
     def level_2_cg_convergence(self):
         linear_system_text = TexText(
@@ -4420,9 +4454,9 @@ class defense(Slide):
     def construct(self):
         # self.wait_time_between_slides = 0.10
         # self.title_slide()
-        self.level_0_opening()
+        # self.level_0_opening()
         # self.toc()
-        # self.level_1_intro_cg()
+        self.level_1_intro_cg()
         # self.level_2_cg_convergence()
         # self.level_3_preconditioning()
         # self.level_4_two_clusters()
