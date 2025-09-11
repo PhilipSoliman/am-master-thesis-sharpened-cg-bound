@@ -2180,7 +2180,7 @@ class defense(Slide):
             cite("rgdsw_coarse_space_Dohrmann2017"),
         ]
         for i, c in enumerate(citations):
-            c.next_to(self.slide_subtitle, RIGHT, buff=0.1).shift(i * 0.3 * RIGHT)
+            c.next_to(self.slide_subtitle, RIGHT, buff=0.3).shift(i * 0.3 * RIGHT)
         self.update_slide(
             title="Preconditioners for High-Contrast Problems",
             subtitle="Sample Coefficient Functions",
@@ -2242,7 +2242,7 @@ class defense(Slide):
             font_size=1.5 * CONTENT_FONT_SIZE,
         )
         for i, M in enumerate([M_1_simple, M_2_simple, M_3_simple]):
-            M.next_to(coefficient_function_image, DOWN, buff=0).shift(
+            M.next_to(coefficient_rectangle, DOWN, buff=0).shift(
                 (i - 1) * 1.0 * RIGHT
             )
         self.update_slide(
@@ -2424,7 +2424,7 @@ class defense(Slide):
             notes="So we need to refine our research question further.",
             title="Research Question (Revised)",
             subtitle="Predicting Preconditioned CG Performance",
-            new_contents=[self.main_question, addendum],
+            new_contents=[self.main_question],
             additional_animations=[
                 FadeIn(addendum, lag_ratio=0.5),
             ],
