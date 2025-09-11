@@ -36,6 +36,7 @@ from approximate_spectra import PRECONDITIONERS, RTOL, get_spectrum_save_path
 
 FIGURE_DIR = get_venv_root() / "figures"
 
+
 MESHES = DefaultQuadMeshParams
 COEF_FUNCS = [
     CoefFunc.THREE_LAYER_VERTEX_INCLUSIONS,
@@ -3742,176 +3743,145 @@ class defense(Slide):
         super().next_slide(notes="Show other meshes", loop=True)
         for spectra in all_spectra.values():
             spectra.suspend_updating(True)
-            spectra.set_opacity(0.0)
+            spectra.set_opacity(0.0, recurse=True)
         all_spectra[0].set_opacity(1.0)
         for i in [i + 1 for i in range(len(MESHES) - 1)] + [0]:
-            # all_spectra[i].generate_target()
-            # all_spectra[i].target.set_opacity(1.0)
+            all_spectra[i].generate_target()
+            all_spectra[i].target.set_opacity(1.0)
             # all_spectra[i].set_opacity(1.0)
             for j in range(len(MESHES)):
                 if j != i:
-                    # all_spectra[j].generate_target()
-                    # all_spectra[j].target.set_opacity(0.0)
-                    all_spectra[j].set_opacity(0.0)
+                    all_spectra[j].generate_target()
+                    all_spectra[j].target.set_opacity(0.0)
+                    # all_spectra[j].set_opacity(0.0)
             self.play(
-                all_spectra[i].animate.set_opacity(1.0),
+                # all_spectra[i].animate.set_opacity(1.0),
+                *[MoveToTarget(m) for m in all_spectra.values()],
                 run_time=2.0 * self.RUN_TIME,
             )
         super().next_slide()
 
-        # TODO: same thing here, takes long time to render
-        # slide: show biggest mesh
-        all_spectra[len(MESHES) - 1].generate_target()
-        all_spectra[len(MESHES) - 1].target.set_opacity(1.0)
-        for i in range(len(MESHES)-1):
-            # all_spectra[i].generate_target()
-            # all_spectra[i].target.set_opacity(0.0)
-            all_spectra[i].set_opacity(0.0)
-        self.update_slide(
-            subtitle="Partitioning Output: Largest Problem Size",
-            additional_animations=[
-                *[MoveToTarget(m) for m in all_spectra.values()],
-            ],
-            notes="Show the largest mesh",
-            transition_time=2.0 * self.RUN_TIME,
-        )
+        # # TODO: same thing here, takes long time to render
+        # # slide: show biggest mesh
+        # all_spectra[len(MESHES) - 1].generate_target()
+        # all_spectra[len(MESHES) - 1].target.set_opacity(1.0)
+        # for i in range(len(MESHES)-1):
+        #     all_spectra[i].generate_target()
+        #     all_spectra[i].target.set_opacity(0.0)
+        #     # all_spectra[i].set_opacity(0.0, recurse=True)
+        # self.update_slide(
+        #     subtitle="Partitioning Output: Largest Problem Size",
+        #     additional_animations=[
+        #         ,
+        #     ],
+        #     notes="Show the largest mesh",
+        #     transition_time=2.0 * self.RUN_TIME,
+        # )
+
+        # slide:
 
         # # mimick end of above TODO
         # for spectra in all_spectra.values():
         #     spectra.suspend_updating(True)
         # all_spectra[len(MESHES) - 1].set_opacity(1.0)
 
-        # slide: zoom-in on GDSW + edge slabs spectrum + axes
-        gdsw_spectrum = all_spectra[len(MESHES) - 1][0]
-        gdsw_spectrum.resume_updating()
-        remaining_spectra = all_spectra[len(MESHES) - 1][1:]
-        gdsw_original_loc = gdsw_spectrum.get_center()
-        gdsw_spectrum[0].generate_target()
-        gdsw_spectrum[0].target.stretch_to_fit_width(0.6 * FRAME_WIDTH)
-        gdsw_spectrum[0].target.move_to(ORIGIN)
-        gdsw_spectrum[0].target.shift(2 * DOWN)
-        for spectrum in remaining_spectra:
-            spectrum.generate_target()
-            spectrum.target.set_opacity(0.0)
-        axes = Axes(
-            x_range=(0, N_ITERATIONS, N_ITERATIONS // 10),
-            y_range=(0, 4, 1),
-            height=0.4 * FRAME_HEIGHT,
-            width=0.7 * FRAME_WIDTH,
-            axis_config={
-                "stroke_color": CustomColors.RED.value,
-                "stroke_width": 2,
-                "include_tip": True,
-            },
-        ).next_to(gdsw_spectrum[0].target, UP, buff=1.0)
-        x_label = TexText(r"Iteration $i$", font_size=CONTENT_FONT_SIZE).next_to(
-            axes, DOWN, buff=0.5
-        )
-        y_label = (
-            Tex(r"m_{N_{\text{cluster}}}", font_size=CONTENT_FONT_SIZE)
-            .rotate(90 * DEGREES)
-            .next_to(axes, LEFT, buff=0.5)
-        )
-
-        axes.get_x_axis().add_numbers(
-            x_values=[i for i in range(0, N_ITERATIONS + 1, N_ITERATIONS // 10)],
-            font_size=0.7 * CONTENT_FONT_SIZE,
-        )
-        for i in range(5):
-            axes.get_y_axis().add(
-                Tex(f"10^{i}", font_size=CONTENT_FONT_SIZE).move_to(
-                    axes.c2p(0, i, 0) + 0.4 * LEFT
-                )
+        # self.update_slide(
+        #     subtitle="Early Estimation of New Bound for $M_{\\text{2-OAS-GDSW}}$",
+        #     additional_animations=[
+        #         MoveToTarget(gdsw_spectrum[0]),
+        #         *[MoveToTarget(m) for m in remaining_spectra],
+        #         FadeOut(coef_1, remover=False),
+        #         FadeOut(coef_2, remover=False),
+        #         FadeOut(M_1, remover=False),
+        #         FadeOut(M_2, remover=False),
+        #         FadeOut(M_3, remover=False),
+        #         *[FadeOut(label, remover=False) for label in labels],
+        #         ShowCreation(axes),
+        #         ShowCreation(x_label),
+        #         ShowCreation(y_label),
+        #     ],
+        #     notes="Show the largest mesh",
+        #     transition_time=2.0 * self.RUN_TIME,
+        # )
+        # slide: ritz migration (AMS)
+        self.slide_contents = [
+            coef_1,
+            coef_2,
+        ] + [f for f in all_spectra.values()] + labels
+        ams_ritz_migration = ImageMobject(
+            "bound_and_spectrum_vs_iterations_2-OAS-AMS.png",
+            height=0.6 * FRAME_HEIGHT,
+        ).set_z_index(1)
+        rectangle_ams_ritz_migration = (
+            BackgroundRectangle(
+                ams_ritz_migration,
+                buff=0.1,
+                color=CustomColors.BLUE.value,
+                fill_color=CustomColors.BLUE.value,
             )
+            .round_corners(0.1)
+            .set_opacity(1.0)
+            .set_z_index(-1)
+        )
+        M_1.generate_target()
+        M_1.target.set_opacity(0.0)
+        M_2.generate_target()
+        M_2.target.set_opacity(0.0)
+        M_3.generate_target()
+        M_3.target.next_to(rectangle_ams_results, DOWN, buff=0.1)
+        M_3.target.set_opacity(1.0)
         self.update_slide(
-            subtitle="Early Estimation of New Bound for $M_{\\text{2-OAS-GDSW}}$",
-            additional_animations=[
-                MoveToTarget(gdsw_spectrum[0]),
-                *[MoveToTarget(m) for m in remaining_spectra],
-                FadeOut(coef_1, remover=False),
-                FadeOut(coef_2, remover=False),
-                FadeOut(M_1, remover=False),
-                FadeOut(M_2, remover=False),
-                FadeOut(M_3, remover=False),
-                *[FadeOut(label, remover=False) for label in labels],
-                ShowCreation(axes),
-                ShowCreation(x_label),
-                ShowCreation(y_label),
+            subtitle="Early Estimation of New Bound for $M_{\\text{2-OAS-AMS}}$",
+            new_contents=[
+                ams_ritz_migration,
+                rectangle_ams_ritz_migration,
+
             ],
-            notes="Show the largest mesh",
-            transition_time=2.0 * self.RUN_TIME,
+            additional_animations=[
+                MoveToTarget(M_1),
+                MoveToTarget(M_2),
+                MoveToTarget(M_3),
+            ],
         )
 
-        # slide: ritz value animation
-        ritz_spectra, bounds = self.ritz_value_animation(
-            DefaultQuadMeshParams.Nc64, COEF_FUNCS[1], PRECONDITIONERS[0]
+        # slide: ritz migration (RGDSW)
+        self.slide_contents = [
+            ams_ritz_migration,
+            rectangle_ams_ritz_migration,
+        ]
+        rgdsw_ritz_migration = ImageMobject(
+            "bound_and_spectrum_vs_iterations_2-OAS-RGDSW.png",
+            height=0.6 * FRAME_HEIGHT,
+        ).set_z_index(1)
+        rectangle_rgdsw_ritz_migration = (
+            BackgroundRectangle(
+                rgdsw_ritz_migration,
+                buff=0.1,
+                color=CustomColors.BLUE.value,
+                fill_color=CustomColors.BLUE.value,
+            )
+            .round_corners(0.1)
+            .set_opacity(1.0)
+            .set_z_index(-1)
         )
-        gdsw_spectrum.suspend_updating()
-        gdsw_spectrum.generate_target()
-        gdsw_spectrum.set_opacity(0.0)
-        self.play(MoveToTarget(gdsw_spectrum), run_time=self.RUN_TIME)
-        sim_time = 8.0 * self.RUN_TIME
-        update_freq = sim_time / N_ITERATIONS
-        ritz_update_freq = 1
-        all_dots = VGroup()
-        for ritz_spectrum in ritz_spectra:
-            ritz_spectrum.set_opacity(0.0)
-            ritz_spectrum[0].move_to(gdsw_spectrum.get_center())
-            ritz_spectrum[0].stretch_to_fit_width(0.6 * FRAME_WIDTH)
-            ritz_spectrum.generate_target()
-            ritz_spectrum.target.set_opacity(1.0)
-        super().next_slide(notes="Show ritz value animation", loop=True)
-        self.play(MoveToTarget(ritz_spectrum), run_time=update_freq)
-        for i in range(N_ITERATIONS):
-            bound_dot = Dot(
-                axes.c2p(i, np.log10(bounds[i]), 0),
-                color=CustomColors.GOLD.value,
-                radius=DEFAULT_DOT_RADIUS,
-            )
-            all_dots.add(bound_dot)
-            self.play(
-                FadeIn(bound_dot),
-                run_time=update_freq,
-                rate_func=linear,
-            )
-            if i % ritz_update_freq == 0 and i + ritz_update_freq < N_ITERATIONS:
-                # ritz_spectra[i].generate_target()
-                # ritz_spectra[i].target.set_opacity(0.0)
-                ritz_spectra[i].set_opacity(0.0)
-                ritz_spectra[i + ritz_update_freq].set_opacity(1.0)
-                # self.play(
-                #     MoveToTarget(ritz_spectra[i]),
-                #     MoveToTarget(ritz_spectra[i + ritz_update_freq]),
-                #     run_time=update_freq,
-                #     rate_func=linear,
-                # )
-        super().next_slide()
-
-        # slide: back to overview
-        gdsw_spectrum.resume_updating()
-        gdsw_spectrum[0].generate_target()
-        gdsw_spectrum[0].target.stretch_to_fit_width(spectra_width)
-        gdsw_spectrum[0].target.move_to(gdsw_original_loc)
-        gdsw_spectrum.target.set_opacity(1.0)
+        M_2.generate_target()
+        M_2.target.set_opacity(1.0)
+        M_2.target.next_to(rectangle_rgdsw_results, DOWN, buff=0.1)
+        M_3.generate_target()
+        M_3.target.set_opacity(0.0)
         self.update_slide(
-            subtitle="Partitioning Output",
-            additional_animations=[
-                MoveToTarget(gdsw_spectrum[0]),
-                FadeOut(axes, remover=False),
-                FadeOut(x_label, remover=False),
-                FadeOut(y_label, remover=False),
-                *[FadeOut(ritz_spectrum) for ritz_spectrum in ritz_spectra],
-                FadeOut(all_dots),
-                FadeIn(coef_1),
-                FadeIn(coef_2),
-                FadeIn(M_1),
-                FadeIn(M_2),
-                FadeIn(M_3),
-                *[FadeIn(label) for label in labels],
+            subtitle="Early Estimation of New Bound for $M_{\\text{2-OAS-RGDSW}}$",
+            new_contents=[
+                rgdsw_ritz_migration,
+                rectangle_rgdsw_ritz_migration,
             ],
-            transition_time=2.0 * self.RUN_TIME,
-            notes="Back to overview",
+            additional_animations=[                
+                MoveToTarget(M_1),
+                MoveToTarget(M_2),
+                MoveToTarget(M_3),
+            ],
         )
+
 
     def generate_partitioning_output(self, spectra_width: float) -> dict:
         out = {}
@@ -4245,12 +4215,181 @@ class defense(Slide):
 
     def level_6_conclusion(self):
         self.update_slide(
-            "Early Bounds",
-            notes="Discuss results on using Ritz values to get early bounds",
+            "Conclusion",
+            notes="Summarize the main points and contributions of the work",
+        )
+        item = Item()
+        bullet_1 = (
+            defense.paragraph(
+                f"{item}. Classical CG iteration bound $m_1$ is too coarse for high-contrast problems",
+                font_size=CONTENT_FONT_SIZE,
+                width=0.8 * FRAME_WIDTH,
+            )
+            .to_edge(UP)
+            .shift(1.0 * DOWN)
+            .align_to(self.slide_title, LEFT)
+        )
+        bullet_2 = defense.paragraph(
+            f"{item}."
+            + r"We developed a new, sharper convergence bound $m_{N_{\\text{cluster}}$ building on the two-cluster bound of Axelsson (1976)",
+            font_size=CONTENT_FONT_SIZE,
+            width=0.8 * FRAME_WIDTH,
+        ).next_to(bullet_1, DOWN, buff=0.5)
+        bullet_3 = defense.paragraph(
+            f"{item}. The new bound is 10x-1000x sharper than the classical bound in numerical experiments",
+            font_size=CONTENT_FONT_SIZE,
+            width=0.8 * FRAME_WIDTH,
+        ).next_to(bullet_2, DOWN, buff=0.5)
+        bullet_4 = defense.paragraph(
+            f"{item}. Practical use of these bounds for early iteration estimation is limited by the need for accurate spectral data",
+            font_size=CONTENT_FONT_SIZE,
+            width=0.8 * FRAME_WIDTH,
+        ).next_to(bullet_3, DOWN, buff=0.5)
+        bullet_5 = defense.paragraph(
+            f"{item}. Future work: refine cluster partitioning, improve a priori spectral estimation, and apply bounds to broader problem classes",
+            font_size=CONTENT_FONT_SIZE,
+            width=0.8 * FRAME_WIDTH,
+        ).next_to(bullet_4, DOWN, buff=0.5)
+        self.update_slide(
+            additional_animations=[
+                Write(bullet_1),
+            ],
+        )
+        self.update_slide(
+            additional_animations=[
+                Write(bullet_2),
+            ],
+        )
+        self.update_slide(
+            additional_animations=[
+                Write(bullet_3),
+            ],
+        )
+        self.update_slide(
+            additional_animations=[
+                Write(bullet_4),
+            ],
+        )
+        self.update_slide(
+            additional_animations=[
+                Write(bullet_5),
+            ],
         )
 
     def backup(self):
-        self.update_slide("Backup Slides", notes="Backup slides", clean_up=True)
+        # slide: zoom-in on GDSW + edge slabs spectrum + axes
+        # gdsw_spectrum = all_spectra[len(MESHES) - 1][0]
+        # gdsw_spectrum.resume_updating()
+        # remaining_spectra = all_spectra[len(MESHES) - 1][1:]
+        # gdsw_original_loc = gdsw_spectrum.get_center()
+        # gdsw_spectrum[0].generate_target()
+        # gdsw_spectrum[0].target.stretch_to_fit_width(0.6 * FRAME_WIDTH)
+        # gdsw_spectrum[0].target.move_to(ORIGIN)
+        # gdsw_spectrum[0].target.shift(2 * DOWN)
+        # for spectrum in remaining_spectra:
+        #     # spectrum.generate_target()
+        #     # spectrum.target.set_opacity(0.0)
+        #     spectrum.set_opacity(0.0)
+
+        # slide: ritz value migration animation
+        ritz_spectra, bounds = self.ritz_value_animation(
+            DefaultQuadMeshParams.Nc64, COEF_FUNCS[1], PRECONDITIONERS[0]
+        )
+        sim_time = 8.0 * self.RUN_TIME
+        update_freq = sim_time / N_ITERATIONS
+        ritz_update_freq = 1
+        all_dots = VGroup()
+        for ritz_spectrum in ritz_spectra:
+            ritz_spectrum.set_opacity(0.0)
+            ritz_spectrum[0].shift(2 * DOWN)
+            ritz_spectrum[0].stretch_to_fit_width(0.6 * FRAME_WIDTH)
+            ritz_spectrum.generate_target()
+            ritz_spectrum.target.set_opacity(1.0)
+        axes = Axes(
+            x_range=(0, N_ITERATIONS, N_ITERATIONS // 10),
+            y_range=(0, 4, 1),
+            height=0.4 * FRAME_HEIGHT,
+            width=0.7 * FRAME_WIDTH,
+            axis_config={
+                "stroke_color": CustomColors.RED.value,
+                "stroke_width": 2,
+                "include_tip": True,
+            },
+        ).next_to(ritz_spectra[0], UP, buff=0.5)
+        x_label = TexText(r"Iteration $i$", font_size=CONTENT_FONT_SIZE).next_to(
+            axes, DOWN, buff=0.5
+        )
+        y_label = (
+            Tex(r"m_{N_{\text{cluster}}}", font_size=CONTENT_FONT_SIZE)
+            .rotate(90 * DEGREES)
+            .next_to(axes, LEFT, buff=0.5)
+        )
+
+        axes.get_x_axis().add_numbers(
+            x_values=[i for i in range(0, N_ITERATIONS + 1, N_ITERATIONS // 10)],
+            font_size=0.7 * CONTENT_FONT_SIZE,
+        )
+        for i in range(5):
+            axes.get_y_axis().add(
+                Tex(f"10^{i}", font_size=CONTENT_FONT_SIZE).move_to(
+                    axes.c2p(0, i, 0) + 0.4 * LEFT
+                )
+            )
+        self.update_slide(
+            "Backup Slides",
+            notes="",
+            additional_animations=[Write(axes), Write(x_label), Write(y_label)],
+        )
+        super().next_slide(notes="Show ritz value animation", loop=True)
+        self.play(MoveToTarget(ritz_spectrum), run_time=update_freq)
+        for i in range(N_ITERATIONS):
+            bound_dot = Dot(
+                axes.c2p(i, np.log10(bounds[i]), 0),
+                color=CustomColors.GOLD.value,
+                radius=DEFAULT_DOT_RADIUS,
+            )
+            all_dots.add(bound_dot)
+            self.play(
+                FadeIn(bound_dot),
+                run_time=update_freq,
+                rate_func=linear,
+            )
+            if i % ritz_update_freq == 0 and i + ritz_update_freq < N_ITERATIONS:
+                ritz_spectra[i].generate_target()
+                ritz_spectra[i].target.set_opacity(0.0)
+                self.play(
+                    MoveToTarget(ritz_spectra[i]),
+                    MoveToTarget(ritz_spectra[i + ritz_update_freq]),
+                    run_time=update_freq,
+                    rate_func=linear,
+                )
+        super().next_slide()
+
+        # # slide: back to overview
+        # gdsw_spectrum.resume_updating()
+        # gdsw_spectrum[0].generate_target()
+        # gdsw_spectrum[0].target.stretch_to_fit_width(spectra_width)
+        # gdsw_spectrum[0].target.move_to(gdsw_original_loc)
+        # gdsw_spectrum.target.set_opacity(1.0)
+        # self.update_slide(
+        #     subtitle="Partitioning Output",
+        #     additional_animations=[
+        #         MoveToTarget(gdsw_spectrum[0]),
+        #         FadeOut(axes, remover=False),
+        #         FadeOut(x_label, remover=False),
+        #         FadeOut(y_label, remover=False),
+        #         *[FadeOut(ritz_spectrum) for ritz_spectrum in ritz_spectra],
+        #         FadeOut(all_dots),
+        #         FadeIn(coef_1),
+        #         FadeIn(coef_2),
+        #         FadeIn(M_1),
+        #         FadeIn(M_2),
+        #         FadeIn(M_3),
+        #         *[FadeIn(label) for label in labels],
+        #     ],
+        #     transition_time=2.0 * self.RUN_TIME,
+        #     notes="Back to overview",
+        # )
 
     def references(self):
         refs = list(CITED_REFERENCES.values())

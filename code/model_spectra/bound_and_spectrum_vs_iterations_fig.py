@@ -308,7 +308,7 @@ if __name__ == "__main__":
         shorthand = PRECONDITIONER[0].SHORT_NAME + "-" + PRECONDITIONER[1].SHORT_NAME
         if CLI_ARGS.generate_output:
             fn = Path(__file__).name.replace("_fig.py", f"_{shorthand}")
-            save_latex_figure(fn, fig)
+            save_latex_figure(fn, fig, save_png=True, no_background=True)
         figs.append(fig)
     if CLI_ARGS.show_output:
         plt.show()
