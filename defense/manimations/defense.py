@@ -2,16 +2,26 @@
 # adopted from https://github.com/jeertmans/jeertmans.github.io/blob/main/_slides/2023-12-07-confirmation/main.py
 # next to that of course the manim_slides documentation https://manim-slides.readthedocs.io/en/latest/
 import itertools
-from enum import Enum
 
-from manimlib import *
-
-pass
 # import cv2 # install for video playback
 import os
+from enum import Enum
 from json import load
+from pathlib import Path
+from random import random
 
 from manim_slides import Slide
+
+# from manim import *
+# manim_config = config
+# FRAME_WIDTH = manim_config.frame_width
+# FRAME_HEIGHT = manim_config.frame_height
+# TOP = manim_config.frame_y_radius * UP
+# BOTTOM = manim_config.frame_y_radius * DOWN
+# LEFT_SIDE = manim_config.frame_x_radius * LEFT
+# RIGHT_SIDE = manim_config.frame_x_radius * RIGHT
+# ShowCreation = Create
+from manimlib import *
 
 os.environ["NO_HCMSFEM_CLI_ARGS"] = ""
 # add to pythonpath
@@ -4710,6 +4720,9 @@ class defense(Slide):
         # self.level_3_preconditioning()
         # self.level_4_two_clusters()
         # self.level_5_results()
-        self.level_6_conclusion()
+        # self.level_6_conclusion()
         # # self.backup()
+        # self.references()
+        # # self.backup()
+        # self.references()
         # self.references()
