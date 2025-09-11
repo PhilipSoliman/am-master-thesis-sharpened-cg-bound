@@ -46,7 +46,7 @@ LOG_RTOL = np.log(RTOL)
 N_ITERATIONS = 300
 
 # Manim render settings
-FPS = 24
+FPS = 30
 
 
 class QUALITY(Enum):
@@ -59,7 +59,7 @@ class QUALITY(Enum):
 
 
 manim_config.camera.fps = FPS
-manim_config.camera.resolution = QUALITY.P360.value
+manim_config.camera.resolution = QUALITY.HD.value
 manim_config.background_color = WHITE
 manim_config.directories.raster_images = (get_venv_root() / "images").as_posix()
 manim_config.camera.background_color = CustomColors.NAVY.value
@@ -69,7 +69,7 @@ SCENE_WIDTH_CM = FRAME_WIDTH * 2.54
 TITLE_FONT_SIZE = 48
 CONTENT_FONT_SIZE = 0.6 * TITLE_FONT_SIZE
 SOURCE_FONT_SIZE = 0.2 * TITLE_FONT_SIZE
-FOOTNOTE_FONT_SIZE = 0.75 * CONTENT_FONT_SIZE
+FOOTNOTE_FONT_SIZE = 19
 
 # pgf preamble
 PGF_PREAMBLE = r"""
@@ -308,25 +308,65 @@ class defense(Slide):
         self.DL = Dot().to_corner(DL).get_center()
         self.DR = Dot().to_corner(DR).get_center()
 
+        # Margin coordinates
+        self.BOTTOM_MARGIN = BOTTOM + 1.1 * UP
+        self.TOP_MARGIN = TOP + 0.65 * DOWN
+        self.LEFT_MARGIN = LEFT_SIDE + 0.65 * RIGHT
+        self.RIGHT_MARGIN = RIGHT_SIDE + 0.65 * LEFT
+
         # Mutable variables
         self.counter = 0
-        self.slide_number = Integer(1).set_color(WHITE).to_corner(DR)
-        self.slide_title = Text("Contents", font_size=TITLE_FONT_SIZE).to_corner(UL)
-        self.slide_subtitle = Text(
-            "Subcontents", font_size=0.5 * TITLE_FONT_SIZE
-        ).next_to(self.slide_title, DOWN)
+        self.slide_number_size = 16
+        self.slide_number = (
+            TexText(f"{self.counter}", font_size=self.slide_number_size)
+            .align_to(self.RIGHT_MARGIN, RIGHT)
+            .align_to(self.BOTTOM_MARGIN, UP)
+        )
+        self.content_size = 25
+
+        # index, title, subtitle
+        self.slide_index = (
+            TexText("Index", font_size=self.slide_number_size)
+            .next_to(self.slide_number, DOWN, buff=0.12)
+            .align_to(self.RIGHT_MARGIN, RIGHT)
+        )
+        self.title_size = 28
+        self.slide_title = TexText(
+            r"\textbf{Title}", font_size=self.title_size
+        ).align_to(self.BOTTOM_MARGIN, UP)
+        self.subtitle_size = 22
+        self.slide_subtitle = TexText(
+            "Subcontents", font_size=self.subtitle_size
+        ).next_to(self.slide_title, DOWN, buff=0.15)
         self.slide_subtitle_visible = False
+        # self.add(self.slide_number, self.slide_index, self.slide_title, self.slide_subtitle)
 
         # slide contents (everything except title, subtitle, slide number)
         self.slide_contents: list[Mobject] = []
 
         # TU delft logo
-        self.tu_delft_logo = (
-            ImageMobject("TUDelft_logo_white", height=0.1 * FRAME_HEIGHT)
-            .to_corner(DL)
-            .shift(0.5 * DOWN)
+        # self.tu_delft_logo = (
+        #     ImageMobject("TUDelft_logo_white", height=0.1 * FRAME_HEIGHT)
+        #     .to_corner(DL)
+        #     .align_to(self.LEFT_MARGIN, LEFT)
+        #     .align_to(self.BOTTOM_MARGIN, UP)
+        # )
+        # self.tu_delft_logo.set_z_index(10)  # make sure logo is always on top
+        # self.add(self.tu_delft_logo)  # make sure logo is always on top
+
+        # TU Delft affiliation
+        self.tu_delft_affiliation = (
+            defense.paragraph(
+                r"Delft University of Technology",
+                "Numerical Analysis",
+                r"Philip M. Soliman",
+                font_size=self.slide_number_size,
+                buff=0.07,
+            )
+            .align_to(self.LEFT_MARGIN, LEFT)
+            .align_to(self.BOTTOM_MARGIN, UP)
         )
-        self.tu_delft_logo.set_z_index(10)  # make sure logo is always on top
+        self.add(self.tu_delft_affiliation)
 
         # equations
         self.strong_equation = (
@@ -365,6 +405,23 @@ class defense(Slide):
             r"\end{algorithmic}"
         )
 
+        # main question
+        self.main_question = VGroup()
+        main_rq_text = defense.paragraph(
+            "\\textit{How can we determine the total number of necessary CG iterations?}",
+            font_size=self.title_size,
+            alignment=ALIGN.CENTER,
+            t2c={
+                "necessary": CustomColors.RED.value,
+                "iterations": CustomColors.GOLD.value,
+            },
+            width=0.22 * FRAME_WIDTH,
+        )
+        main_rq_background = BackgroundRectangle(
+            main_rq_text, fill_color=CustomColors.GOLD.value, fill_opacity=1.0, buff=0.2).round_corners(0.1)
+        main_rq_background.set_z_index(-1)
+        self.main_question.add(main_rq_background, main_rq_text)
+
     # utility functions
     def next_slide(self, additional_animations: list[Animation] = [], **kwargs):
         slide_number_update, new_slide_number = self.update_slide_number()
@@ -374,38 +431,40 @@ class defense(Slide):
 
     def update_slide_number(self):
         self.counter += 1
-        new_slide_number = TexText(f"{self.counter}").move_to(self.slide_number)
+        new_slide_number = TexText(
+            f"{self.counter}", font_size=self.slide_number_size
+        ).move_to(self.slide_number)
         slide_number_update = ReplacementTransform(self.slide_number, new_slide_number)
         return slide_number_update, new_slide_number
 
-    def update_slide_titles(self, title, subtitle):
+    def update_slide_titles(self, title, subtitle, index):
         title_animations = []
 
         # construct new title
         if title is not None:
-            new_title = (
-                TexText(title, font_size=TITLE_FONT_SIZE)
-                .move_to(self.slide_title)
-                .align_to(self.slide_title, LEFT)
-            )
+            new_title = TexText(
+                f"\\textbf{{{title}}}", font_size=self.title_size
+            ).move_to(self.slide_title)
             title_animations.append(ReplacementTransform(self.slide_title, new_title))
+
+        if index is not None:
+            new_index = TexText(index, font_size=self.slide_number_size).move_to(
+                self.slide_index
+            )
+            title_animations.append(ReplacementTransform(self.slide_index, new_index))
 
         # check for new subtitle
         if subtitle is not None and self.slide_subtitle_visible:
-            new_subtitle = (
-                TexText(subtitle, font_size=0.5 * TITLE_FONT_SIZE)
-                .move_to(self.slide_subtitle)
-                .align_to(self.slide_title, LEFT)
+            new_subtitle = TexText(subtitle, font_size=self.subtitle_size).move_to(
+                self.slide_subtitle
             )
             title_animations.append(
                 ReplacementTransform(self.slide_subtitle, new_subtitle)
             )
             self.slide_subtitle_visible = True
         elif subtitle is not None and not self.slide_subtitle_visible:
-            new_subtitle = (
-                TexText(subtitle, font_size=0.5 * TITLE_FONT_SIZE)
-                .move_to(self.slide_subtitle)
-                .align_to(self.slide_title, LEFT)
+            new_subtitle = TexText(subtitle, font_size=self.subtitle_size).move_to(
+                self.slide_subtitle
             )
             title_animations.append(FadeIn(new_subtitle))
             self.slide_subtitle_visible = True
@@ -418,12 +477,14 @@ class defense(Slide):
             title_animations,
             new_title if title else self.slide_title,
             new_subtitle if subtitle else None,
+            new_index if index else self.slide_index,
         )
 
     def update_slide(
         self,
         title=None,
         subtitle=None,
+        index=None,
         new_contents: list[Mobject] = [],
         transition_time: float = 0.75,
         notes: str = "",
@@ -442,7 +503,6 @@ class defense(Slide):
             m.animate.move_to(m.get_center() - np.array([FRAME_WIDTH, 0, 0]))
             for m in self.slide_contents
         ]
-        # wipe_animation += [FadeOut(m) for m in self.slide_contents]
 
         # add new content to scene but out of view
         for m in new_contents:
@@ -455,10 +515,11 @@ class defense(Slide):
         ]
 
         # animate slide number change and optional content wipe
-        title_update, new_title, new_subtitle = self.update_slide_titles(
-            title, subtitle
+        title_update, new_title, new_subtitle, new_index = self.update_slide_titles(
+            title, subtitle, index
         )
         slide_number_update, new_slide_number = self.update_slide_number()
+
         self.play(
             *title_update,
             slide_number_update,
@@ -474,6 +535,7 @@ class defense(Slide):
         if subtitle:
             self.slide_subtitle = new_subtitle
         self.slide_number = new_slide_number
+        self.index = new_index
 
         # go to next slide
         super().next_slide(notes=notes, **kwargs)
@@ -521,6 +583,7 @@ class defense(Slide):
         alignment: ALIGN = ALIGN.LEFT,
         direction=DOWN,
         width=0.5 * FRAME_WIDTH,
+        buff=0.1,
         **kwargs,
     ):
         # output list of TexText mobjects
@@ -549,7 +612,7 @@ class defense(Slide):
             )
 
         # arrange mobjects in specified direction
-        texts = VGroup(*texts).arrange(direction)
+        texts = VGroup(*texts).arrange(direction, buff=buff)
 
         # align all mobjects to the first one
         if len(strs) > 1 and alignment is not None:
@@ -557,23 +620,6 @@ class defense(Slide):
                 text.align_to(texts[0], direction=alignment)
 
         return texts
-
-    # def render_pgf_picture(self, fig_name: str, **kwargs) -> TexText:
-    #     # with open(FIGURE_DIR / f"{fig_name}.tex", "r") as f:
-    #     #     tex = f.read()
-    #     pgf_path = (FIGURE_DIR / f"{fig_name}.pgf").as_posix()
-    #     tex = R"\input{" + pgf_path + "}"
-    #     # Save original function
-    #     import manimlib.utils.tex_file_writing as tex_file_writing
-    #     original_get_tex_config = tex_file_writing.get_tex_config
-    #     # Mask with your function
-    #     tex_file_writing.get_tex_config = lambda s: ("xelatex", PGF_PREAMBLE)
-    #     try:
-    #         out = TexText(tex)
-    #     finally:
-    #         # Restore original function
-    #         tex_file_writing.get_tex_config = original_get_tex_config
-    #     return out
 
     # level constructs
     def title_slide(self):
@@ -583,7 +629,7 @@ class defense(Slide):
             width=FRAME_WIDTH,
             height=FRAME_HEIGHT,
             fill_color=BLACK,
-            fill_opacity=0.6,
+            fill_opacity=0.65,
             stroke_width=0,
         ).set_z_index(-1)
         self.play(FadeIn(cover), FadeIn(rectangle), run_time=0.5)
@@ -593,7 +639,7 @@ class defense(Slide):
         title = TexText(
             "Sharpened CG Iteration Bound for High-contrast Heterogeneous Scalar Elliptic PDEs",
             font_size=0.8 * TITLE_FONT_SIZE,
-            t2c={"High-contrast": RED},
+            t2c={"High-contrast": CustomColors.RED.value},
             alignment=R"\centering",
         )
         subtitle = TexText(
@@ -627,154 +673,144 @@ class defense(Slide):
         super().next_slide()
 
     def level_0_opening(self):
-        image_height = 0.6 * FRAME_HEIGHT
-        shift_direction = 0.1 * DOWN + 1.5 * LEFT
-        scale = 0.4
+        image_height = FRAME_HEIGHT - self.BOTTOM_MARGIN - self.TOP_MARGIN - 2.5
 
         # slide: pcb simulation
-        pcb_img = ImageMobject("pcb_temp_sim", height=image_height)
-        pcb_text = TexText(
-            "PCB Temperature Simulation", font_size=FOOTNOTE_FONT_SIZE
-        ).next_to(pcb_img, 0.5 * DOWN)
+        pcb_img = ImageMobject(
+            "pcb_temp_sim",
+            height=image_height,
+        ).align_to(self.TOP_MARGIN, UP)
+        pcb_text = (
+            TexText("PCB Temperature Simulation", font_size=FOOTNOTE_FONT_SIZE)
+            .next_to(pcb_img, 0.01 * DOWN)
+            .align_to(pcb_img, LEFT)
+            .set_z_index(5)
+            .shift(0.3 * UP)
+            .shift(0.3 * RIGHT)
+        )
         pcb_cite = cite("pcb_simulation").next_to(pcb_text, RIGHT)
         self.update_slide(
             "Opening",
+            subtitle="Motivation: PCB Simulation",
+            index="Opening",
             new_contents=[pcb_img, pcb_text, pcb_cite],
-            subtitle="Motivation",
             notes="What do Printed Circuit Board simulations...",
         )
 
         # slide: subsurface modelling
-        pcb_img.generate_target()
-        pcb_img.target.scale(scale)
-        pcb_img.target.next_to(self.slide_subtitle, DOWN)
-        pcb_img.target.align_to(self.slide_title, LEFT)
-        self.play(
-            MoveToTarget(pcb_img), FadeOut(pcb_text), FadeOut(pcb_cite), run_time=0.5
+        subsurface_img = ImageMobject(
+            "subsurface_modelling", height=image_height
+        ).align_to(self.TOP_MARGIN, UP)
+        subsurface_text = (
+            TexText("Subsurface Modelling", font_size=FOOTNOTE_FONT_SIZE)
+            .next_to(subsurface_img, 0.5 * DOWN)
+            .align_to(subsurface_img, LEFT)
         )
-        subsurface_img = ImageMobject("subsurface_modelling", height=image_height)
-        subsurface_text = TexText(
-            "Subsurface Modelling", font_size=FOOTNOTE_FONT_SIZE
-        ).next_to(subsurface_img, 0.5 * DOWN)
         subsurface_cite = cite("subsurface_modelling").next_to(subsurface_text, RIGHT)
-        self.update_slide_contents(
-            [subsurface_img, subsurface_text, subsurface_cite],
+        self.update_slide(
+            subtitle="Motivation: Subsurface Modelling",
+            new_contents=[subsurface_img, subsurface_text, subsurface_cite],
             notes="subsurface modelling...",
+            additional_animations=[
+                pcb_img.animate.set_opacity(0.0),
+                FadeOut(pcb_text),
+                FadeOut(pcb_cite),
+            ],
         )
 
         # slide: eit
-        subsurface_img.generate_target()
-        subsurface_img.target.scale(scale)
-        subsurface_img.target.next_to(pcb_img, RIGHT)
-        subsurface_img.target.shift(shift_direction)
-        self.play(
-            MoveToTarget(subsurface_img),
-            FadeOut(subsurface_text),
-            FadeOut(subsurface_cite),
-            run_time=0.5,
+        eit_img = ImageMobject("eit", height=image_height).align_to(self.TOP_MARGIN, UP)
+        eit_text = (
+            TexText("Electrical Impedance Tomography", font_size=FOOTNOTE_FONT_SIZE)
+            .next_to(eit_img, 0.5 * DOWN)
+            .align_to(eit_img, LEFT)
         )
-        eit_img = ImageMobject("eit", height=image_height)
-        eit_text = TexText(
-            "Electrical Impedance Tomography", font_size=FOOTNOTE_FONT_SIZE
-        ).next_to(eit_img, 0.5 * DOWN)
         eit_cite = cite("eit").next_to(eit_text, RIGHT)
-        self.update_slide_contents(
-            [eit_img, eit_text, eit_cite], notes="Electrical Impedance Tomography..."
+        self.update_slide(
+            subtitle="Motivation: Electrical Impedance Tomography",
+            new_contents=[eit_img, eit_text, eit_cite],
+            notes="Electrical Impedance Tomography...",
+            additional_animations=[
+                subsurface_img.animate.set_opacity(0.0),
+                FadeOut(subsurface_text),
+                FadeOut(subsurface_cite),
+            ],
         )
 
         # slide: composite materials
-        eit_img.generate_target()
-        eit_img.target.scale(scale)
-        eit_img.target.next_to(subsurface_img, RIGHT)
-        eit_img.target.shift(shift_direction)
-        self.play(
-            MoveToTarget(eit_img), FadeOut(eit_text), FadeOut(eit_cite), run_time=0.5
+        composite_img = ImageMobject(
+            "composite_material", height=image_height
+        ).align_to(self.TOP_MARGIN, UP)
+        composite_text = (
+            TexText("Composite Materials", font_size=FOOTNOTE_FONT_SIZE)
+            .next_to(composite_img, 0.5 * DOWN)
+            .align_to(composite_img, LEFT)
         )
-        composite_img = ImageMobject("composite_material", height=image_height)
-        composite_text = TexText(
-            "Composite Materials", font_size=FOOTNOTE_FONT_SIZE
-        ).next_to(composite_img, 0.5 * DOWN)
         composite_cite = cite("composite_materials").next_to(composite_text, RIGHT)
-        self.update_slide_contents(
-            [composite_img, composite_text, composite_cite],
+        self.update_slide(
+            subtitle="Motivation: Composite Materials",
+            new_contents=[composite_img, composite_text, composite_cite],
             notes="Composite materials...",
+            additional_animations=[
+                eit_img.animate.set_opacity(0.0),
+                FadeOut(eit_text),
+                FadeOut(eit_cite),
+            ],
         )
 
         # slide: pem
-        composite_img.generate_target()
-        composite_img.target.scale(scale)
-        composite_img.target.next_to(eit_img, RIGHT)
-        composite_img.target.shift(shift_direction)
-        self.play(
-            MoveToTarget(composite_img),
-            FadeOut(composite_text),
-            FadeOut(composite_cite),
-            run_time=0.5,
+        pem_img = ImageMobject("pem", height=image_height).align_to(self.TOP_MARGIN, UP)
+        pem_text = (
+            TexText("Proton Exchange Membranes", font_size=FOOTNOTE_FONT_SIZE)
+            .next_to(pem_img, 0.5 * DOWN)
+            .align_to(pem_img, LEFT)
         )
-        pem_img = ImageMobject("pem", height=image_height)
-        pem_text = TexText(
-            "Proton Exchange Membranes", font_size=FOOTNOTE_FONT_SIZE
-        ).next_to(pem_img, 0.5 * DOWN)
         pem_cite = cite("pem").next_to(pem_text, RIGHT)
-        self.update_slide_contents(
-            [pem_img, pem_text, pem_cite],
-            notes="and Proton Exchange Membranes have in common?",
+        self.update_slide(
+            subtitle="Motivation: Proton Exchange Membranes",
+            new_contents=[pem_img, pem_text, pem_cite],
+            notes="Proton Exchange Membranes...",
+            additional_animations=[
+                composite_img.animate.set_opacity(0.0),
+                FadeOut(composite_text),
+                FadeOut(composite_cite),
+            ],
         )
-
+        # return
         # slide: model problem
-        pem_img.generate_target()
-        pem_img.target.scale(scale)
-        pem_img.target.next_to(composite_img, RIGHT)
-        pem_img.target.shift(shift_direction)
-        self.play(
-            MoveToTarget(pem_img, run_time=0.5),
-            FadeOut(pem_text),
-            FadeOut(pem_cite),
-            run_time=0.5,
+        images = always_redraw(
+            Group,
+            pcb_img.set_opacity(0.0),
+            subsurface_img.set_opacity(0.0),
+            eit_img.set_opacity(0.0),
+            composite_img.set_opacity(1.0),
+            pem_img.set_opacity(1.0),
         )
-
-        # slide: high contrast brace
-        images = [
-            pcb_img,
-            subsurface_img,
-            eit_img,
-            composite_img,
-            pem_img,
-        ]
-        images_vg = []
-        bboxes = []
-        for img in images:
-            bbox = always_redraw(SurroundingRectangle, img)
-            always(bbox.set_opacity, 0)
-            bboxes.append(bbox)
-            images_vg.append(bbox)
-        images_vg = always_redraw(VGroup, *images_vg)
-        high_contrast_brace = always_redraw(Brace, images_vg, direction=DOWN)
-        high_contrast_label = always_redraw(
-            TexText, "High-contrast", font_size=1.5 * CONTENT_FONT_SIZE
-        )
+        buff = 0.05
+        target_width = (FRAME_WIDTH - self.LEFT_MARGIN - self.RIGHT_MARGIN) / len(
+            images
+        ) - 0.3
+        for i, img in enumerate(images):
+            img.target.set_width(target_width)
+            img.target.align_to(self.TOP_MARGIN, UP).shift(1.5*DOWN)
+            if i == 0:
+                img.target.align_to(self.LEFT_MARGIN, LEFT)
+            if i > 0:
+                img.target.next_to(images[i - 1].target, RIGHT, buff=buff / 2)
+            img.target.set_opacity(1.0)
+        high_contrast_brace = always_redraw(Brace, images, direction=DOWN)
+        high_contrast_label = TexText("High-contrast Elliptic Problems", font_size=self.content_size)
         always(high_contrast_label.next_to, high_contrast_brace, DOWN, buff=0.1)
-        self.play(
-            Write(high_contrast_brace),
-            Write(high_contrast_label),
-            run_time=1.0,
+        self.update_slide(
+            subtitle="Motivation: High-contrast Coefficient Functions",
+            additional_animations=[
+                *[MoveToTarget(img) for img in images],
+                Write(high_contrast_brace),
+                Write(high_contrast_label),
+                FadeOut(pem_text),
+                FadeOut(pem_cite),
+            ],
         )
-        self.next_slide(notes="They all involve high-contrast!")
-
-        # slide: images move to the left and reveal high-contrast equation
-        for i in range(1, len(images)):
-            images[i].generate_target()
-            bboxes[i].generate_target()
-            images[i].target.align_to(self.slide_title, LEFT)
-            bboxes[i].target.align_to(self.slide_title, LEFT)
-            images[i].target.shift(2 * DOWN * i / len(images))
-            bboxes[i].target.shift(2 * DOWN * i / len(images))
-        self.play(
-            *[MoveToTarget(img) for img in images[1:]],
-            *[MoveToTarget(bbox) for bbox in bboxes[1:]],
-            run_time=0.5,
-        )
-        self.next_slide(notes="This leads us to the model problem...")
 
         # slide: model problem
         model_problem = defense.paragraph(
@@ -783,15 +819,24 @@ class defense(Slide):
             width=0.2 * FRAME_WIDTH,
             font_size=CONTENT_FONT_SIZE,
             alignment=ALIGN.CENTER,
-        ).next_to(images_vg, RIGHT, buff=1.0)
-        self.play(Write(model_problem), run_time=1.0)
-        self.next_slide(
-            notes="We want to find the solution u. To do so we discretize..."
+        )
+        high_contrast_brace.clear_updaters()
+        high_contrast_label.clear_updaters()
+        self.update_slide(
+            notes="We want to find the solution u. To do so we discretize...",
+            subtitle="Model Problem",
+            additional_animations=[
+                FadeOut(images),
+                FadeOut(high_contrast_brace),
+                FadeOut(high_contrast_label),
+                Write(model_problem)
+            ],
+            transition_time=self.RUN_TIME
         )
 
         # slide: variational formulation & discretization
         self.play(
-            model_problem.animate.shift(1.5 * UP),
+            model_problem.animate.align_to(self.TOP_MARGIN, UP).shift(0.5 * DOWN),
             run_time=0.5,
         )
         model_problem_weak = defense.paragraph(
@@ -805,10 +850,10 @@ class defense(Slide):
             ReplacementTransform(model_problem[0], model_problem_weak[0]),
             run_time=1.0,
         )
-        domain_width = 0.25 * FRAME_WIDTH
+        domain_width = model_problem_weak.get_bottom()[1] - self.BOTTOM_MARGIN[1] - 0.8
         domain = Rectangle(
             width=domain_width, height=domain_width, color=WHITE
-        ).next_to(model_problem_weak, 0.2 * DOWN, buff=1.0)
+        ).next_to(model_problem_weak, 0.4 * DOWN, buff=0.0)
         domain_label = TexText(r"$\Omega$", font_size=CONTENT_FONT_SIZE).move_to(
             domain.get_center()
         )
@@ -829,7 +874,7 @@ class defense(Slide):
                 "stroke_width": 1,
                 "stroke_opacity": 1.0,
             },
-        ).next_to(model_problem_weak, 0.2 * DOWN, buff=1.0)
+        ).next_to(model_problem_weak, 0.4 * DOWN, buff=0.0)
         self.play(ShowCreation(grid_lines), run_time=1.0)
 
         # slide: FEM formulation
@@ -848,7 +893,7 @@ class defense(Slide):
         linear_system_text = TexText(
             r"\begin{equation*}A\mathbf{u}=\mathbf{b}\end{equation*}",
             font_size=2.0 * CONTENT_FONT_SIZE,
-        ).move_to(fem_formulation.get_center())
+        ).move_to(ORIGIN)
         self.play(
             FadeOut(domain),
             FadeOut(domain_label),
@@ -856,82 +901,34 @@ class defense(Slide):
             ReplacementTransform(fem_formulation[0], linear_system_text),
             run_time=1.0,
         )
-
-        # slide: CG
-        self.next_slide(notes="We solve this system using Conjugate Gradient method...")
-        arrow = Arrow(
-            start=ORIGIN,
-            end=DOWN,
-            buff=0.0,
-            stroke_width=2,
-            color=WHITE,
-        ).next_to(linear_system_text, DOWN, buff=0.5)
-        cg_text = defense.paragraph(
-            "Conjugate Gradient (CG) Method",
-            font_size=1.5 * CONTENT_FONT_SIZE,
-            alignment=ALIGN.CENTER,
-            width=0.2 * FRAME_WIDTH,
-        ).next_to(arrow, DOWN, buff=0.5)
-        self.play(Write(arrow), Write(cg_text), run_time=1.0)
-        succesive_approximations = VGroup()
-        num_approximations = 5
-        for i in range(num_approximations):
-            approx = TexText(
-                f"$\\mathbf{{u}}_{{{i}}}$,",
-                font_size=1.5 * CONTENT_FONT_SIZE,
-            )
-            succesive_approximations.add(approx)
-        succesive_approximations.add(TexText("...", font_size=1.5 * CONTENT_FONT_SIZE))
-        succesive_approximations.arrange(RIGHT, buff=0.5)
-        succesive_approximations.next_to(cg_text, DOWN, buff=0.5)
-        approximations_brace = Brace(succesive_approximations, DOWN)
-        approximations_label = TexText(
-            "Successive Approximations", font_size=1.5 * CONTENT_FONT_SIZE
-        )
-        approximations_label.next_to(approximations_brace, DOWN)
-        self.play(
-            Write(succesive_approximations),
-            Write(approximations_brace),
-            Write(approximations_label),
-            run_time=1.0,
-        )
-        cg_stuff = VGroup(
-            cg_text,
-            arrow,
-            succesive_approximations,
-            approximations_brace,
-            approximations_label,
-        )
-
-        # slide: main research question
-        self.next_slide(notes="But how fast does CG converge? Main Research Question.")
-        main_question = defense.paragraph(
-            "\\textit{How can we determine the total number of necessary CG approximations?}",
-            font_size=2.0 * CONTENT_FONT_SIZE,
-            alignment=ALIGN.CENTER,
-            t2c={
-                "necessary": CustomColors.RED.value,
-            },
-            width=0.22 * FRAME_WIDTH,
-        )
-        self.slide_contents = images + bboxes + [linear_system_text, cg_stuff]
-
-        # move everything up
+    
+        # slide: CG schematic
+        cg_shematic = ImageMobject(
+            "cg_schematic", height=1.2*image_height
+        ).align_to(self.TOP_MARGIN, UP)
         self.update_slide(
-            new_contents=main_question, subtitle="Main Research Question", notes=""
+            new_contents=[cg_shematic],
+            notes="We solve this system using Conjugate Gradient method...",
+            subtitle="Conjugate Gradient (CG) Method",
+            additional_animations={
+                FadeOut(linear_system_text),
+            }
         )
-        self.slide_contents = [main_question]
+        return
+        # slide: main research question
+        self.update_slide(
+            new_contents=[self.main_question], subtitle="Main Research Question", notes=""
+        )
+        self.slide_contents = [self.main_question]
 
     def toc(self):
         item = Item()
         contents = defense.paragraph(
             f"{item}. Introducing CG"
             + f"\\\\{item}. How Does CG Converge? The Role of Eigenvalues"
-            + f"\\\\{item}. Preconditioning: Taming High-Contrast Problems"
-            + f"\\\\{item}. Towards Sharper Iteration Bounds: Two-Cluster Spectra"
-            + f"\\\\{item}. Multi-Cluster Spectra"
-            + f"\\\\{item}. How Sharp Are the New Bounds?"
-            + f"\\\\{item}. New Bounds in Practice: Using Ritz Values"
+            + f"\\\\{item}. Taming High-Contrast Problems Using Preconditioning"
+            + f"\\\\{item}. Towards a Sharper Iteration Bound: Clustered Spectra"
+            + f"\\\\{item}. Sharpness \& Practical Use of New Bound: Ritz Values"
             + f"\\\\{item}. Conclusion: Key Takeaways \& Future Directions",
             font_size=1.5 * CONTENT_FONT_SIZE,
             alignment=ALIGN.LEFT,
@@ -3804,10 +3801,14 @@ class defense(Slide):
         #     transition_time=2.0 * self.RUN_TIME,
         # )
         # slide: ritz migration (AMS)
-        self.slide_contents = [
-            coef_1,
-            coef_2,
-        ] + [f for f in all_spectra.values()] + labels
+        self.slide_contents = (
+            [
+                coef_1,
+                coef_2,
+            ]
+            + [f for f in all_spectra.values()]
+            + labels
+        )
         ams_ritz_migration = ImageMobject(
             "bound_and_spectrum_vs_iterations_2-OAS-AMS.png",
             height=0.6 * FRAME_HEIGHT,
@@ -3835,7 +3836,6 @@ class defense(Slide):
             new_contents=[
                 ams_ritz_migration,
                 rectangle_ams_ritz_migration,
-
             ],
             additional_animations=[
                 MoveToTarget(M_1),
@@ -3875,13 +3875,12 @@ class defense(Slide):
                 rgdsw_ritz_migration,
                 rectangle_rgdsw_ritz_migration,
             ],
-            additional_animations=[                
+            additional_animations=[
                 MoveToTarget(M_1),
                 MoveToTarget(M_2),
                 MoveToTarget(M_3),
             ],
         )
-
 
     def generate_partitioning_output(self, spectra_width: float) -> dict:
         out = {}
@@ -4421,13 +4420,13 @@ class defense(Slide):
     def construct(self):
         # self.wait_time_between_slides = 0.10
         # self.title_slide()
-        # self.level_0_opening()
+        self.level_0_opening()
         # self.toc()
         # self.level_1_intro_cg()
         # self.level_2_cg_convergence()
         # self.level_3_preconditioning()
         # self.level_4_two_clusters()
-        self.level_5_results()
+        # self.level_5_results()
         # self.level_6_conclusion()
-        # self.backup()
+        # # self.backup()
         # self.references()
