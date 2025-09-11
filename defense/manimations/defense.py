@@ -3745,14 +3745,16 @@ class defense(Slide):
             spectra.set_opacity(0.0)
         all_spectra[0].set_opacity(1.0)
         for i in [i + 1 for i in range(len(MESHES) - 1)] + [0]:
-            all_spectra[i].generate_target()
-            all_spectra[i].target.set_opacity(1.0)
+            # all_spectra[i].generate_target()
+            # all_spectra[i].target.set_opacity(1.0)
+            # all_spectra[i].set_opacity(1.0)
             for j in range(len(MESHES)):
                 if j != i:
-                    all_spectra[j].generate_target()
-                    all_spectra[j].target.set_opacity(0.0)
+                    # all_spectra[j].generate_target()
+                    # all_spectra[j].target.set_opacity(0.0)
+                    all_spectra[j].set_opacity(0.0)
             self.play(
-                *[MoveToTarget(m) for m in all_spectra.values()],
+                all_spectra[i].animate.set_opacity(1.0),
                 run_time=2.0 * self.RUN_TIME,
             )
         super().next_slide()
@@ -3761,9 +3763,10 @@ class defense(Slide):
         # slide: show biggest mesh
         all_spectra[len(MESHES) - 1].generate_target()
         all_spectra[len(MESHES) - 1].target.set_opacity(1.0)
-        for i in range(len(MESHES) - 1):
-            all_spectra[i].generate_target()
-            all_spectra[i].target.set_opacity(0.0)
+        for i in range(len(MESHES)-1):
+            # all_spectra[i].generate_target()
+            # all_spectra[i].target.set_opacity(0.0)
+            all_spectra[i].set_opacity(0.0)
         self.update_slide(
             subtitle="Partitioning Output: Largest Problem Size",
             additional_animations=[
@@ -3773,10 +3776,10 @@ class defense(Slide):
             transition_time=2.0 * self.RUN_TIME,
         )
 
-        # mimick end of above TODO
-        for spectra in all_spectra.values():
-            spectra.suspend_updating(True)
-        all_spectra[len(MESHES) - 1].set_opacity(1.0)
+        # # mimick end of above TODO
+        # for spectra in all_spectra.values():
+        #     spectra.suspend_updating(True)
+        # all_spectra[len(MESHES) - 1].set_opacity(1.0)
 
         # slide: zoom-in on GDSW + edge slabs spectrum + axes
         gdsw_spectrum = all_spectra[len(MESHES) - 1][0]
@@ -3849,7 +3852,7 @@ class defense(Slide):
         self.play(MoveToTarget(gdsw_spectrum), run_time=self.RUN_TIME)
         sim_time = 8.0 * self.RUN_TIME
         update_freq = sim_time / N_ITERATIONS
-        ritz_update_freq = 3
+        ritz_update_freq = 1
         all_dots = VGroup()
         for ritz_spectrum in ritz_spectra:
             ritz_spectrum.set_opacity(0.0)
@@ -3872,14 +3875,16 @@ class defense(Slide):
                 rate_func=linear,
             )
             if i % ritz_update_freq == 0 and i + ritz_update_freq < N_ITERATIONS:
-                ritz_spectra[i].generate_target()
-                ritz_spectra[i].target.set_opacity(0.0)
-                self.play(
-                    MoveToTarget(ritz_spectra[i]),
-                    MoveToTarget(ritz_spectra[i + ritz_update_freq]),
-                    run_time=update_freq,
-                    rate_func=linear,
-                )
+                # ritz_spectra[i].generate_target()
+                # ritz_spectra[i].target.set_opacity(0.0)
+                ritz_spectra[i].set_opacity(0.0)
+                ritz_spectra[i + ritz_update_freq].set_opacity(1.0)
+                # self.play(
+                #     MoveToTarget(ritz_spectra[i]),
+                #     MoveToTarget(ritz_spectra[i + ritz_update_freq]),
+                #     run_time=update_freq,
+                #     rate_func=linear,
+                # )
         super().next_slide()
 
         # slide: back to overview
@@ -3887,7 +3892,7 @@ class defense(Slide):
         gdsw_spectrum[0].generate_target()
         gdsw_spectrum[0].target.stretch_to_fit_width(spectra_width)
         gdsw_spectrum[0].target.move_to(gdsw_original_loc)
-        gdsw_spectrum.set_opacity(1.0)
+        gdsw_spectrum.target.set_opacity(1.0)
         self.update_slide(
             subtitle="Partitioning Output",
             additional_animations=[
