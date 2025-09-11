@@ -58,7 +58,7 @@ class QUALITY(Enum):
 
 
 manim_config.camera.fps = FPS
-manim_config.camera.resolution = QUALITY.P720.value
+manim_config.camera.resolution = QUALITY.P480.value
 manim_config.background_color = WHITE
 manim_config.directories.raster_images = (get_venv_root() / "images").as_posix()
 manim_config.camera.background_color = CustomColors.NAVY.value
@@ -125,7 +125,7 @@ AFFILIATION = TexText(
 \begin{tabular}{lll}
     Student number:   & 4945255                                                                                \\
     Project duration: & \multicolumn{2}{l}{December 2024 -- September 2025}                                    \\
-    Thesis committee: & Prof. H. Schuttelaars,                            & TU Delft, responsible supervisor \\
+    Thesis committee: & Prof. H. Schuttelaars,                            & TU Delft, committee \\
                         & Dr. A. Heinlein,                                  & TU Delft, daily supervisor       \\
                         & F. Cumaru,                                         & TU Delft, daily co-supervisor    \\
     Faculty:          & Faculty of Electrical Engineering,                                                     \\
@@ -3783,8 +3783,9 @@ class defense(Slide):
         gdsw_spectrum.resume_updating()
         remaining_spectra = all_spectra[len(MESHES) - 1][1:]
         # old_state = gdsw_spectrum.save_state(use_deepcopy=True)
+        gdsw_original_loc = 
         gdsw_spectrum[0].generate_target()
-        gdsw_spectrum[0].target.stretch_to_fit_width(0.7 * FRAME_WIDTH)
+        gdsw_spectrum[0].target.stretch_to_fit_width(0.6 * FRAME_WIDTH)
         gdsw_spectrum[0].target.move_to(ORIGIN)
         gdsw_spectrum[0].target.shift(2*DOWN)
         for spectrum in remaining_spectra:
@@ -3811,7 +3812,7 @@ class defense(Slide):
         for i in range(5):
             axes.get_y_axis().add(Tex(f"10^{i}", font_size=CONTENT_FONT_SIZE).move_to(axes.c2p(0, i, 0) + 0.4 * LEFT))
         self.update_slide(
-            subtitle="Early Estimation of Bounds: $M_{\\text{2-OAS-GDSW}}$",
+            subtitle="Early Estimation of New Bound for $M_{\\text{2-OAS-GDSW}}$",
             additional_animations=[
                 MoveToTarget(gdsw_spectrum[0]),
                 *[MoveToTarget(m) for m in remaining_spectra],
@@ -3832,47 +3833,52 @@ class defense(Slide):
         # slide: ritz value animation
         ritz_spectra, bounds = self.ritz_value_animation(DefaultQuadMeshParams.Nc64, COEF_FUNCS[1], PRECONDITIONERS[0])
         gdsw_spectrum.suspend_updating()
+        gdsw_spectrum.generate_target()
         gdsw_spectrum.set_opacity(0.0)
-        sim_time = 5.0 * self.RUN_TIME
+        self.play(MoveToTarget(gdsw_spectrum), run_time=self.RUN_TIME)
+        sim_time = 8.0 * self.RUN_TIME
         update_freq = sim_time / N_ITERATIONS
+        ritz_update_freq = 3
         all_dots = VGroup()
-        bound_dot = Dot(
-            axes.c2p(0, bounds[0], 0),
-            color=CustomColors.GOLD.value,
-            radius=0.5 * DEFAULT_DOT_RADIUS,
-        )
-        all_dots.add(bound_dot)
         for ritz_spectrum in ritz_spectra:
             ritz_spectrum.set_opacity(0.0)
-        ritz_spectra[0][0].set_opacity(1.0)
-        ritz_spectra[0][0].generate_target()
-        ritz_spectra[0][0].target.stretch_to_fit_width(0.7 * FRAME_WIDTH)
-        ritz_spectra[0][0].target.move_to(gdsw_spectrum[0].get_center())
+            ritz_spectrum[0].move_to(gdsw_spectrum.get_center())
+            ritz_spectrum[0].stretch_to_fit_width(0.6 * FRAME_WIDTH)
+            ritz_spectrum.generate_target()
+            ritz_spectrum.target.set_opacity(1.0)
         super().next_slide(notes="Show ritz value animation", loop=True)
-        self.play(
-            MoveToTarget(ritz_spectra[0][0]),
-        )
-        for i in range(N_ITERATIONS-1):
+        self.play(MoveToTarget(ritz_spectrum), run_time=update_freq)
+        for i in range(N_ITERATIONS):
             bound_dot = Dot(
-                axes.c2p(i+1, bounds[i+1], 0),
+                axes.c2p(i, np.log10(bounds[i]), 0),
                 color=CustomColors.GOLD.value,
-                radius=0.5 * DEFAULT_DOT_RADIUS,
+                radius=DEFAULT_DOT_RADIUS,
             )
             all_dots.add(bound_dot)
-            ritz_spectra[i+1][0].generate_target()
-            ritz_spectra[i+1][0].target.stretch_to_fit_width(0.7 * FRAME_WIDTH)
-            ritz_spectra[i+1][0].target.move_to(gdsw_spectrum[0].get_center())
-            ritz_spectra[i+1][0].target.set_opacity(1.0)
             self.play(
                 FadeIn(bound_dot),
-                MoveToTarget(ritz_spectra[i][0]),
-                MoveToTarget(ritz_spectra[i+1][0]),
                 run_time=update_freq,
+                rate_func=linear,
             )
-            ritz_spectra[i].generate_target()
+            if i % ritz_update_freq == 0 and i + ritz_update_freq < N_ITERATIONS:
+                ritz_spectra[i].generate_target()
+                ritz_spectra[i].target.set_opacity(0.0)
+                self.play(
+                    MoveToTarget(ritz_spectra[i]),
+                    MoveToTarget(ritz_spectra[i + ritz_update_freq]),
+                    run_time=update_freq,
+                    rate_func=linear,
+                )
         super().next_slide()
+
         # slide: back to overview
-        # MoveToTarget(gdsw_spectrum)
+        gdsw_spectrum.resume_updating()
+        gdsw_spectrum.generate_target()
+        gdsw_spectrum.target.stretch_to_fit_width(spectra_width)
+        gdsw_spectrum.target.move_to(gdsw_original_loc)
+        self.update_slide(
+            
+        )
 
 
     def generate_partitioning_output(self, spectra_width: float) -> dict:
