@@ -409,7 +409,7 @@ class defense(Slide):
         self.main_question = VGroup()
         main_rq_text = defense.paragraph(
             "\\textit{How can we determine the total number of necessary CG iterations?}",
-            font_size=1.25*self.title_size,
+            font_size=1.25 * self.title_size,
             alignment=ALIGN.CENTER,
             t2c={
                 "necessary": CustomColors.RED.value,
@@ -418,9 +418,14 @@ class defense(Slide):
             width=0.5 * FRAME_WIDTH,
         )
         main_rq_background = BackgroundRectangle(
-            main_rq_text, fill_color=CustomColors.BLUE.value, fill_opacity=1.0, buff=0.2).round_corners(0.1)
+            main_rq_text, fill_color=CustomColors.BLUE.value, fill_opacity=1.0, buff=0.2
+        ).round_corners(0.1)
         main_rq_background.set_z_index(-1)
-        dot = Dot(main_rq_background.get_corner(DL), fill_color=CustomColors.GOLD.value, radius=0.1)
+        dot = Dot(
+            main_rq_background.get_corner(DL),
+            fill_color=CustomColors.GOLD.value,
+            radius=0.1,
+        )
         self.main_question.add(dot, main_rq_background, main_rq_text)
 
     # utility functions
@@ -793,14 +798,16 @@ class defense(Slide):
         ) - 0.3
         for i, img in enumerate(images):
             img.target.set_width(target_width)
-            img.target.align_to(self.TOP_MARGIN, UP).shift(1.5*DOWN)
+            img.target.align_to(self.TOP_MARGIN, UP).shift(1.5 * DOWN)
             if i == 0:
                 img.target.align_to(self.LEFT_MARGIN, LEFT)
             if i > 0:
                 img.target.next_to(images[i - 1].target, RIGHT, buff=buff / 2)
             img.target.set_opacity(1.0)
         high_contrast_brace = always_redraw(Brace, images, direction=DOWN)
-        high_contrast_label = TexText("High-contrast Elliptic Problems", font_size=self.content_size)
+        high_contrast_label = TexText(
+            "High-contrast Elliptic Problems", font_size=self.content_size
+        )
         always(high_contrast_label.next_to, high_contrast_brace, DOWN, buff=0.1)
         self.update_slide(
             subtitle="Motivation: High-contrast Coefficient Functions",
@@ -830,9 +837,9 @@ class defense(Slide):
                 FadeOut(images),
                 FadeOut(high_contrast_brace),
                 FadeOut(high_contrast_label),
-                Write(model_problem)
+                Write(model_problem),
             ],
-            transition_time=self.RUN_TIME
+            transition_time=self.RUN_TIME,
         )
 
         # slide: variational formulation & discretization
@@ -890,7 +897,7 @@ class defense(Slide):
             additional_animations=[
                 ReplacementTransform(model_problem_weak[0], fem_formulation[0]),
             ],
-            transition_time=self.RUN_TIME
+            transition_time=self.RUN_TIME,
         )
 
         # slide: linear system
@@ -908,26 +915,28 @@ class defense(Slide):
                 FadeOut(grid_lines),
                 ReplacementTransform(fem_formulation[0], linear_system_text),
             ],
-            transition_time=self.RUN_TIME
+            transition_time=self.RUN_TIME,
         )
-    
+
         # slide: CG schematic
-        cg_shematic = ImageMobject(
-            "cg_schematic", height=1.2*image_height
-        ).align_to(self.TOP_MARGIN, UP)
+        cg_shematic = ImageMobject("cg_schematic", height=1.2 * image_height).align_to(
+            self.TOP_MARGIN, UP
+        )
         self.update_slide(
             new_contents=[cg_shematic],
             notes="We solve this system using Conjugate Gradient method...",
             subtitle="Conjugate Gradient (CG) Method",
             additional_animations={
                 FadeOut(linear_system_text),
-            }
+            },
         )
 
         # slide: main research question
         self.slide_contents = [cg_shematic]
         self.update_slide(
-            new_contents=[self.main_question], subtitle="Main Research Question", notes=""
+            new_contents=[self.main_question],
+            subtitle="Main Research Question",
+            notes="",
         )
         self.slide_contents = [self.main_question]
 
@@ -944,7 +953,9 @@ class defense(Slide):
             alignment=ALIGN.LEFT,
             width=0.3 * FRAME_WIDTH,
         ).align_to(self.slide_title, LEFT)
-        self.update_slide("Contents", new_contents=[contents], notes="Table of Contents")
+        self.update_slide(
+            "Contents", new_contents=[contents], notes="Table of Contents"
+        )
         self.slide_contents = [contents]
 
     def level_1_intro_cg(self):
@@ -974,9 +985,10 @@ class defense(Slide):
         self.update_slide(
             subtitle="Initial Guess",
             additional_animations=[
-                Write(initial_guess), Write(arrow),
+                Write(initial_guess),
+                Write(arrow),
             ],
-            run_time=self.RUN_TIME
+            run_time=self.RUN_TIME,
         )
 
         # slide: residual
@@ -987,12 +999,11 @@ class defense(Slide):
         ).move_to(initial_system.get_center())
         self.update_slide(
             subtitle="Initial Residual",
-            notes = "which gives an initial residual.",
+            notes="which gives an initial residual.",
             additional_animations=[
                 ReplacementTransform(initial_system, initial_residual),
-            ], 
-            run_time=self.RUN_TIME
-
+            ],
+            run_time=self.RUN_TIME,
         )
 
         # slide: desired error tolerance + CG black box
@@ -1034,7 +1045,7 @@ class defense(Slide):
                 Write(cg_rectangle),
                 Write(cg_text),
             ],
-            transition_time=self.RUN_TIME
+            transition_time=self.RUN_TIME,
         )
 
         # slide: cg algorithm
@@ -1183,7 +1194,7 @@ class defense(Slide):
                 *[MoveToTarget(err) for err in succesive_errors],
             ],
             transition_time=self.RUN_TIME,
-            notes="with errors decreasing as j increases."
+            notes="with errors decreasing as j increases.",
         )
 
         # slide: CG classical error bound
@@ -1234,10 +1245,10 @@ class defense(Slide):
                 FadeOut(citation),
                 ReplacementTransform(classical_error_bound, classical_iteration_bound),
                 ReplacementTransform(
-                classical_error_bound_text, classical_iteration_bound_text
+                    classical_error_bound_text, classical_iteration_bound_text
                 ),
                 ReplacementTransform(
-                classical_error_bound_box, classical_iteration_bound_box
+                    classical_error_bound_box, classical_iteration_bound_box
                 ),
             ],
             transition_time=self.RUN_TIME,
@@ -1303,31 +1314,41 @@ class defense(Slide):
         )
 
         # slide: update research question
-        self.slide_contents = [cg_iteration_bound_simplified, high_contrast_text, m_1_text, m_text_new, classical_iteration_bound_text]
+        self.slide_contents = [
+            cg_iteration_bound_simplified,
+            high_contrast_text,
+            m_1_text,
+            m_text_new,
+            classical_iteration_bound_text,
+        ]
         self.main_question.shift(UP)
         addendum = VGroup()
-        addendum_text = defense.paragraph(
-            "+ \\textit{That is sharp for high-contrast problems.}",
-            font_size=self.title_size,
-            alignment=ALIGN.CENTER,
-            t2c={
-                "necessary": CustomColors.RED.value,
-                "iterations": CustomColors.GOLD.value,
-            },
-            width=0.5 * FRAME_WIDTH,
-        ).next_to(self.main_question, DOWN, buff=0.5).shift(0.5*RIGHT)
+        addendum_text = (
+            defense.paragraph(
+                "+ \\textit{That is sharp for high-contrast problems.}",
+                font_size=self.title_size,
+                alignment=ALIGN.CENTER,
+                t2c={
+                    "necessary": CustomColors.RED.value,
+                    "iterations": CustomColors.GOLD.value,
+                },
+                width=0.5 * FRAME_WIDTH,
+            )
+            .next_to(self.main_question, DOWN, buff=0.5)
+            .shift(0.5 * RIGHT)
+        )
         addendum_bgr = BackgroundRectangle(
-            addendum_text, color=CustomColors.GOLD.value, fill_opacity=1.0, buff=0.2).round_corners(0.1)
+            addendum_text, color=CustomColors.GOLD.value, fill_opacity=1.0, buff=0.2
+        ).round_corners(0.1)
         addendum_bgr.set_z_index(-1)
         arrow = always_redraw(
-            CurvedArrow,
-            self.main_question[0].get_center(), 
-            addendum_bgr.get_left()
+            CurvedArrow, self.main_question[0].get_center(), addendum_bgr.get_left()
         )
         addendum.add(arrow, addendum_bgr, addendum_text)
         self.update_slide(
             notes="This is the main research question of this thesis.",
-            subtitle="Research Question (Revised)",
+            title="Research Question (Revised)",
+            subtitle="Sharpness for High-Contrast Problems",
             new_contents=[self.main_question],
             additional_animations=[
                 FadeIn(addendum, lag_ratio=0.5),
@@ -2045,18 +2066,21 @@ class defense(Slide):
             new_contents=[high_contrast_issue],
             subtitle="Taming High-Contrast Problems",
             notes="Recap: High-contrast leads to",
+            index="Preconditioning",
         )
         always(high_contrast_issue.move_to, ORIGIN)
+
         # slide: continued
-        self.play(
-            condition_number.animate.scale(2.0),
-            arrow_to_m_1.animate.set_opacity(1),
-            m_1.animate.set_opacity(1).scale(2.0),
-            m.animate.set_opacity(1),
-            run_time=2 * self.RUN_TIME,
-        )
-        self.next_slide(
+        self.update_slide(
+            subtitle="Taming High-Contrast Problems",
             notes="high values for kappa and thus pessimistic bound m_1 on m.",
+            additional_animations=[
+                condition_number.animate.scale(2.0),
+                arrow_to_m_1.animate.set_opacity(1),
+                m_1.animate.set_opacity(1).scale(2.0),
+                m.animate.set_opacity(1),
+            ],
+            run_time=2 * self.RUN_TIME,
         )
 
         # slide: preconditioned system
@@ -2078,11 +2102,11 @@ class defense(Slide):
             font_size=2.0 * CONTENT_FONT_SIZE,
         ).move_to(system.get_center())
         self.play(Write(system), Write(preconditioner), run_time=2 * self.RUN_TIME)
-        self.play(
-            ReplacementTransform(system, preconditioned_system), run_time=self.RUN_TIME
-        )
-        self.next_slide(
+        self.update_slide(
             notes="The problem of large condition numbers can be mitigated by using preconditioning. We transform the system...",
+            subtitle="Effect on Condition Number",
+            additional_animations=[ReplacementTransform(system, preconditioned_system)],
+            transition_time=self.RUN_TIME,
         )
 
         # slide: condition number of preconditioned system
@@ -2112,39 +2136,32 @@ class defense(Slide):
         high_contrast_issue2.add_updater(
             lambda m: m.arrange(RIGHT, buff=0.5).move_to(ORIGIN)
         )
-        self.play(
-            ReplacementTransform(high_contrast_issue, high_contrast_issue2),
-            run_time=self.RUN_TIME,
-        )
-        self.play(
-            preconditioned_condition_number.animate.scale(0.5),
-            m_1.animate.scale(0.5),
-            run_time=self.RUN_TIME,
-        )
         m_sharp = TexText(
             r"$ \geq m$",
             font_size=2.0 * CONTENT_FONT_SIZE,
             t2c={r"\kappa": CustomColors.RED.value},
         ).move_to(m.get_center())
-        self.play(ReplacementTransform(m, m_sharp), run_time=self.RUN_TIME)
-        self.next_slide(
-            notes="and hope that the preconditioned system has a smaller condition number.",
+        self.play(
+            ReplacementTransform(high_contrast_issue, high_contrast_issue2),
+            run_time=self.RUN_TIME,
+        )
+        self.update_slide(
+            subtitle="Effect on Condition Number",
+            additional_animations=[
+                preconditioned_condition_number.animate.scale(0.5),
+                m_1.animate.scale(0.5),
+                ReplacementTransform(m, m_sharp, lag_ratio=0.5),
+            ],
+            transition_time=2 * self.RUN_TIME,
         )
 
         # slide: high coefficient functions from Filipe and Alexander
-        high_contrast_issue2.clear_updaters()
-        self.slide_contents = [
-            high_contrast_text,
-            arrow_hc_to_kappa,
-            preconditioned_condition_number,
-            arrow_to_m_1,
-            m_1,
-            m_sharp,
-        ]
+        high_contrast_issue2.clear_updaters(recurse=True)
         coefficient_function_image = (
             ImageMobject("coefficient_functions")
             .set_height(0.6 * FRAME_HEIGHT)
             .set_z_index(1)
+            .align_to(self.TOP_MARGIN, UP)
         )
         coefficient_rectangle = (
             BackgroundRectangle(
@@ -2165,11 +2182,21 @@ class defense(Slide):
         for i, c in enumerate(citations):
             c.next_to(self.slide_subtitle, RIGHT, buff=0.1).shift(i * 0.3 * RIGHT)
         self.update_slide(
-            subtitle="Taming High-Contrast Problems",
+            title="Preconditioners for High-Contrast Problems",
+            subtitle="Sample Coefficient Functions",
             new_contents=[
                 coefficient_function_image,
                 citations[0],
                 coefficient_rectangle,
+            ],
+            additional_animations=[
+                FadeOut(high_contrast_text),
+                FadeOut(arrow_hc_to_kappa),
+                FadeOut(preconditioned_condition_number),
+                FadeOut(arrow_to_m_1),
+                FadeOut(m_1),
+                FadeOut(m_sharp),
+                FadeOut(high_contrast_issue2),
             ],
             notes="Lets look at two specific examples of coefficient functions.",
         )
@@ -2188,18 +2215,17 @@ class defense(Slide):
             font_size=1.5 * CONTENT_FONT_SIZE,
         )
         for i, M in enumerate([M_1, M_2, M_3]):
-            M.next_to(coefficient_function_image, DOWN, buff=0).shift(
-                (i - 1) * 3.0 * RIGHT
-            )
-        self.play(
-            Write(M_1),
-            Write(M_2),
-            Write(M_3),
-            *[Write(citation) for citation in citations[1:]],
-            run_time=2 * self.RUN_TIME,
-        )
-        self.next_slide(
-            notes="We consider three different preconditioners for these problems...",
+            M.next_to(coefficient_rectangle, DOWN, buff=0).shift((i - 1) * 3.0 * RIGHT)
+        self.update_slide(
+            title="Preconditioners for High-Contrast Problems",
+            subtitle="Three Tailored Preconditioners",
+            additional_animations=[
+                Write(M_1),
+                Write(M_2),
+                Write(M_3),
+                *[Write(citation) for citation in citations[1:]],
+            ],
+            transition_time=2 * self.RUN_TIME,
         )
 
         # slide: simplify labels
@@ -2219,17 +2245,21 @@ class defense(Slide):
             M.next_to(coefficient_function_image, DOWN, buff=0).shift(
                 (i - 1) * 1.0 * RIGHT
             )
-        self.play(
-            ReplacementTransform(M_1, M_1_simple),
-            ReplacementTransform(M_2, M_2_simple),
-            ReplacementTransform(M_3, M_3_simple),
-            run_time=self.RUN_TIME,
+        self.update_slide(
+            title="Preconditioners for High-Contrast Problems",
+            subtitle="Three Tailored Preconditioners",
+            notes="which we will refer to as M1, M2, and M3.",
+            additional_animations=[
+                ReplacementTransform(M_1, M_1_simple),
+                ReplacementTransform(M_2, M_2_simple),
+                ReplacementTransform(M_3, M_3_simple),
+            ],
+            transition_time=2 * self.RUN_TIME,
         )
-        self.next_slide(notes="which we will refer to as M1, M2, and M3.")
 
         # slide: all preconditioners had similar condition numbers
         M_2_kappa = TexText(
-            r"$\sim\kappa(M_2^{-1}A)\sim$",
+            r"$\sim\kappa(M_2^{-1}A)\sim^*$",
             font_size=1.5 * CONTENT_FONT_SIZE,
         )
         M_1_kappa = TexText(
@@ -2240,25 +2270,36 @@ class defense(Slide):
             r"$\kappa(M_3^{-1}A)$",
             font_size=1.5 * CONTENT_FONT_SIZE,
         ).next_to(M_2_kappa, RIGHT, buff=0.1)
-        self.play(
-            *[FadeOut(citation) for citation in citations],
-            FadeOut(coefficient_function_image),
-            FadeOut(coefficient_rectangle),
-            ReplacementTransform(M_1_simple, M_1_kappa),
-            ReplacementTransform(M_2_simple, M_2_kappa),
-            ReplacementTransform(M_3_simple, M_3_kappa),
-            run_time=2 * self.RUN_TIME,
+        footnote = (
+            TexText(
+                r"$^*$ $\sigma(M_3^{-1}A)$ is actually lower for $C_{\text{3layer, vert}}$",
+                font_size=self.slide_number_size,
+            )
+            .align_to(self.BOTTOM_MARGIN, DOWN)
+            .align_to(self.LEFT_MARGIN, LEFT)
+            .shift(0.1 * RIGHT + 0.1 * UP)
         )
-        self.next_slide(
+        self.update_slide(
+            title="Preconditioner Performance",
+            subtitle="The Condition Number as a Measure",
             notes="All three preconditioners resulted in similar condition numbers...",
+            additional_animations=[
+                *[FadeOut(citation) for citation in citations],
+                FadeOut(coefficient_function_image),
+                FadeOut(coefficient_rectangle),
+                ReplacementTransform(M_1_simple, M_1_kappa),
+                ReplacementTransform(M_2_simple, M_2_kappa),
+                ReplacementTransform(M_3_simple, M_3_kappa),
+                Write(footnote),
+            ],
+            transition_time=2 * self.RUN_TIME,
         )
 
         # slide: results from study
         vertex_func_results = (
             ImageMobject("cg_iterations_coefficient_vertex_Alves")
             .stretch_to_fit_width(0.4 * FRAME_WIDTH)
-            .align_to(self.slide_subtitle, LEFT)
-            .shift(0.9 * RIGHT)
+            .align_to(self.TOP_MARGIN, UP)
         )
         edge_func_results = (
             ImageMobject("cg_iterations_coefficient_edges_Alves")
@@ -2286,12 +2327,13 @@ class defense(Slide):
                 font_size=CONTENT_FONT_SIZE,
             ).next_to(edge_func_results, UP, buff=0.2),
         ]
+        plots = Group(*vertex_func_plot, *edge_func_plot)
+        plots.move_to(ORIGIN).align_to(self.TOP_MARGIN, UP)
         legend = (
             ImageMobject("method_legend_Alves")
             .stretch_to_fit_height(0.05 * FRAME_HEIGHT)
             .stretch_to_fit_width(0.4 * FRAME_WIDTH)
-            .to_edge(DOWN)
-            .shift(0.5 * UP)
+            .next_to(plots, DOWN, buff=0.5)
         )
         M_1_legend = TexText(
             r"$M_1$",
@@ -2315,20 +2357,23 @@ class defense(Slide):
                 [0.7, 0, 0] + i * 2.0 * RIGHT
             )
 
-        self.play(
-            FadeOut(M_1_kappa),
-            FadeOut(M_2_kappa),
-            FadeOut(M_3_kappa),
-            *[FadeIn(mobj) for mobj in vertex_func_plot],
-            *[FadeIn(mobj) for mobj in edge_func_plot],
-            FadeIn(legend),
-            FadeIn(M_1_legend),
-            FadeIn(M_2_legend),
-            FadeIn(M_3_legend),
-            run_time=2 * self.RUN_TIME,
-        )
-        self.next_slide(
-            notes="However the number of CG iterations varied significantly..."
+        self.update_slide(
+            notes="However the number of CG iterations varied significantly...",
+            title="Preconditioner Performance",
+            subtitle="PCG Iterations",
+            additional_animations=[
+                FadeOut(footnote),
+                FadeOut(M_1_kappa),
+                FadeOut(M_2_kappa),
+                FadeOut(M_3_kappa),
+                *[FadeIn(mobj) for mobj in vertex_func_plot],
+                *[FadeIn(mobj) for mobj in edge_func_plot],
+                FadeIn(legend),
+                FadeIn(M_1_legend),
+                FadeIn(M_2_legend),
+                FadeIn(M_3_legend),
+            ],
+            transition_time=2 * self.RUN_TIME,
         )
 
         # slide: M_2 (RGDSW) took more iterations
@@ -2339,13 +2384,13 @@ class defense(Slide):
         M_2_legend.background_rectangle.target.stretch_to_fit_height(
             legend.get_height()
         )
-        self.play(
-            MoveToTarget(M_2_legend),
-            MoveToTarget(M_2_legend.background_rectangle),
-            run_time=self.RUN_TIME,
-        )
-        self.next_slide(
-            notes="with M2 (RGDSW) consistently taking more iterations.",
+        self.update_slide(
+            subtitle="PCG Iterations",
+            additional_animations=[
+                MoveToTarget(M_2_legend),
+                MoveToTarget(M_2_legend.background_rectangle),
+            ],
+            transition_time=self.RUN_TIME,
         )
 
         # slide: restate research question
@@ -2354,34 +2399,40 @@ class defense(Slide):
             + edge_func_plot
             + [legend, M_1_legend, M_2_legend, M_3_legend]
         )
-        old_research_question = defense.paragraph(
-            "\\textit{How can we sharpen the classical CG iteration bound $m_1$ for high-contrast problems using the full spectrum of A?}",
-            font_size=2.0 * CONTENT_FONT_SIZE,
-            alignment=ALIGN.CENTER,
-            width=0.22 * FRAME_WIDTH,
-        )
-        self.update_slide(
-            new_contents=[old_research_question],
-            subtitle="Research Question (Revisited)",
-            notes="Revisiting the research question in light of the new findings.",
-        )
 
-        # slide: new research question
-        new_research_question = defense.paragraph(
-            "\\textit{How can we construct a sharp CG iteration bound for high-contrast problems using the full spectrum of A, such that it can distinguish between $M_1,M_2,M_3$?}",
-            t2c={
-                "can distinguish between $M_1,M_2,M_3$": CustomColors.GOLD.value,
-            },
-            font_size=2.0 * CONTENT_FONT_SIZE,
-            alignment=ALIGN.CENTER,
-            width=0.22 * FRAME_WIDTH,
+        self.main_question.shift(UP)
+        addendum = VGroup()
+        addendum_text = (
+            defense.paragraph(
+                "+ \\textit{can distinguish between performance of $M_1,M_2,M_3$}",
+                font_size=self.title_size,
+                alignment=ALIGN.CENTER,
+                width=0.5 * FRAME_WIDTH,
+            )
+            .next_to(self.main_question, DOWN, buff=0.5)
+            .shift(0.5 * RIGHT)
         )
-        self.play(
-            ReplacementTransform(old_research_question, new_research_question),
-            run_time=self.RUN_TIME,
+        addendum_bgr = BackgroundRectangle(
+            addendum_text, color=CustomColors.GOLD.value, fill_opacity=1.0, buff=0.2
+        ).round_corners(0.1)
+        addendum_bgr.set_z_index(-1)
+        arrow = always_redraw(
+            CurvedArrow, self.main_question[0].get_center(), addendum_bgr.get_left()
         )
-        self.next_slide(notes="This leads to the refined research question.")
-        self.slide_contents = [new_research_question]
+        addendum.add(arrow, addendum_bgr, addendum_text)
+        self.update_slide(
+            notes="So we need to refine our research question further.",
+            title="Research Question (Revised)",
+            subtitle="Predicting Preconditioned CG Performance",
+            new_contents=[self.main_question, addendum],
+            additional_animations=[
+                FadeIn(addendum, lag_ratio=0.5),
+            ],
+            transition_time=2 * self.RUN_TIME,
+        )
+        self.main_question.add(addendum)
+
+        self.slide_contents = [self.main_question]
 
     def level_4_two_clusters(self):
         # slide: classical general CG error bound
@@ -4456,9 +4507,9 @@ class defense(Slide):
         # self.title_slide()
         # self.level_0_opening()
         # self.toc()
-        self.level_1_intro_cg()
+        # self.level_1_intro_cg()
         # self.level_2_cg_convergence()
-        # self.level_3_preconditioning()
+        self.level_3_preconditioning()
         # self.level_4_two_clusters()
         # self.level_5_results()
         # self.level_6_conclusion()
