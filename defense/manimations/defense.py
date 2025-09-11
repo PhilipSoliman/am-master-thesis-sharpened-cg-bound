@@ -58,7 +58,7 @@ class QUALITY(Enum):
 
 
 manim_config.camera.fps = FPS
-manim_config.camera.resolution = QUALITY.P480.value
+manim_config.camera.resolution = QUALITY.P360.value
 manim_config.background_color = WHITE
 manim_config.directories.raster_images = (get_venv_root() / "images").as_posix()
 manim_config.camera.background_color = CustomColors.NAVY.value
@@ -3737,41 +3737,41 @@ class defense(Slide):
             transition_time=2.0 * self.RUN_TIME,
         )
 
-        # # TODO: takes long time to render! Works great tho
-        # # slide: show other meshes
-        # super().next_slide(notes="Show other meshes", loop=True)
+        # TODO: takes long time to render! Works great tho
+        # slide: show other meshes
+        super().next_slide(notes="Show other meshes", loop=True)
         for spectra in all_spectra.values():
             spectra.suspend_updating(True)
-            # spectra.set_opacity(0.0)
-        # all_spectra[0].set_opacity(1.0)
-        # for i in [i + 1 for i in range(len(MESHES) - 1)] + [0]:
-        #     all_spectra[i].generate_target()
-        #     all_spectra[i].target.set_opacity(1.0)
-        #     for j in range(len(MESHES)):
-        #         if j != i:
-        #             all_spectra[j].generate_target()
-        #             all_spectra[j].target.set_opacity(0.0)
-        #     self.play(
-        #         *[MoveToTarget(m) for m in all_spectra.values()],
-        #         run_time=2.0 * self.RUN_TIME,
-        #     )
-        # super().next_slide()
-        
-        # # TODO: same thing here, takes long time to render
-        # # slide: show biggest mesh
-        # all_spectra[len(MESHES) - 1].generate_target()
-        # all_spectra[len(MESHES) - 1].target.set_opacity(1.0)
-        # for i in range(len(MESHES) - 1):
-        #     all_spectra[i].generate_target()
-        #     all_spectra[i].target.set_opacity(0.0)
-        # self.update_slide(
-        #     subtitle="Partitioning Output: Largest Problem Size",
-        #     additional_animations=[
-        #         *[MoveToTarget(m) for m in all_spectra.values()],
-        #     ],
-        #     notes="Show the largest mesh",
-        #     transition_time=2.0 * self.RUN_TIME,
-        # )
+            spectra.set_opacity(0.0)
+        all_spectra[0].set_opacity(1.0)
+        for i in [i + 1 for i in range(len(MESHES) - 1)] + [0]:
+            all_spectra[i].generate_target()
+            all_spectra[i].target.set_opacity(1.0)
+            for j in range(len(MESHES)):
+                if j != i:
+                    all_spectra[j].generate_target()
+                    all_spectra[j].target.set_opacity(0.0)
+            self.play(
+                *[MoveToTarget(m) for m in all_spectra.values()],
+                run_time=2.0 * self.RUN_TIME,
+            )
+        super().next_slide()
+
+        # TODO: same thing here, takes long time to render
+        # slide: show biggest mesh
+        all_spectra[len(MESHES) - 1].generate_target()
+        all_spectra[len(MESHES) - 1].target.set_opacity(1.0)
+        for i in range(len(MESHES) - 1):
+            all_spectra[i].generate_target()
+            all_spectra[i].target.set_opacity(0.0)
+        self.update_slide(
+            subtitle="Partitioning Output: Largest Problem Size",
+            additional_animations=[
+                *[MoveToTarget(m) for m in all_spectra.values()],
+            ],
+            notes="Show the largest mesh",
+            transition_time=2.0 * self.RUN_TIME,
+        )
 
         # mimick end of above TODO
         for spectra in all_spectra.values():
@@ -3782,35 +3782,44 @@ class defense(Slide):
         gdsw_spectrum = all_spectra[len(MESHES) - 1][0]
         gdsw_spectrum.resume_updating()
         remaining_spectra = all_spectra[len(MESHES) - 1][1:]
-        # old_state = gdsw_spectrum.save_state(use_deepcopy=True)
-        gdsw_original_loc = 
+        gdsw_original_loc = gdsw_spectrum.get_center()
         gdsw_spectrum[0].generate_target()
         gdsw_spectrum[0].target.stretch_to_fit_width(0.6 * FRAME_WIDTH)
         gdsw_spectrum[0].target.move_to(ORIGIN)
-        gdsw_spectrum[0].target.shift(2*DOWN)
+        gdsw_spectrum[0].target.shift(2 * DOWN)
         for spectrum in remaining_spectra:
             spectrum.generate_target()
             spectrum.target.set_opacity(0.0)
         axes = Axes(
-            x_range=(0, N_ITERATIONS, N_ITERATIONS//10),
+            x_range=(0, N_ITERATIONS, N_ITERATIONS // 10),
             y_range=(0, 4, 1),
-            height=0.4*FRAME_HEIGHT,
-            width=0.7*FRAME_WIDTH,
+            height=0.4 * FRAME_HEIGHT,
+            width=0.7 * FRAME_WIDTH,
             axis_config={
                 "stroke_color": CustomColors.RED.value,
                 "stroke_width": 2,
                 "include_tip": True,
             },
         ).next_to(gdsw_spectrum[0].target, UP, buff=1.0)
-        x_label = TexText(r"Iteration $i$", font_size=CONTENT_FONT_SIZE).next_to(axes, DOWN, buff=0.5)
-        y_label = Tex(r"m_{N_{\text{cluster}}}", font_size=CONTENT_FONT_SIZE).rotate(90 * DEGREES).next_to(axes, LEFT, buff=0.5)
+        x_label = TexText(r"Iteration $i$", font_size=CONTENT_FONT_SIZE).next_to(
+            axes, DOWN, buff=0.5
+        )
+        y_label = (
+            Tex(r"m_{N_{\text{cluster}}}", font_size=CONTENT_FONT_SIZE)
+            .rotate(90 * DEGREES)
+            .next_to(axes, LEFT, buff=0.5)
+        )
 
         axes.get_x_axis().add_numbers(
             x_values=[i for i in range(0, N_ITERATIONS + 1, N_ITERATIONS // 10)],
             font_size=0.7 * CONTENT_FONT_SIZE,
         )
         for i in range(5):
-            axes.get_y_axis().add(Tex(f"10^{i}", font_size=CONTENT_FONT_SIZE).move_to(axes.c2p(0, i, 0) + 0.4 * LEFT))
+            axes.get_y_axis().add(
+                Tex(f"10^{i}", font_size=CONTENT_FONT_SIZE).move_to(
+                    axes.c2p(0, i, 0) + 0.4 * LEFT
+                )
+            )
         self.update_slide(
             subtitle="Early Estimation of New Bound for $M_{\\text{2-OAS-GDSW}}$",
             additional_animations=[
@@ -3831,7 +3840,9 @@ class defense(Slide):
         )
 
         # slide: ritz value animation
-        ritz_spectra, bounds = self.ritz_value_animation(DefaultQuadMeshParams.Nc64, COEF_FUNCS[1], PRECONDITIONERS[0])
+        ritz_spectra, bounds = self.ritz_value_animation(
+            DefaultQuadMeshParams.Nc64, COEF_FUNCS[1], PRECONDITIONERS[0]
+        )
         gdsw_spectrum.suspend_updating()
         gdsw_spectrum.generate_target()
         gdsw_spectrum.set_opacity(0.0)
@@ -3873,13 +3884,29 @@ class defense(Slide):
 
         # slide: back to overview
         gdsw_spectrum.resume_updating()
-        gdsw_spectrum.generate_target()
-        gdsw_spectrum.target.stretch_to_fit_width(spectra_width)
-        gdsw_spectrum.target.move_to(gdsw_original_loc)
+        gdsw_spectrum[0].generate_target()
+        gdsw_spectrum[0].target.stretch_to_fit_width(spectra_width)
+        gdsw_spectrum[0].target.move_to(gdsw_original_loc)
+        gdsw_spectrum.set_opacity(1.0)
         self.update_slide(
-            
+            subtitle="Partitioning Output",
+            additional_animations=[
+                MoveToTarget(gdsw_spectrum[0]),
+                FadeOut(axes, remover=False),
+                FadeOut(x_label, remover=False),
+                FadeOut(y_label, remover=False),
+                *[FadeOut(ritz_spectrum) for ritz_spectrum in ritz_spectra],
+                FadeOut(all_dots),
+                FadeIn(coef_1),
+                FadeIn(coef_2),
+                FadeIn(M_1),
+                FadeIn(M_2),
+                FadeIn(M_3),
+                *[FadeIn(label) for label in labels],
+            ],
+            transition_time=2.0 * self.RUN_TIME,
+            notes="Back to overview",
         )
-
 
     def generate_partitioning_output(self, spectra_width: float) -> dict:
         out = {}
