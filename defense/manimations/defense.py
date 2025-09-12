@@ -349,20 +349,17 @@ class defense(Slide):
             "Subcontents", font_size=self.subtitle_size
         ).next_to(self.slide_title, DOWN, buff=0.15)
         self.slide_subtitle_visible = False
-        # self.add(self.slide_number, self.slide_index, self.slide_title, self.slide_subtitle)
 
         # slide contents (everything except title, subtitle, slide number)
         self.slide_contents: list[Mobject] = []
 
         # TU delft logo
-        # self.tu_delft_logo = (
-        #     ImageMobject("TUDelft_logo_white", height=0.1 * FRAME_HEIGHT)
-        #     .to_corner(DL)
-        #     .align_to(self.LEFT_MARGIN, LEFT)
-        #     .align_to(self.BOTTOM_MARGIN, UP)
-        # )
-        # self.tu_delft_logo.set_z_index(10)  # make sure logo is always on top
-        # self.add(self.tu_delft_logo)  # make sure logo is always on top
+        self.tu_delft_logo = (
+            ImageMobject("TUDelft_logo_white", height=0.1 * FRAME_HEIGHT)
+            .align_to(self.LEFT_MARGIN, LEFT)
+            .align_to(self.BOTTOM_MARGIN, UP)
+        )
+        self.tu_delft_logo.set_z_index(10)  # make sure logo is always on top
 
         # TU Delft affiliation
         self.tu_delft_affiliation = (
@@ -464,12 +461,16 @@ class defense(Slide):
             title_animations.append(ReplacementTransform(self.slide_title, new_title))
 
         if index is not None:
+            z_index = self.slide_index.z_index
             new_index = (
                 TexText(index, font_size=self.slide_number_size)
                 .next_to(self.slide_number, DOWN, buff=0.12)
                 .align_to(self.RIGHT_MARGIN, RIGHT)
-            )
-            title_animations.append(ReplacementTransform(self.slide_index, new_index))
+            ).add_background_rectangle(color=CustomColors.NAVY.value, buff=0.0)
+            new_index.set_z_index(z_index+2)
+            new_index.background_rectangle.set_z_index(z_index+1)
+            title_animations.append(FadeOut(self.slide_index))
+            title_animations.append(FadeIn(new_index))
 
         # check for new subtitle
         if subtitle is not None and self.slide_subtitle_visible:
@@ -687,6 +688,7 @@ class defense(Slide):
         self.slide_contents = [
             cover,
             VGroup(rectangle, title, subtitle, author, master_thesis, affiliation),
+            self.tu_delft_logo,
         ]
         super().next_slide()
 
@@ -946,7 +948,7 @@ class defense(Slide):
         # slide: main research question
         self.slide_contents = [cg_shematic]
         self.update_slide(
-            new_contents=[self.main_question],
+            new_contents=[self.main_question.move_to(ORIGIN)],
             subtitle="Main Research Question",
             notes="",
         )
@@ -964,7 +966,7 @@ class defense(Slide):
             font_size=1.5 * CONTENT_FONT_SIZE,
             alignment=ALIGN.LEFT,
             width=0.3 * FRAME_WIDTH,
-        ).align_to(self.slide_title, LEFT)
+        ).align_to(self.LEFT_MARGIN, LEFT)
         self.update_slide(
             "Contents", new_contents=[contents], notes="Table of Contents"
         )
@@ -1333,7 +1335,7 @@ class defense(Slide):
             m_text_new,
             classical_iteration_bound_text,
         ]
-        self.main_question.shift(UP)
+        self.main_question.move_to(ORIGIN).shift(2 * UP)
         addendum = VGroup()
         addendum_text = (
             defense.paragraph(
@@ -1343,16 +1345,17 @@ class defense(Slide):
                 width=0.5 * FRAME_WIDTH,
             )
             .next_to(self.main_question, DOWN, buff=0.5)
-            .shift(0.5 * RIGHT)
+            .align_to(self.main_question, LEFT)
+            .shift(0.5*RIGHT)
         )
         addendum_bgr = BackgroundRectangle(
             addendum_text, color=CustomColors.GOLD.value, fill_opacity=1.0, buff=0.2
         ).round_corners(0.1)
         addendum_bgr.set_z_index(-1)
-        arrow = always_redraw(
-            CurvedArrow, self.main_question[0].get_center(), addendum_bgr.get_left()
-        )
-        addendum.add(arrow, addendum_bgr, addendum_text)
+        # arrow = always_redraw(
+        #     CurvedArrow, self.main_question[0].get_center(), addendum_bgr.get_left()
+        # )
+        addendum.add(addendum_bgr, addendum_text)
         self.update_slide(
             notes="This is the main research question of this thesis.",
             title="Research Question (Revised)",
@@ -1363,9 +1366,10 @@ class defense(Slide):
             ],
             transition_time=2 * self.RUN_TIME,
         )
-        self.main_question.add(addendum)
+        # self.main_question.add(addendum)
 
         self.slide_contents = [self.main_question]
+
 
     def level_2_cg_convergence(self):
         linear_system_text = TexText(
@@ -1952,7 +1956,7 @@ class defense(Slide):
             cg_error_bound_uniform_short,
             arrow2,
         ]
-        self.main_question.shift(UP)
+        self.main_question.move_to(ORIGIN).shift(2 * UP)
         addendum = VGroup()
         addendum_text = (
             defense.paragraph(
@@ -1961,17 +1965,18 @@ class defense(Slide):
                 alignment=ALIGN.CENTER,
                 width=0.5 * FRAME_WIDTH,
             )
-            .next_to(self.main_question, DOWN, buff=0.5)
-            .shift(0.5 * RIGHT)
+            .next_to(self.main_question, DOWN, buff=1.5)
+            .align_to(self.main_question, LEFT)
+            .shift(0.5*RIGHT)
         )
         addendum_bgr = BackgroundRectangle(
             addendum_text, color=CustomColors.GOLD.value, fill_opacity=1.0, buff=0.2
         ).round_corners(0.1)
         addendum_bgr.set_z_index(-1)
-        arrow = always_redraw(
-            CurvedArrow, self.main_question[0].get_center(), addendum_bgr.get_left()
-        )
-        addendum.add(arrow, addendum_bgr, addendum_text)
+        # arrow = always_redraw(
+        #     CurvedArrow, self.main_question[0].get_center(), addendum_bgr.get_left()
+        # )
+        addendum.add(addendum_bgr, addendum_text)
         self.update_slide(
             notes="This is the main research question of this thesis.",
             title="Research Question (Revised)",
@@ -1982,7 +1987,7 @@ class defense(Slide):
             ],
             transition_time=2 * self.RUN_TIME,
         )
-        self.main_question.add(addendum)
+        # self.main_question.add(addendum)
 
         self.slide_contents = [self.main_question]
 
@@ -2451,7 +2456,7 @@ class defense(Slide):
             + [legend, M_1_legend, M_2_legend, M_3_legend]
         )
 
-        self.main_question.shift(UP)
+        self.main_question.move_to(ORIGIN).shift(2 * UP)
         addendum = VGroup()
         addendum_text = (
             defense.paragraph(
@@ -2460,17 +2465,18 @@ class defense(Slide):
                 alignment=ALIGN.CENTER,
                 width=0.5 * FRAME_WIDTH,
             )
-            .next_to(self.main_question, DOWN, buff=0.5)
-            .shift(0.5 * RIGHT)
+            .next_to(self.main_question, DOWN, buff=2.5)
+            .align_to(self.main_question, LEFT)
+            .shift(0.5*RIGHT)
         )
         addendum_bgr = BackgroundRectangle(
             addendum_text, color=CustomColors.GOLD.value, fill_opacity=1.0, buff=0.2
         ).round_corners(0.1)
         addendum_bgr.set_z_index(-1)
-        arrow = always_redraw(
-            CurvedArrow, self.main_question[0].get_center(), addendum_bgr.get_left()
-        )
-        addendum.add(arrow, addendum_bgr, addendum_text)
+        # arrow = always_redraw(
+        #     CurvedArrow, self.main_question[0].get_center(), addendum_bgr.get_left()
+        # )
+        addendum.add(addendum_bgr, addendum_text)
         self.update_slide(
             notes="So we need to refine our research question further.",
             title="Research Question (Revised)",
@@ -2481,7 +2487,7 @@ class defense(Slide):
             ],
             transition_time=2 * self.RUN_TIME,
         )
-        self.main_question.add(addendum)
+        # self.main_question.add(addendum)
 
         self.slide_contents = [self.main_question]
 
@@ -2907,10 +2913,9 @@ class defense(Slide):
                 ReplacementTransform(
                     multi_cluster_cg_bound, multi_cluster_cg_bound_simple
                 ),
-                # FadeInFromPoint(
-                #     og_spectrum_backup, multi_cluster_cg_bound_simple.get_center()
-                # ),
-                FadeIn(og_spectrum_backup),
+                FadeInFromPoint(
+                    og_spectrum_backup, multi_cluster_cg_bound_simple.get_center()
+                ),
                 FadeOut(text_where),
                 FadeOut(sub_equations),
                 FadeOut(text_result),
@@ -3531,7 +3536,7 @@ class defense(Slide):
             step_3,
             step_4,
         ]
-        # self.main_question.shift(UP)
+        # self.main_question..move_to(ORIGIN).shift(2*UP)
         # addendum = VGroup()
         # addendum_text = (
         #     defense.paragraph(
@@ -3540,8 +3545,9 @@ class defense(Slide):
         #         alignment=ALIGN.CENTER,
         #         width=0.5 * FRAME_WIDTH,
         #     )
-        #     .next_to(self.main_question, DOWN, buff=0.5)
-        #     .shift(0.5 * RIGHT)
+        #     .next_to(self.main_question, DOWN, buff=3.5)
+        #     .align_to(self.main_question, LEFT)
+        #    .shift(0.5*RIGHT)
         # )
         # addendum_bgr = BackgroundRectangle(
         #     addendum_text, color=CustomColors.GOLD.value, fill_opacity=1.0, buff=0.2
@@ -3555,7 +3561,7 @@ class defense(Slide):
             notes="So we need to refine our research question further.",
             title="Research Question (Revised)",
             subtitle="Predicting Preconditioned CG Performance",
-            new_contents=[self.main_question],
+            new_contents=[self.main_question.move_to(ORIGIN)],
             # additional_animations=[
             #     FadeIn(addendum, lag_ratio=0.5),
             # ],
@@ -4091,6 +4097,12 @@ class defense(Slide):
                 MoveToTarget(M_3),
             ],
         )
+
+        self.slide_contents = [
+            rgdsw_ritz_migration,
+            rectangle_rgdsw_ritz_migration,
+            M_2,
+        ]
 
     def generate_partitioning_output(self, spectra_width: float) -> dict:
         out = {}
@@ -4712,17 +4724,14 @@ class defense(Slide):
     # full construct
     def construct(self):
         # self.wait_time_between_slides = 0.10
-        # self.title_slide()
-        # self.level_0_opening()
-        # self.toc()
-        # self.level_1_intro_cg()
-        # self.level_2_cg_convergence()
-        # self.level_3_preconditioning()
+        self.title_slide()
+        self.level_0_opening()
+        self.toc()
+        self.level_1_intro_cg()
+        self.level_2_cg_convergence()
+        self.level_3_preconditioning()
         # self.level_4_two_clusters()
         # self.level_5_results()
         # self.level_6_conclusion()
-        # # self.backup()
-        # self.references()
-        # # self.backup()
-        # self.references()
+        # self.backup()
         # self.references()
