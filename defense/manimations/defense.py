@@ -56,7 +56,7 @@ LOG_RTOL = np.log(RTOL)
 N_ITERATIONS = 300
 
 # Manim render settings
-FPS = 30
+FPS = 60
 
 
 class QUALITY(Enum):
@@ -69,7 +69,7 @@ class QUALITY(Enum):
 
 
 manim_config.camera.fps = FPS
-manim_config.camera.resolution = QUALITY.P720.value
+manim_config.camera.resolution = QUALITY.HD.value
 manim_config.background_color = WHITE
 manim_config.directories.raster_images = (get_venv_root() / "images").as_posix()
 manim_config.camera.background_color = CustomColors.NAVY.value
