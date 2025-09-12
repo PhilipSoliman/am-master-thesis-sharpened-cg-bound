@@ -434,6 +434,7 @@ class defense(Slide):
             radius=0.1,
         )
         self.main_question.add(dot, main_rq_background, main_rq_text)
+        self.sub_questions = VGroup()
 
     # utility functions
     def next_slide(self, additional_animations: list[Animation] = [], **kwargs):
@@ -1369,6 +1370,10 @@ class defense(Slide):
         # self.main_question.add(addendum)
 
         self.slide_contents = [self.main_question]
+        self.sub_questions.add(addendum)
+        self.sub_questions.generate_target()
+        self.sub_questions.target.set_opacity(0)
+        self.play(MoveToTarget(self.sub_questions), run_time=self.RUN_TIME)
 
 
     def level_2_cg_convergence(self):
@@ -1931,7 +1936,7 @@ class defense(Slide):
             num_points,
             spectra_transition_time,
             classical_bound_val,
-            return_anims=True,
+            return_anims=False,
         )
         self.update_slide(
             notes="For a split spectrum, the classical bound is pessimistic.",
@@ -1977,6 +1982,8 @@ class defense(Slide):
         #     CurvedArrow, self.main_question[0].get_center(), addendum_bgr.get_left()
         # )
         addendum.add(addendum_bgr, addendum_text)
+        self.sub_questions.generate_target()
+        self.sub_questions.target.set_opacity(1)
         self.update_slide(
             notes="This is the main research question of this thesis.",
             title="Research Question (Revised)",
@@ -1984,12 +1991,16 @@ class defense(Slide):
             new_contents=[self.main_question],
             additional_animations=[
                 FadeIn(addendum, lag_ratio=0.5),
+                MoveToTarget(self.sub_questions)
             ],
             transition_time=2 * self.RUN_TIME,
         )
         # self.main_question.add(addendum)
-
         self.slide_contents = [self.main_question]
+        self.sub_questions.add(addendum)
+        self.sub_questions.generate_target()
+        self.sub_questions.target.set_opacity(0)
+        self.play(MoveToTarget(self.sub_questions), run_time=self.RUN_TIME)
 
     def plot_spectrum_and_poly(
         self,
@@ -2477,19 +2488,26 @@ class defense(Slide):
         #     CurvedArrow, self.main_question[0].get_center(), addendum_bgr.get_left()
         # )
         addendum.add(addendum_bgr, addendum_text)
+        self.sub_questions.generate_target()
+        self.sub_questions.target.set_opacity(1)
         self.update_slide(
             notes="So we need to refine our research question further.",
             title="Research Question (Revised)",
             subtitle="Predicting Preconditioned CG Performance",
             new_contents=[self.main_question],
             additional_animations=[
-                FadeIn(addendum, lag_ratio=0.5),
+                FadeIn(addendum),
+                MoveToTarget(self.sub_questions)
             ],
             transition_time=2 * self.RUN_TIME,
         )
         # self.main_question.add(addendum)
 
         self.slide_contents = [self.main_question]
+        self.sub_questions.add(addendum)
+        self.sub_questions.generate_target()
+        self.sub_questions.target.set_opacity(0)
+        self.play(MoveToTarget(self.sub_questions), run_time=self.RUN_TIME)
 
     def level_4_two_clusters(self):
         # slide: classical general CG error bound
@@ -3557,19 +3575,25 @@ class defense(Slide):
         #     CurvedArrow, self.main_question[0].get_center(), addendum_bgr.get_left()
         # )
         # addendum.add(arrow, addendum_bgr, addendum_text)
+        self.sub_questions.generate_target()
+        self.sub_questions.target.set_opacity(1)
         self.update_slide(
             notes="So we need to refine our research question further.",
             title="Research Question (Revised)",
             subtitle="Predicting Preconditioned CG Performance",
             new_contents=[self.main_question.move_to(ORIGIN)],
-            # additional_animations=[
-            #     FadeIn(addendum, lag_ratio=0.5),
-            # ],
+            additional_animations=[
+                # FadeIn(addendum, lag_ratio=0.5),
+                MoveToTarget(self.sub_questions)
+            ],
             # transition_time=2 * self.RUN_TIME,
         )
         # self.main_question.add(addendum)
 
         self.slide_contents = [self.main_question]
+        self.sub_questions.generate_target()
+        self.sub_questions.target.set_opacity(0)
+        self.play(MoveToTarget(self.sub_questions), run_time=self.RUN_TIME)
 
     def generate_clustered_spectrum(
         self,
