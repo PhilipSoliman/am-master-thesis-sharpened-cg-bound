@@ -56,7 +56,7 @@ LOG_RTOL = np.log(RTOL)
 N_ITERATIONS = 300
 
 # Manim render settings
-FPS = 60
+FPS = 30
 
 
 class QUALITY(Enum):
@@ -69,7 +69,7 @@ class QUALITY(Enum):
 
 
 manim_config.camera.fps = FPS
-manim_config.camera.resolution = QUALITY.HD.value
+manim_config.camera.resolution = QUALITY.P240.value
 manim_config.background_color = WHITE
 manim_config.directories.raster_images = (get_venv_root() / "images").as_posix()
 manim_config.camera.background_color = CustomColors.NAVY.value
@@ -909,6 +909,7 @@ class defense(Slide):
         ).move_to(model_problem_weak)
         self.update_slide(
             notes="we get a linear system..",
+            subtitle="Model Problem",
             additional_animations=[
                 ReplacementTransform(model_problem_weak[0], fem_formulation[0]),
             ],
@@ -1108,7 +1109,7 @@ class defense(Slide):
                 FadeTransform(cg_algorithm, cg_algorithm_colored),
             ],
             transition_time=2 * self.RUN_TIME,
-            subtitle="CG Algorithm: inputs and outputs highlighted",
+            subtitle="CG Algorithm: Inputs and Outputs Highlighted",
         )
 
         # slide: CG output
@@ -1641,7 +1642,7 @@ class defense(Slide):
         always(brace.next_to, cg_residual_and_spectrum, RIGHT, buff=0.1)
         cg_error_bound = TexText(
             r"$\epsilon_m \leq \underset{r\in\mathcal{P}_m,\ r(0)=1}{\min} \ \underset{\lambda \in \sigma(A)}{\max}|r(\lambda)|$",
-            font_size=2.0 * CONTENT_FONT_SIZE,
+            font_size=1.5 * CONTENT_FONT_SIZE,
             t2c={
                 r"r": CustomColors.RED.value,
                 r"\sigma(A)": CustomColors.SKY.value,
@@ -2845,10 +2846,10 @@ class defense(Slide):
 
         # slide: general cg iteration bound
         text_result = TexText(
-            "This leads to the most \\textit{general CG iteration bound}.",
+            "This leads to the \\textit{general CG iteration bound}.",
             font_size=CONTENT_FONT_SIZE,
             t2c={"\\textit{general CG iteration bound}": CustomColors.GOLD.value},
-        ).move_to(text_why_stop.get_center())
+        ).move_to(text_why_stop.get_center()).shift(UP)
         multi_cluster_cg_bound = TexText(
             r"\begin{equation*}"
             r"  m_{N_{\text{cluster}}} = \sum_{i=1}^{N_{\text{cluster}}} p_i"
@@ -2976,12 +2977,13 @@ class defense(Slide):
         )
         num_clusters = 3
         arrow_length = 7
-        spectrum_for_partitioning = self.generate_clustered_spectrum(
+        spectrum_for_partitioning, all_eigs_part = self.generate_clustered_spectrum(
             [(0.1, 0.25), (0.6, 0.7), (0.75, 0.95)],
             ["a_1", "b_1", "a_2", "b_2", "a_3", "b_3"],
             randomize=True,
             resolution=100,
             arrow_length=arrow_length,
+            return_eigs=True
         )
         spectrum_for_partitioning[0].next_to(text_partitioning, DOWN, buff=0.5)
         self.next_slide(
@@ -3102,11 +3104,13 @@ class defense(Slide):
             color=CustomColors.GOLD.value,
             num_decimal_places=0,
         ).next_to(label_ip1, 0.5 * DOWN + RIGHT, buff=0.05)
+        always(index_i.next_to, label_i, 0.5 * DOWN + RIGHT, buff=0.05)
+        always(index_ip1.next_to, label_ip1, 0.5 * DOWN + RIGHT, buff=0.05)
         label_i_cp = label_i.copy()
         index_i_cp = index_i.copy()
-        always(index_i_cp.next_to, label_i_cp, 0.5 * DOWN + RIGHT, buff=0.05)
         label_ip1_cp = label_ip1.copy()
         index_ip1_cp = index_ip1.copy()
+        always(index_i_cp.next_to, label_i_cp, 0.5 * DOWN + RIGHT, buff=0.05)
         always(index_ip1_cp.next_to, label_ip1_cp, 0.5 * DOWN + RIGHT, buff=0.05)
         text_curr_relative_gap = VGroup(
             label_ip1_cp,
@@ -3127,6 +3131,7 @@ class defense(Slide):
             return mobj
 
         label_ip1.add_updater(lambda m, dt: label_ip1_updater(m, dt))
+
         always(text_curr_relative_gap.arrange, RIGHT, buff=0.3)
         always(text_curr_relative_gap.next_to, arrow_ip1, RIGHT, buff=0.5)
         self.update_slide(
@@ -3269,10 +3274,10 @@ class defense(Slide):
     #     largest_gap_curr_val.remove_updater(largest_gap_curr_val.get_updaters()[-1])
     #     for eig_dot in spectrum_for_partitioning_eigs:
     #         eig_dot.remove_updater(eig_dot.get_updaters()[-1])
-        eigs = np.array([-spectrum_arrow.get_center()[0] + dot.get_center()[0] for dot in spectrum_for_partitioning_eigs])
+        eigs = np.array(all_eigs_part)
         rel_distances = eigs[1:] / eigs[:-1]
         max_gap = np.max(rel_distances)
-        curr_k = int(np.argmax(rel_distances))-1
+        curr_k = int(np.argmax(rel_distances))
         def arrow_i_updater_final(mobj, dt: float):
             mobj.set_points_by_ends(
                 spectrum_for_partitioning_eigs[curr_k].get_center()
@@ -3434,7 +3439,7 @@ class defense(Slide):
         )
         spectrum_arrow.target.shift(-width_factor * diff_vec[0] * RIGHT)
         self.update_slide(
-            subtitle="Partitioning: Recursion (Left Partition)",
+            subtitle="Recursion (Left Partition)",
             additional_animations=[MoveToTarget(spectrum_arrow)],
             notes="This results in two partitions.",
         )
@@ -3500,7 +3505,7 @@ class defense(Slide):
             MoveToTarget(step_3), run_time=self.RUN_TIME, rate_func=there_and_back
         )
         self.update_slide(
-            subtitle="Partitioning: Recursion (Right Partition)",
+            subtitle="Recursion (Right Partition)",
             notes="This results in two partitions.",
         )
 
@@ -3568,6 +3573,7 @@ class defense(Slide):
         dot_size: float = 0.7 * DEFAULT_DOT_RADIUS,
         bar_buff: float = 0.01,
         randomize: bool = False,
+        return_eigs: bool = False,
     ) -> VGroup:
         arrow = Arrow(
             start=ORIGIN,
@@ -3591,6 +3597,7 @@ class defense(Slide):
             mobj.move_to(arrow.get_start() + [eig * arrow.get_length(), 0, 0])
             return mobj
 
+        all_eigs = []
         for cluster in clusters:
             if not randomize:
                 num_eigs = int(resolution * (cluster[1] - cluster[0]))
@@ -3600,6 +3607,7 @@ class defense(Slide):
                     resolution * (cluster[1] - cluster[0]) * np.random.uniform(0.8, 1.2)
                 )
                 eigs = np.sort(np.random.uniform(cluster[0], cluster[1], size=num_eigs))
+            all_eigs.extend(eigs)
             for eig in eigs:
                 eig_dot = Dot(
                     arrow.get_start() + [eig * arrow.get_length(), 0, 0],
@@ -3652,13 +3660,16 @@ class defense(Slide):
             font_size=CONTENT_FONT_SIZE,
         ).next_to(arrow, RIGHT, buff=0.1)
         always(lambda_label.next_to, arrow, RIGHT, buff=0.1)
-        return VGroup(
+        out = VGroup(
             arrow,
             lambda_label,
             *cluster_eigs,
             *cluster_bars,
             *cluster_bar_labels,
         )
+        if return_eigs:
+            return out, all_eigs
+        return out
 
     def generate_multiple_random_spectra(
         self,
@@ -4560,7 +4571,14 @@ class defense(Slide):
             transition_time=self.RUN_TIME,
         )
 
-        self.slide_contents = [bullets]
+        self.slide_contents = [
+            bullets,
+            background_rect_1,
+            background_rect_2,
+            background_rect_3,
+            background_rect_4,
+            background_rect_5, 
+        ]
 
     def backup(self):
         # slide: zoom-in on GDSW + edge slabs spectrum + axes
@@ -4706,14 +4724,14 @@ class defense(Slide):
     # full construct
     def construct(self):
         # self.wait_time_between_slides = 0.10
-        self.title_slide()
-        self.level_0_opening()
-        self.toc()
-        self.level_1_intro_cg()
-        self.level_2_cg_convergence()
-        self.level_3_preconditioning()
+        # self.title_slide()
+        # self.level_0_opening()
+        # self.toc()
+        # self.level_1_intro_cg()
+        # self.level_2_cg_convergence()
+        # self.level_3_preconditioning()
         self.level_4_two_clusters()
-        self.level_5_results()
-        self.level_6_conclusion()
-        # self.backup()
-        self.references()
+        # self.level_5_results()
+        # self.level_6_conclusion()
+        # # self.backup()
+        # self.references()
