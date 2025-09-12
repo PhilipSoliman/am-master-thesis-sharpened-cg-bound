@@ -56,7 +56,7 @@ LOG_RTOL = np.log(RTOL)
 N_ITERATIONS = 300
 
 # Manim render settings
-FPS = 30
+FPS = 60
 
 
 class QUALITY(Enum):
@@ -69,7 +69,7 @@ class QUALITY(Enum):
 
 
 manim_config.camera.fps = FPS
-manim_config.camera.resolution = QUALITY.P240.value
+manim_config.camera.resolution = QUALITY.HD.value
 manim_config.background_color = WHITE
 manim_config.directories.raster_images = (get_venv_root() / "images").as_posix()
 manim_config.camera.background_color = CustomColors.NAVY.value
@@ -415,11 +415,11 @@ class defense(Slide):
         # main question
         self.main_question = VGroup()
         main_rq_text = defense.paragraph(
-            "\\textit{How can we determine the total number of necessary CG iterations?}",
+            "\\textit{How can we construct a bound on the total number of necessary CG iterations?}",
             font_size=1.25 * self.title_size,
             alignment=ALIGN.CENTER,
             t2c={
-                "necessary": CustomColors.RED.value,
+                "bound": CustomColors.RED.value,
                 "iterations": CustomColors.GOLD.value,
             },
             width=0.5 * FRAME_WIDTH,
@@ -2472,7 +2472,7 @@ class defense(Slide):
         addendum = VGroup()
         addendum_text = (
             defense.paragraph(
-                "+ \\textit{can distinguish between performance of $M_1,M_2,M_3$}",
+                "+ \\textit{Can distinguish between performance of preconditioners $M_1,M_2,M_3$}",
                 font_size=self.title_size,
                 alignment=ALIGN.CENTER,
                 width=0.5 * FRAME_WIDTH,
@@ -4724,14 +4724,14 @@ class defense(Slide):
     # full construct
     def construct(self):
         # self.wait_time_between_slides = 0.10
-        # self.title_slide()
-        # self.level_0_opening()
-        # self.toc()
-        # self.level_1_intro_cg()
-        # self.level_2_cg_convergence()
-        # self.level_3_preconditioning()
+        self.title_slide()
+        self.level_0_opening()
+        self.toc()
+        self.level_1_intro_cg()
+        self.level_2_cg_convergence()
+        self.level_3_preconditioning()
         self.level_4_two_clusters()
-        # self.level_5_results()
-        # self.level_6_conclusion()
+        self.level_5_results()
+        self.level_6_conclusion()
         # # self.backup()
-        # self.references()
+        self.references()
