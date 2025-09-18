@@ -115,9 +115,9 @@
                     "--open",
                     "-cmargin='0.01'",
                     "-ctitle=Slides: ${fileBasenameNoExtension}",
-                    "-cassets_dir=${workspaceFolder}\\defense\\manimations\\assets",
+                    "-cassets_dir=${workspaceFolder}\\defense\\assets",
                     "${fileBasenameNoExtension}",
-                    "builds\\${fileBasenameNoExtension}.html"
+                    "build\\${fileBasenameNoExtension}.html"
                 ],
                 "problemMatcher": []
             },

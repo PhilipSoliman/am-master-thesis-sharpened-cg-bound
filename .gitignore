@@ -43,7 +43,7 @@ data/*/*.vtk
 logs/
 
 # manim
-defense/manimations/media
-defense/manimations/slides
-defense/manimations/videos
-defense/manimations/assets
+defense/media
+defense/slides
+defense/videos
+defense/assets
