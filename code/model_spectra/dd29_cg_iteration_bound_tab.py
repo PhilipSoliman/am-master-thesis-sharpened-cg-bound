@@ -27,6 +27,8 @@ from hcmsfem.preconditioners import (
 )
 from hcmsfem.problems import CoefFunc
 from hcmsfem.root import get_venv_root
+from hcmsfem.solvers import CGIterationBound
+from bound_and_spectrum_vs_iterations_fig import SPECTRUM_PLOT_FREQ
 
 CLI_ARGS = get_cli_args()
 
@@ -230,7 +232,7 @@ def generate_iteration_bound_table(
         f"{', '.join(meshes_names)} "
         f"and 2-OAS preconditioner with {', '.join(coarse_space_names)} coarse spaces. "
         "Cell colors indicate if bounds are larger (blue) or smaller (red) than $m$, with shading proportional to absolute difference. "
-        f"Bounds are only calculated for $i \leq \min\{{{max_iters}, {max_iter_percentage}m\}}$."
+        f"Bounds are calculated with $\eta={SPECTRUM_PLOT_FREQ}$, $\\tau={CGIterationBound.CLUSTER_CONVERGENCE_TOLERANCE}$, $i_{{\max}}={max_iters}$ and $r={max_iter_percentage}$."
     )
 
     styler.to_latex(
