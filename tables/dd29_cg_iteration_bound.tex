@@ -1,0 +1,20 @@
+\begin{table}[H]
+\centering
+\caption{The number of PCG iterations required to achieve convergence $m$ and corresponding iteration bounds $m_1$, $m_s$. Bounds are calculated with Ritz spectrum PCG at the $i^{\textrm{th}}$ iteration for subdomain sizes $\mathbf{H=1/4}$, $\mathbf{H=1/16}$, $\mathbf{H=1/64}$ and 2-OAS preconditioner with AMS, GDSW, RGDSW coarse spaces. Cell colors indicate if bounds are larger (blue) or smaller (red) than $m$, with shading proportional to absolute difference. Bounds are only calculated for $i \leq \min\{300, 0.5m\}$.}
+\label{tab:cg_iteration_bounds}
+\begin{tabular}{lrrrrrrrrr}
+\toprule
+ & \multicolumn{3}{c}{$\mathbf{H=1/4}$} & \multicolumn{3}{c}{$\mathbf{H=1/16}$} & \multicolumn{3}{c}{$\mathbf{H=1/64}$} \\
+ & AMS & GDSW & RGDSW & AMS & GDSW & RGDSW & AMS & GDSW & RGDSW \\
+\midrule
+$m$ & 83 & 80 & 81 & 238 & 346 & 1,406 & 310 & 407 & 6,766 \\
+\cline{1-10}
+$m_1$ & {\cellcolor[HTML]{AFC9F6}} \color[HTML]{000000} 98,421 & {\cellcolor[HTML]{AFC9F6}} \color[HTML]{000000} 124,727 & {\cellcolor[HTML]{AFC9F6}} \color[HTML]{000000} 117,699 & {\cellcolor[HTML]{AFC9F6}} \color[HTML]{000000} 110,969 & {\cellcolor[HTML]{7EAFF1}} \color[HTML]{000000} 123,872 & {\cellcolor[HTML]{AFC9F6}} \color[HTML]{000000} 122,195 & {\cellcolor[HTML]{AFC9F6}} \color[HTML]{000000} 114,629 & {\cellcolor[HTML]{AFC9F6}} \color[HTML]{000000} 127,897 & {\cellcolor[HTML]{7EAFF1}} \color[HTML]{000000} 69,645 \\
+\cline{1-10}
+$m_s$ & {\cellcolor[HTML]{7EAFF1}} \color[HTML]{000000} 191 & {\cellcolor[HTML]{7EAFF1}} \color[HTML]{000000} 88 & {\cellcolor[HTML]{7EAFF1}} \color[HTML]{000000} 133 & {\cellcolor[HTML]{7EAFF1}} \color[HTML]{000000} 310 & {\cellcolor[HTML]{945357}} \color[HTML]{F1F1F1} 306 & {\cellcolor[HTML]{7EAFF1}} \color[HTML]{000000} 2,185 & {\cellcolor[HTML]{7EAFF1}} \color[HTML]{000000} 324 & {\cellcolor[HTML]{7EAFF1}} \color[HTML]{000000} 485 & {\cellcolor[HTML]{945357}} \color[HTML]{F1F1F1} 2,612 \\
+\cline{1-10}
+$i$ & 41 & 36 & 36 & 81 & 76 & 241 & 91 & 186 & 291 \\
+\cline{1-10}
+\bottomrule
+\end{tabular}
+\end{table}

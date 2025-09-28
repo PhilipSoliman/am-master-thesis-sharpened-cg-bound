@@ -1,8 +1,11 @@
 import subprocess
+import sys
 from os import remove
 from pathlib import Path
+from typing import Type
 
 import matplotlib as mpl
+import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
 import ngsolve as ngs
 import numpy as np
@@ -10,10 +13,23 @@ from matplotlib.pyplot import savefig
 
 from hcmsfem.boundary_conditions import HomogeneousDirichlet
 from hcmsfem.cli import get_cli_args
+from hcmsfem.logger import LOGGER
 from hcmsfem.meshes import DefaultQuadMeshParams, TwoLevelMesh
-from hcmsfem.plot_utils import FIG_FOLDER, LATEX_STANDALONE_PGF_PRE, CustomColors, set_mpl_style
+from hcmsfem.plot_utils import FIG_FOLDER, CustomColors, set_mpl_cycler, set_mpl_style
+from hcmsfem.preconditioners import (
+    AMSCoarseSpace,
+    CoarseSpace,
+    GDSWCoarseSpace,
+    RGDSWCoarseSpace,
+    TwoLevelSchwarzPreconditioner,
+)
 from hcmsfem.problem_type import ProblemType
-from hcmsfem.problems import Problem
+from hcmsfem.problems import CoefFunc, Problem
+from hcmsfem.root import get_venv_root
+from hcmsfem.solvers import classic_cg_iteration_bound, multi_cluster_cg_iteration_bound
+
+sys.path.append((get_venv_root() / "code" / "model_spectra").as_posix())
+from approximate_spectra import get_spectrum_save_path  # type: ignore
 
 CLI_ARGS = get_cli_args()
 LATEX_STANDALONE_DOCUMENTCLASS = r"\documentclass{standalone}"
@@ -43,8 +59,6 @@ FONTSIZE = 10  # in pt
 
 CONTRAST_COLOR = CustomColors.RED.value
 BACKGROUND_COLOR = CustomColors.NAVY.value
-
-
 
 
 def set_mpl_style(fontsize: int = FONTSIZE):
@@ -177,14 +191,207 @@ def plot_edge_inclusions(two_mesh: TwoLevelMesh) -> plt.Figure:
     return fig
 
 
+# PCG iteration constants
+COEF_FUNC = CoefFunc.EDGE_SLABS_AROUND_VERTICES_INCLUSIONS
+RTOL = 1e-8
+LOG_RTOL = np.log(RTOL)
+MESHES = DefaultQuadMeshParams
+
+# plot
+FIGWIDTH = 1.5
+FIGHEIGHT = 1.5
+FONTSIZE = 9
+LEGEND_SIZE = 0.56
+RECIPROCAL_COARSE_MESH_SIZES = [round(1 / mesh.coarse_mesh_size) for mesh in MESHES]
+XTICKS = [rf"$\mathbf{{H = 1/{Nc}}}$" for Nc in RECIPROCAL_COARSE_MESH_SIZES]
+XTICK_LOCS = np.arange(len(RECIPROCAL_COARSE_MESH_SIZES), dtype=int)
+PADDING = dict(hspace=0.01, wspace=0.1, left=0.08, right=0.99, top=0.93, bottom=0)
+set_mpl_cycler(lines=True, colors=True, markers=True)
+
+
+def plot_absolute_performance(
+    coarse_spaces: list[Type[CoarseSpace]],
+    legend: bool = False,
+):
+    # initialize figure and axes for legend
+    fig = plt.figure(
+        figsize=(
+            FIGWIDTH * len(coarse_spaces),
+            FIGHEIGHT  + LEGEND_SIZE,
+        )
+    )
+    total_height = FIGHEIGHT + LEGEND_SIZE
+    gs = gridspec.GridSpec(
+        2,
+        len(coarse_spaces),
+        height_ratios=[
+            FIGHEIGHT / total_height,
+            LEGEND_SIZE / total_height,
+        ],
+    )
+    axs = []
+    for i in range(len(coarse_spaces)):
+        axs.append(fig.add_subplot(gs[0, i], sharey=None if i == 0 else axs[0]))
+    legend_ax = fig.add_subplot(gs[1, :])
+    legend_ax.axis("off")
+    fig.subplots_adjust(**PADDING)
+
+    # to differentiate between actual iterations, classical and sharpened bounds
+    iter_colors = [None] * len(coarse_spaces)
+    iter_markers = [".", "x", "^"]  # = len(coarse_spaces)
+
+    # Use visually distinct linestyles: solid, dashed, dotted, dash-dot-dot
+    iter_linestyles = ["-", "--", ":"]  # = len(coarse_spaces)
+
+    for i, coarse_space_cls in enumerate(coarse_spaces):
+        LOGGER.debug(f"Processing coefficient function: {coarse_space_cls.SHORT_NAME}")
+
+        niters = []
+        niters_classical = []
+        niters_multi_cluster = []
+        for mesh_params in MESHES:
+            LOGGER.debug(f"Processing mesh H = {1/mesh_params.coarse_mesh_size:.0f}")
+
+            # Load the eigenvalues from the saved numpy file
+            fp = get_spectrum_save_path(
+                mesh_params, COEF_FUNC, TwoLevelSchwarzPreconditioner, coarse_space_cls
+            )
+
+            # check if the file exists
+            if fp.exists():
+
+                # load eigenvalues
+                eigenvalues = np.load(fp)["eigenvalues"]
+
+                # number of iterations
+                niters.append(len(eigenvalues))
+
+                # get predicted number of iterations
+                cond = np.abs(np.max(eigenvalues) / np.min(eigenvalues))
+                niters_classical.append(
+                    classic_cg_iteration_bound(
+                        cond, log_rtol=LOG_RTOL, exact_convergence=False
+                    )
+                )
+
+                # get multi-cluster bound
+                niters_multi_cluster.append(
+                    multi_cluster_cg_iteration_bound(
+                        eigenvalues, log_rtol=LOG_RTOL, exact_convergence=False
+                    )
+                )
+
+                LOGGER.debug(
+                    f"niters: {niters[-1]}, classical: {niters_classical[-1]}, improved: {niters_multi_cluster[-1] if niters_multi_cluster[-1] is not None else 'N/A'}"
+                )
+
+            else:
+                # Provide a clickable link to the script in the repo using Rich markup with absolute path
+                approx_path = Path(__file__).parent / "approximate_spectra.py"
+                LOGGER.error(
+                    f"File %s does not exist. Run '[link=file:{approx_path}]approximate_spectra.py[/link]' first.",
+                    fp,
+                )
+                exit()
+
+        # get the axes for the coarse space
+        ax = axs[i]
+
+        # plot iterations & bounds
+        ax.plot(
+            XTICK_LOCS,
+            niters,
+            label="$m$",
+            linestyle=iter_linestyles[0],
+        )
+
+        # plot classical bound
+        niters_classical_line = ax.plot(
+            XTICK_LOCS,
+            niters_classical,
+            linestyle=iter_linestyles[1],
+            marker=iter_markers[1],
+            alpha=0.75,
+            label="$m_1$",
+        )
+        if iter_colors[1] is None:
+            iter_colors[1] = niters_classical_line[0].get_color()
+        else:
+            niters_classical_line[0].set_color(iter_colors[1])
+
+        # plot multi-cluster bound
+        niters_multi_cluster_line = ax.plot(
+            XTICK_LOCS,
+            niters_multi_cluster,
+            linestyle=iter_linestyles[2],
+            marker=iter_markers[2],
+            alpha=0.75,
+            label="$m_s$",
+        )
+        if iter_colors[2] is None:
+            iter_colors[2] = niters_multi_cluster_line[0].get_color()
+        else:
+            niters_multi_cluster_line[0].set_color(iter_colors[2])
+
+        # format the axes (all)
+        ax.grid()
+        ax.set_xticks(XTICK_LOCS)
+        ax.set_yscale("log")
+        ax.minorticks_on()
+        ax.grid(True, which="minor", alpha=0.3)  # Minor grid with lower alpha
+        ax.grid(True, which="major", alpha=0.7)  # Major grid with higher alpha
+
+        # Hide tick labels for all axes except the first one
+        if i > 0:
+            ax.tick_params(bottom=True, labelbottom=False, left=True, labelleft=False)
+
+    # add title to top row axes
+    for i, ax in enumerate(axs):
+        ax.text(
+            0.5,
+            1.01,
+            coarse_spaces[i].SHORT_NAME,
+            fontweight="bold",
+            fontsize=FONTSIZE,
+            ha="center",
+            va="bottom",
+            transform=ax.transAxes,
+        )
+
+    # add tick labels and xlabel to the last column axes
+    # for ax in axs:
+    axs[0].set_xticklabels(XTICKS, rotation=45, ha="right", fontsize=8)
+
+    # add legend to the bottom axis
+    if legend:
+        handles, labels = axs[0].get_legend_handles_labels()
+        legend_ax.legend(
+            handles,
+            labels,
+            fontsize=FONTSIZE,
+            loc="center right",
+            ncol=len(labels),
+            frameon=False,
+        )
+
+    return fig
+
+
 if __name__ == "__main__":
     two_mesh_4 = TwoLevelMesh(mesh_params=DefaultQuadMeshParams.Nc4)
-    figs = [plot_edge_inclusions(two_mesh_4)]
-    fns = ["edge_inclusions"]
+    coarse_spaces = [AMSCoarseSpace, GDSWCoarseSpace, RGDSWCoarseSpace]
+    figs = [
+        # plot_edge_inclusions(two_mesh_4).tight_layout(),
+        plot_absolute_performance(coarse_spaces, legend=True),
+    ]
+    fns = [
+        # "edge_inclusions",
+        "absolute_performance"
+    ]
     for fig, fn in zip(figs, fns):
-        fig.tight_layout()
         if CLI_ARGS.generate_output:
             fp = Path(__file__).name.replace("_fig.py", f"_{fn}")
             save_latex_figure(fp, fig)
     if CLI_ARGS.show_output:
+        plt.show()
         plt.show()
