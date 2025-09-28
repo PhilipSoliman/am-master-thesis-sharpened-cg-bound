@@ -7,6 +7,7 @@ from typing import Optional
 
 import numpy as np
 import pandas as pd
+from bound_and_spectrum_vs_iterations_fig import SPECTRUM_PLOT_FREQ
 from matplotlib.colors import LinearSegmentedColormap
 from scipy.stats import rankdata
 from sharpened_bound_vs_iterations import (
@@ -28,7 +29,6 @@ from hcmsfem.preconditioners import (
 from hcmsfem.problems import CoefFunc
 from hcmsfem.root import get_venv_root
 from hcmsfem.solvers import CGIterationBound
-from bound_and_spectrum_vs_iterations_fig import SPECTRUM_PLOT_FREQ
 
 CLI_ARGS = get_cli_args()
 
@@ -46,6 +46,15 @@ PRECONDITIONERS = [
     (TwoLevelSchwarzPreconditioner, GDSWCoarseSpace),
     (TwoLevelSchwarzPreconditioner, RGDSWCoarseSpace),
 ]
+MAX_ITERS_PER_PRECONDITIONER = [100, 100, 300]
+
+# define max iters per preconditioner iterable
+class MaxItersPerPreconditioner:
+    def __init__(self):
+        self.max_iters_list = [f"{m} ({p[1].SHORT_NAME})" for m, p in zip(MAX_ITERS_PER_PRECONDITIONER, PRECONDITIONERS)]
+
+    def __iter__(self):
+        return iter(self.max_iters_list)
 
 # colour gradient for the table
 nan_color = "#f0f0f0"
@@ -60,6 +69,7 @@ three_color = LinearSegmentedColormap.from_list(
 def generate_iteration_bound_table(
     coef_func: CoefFunc,
     max_iters: Optional[int] = None,
+    max_iters_per_preconditioner: Optional[list[int]] = None,
     max_iter_percentage: float = 0.5,
     show: bool = False,
 ):
@@ -99,7 +109,7 @@ def generate_iteration_bound_table(
     data = []
     differences = []
     for mesh_params in MESHES:
-        for preconditioner_cls, coarse_space_cls in PRECONDITIONERS:
+        for i, (preconditioner_cls, coarse_space_cls) in enumerate(PRECONDITIONERS):
             fp = get_spectrum_save_path(
                 mesh_params, coef_func, preconditioner_cls, coarse_space_cls
             )
@@ -116,6 +126,8 @@ def generate_iteration_bound_table(
 
                 # determine the maximum number of iterations
                 _max_iters = min(N_ITERATIONS, round(m * max_iter_percentage))
+                if isinstance(max_iters_per_preconditioner, list):
+                    max_iters = max_iters_per_preconditioner[i]
                 _max_iters = (
                     min(_max_iters, max_iters) if max_iters is not None else _max_iters
                 )
@@ -232,7 +244,7 @@ def generate_iteration_bound_table(
         f"{', '.join(meshes_names)} "
         f"and 2-OAS preconditioner with {', '.join(coarse_space_names)} coarse spaces. "
         "Cell colors indicate if bounds are larger (blue) or smaller (red) than $m$, with shading proportional to absolute difference. "
-        f"Bounds are calculated with $\eta={SPECTRUM_PLOT_FREQ}$, $\\tau={CGIterationBound.CLUSTER_CONVERGENCE_TOLERANCE}$, $i_{{\max}}={max_iters}$ and $r={max_iter_percentage}$."
+        f"Bounds are calculated with $\eta={SPECTRUM_PLOT_FREQ}$, $\\tau={CGIterationBound.CLUSTER_CONVERGENCE_TOLERANCE}$, $i_{{\max}}$={', '.join(MaxItersPerPreconditioner())} and $r={max_iter_percentage}$."
     )
 
     styler.to_latex(
@@ -277,14 +289,14 @@ max_iter_percentage = 0.5
 if CLI_ARGS.generate_output:
     generate_iteration_bound_table(
         CoefFunc.EDGE_SLABS_AROUND_VERTICES_INCLUSIONS,
-        max_iters=max_iters,
+        max_iters_per_preconditioner=MAX_ITERS_PER_PRECONDITIONER,
         max_iter_percentage=max_iter_percentage,
     )
 elif CLI_ARGS.show_output:
     generate_iteration_bound_table(
         CoefFunc.EDGE_SLABS_AROUND_VERTICES_INCLUSIONS,
         show=True,
-        max_iters=max_iters,
+        max_iters_per_preconditioner=MAX_ITERS_PER_PRECONDITIONER,
         max_iter_percentage=max_iter_percentage,
     )
 
