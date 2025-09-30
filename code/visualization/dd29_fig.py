@@ -57,7 +57,7 @@ LATEX_STANDALONE_END = r"""
 
 FONTSIZE = 10  # in pt
 
-CONTRAST_COLOR = CustomColors.RED.value
+CONTRAST_COLOR = CustomColors.BRIGHTRED.value
 BACKGROUND_COLOR = CustomColors.NAVY.value
 
 
@@ -123,9 +123,9 @@ def save_latex_figure(fn: str, fig: plt.Figure | None = None) -> None:
         tex_f.write(r"    \input{" + pgf_p.as_posix() + r"}")
         tex_f.write(LATEX_STANDALONE_END)
 
-    # run lualatex on tex file
+    # run lpdflatex on tex file
     subprocess.run(
-        ["lualatex", tex_p.name], check=True, cwd=FIG_FOLDER, capture_output=True
+        ["pdflatex", tex_p.name], check=True, cwd=FIG_FOLDER, capture_output=True
     )
     print(f"Saved figure to {tex_p.with_suffix('.pdf')}")
 
@@ -201,11 +201,11 @@ MESHES = DefaultQuadMeshParams
 FIGWIDTH = 1.5
 FIGHEIGHT = 1.5
 FONTSIZE = 9
-LEGEND_SIZE = 0.56
+LEGEND_SIZE = 0.5
 RECIPROCAL_COARSE_MESH_SIZES = [round(1 / mesh.coarse_mesh_size) for mesh in MESHES]
-XTICKS = [rf"$\mathbf{{H = 1/{Nc}}}$" for Nc in RECIPROCAL_COARSE_MESH_SIZES]
+XTICKS = [f"$\mathbf{{1/{Nc}}}$" for Nc in RECIPROCAL_COARSE_MESH_SIZES]
 XTICK_LOCS = np.arange(len(RECIPROCAL_COARSE_MESH_SIZES), dtype=int)
-PADDING = dict(hspace=0.01, wspace=0.1, left=0.08, right=0.99, top=0.93, bottom=0)
+PADDING = dict(hspace=0.01, wspace=0.1, left=0.12, right=0.98, top=1, bottom=0.18)
 set_mpl_cycler(lines=True, colors=True, markers=True)
 
 
@@ -225,14 +225,14 @@ def plot_absolute_performance(
         2,
         len(coarse_spaces),
         height_ratios=[
-            FIGHEIGHT / total_height,
             LEGEND_SIZE / total_height,
+            FIGHEIGHT / total_height,
         ],
     )
     axs = []
     for i in range(len(coarse_spaces)):
-        axs.append(fig.add_subplot(gs[0, i], sharey=None if i == 0 else axs[0]))
-    legend_ax = fig.add_subplot(gs[1, :])
+        axs.append(fig.add_subplot(gs[1, i], sharey=None if i == 0 else axs[0]))
+    legend_ax = fig.add_subplot(gs[0, :])
     legend_ax.axis("off")
     fig.subplots_adjust(**PADDING)
 
@@ -341,9 +341,14 @@ def plot_absolute_performance(
         ax.grid(True, which="minor", alpha=0.3)  # Minor grid with lower alpha
         ax.grid(True, which="major", alpha=0.7)  # Major grid with higher alpha
 
-        # Hide tick labels for all axes except the first one
+        # Ticks and labels
+        ax.set_xticklabels(XTICKS, rotation=45, ha="center", fontsize=8)
         if i > 0:
-            ax.tick_params(bottom=True, labelbottom=False, left=True, labelleft=False)
+            ax.tick_params(bottom=True, labelbottom=True, left=True, labelleft=False)
+
+    # add left axis label
+    axs[0].set_ylabel(r"$\mathbf{iterations}$", fontsize=FONTSIZE, fontweight="bold")
+    axs[0].set_xlabel(r"$\mathbf{H}$", fontsize=FONTSIZE, fontweight="bold")
 
     # add title to top row axes
     for i, ax in enumerate(axs):
@@ -358,10 +363,6 @@ def plot_absolute_performance(
             transform=ax.transAxes,
         )
 
-    # add tick labels and xlabel to the last column axes
-    # for ax in axs:
-    axs[0].set_xticklabels(XTICKS, rotation=45, ha="right", fontsize=8)
-
     # add legend to the bottom axis
     if legend:
         handles, labels = axs[0].get_legend_handles_labels()
@@ -369,7 +370,7 @@ def plot_absolute_performance(
             handles,
             labels,
             fontsize=FONTSIZE,
-            loc="center right",
+            loc="upper center",
             ncol=len(labels),
             frameon=False,
         )
@@ -381,11 +382,11 @@ if __name__ == "__main__":
     two_mesh_4 = TwoLevelMesh(mesh_params=DefaultQuadMeshParams.Nc4)
     coarse_spaces = [AMSCoarseSpace, GDSWCoarseSpace, RGDSWCoarseSpace]
     figs = [
-        # plot_edge_inclusions(two_mesh_4).tight_layout(),
+        plot_edge_inclusions(two_mesh_4).tight_layout(),
         plot_absolute_performance(coarse_spaces, legend=True),
     ]
     fns = [
-        # "edge_inclusions",
+        "edge_inclusions",
         "absolute_performance"
     ]
     for fig, fn in zip(figs, fns):
@@ -393,5 +394,4 @@ if __name__ == "__main__":
             fp = Path(__file__).name.replace("_fig.py", f"_{fn}")
             save_latex_figure(fp, fig)
     if CLI_ARGS.show_output:
-        plt.show()
         plt.show()
