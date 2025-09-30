@@ -199,13 +199,14 @@ MESHES = DefaultQuadMeshParams
 
 # plot
 FIGWIDTH = 1.5
-FIGHEIGHT = 1.5
+FIGHEIGHT = 2.0
 FONTSIZE = 9
-LEGEND_SIZE = 0.5
+LEGEND_SIZE = 0.55
+TOTAL_HEIGHT = FIGHEIGHT + LEGEND_SIZE
 RECIPROCAL_COARSE_MESH_SIZES = [round(1 / mesh.coarse_mesh_size) for mesh in MESHES]
 XTICKS = [f"$\mathbf{{1/{Nc}}}$" for Nc in RECIPROCAL_COARSE_MESH_SIZES]
 XTICK_LOCS = np.arange(len(RECIPROCAL_COARSE_MESH_SIZES), dtype=int)
-PADDING = dict(hspace=0.01, wspace=0.1, left=0.12, right=0.98, top=1, bottom=0.18)
+PADDING = dict(hspace=0.01, wspace=0.1, left=0.12, right=0.98, top=1, bottom=0.25)
 set_mpl_cycler(lines=True, colors=True, markers=True)
 
 
@@ -217,16 +218,15 @@ def plot_absolute_performance(
     fig = plt.figure(
         figsize=(
             FIGWIDTH * len(coarse_spaces),
-            FIGHEIGHT  + LEGEND_SIZE,
+            TOTAL_HEIGHT,
         )
     )
-    total_height = FIGHEIGHT + LEGEND_SIZE
     gs = gridspec.GridSpec(
         2,
         len(coarse_spaces),
         height_ratios=[
-            LEGEND_SIZE / total_height,
-            FIGHEIGHT / total_height,
+            LEGEND_SIZE / TOTAL_HEIGHT,
+            FIGHEIGHT / TOTAL_HEIGHT,
         ],
     )
     axs = []
@@ -348,7 +348,7 @@ def plot_absolute_performance(
 
     # add left axis label
     axs[0].set_ylabel(r"$\mathbf{iterations}$", fontsize=FONTSIZE, fontweight="bold")
-    axs[0].set_xlabel(r"$\mathbf{H}$", fontsize=FONTSIZE, fontweight="bold")
+    axs[0].set_xlabel(r"$\mathbf{subdomain \ size}$", fontsize=FONTSIZE, fontweight="bold")
 
     # add title to top row axes
     for i, ax in enumerate(axs):
@@ -382,11 +382,11 @@ if __name__ == "__main__":
     two_mesh_4 = TwoLevelMesh(mesh_params=DefaultQuadMeshParams.Nc4)
     coarse_spaces = [AMSCoarseSpace, GDSWCoarseSpace, RGDSWCoarseSpace]
     figs = [
-        plot_edge_inclusions(two_mesh_4).tight_layout(),
+        # plot_edge_inclusions(two_mesh_4).tight_layout(),
         plot_absolute_performance(coarse_spaces, legend=True),
     ]
     fns = [
-        "edge_inclusions",
+        # "edge_inclusions",
         "absolute_performance"
     ]
     for fig, fn in zip(figs, fns):
