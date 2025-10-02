@@ -240,9 +240,9 @@ def generate_iteration_bound_table(
     # table caption
     caption = (
         f"The number of PCG iterations required to achieve convergence $m$ and corresponding iteration bounds {', '.join(bounds)}. "
-        r"Bounds are calculated with Ritz spectrum PCG at the $i^{\textrm{th}}$ iteration for subdomain sizes "
-        f"{', '.join(meshes_names)} "
-        f"and 2-OAS preconditioner with {', '.join(coarse_space_names)} coarse spaces. "
+        # r"Bounds are calculated with Ritz spectrum PCG at the $i^{\textrm{th}}$ iteration for subdomain sizes "
+        # f"{', '.join(meshes_names)} "
+        # f"and 2-OAS preconditioner with {', '.join(coarse_space_names)} coarse spaces. "
         "Cell colors indicate if bounds are larger (blue) or smaller (red) than $m$, with shading proportional to absolute difference. "
         f"Bounds are calculated with $\eta={SPECTRUM_PLOT_FREQ}$, $\\tau={CGIterationBound.CLUSTER_CONVERGENCE_TOLERANCE}$, $i_{{\max}}$={', '.join(MaxItersPerPreconditioner())} and $r={max_iter_percentage}$."
     )

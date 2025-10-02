@@ -58,7 +58,7 @@ LATEX_STANDALONE_END = r"""
 FONTSIZE = 10  # in pt
 
 CONTRAST_COLOR = CustomColors.BRIGHTRED.value
-BACKGROUND_COLOR = CustomColors.NAVY.value
+BACKGROUND_COLOR = CustomColors.BLUE.value
 
 
 def set_mpl_style(fontsize: int = FONTSIZE):
@@ -143,7 +143,7 @@ def save_latex_figure(fn: str, fig: plt.Figure | None = None) -> None:
 def plot_edge_inclusions(two_mesh: TwoLevelMesh) -> plt.Figure:
     set_mpl_style()
     fig, ax_edgeslabs = plt.subplots(
-        1, 1, figsize=(3, 2.5), squeeze=True, sharex=True, sharey=True
+        1, 1, figsize=(3, 2.0), squeeze=True, sharex=True, sharey=True
     )
 
     # plot coarse mesh on both axes
@@ -199,14 +199,14 @@ MESHES = DefaultQuadMeshParams
 
 # plot
 FIGWIDTH = 1.5
-FIGHEIGHT = 2.0
+FIGHEIGHT = 1.8
 FONTSIZE = 9
-LEGEND_SIZE = 0.55
+LEGEND_SIZE = 0.2
 TOTAL_HEIGHT = FIGHEIGHT + LEGEND_SIZE
 RECIPROCAL_COARSE_MESH_SIZES = [round(1 / mesh.coarse_mesh_size) for mesh in MESHES]
 XTICKS = [f"$\mathbf{{1/{Nc}}}$" for Nc in RECIPROCAL_COARSE_MESH_SIZES]
 XTICK_LOCS = np.arange(len(RECIPROCAL_COARSE_MESH_SIZES), dtype=int)
-PADDING = dict(hspace=0.01, wspace=0.1, left=0.12, right=0.98, top=1, bottom=0.25)
+PADDING = dict(hspace=0.01, wspace=0.1, left=0.12, right=0.98, top=0.92, bottom=0.29)
 set_mpl_cycler(lines=True, colors=True, markers=True)
 
 
@@ -372,7 +372,7 @@ def plot_absolute_performance(
             handles,
             labels,
             fontsize=FONTSIZE,
-            loc="upper center",
+            loc="lower center",
             ncol=len(labels),
             frameon=False,
         )
@@ -383,13 +383,16 @@ def plot_absolute_performance(
 if __name__ == "__main__":
     two_mesh_4 = TwoLevelMesh(mesh_params=DefaultQuadMeshParams.Nc4)
     coarse_spaces = [AMSCoarseSpace, GDSWCoarseSpace, RGDSWCoarseSpace]
-    edge_inclusions = plot_edge_inclusions(two_mesh_4)
-    edge_inclusions.tight_layout()
+    # edge_inclusions = plot_edge_inclusions(two_mesh_4)
+    # edge_inclusions.tight_layout()
     figs = [
-        edge_inclusions,
+        # edge_inclusions,
         plot_absolute_performance(coarse_spaces, legend=True),
     ]
-    fns = ["edge_inclusions", "absolute_performance"]
+    fns = [
+        # "edge_inclusions", 
+        "absolute_performance"
+    ]
     for fig, fn in zip(figs, fns):
         if CLI_ARGS.generate_output:
             fp = Path(__file__).name.replace("_fig.py", f"_{fn}")
