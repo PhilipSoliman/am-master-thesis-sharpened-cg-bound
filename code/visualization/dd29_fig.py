@@ -348,7 +348,9 @@ def plot_absolute_performance(
 
     # add left axis label
     axs[0].set_ylabel(r"$\mathbf{iterations}$", fontsize=FONTSIZE, fontweight="bold")
-    axs[0].set_xlabel(r"$\mathbf{subdomain \ size}$", fontsize=FONTSIZE, fontweight="bold")
+    axs[0].set_xlabel(
+        r"$\mathbf{subdomain \ size}$", fontsize=FONTSIZE, fontweight="bold"
+    )
 
     # add title to top row axes
     for i, ax in enumerate(axs):
@@ -381,14 +383,13 @@ def plot_absolute_performance(
 if __name__ == "__main__":
     two_mesh_4 = TwoLevelMesh(mesh_params=DefaultQuadMeshParams.Nc4)
     coarse_spaces = [AMSCoarseSpace, GDSWCoarseSpace, RGDSWCoarseSpace]
+    edge_inclusions = plot_edge_inclusions(two_mesh_4)
+    edge_inclusions.tight_layout()
     figs = [
-        # plot_edge_inclusions(two_mesh_4).tight_layout(),
+        edge_inclusions,
         plot_absolute_performance(coarse_spaces, legend=True),
     ]
-    fns = [
-        # "edge_inclusions",
-        "absolute_performance"
-    ]
+    fns = ["edge_inclusions", "absolute_performance"]
     for fig, fn in zip(figs, fns):
         if CLI_ARGS.generate_output:
             fp = Path(__file__).name.replace("_fig.py", f"_{fn}")
