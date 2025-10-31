@@ -159,10 +159,29 @@ def plot_edge_inclusions(two_mesh: TwoLevelMesh) -> plt.Figure:
     # construct fespace
     problem.construct_fespace()
 
+    # collect elements in contrast and background
     contrast_elements = []
     for coarse_node in problem.fes.free_component_tree_dofs.keys():
         slab_elements = two_mesh.edge_slabs["around_coarse_nodes"][coarse_node.nr]
         contrast_elements.extend(slab_elements)
+    all_elements = np.array([el.nr for el in two_mesh.fine_mesh.Elements()])
+    background_elements = np.setdiff1d(
+        all_elements, contrast_elements, assume_unique=True
+    )
+
+    # plot background elements
+    for el_nr in background_elements:
+        two_mesh.plot_element(
+            ax_edgeslabs,
+            two_mesh.fine_mesh[ngs.ElementId(el_nr)],
+            two_mesh.fine_mesh,
+            fillcolor=BACKGROUND_COLOR,
+            edgecolor=BACKGROUND_COLOR,
+            linewidth=0.5,
+            alpha=0.9,
+        )
+
+    # plot contrast elements
     for el_nr in contrast_elements:
         two_mesh.plot_element(
             ax_edgeslabs,
@@ -172,20 +191,6 @@ def plot_edge_inclusions(two_mesh: TwoLevelMesh) -> plt.Figure:
             edgecolor="black",
             linewidth=0.5,
             alpha=1.0,
-        )
-    all_elements = np.array([el.nr for el in two_mesh.fine_mesh.Elements()])
-    background_elements = np.setdiff1d(
-        all_elements, contrast_elements, assume_unique=True
-    )
-    for el_nr in background_elements:
-        two_mesh.plot_element(
-            ax_edgeslabs,
-            two_mesh.fine_mesh[ngs.ElementId(el_nr)],
-            two_mesh.fine_mesh,
-            fillcolor=BACKGROUND_COLOR,
-            edgecolor=BACKGROUND_COLOR,
-            linewidth=0.1,
-            alpha=0.9,
         )
 
     return fig
@@ -383,14 +388,14 @@ def plot_absolute_performance(
 if __name__ == "__main__":
     two_mesh_4 = TwoLevelMesh(mesh_params=DefaultQuadMeshParams.Nc4)
     coarse_spaces = [AMSCoarseSpace, GDSWCoarseSpace, RGDSWCoarseSpace]
-    # edge_inclusions = plot_edge_inclusions(two_mesh_4)
-    # edge_inclusions.tight_layout()
+    edge_inclusions = plot_edge_inclusions(two_mesh_4)
+    edge_inclusions.tight_layout()
     figs = [
-        # edge_inclusions,
+        edge_inclusions,
         plot_absolute_performance(coarse_spaces, legend=True),
     ]
     fns = [
-        # "edge_inclusions", 
+        "edge_inclusions", 
         "absolute_performance"
     ]
     for fig, fn in zip(figs, fns):
